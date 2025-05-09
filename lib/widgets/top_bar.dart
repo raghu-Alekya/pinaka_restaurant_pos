@@ -80,15 +80,15 @@ class _TopBarState extends State<TopBar> {
               ),
             ),
 
-            SizedBox(width: 55),
+            SizedBox(width: 45),
 
             _buildTopBarButton('+ Reserved table'),
-            SizedBox(width: 25),
+            SizedBox(width: 20),
             _buildTopBarButton('Transfer table'),
-            SizedBox(width: 25),
+            SizedBox(width: 20),
             _buildTopBarButton('Merge table'),
 
-            SizedBox(width: 60),
+            SizedBox(width: 40),
 
             _buildProfileSection(),
           ],
@@ -147,7 +147,7 @@ class _TopBarState extends State<TopBar> {
                     child: CustomPaint(
                       painter: TrianglePainter(
                         isLeft: false,
-                        fillColor: isLightMode ? Colors.grey.shade400 : Colors
+                        fillColor: isLightMode ? Color(0xFF999393) : Colors
                             .white,
                       ),
                     ),
