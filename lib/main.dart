@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'package:pinaka_restaurant_pos/ui/employee_login_page.dart';
 import 'package:pinaka_restaurant_pos/ui/tables_screen.dart';
-import 'package:flutter/material.dart';
 import 'ui/splash_screen.dart';
 
 void main() {
@@ -20,8 +19,8 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      //home: TablesScreen(),
-      home:  const SplashScreen(),
+      home: TablesScreen(),
+     //home:  const SplashScreen(),
     );
   }
 }
