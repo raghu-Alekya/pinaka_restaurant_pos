@@ -35,10 +35,11 @@ class _TopBarState extends State<TopBar> {
         child: Row(
           children: [
             SizedBox(width: 30),
-
-            // Logo
-            Image.asset('assets/Pinaka.png', height: 40),
-
+            Image.asset(
+              'assets/pinaka.png',
+              height: 80,
+              width: 70,
+            ),
             SizedBox(width: 40),
 
             /// Search Box
@@ -88,7 +89,7 @@ class _TopBarState extends State<TopBar> {
             SizedBox(width: 20),
             _buildTopBarButton('Merge table'),
 
-            SizedBox(width: 40),
+            SizedBox(width: 65),
 
             _buildProfileSection(),
           ],
@@ -118,123 +119,131 @@ class _TopBarState extends State<TopBar> {
   }
 
   Widget _buildProfileSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(height: 20),
-        Row(
-          children: [
-            GestureDetector(
-              onTap: toggleMode,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: 14,
-                    height: 26,
-                    child: CustomPaint(
-                      painter: TrianglePainter(
-                        isLeft: true,
-                        fillColor: isLightMode ? Colors.white : Colors.grey
-                            .shade400,
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 6),
-                  SizedBox(
-                    width: 14,
-                    height: 26,
-                    child: CustomPaint(
-                      painter: TrianglePainter(
-                        isLeft: false,
-                        fillColor: isLightMode ? Color(0xFF999393) : Colors
-                            .white,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(width: 20),
+    return Padding(
+      padding: const EdgeInsets.only(top: 15),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        // Align all children to bottom
+        children: [
 
-            /// Profile Info
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(30),
-                boxShadow: [
-                  BoxShadow(color: Colors.grey.shade300, blurRadius: 5),
-                ],
-              ),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    backgroundImage: AssetImage('assets/loginname.png'),
-                    radius: 16,
-                  ),
-                  SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("Mohan Krishna",
-                          style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold)),
-                      Text("I am manager",
-                          style: TextStyle(color: Colors.grey, fontSize: 12)),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(width: 20),
-
-            /// Notification icon
-            Stack(
-              alignment: Alignment.topRight,
+          /// Mode Switch
+          GestureDetector(
+            onTap: toggleMode,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  padding: EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(color: Colors.grey.shade300, blurRadius: 5),
-                    ],
-                  ),
-                  child: Icon(
-                    Icons.notifications_none_outlined,
-                    size: 24,
-                    color: Colors.black,
+                Row(
+                  children: [
+                    SizedBox(
+                      width: 8,
+                      height: 18,
+                      child: CustomPaint(
+                        painter: TrianglePainter(
+                          isLeft: true,
+                          fillColor:
+                          isLightMode ? Colors.white : Colors.grey.shade400,
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 2),
+                    SizedBox(
+                      width: 8,
+                      height: 18,
+                      child: CustomPaint(
+                        painter: TrianglePainter(
+                          isLeft: false,
+                          fillColor:
+                          isLightMode ? Color(0xFF999393) : Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 4),
+                Text(
+                  "Mode",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: const Color(0xFFA19999),
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-                Positioned(
-                  right: 4,
-                  top: 4,
-                  child: Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                )
               ],
             ),
-          ],
-        ),
-        Text(
-          "Mode",
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey,
-            fontWeight: FontWeight.w500,
           ),
-        ),
-      ],
+
+          SizedBox(width: 10),
+
+          /// Profile Info
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(40),
+              boxShadow: [
+                BoxShadow(color: Colors.grey.shade300, blurRadius: 7),
+              ],
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  backgroundImage: AssetImage('assets/loginname.png'),
+                  radius: 16,
+                ),
+                SizedBox(width: 10),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Mohan Krishna",
+                        style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold)),
+                    Text("I am manager",
+                        style: TextStyle(color: Colors.grey, fontSize: 11)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          SizedBox(width: 20),
+
+          /// Notification icon
+          Stack(
+            alignment: Alignment.topRight,
+            children: [
+              Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(color: Colors.grey.shade300, blurRadius: 5),
+                  ],
+                ),
+                child: Icon(
+                  Icons.notifications_none_outlined,
+                  size: 25,
+                  color: Colors.black,
+                ),
+              ),
+              Positioned(
+                right: 15,
+                top: 13,
+                child: Container(
+                  width: 5,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              )
+            ],
+          )
+        ],
+      ),
     );
   }
 }
