@@ -55,14 +55,14 @@ class DraggableTable extends StatelessWidget {
     final borderColor = isHighlighted ? Color(0xFF2874F0) : Colors.black45;
     final textColor = isHighlighted ? Color(0xFF2874F0) : Colors.black45;
 
-    double width = 90;
-    double height = 90;
+    double width = 70;
+    double height = 70;
     BorderType borderType = BorderType.RRect;
-    Radius radius = Radius.circular(16);
+    Radius radius = Radius.circular(14);
 
     if (shape == "rectangle") {
       width = 150;
-      height = 80;
+      height = 60;
     } else if (shape == "circle") {
       borderType = BorderType.Circle;
       radius = Radius.circular(0);

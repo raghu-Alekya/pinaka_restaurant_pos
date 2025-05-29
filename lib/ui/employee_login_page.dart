@@ -74,26 +74,11 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
     });
   }
 
-  // Future<void> _login() async {
-  //   if (pin == "999999") {
-  //     Navigator.push(
-  //       context,
-  //       MaterialPageRoute(builder: (context) => TablesScreen()),
-  //     );
-  //   } else {
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       const SnackBar(content: Text("Invalid PIN")),
-  //     );
-  //   }
-  // }
   Future<void> _login() async {
     if (pin == "999999") {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext context) {
-          return GuestDetailsDialog();
-        },
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => TablesScreen()),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -103,13 +88,39 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
   }
 
 
+  // Future<void> _login() async {
+  //   if (pin == "999999") {
+  //     showDialog(
+  //       context: context,
+  //       barrierDismissible: false,
+  //       builder: (BuildContext context) {
+  //         return GuestDetailsDialog();
+  //       },
+  //     );
+  //   } else {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(content: Text("Invalid PIN")),
+  //     );
+  //   }
+  // }
+
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery
+        .of(context)
+        .size
+        .width;
+    final screenHeight = MediaQuery
+        .of(context)
+        .size
+        .height;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: SizedBox(
-          width: 1920, height: 1080,
+          width: screenWidth,
+          height: screenHeight,
           child: Row(
             children: [
               // Left Side - Image + Caption
@@ -128,24 +139,27 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
                         ),
                         AnimatedSwitcher(
                           duration: const Duration(milliseconds: 700),
-                          transitionBuilder: (Widget child, Animation<double> animation) {
+                          transitionBuilder: (Widget child,
+                              Animation<double> animation) {
                             final offsetAnimation = Tween<Offset>(
                               begin: const Offset(-1.0, 0.0),
                               end: Offset.zero,
                             ).animate(animation);
-                            return SlideTransition(position: offsetAnimation, child: child);
+                            return SlideTransition(
+                                position: offsetAnimation, child: child);
                           },
                           child: Container(
                             key: ValueKey<int>(index),
-                            padding: const EdgeInsets.symmetric(horizontal: 150),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 150),
                             alignment: Alignment.bottomCenter,
-                            margin: const EdgeInsets.only(bottom: 70),
+                            margin: const EdgeInsets.only(bottom: 40),
                             child: Text(
                               _captions[index],
                               style: const TextStyle(
                                 fontFamily: 'Inter',
                                 color: Colors.white,
-                                fontSize: 20,
+                                fontSize: 18,
                                 fontWeight: FontWeight.w400,
                               ),
                               textAlign: TextAlign.center,
@@ -161,67 +175,71 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
               // Right Side - Login Form
               Expanded(
                 child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Image.asset(
-                        'assets/pinaka.png',
-                        height: 100,
-                      ),
-                      const SizedBox(height: 18),
-                      const Text(
-                        'Employee Login',
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontSize: 25,
-                          fontFamily: 'Inter',
-                          fontWeight: FontWeight.w600,
-                          height: 0.9,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Image.asset(
+                          'assets/pinaka.png',
+                          height: screenHeight * 0.1,
                         ),
-                      ),
-                      const SizedBox(height: 19),
-                      const Text(
-                        'Please Input your PIN to Validate your self',
-                        style: TextStyle(
-                          color: Color(0xFF4C5F7D),
-                          fontSize: 18.5,
-                          fontFamily: 'Inter',
-                          fontWeight: FontWeight.w500,
-                          height: 0.92,
+                        const SizedBox(height: 18),
+                        const Text(
+                          'Employee Login',
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 23,
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w600,
+                            height: 0.9,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 22),
-                      SizedBox(
-                        width: 450,
-                        child: Column(
-                          children: [
-                            PinInput(pin: pin),
-                            const SizedBox(height: 20),
-                            NumberPad(onKeyPressed: _onKeyPressed),
-                            const SizedBox(height: 30),
-                            ElevatedButton(
-                              onPressed: _login,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red,
-                                padding: const EdgeInsets.symmetric(vertical: 20),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
+                        const SizedBox(height: 22),
+                        const Text(
+                          'Please Input your PIN to Validate your self',
+                          style: TextStyle(
+                            color: Color(0xFF4C5F7D),
+                            fontSize: 18,
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w500,
+                            height: 0.92,
+                          ),
+                        ),
+                        const SizedBox(height: 22),
+                        SizedBox(
+                          width: screenWidth * 0.3,
+                          child: Column(
+                            children: [
+                              PinInput(pin: pin),
+                              const SizedBox(height: 20),
+                              NumberPad(onKeyPressed: _onKeyPressed),
+                              const SizedBox(height: 25),
+                              ElevatedButton(
+                                onPressed: _login,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 13),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  minimumSize: Size(screenWidth * 0.29, 25),
                                 ),
-                                minimumSize: const Size(440, 40),
-                              ),
-                              child: const Text(
-                                "Login",
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
+                                child: const Text(
+                                  "Login",
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -234,7 +252,7 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
 }
 
 
-class GuestDetailsDialog extends StatefulWidget {
+  class GuestDetailsDialog extends StatefulWidget {
   @override
   _GuestDetailsDialogState createState() => _GuestDetailsDialogState();
 }
