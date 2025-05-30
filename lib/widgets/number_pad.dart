@@ -40,11 +40,11 @@ class NumberPad extends StatelessWidget {
             alignment: Alignment.center,
             child: keyLabel == "⌫"
                 ? Padding(
-              padding: const EdgeInsets.only(top: 8.0),
+              padding: const EdgeInsets.only(top: 6.0),
               child: Text(
                 keyLabel,
                 style: const TextStyle(
-                  fontSize: 30,
+                  fontSize: 25,
                   fontWeight: FontWeight.w500,
                   color: Color(0xFF4C5F7D),
                   height: 0.35,
@@ -54,7 +54,7 @@ class NumberPad extends StatelessWidget {
                 : Text(
               keyLabel,
               style: const TextStyle(
-                fontSize: 30,
+                fontSize: 25,
                 fontWeight: FontWeight.w500,
                 color: Color(0xFF4C5F7D),
                 height: 0.35,

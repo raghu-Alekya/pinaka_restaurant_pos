@@ -15,7 +15,7 @@ class PinInput extends StatelessWidget {
           return Expanded(
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 10),
-              height: 55,
+              height: 45,
               width: 65,
               clipBehavior: Clip.antiAlias,
               decoration: ShapeDecoration(
