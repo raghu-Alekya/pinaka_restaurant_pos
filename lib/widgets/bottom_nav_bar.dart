@@ -18,14 +18,14 @@ class BottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      bottom: 28,
-      left: 140,
-      right: 140,
+      bottom: 15,
+      left: 100,
+      right: 100,
       child: Container(
-        padding: EdgeInsets.symmetric(vertical: 18, horizontal: 10),
+        padding: EdgeInsets.symmetric(vertical: 15, horizontal: 6),
         decoration: BoxDecoration(
           color: Color(0xFF0A1B4D),
-          borderRadius: BorderRadius.circular(25),
+          borderRadius: BorderRadius.circular(23),
           boxShadow: [
             BoxShadow(
               color: Colors.black26,
@@ -44,8 +44,8 @@ class BottomNavBar extends StatelessWidget {
               child: AnimatedContainer(
                 duration: Duration(milliseconds: 200),
                 padding: isSelected
-                    ? EdgeInsets.symmetric(horizontal: 50, vertical: 10)
-                    : EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    ? EdgeInsets.symmetric(horizontal: 40, vertical: 6)
+                    : EdgeInsets.symmetric(horizontal: 15, vertical: 6),
                 decoration: isSelected
                     ? BoxDecoration(
                   color: Colors.redAccent,
@@ -55,7 +55,7 @@ class BottomNavBar extends StatelessWidget {
                 child: Text(
                   labels[index],
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: 17,
                     fontFamily: 'Inter',
                     color: isSelected ? Colors.white : Colors.grey[300],
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,

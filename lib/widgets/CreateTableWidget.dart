@@ -11,7 +11,6 @@ class CreateTableWidget extends StatefulWidget {
   final Function(String) onAreaSelected;
   final Function(String) onAreaDeleted;
 
-
   const CreateTableWidget({
     Key? key,
     required this.onClose,
@@ -52,7 +51,6 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
         _usedTableNames.contains(name.trim().toLowerCase());
   }
 
-
   bool _isDuplicateTableName = false;
   String _tableErrorMessage = '';
 
@@ -71,14 +69,23 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
   void _createArea() {
     final areaName = _areaNameController.text.trim();
 
-    final isAlreadyUsed = widget.usedAreaNames
-        .map((e) => e.toLowerCase())
-        .contains(areaName.toLowerCase()) ||
-        _createdAreaNames
-            .map((e) => e.toLowerCase())
-            .contains(areaName.toLowerCase());
+    if (areaName.isEmpty) {
+      setState(() {
+        _isDuplicateName = true;
+        _errorMessage = 'Area name cannot be empty';
+      });
+      return;
+    }
 
-    if (areaName.isNotEmpty && !isAlreadyUsed) {
+    final isAlreadyUsed =
+        widget.usedAreaNames
+            .map((e) => e.toLowerCase())
+            .contains(areaName.toLowerCase()) ||
+            _createdAreaNames
+                .map((e) => e.toLowerCase())
+                .contains(areaName.toLowerCase());
+
+    if (!isAlreadyUsed) {
       setState(() {
         _createdAreaNames.add(areaName);
         _areaTables[areaName] = [];
@@ -141,8 +148,6 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
     });
   }
 
-
-
   void _deleteArea() {
     if (_currentAreaName == null) return;
 
@@ -161,7 +166,6 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
 
     widget.onAreaDeleted(areaName);
   }
-
 
   bool _isInputValid() {
     final name = _tableNameController.text.trim();
@@ -218,11 +222,15 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                             ),
                             child: CircleAvatar(
                               backgroundColor: Colors.white,
+                              radius: 15,
                               child: IconButton(
                                 icon: Icon(
                                   Icons.arrow_back,
                                   color: Colors.black,
+                                  size: 16,
                                 ),
+                                padding: EdgeInsets.zero,
+                                constraints: BoxConstraints(),
                                 onPressed: () {
                                   showDialog(
                                     context: context,
@@ -256,7 +264,9 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                                                 Text(
                                                   'Finish Table Setup?',
                                                   style: TextStyle(
-                                                    color: const Color(0xFF373535),
+                                                    color: const Color(
+                                                      0xFF373535,
+                                                    ),
                                                     fontSize: 25,
                                                     fontFamily: 'Inter',
                                                     fontWeight: FontWeight.w900,
@@ -268,7 +278,9 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                                                   'Your table arrangement has been saved successfully. \nYou can revisit and edit it anytime from the table management section.',
                                                   textAlign: TextAlign.center,
                                                   style: TextStyle(
-                                                    color: const Color(0xFFA19999),
+                                                    color: const Color(
+                                                      0xFFA19999,
+                                                    ),
                                                     fontSize: 14,
                                                     fontFamily: 'Inter',
                                                     fontWeight: FontWeight.w500,
@@ -306,7 +318,12 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                                                           padding:
                                                               EdgeInsets.zero,
                                                         ),
-                                                        child: Text('Stay Here',style: TextStyle(fontSize: 15)),
+                                                        child: Text(
+                                                          'Stay Here',
+                                                          style: TextStyle(
+                                                            fontSize: 15,
+                                                          ),
+                                                        ),
                                                       ),
                                                     ),
                                                     SizedBox(width: 12),
@@ -363,7 +380,12 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                                                           padding:
                                                               EdgeInsets.zero,
                                                         ),
-                                                        child: Text('Yes, Exit',style: TextStyle(fontSize: 15)),
+                                                        child: Text(
+                                                          'Yes, Exit',
+                                                          style: TextStyle(
+                                                            fontSize: 15,
+                                                          ),
+                                                        ),
                                                       ),
                                                     ),
                                                   ],
@@ -381,20 +403,20 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                           Text(
                             "Table Setup",
                             style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
                               color: const Color(0xFF15315E),
                             ),
                           ),
                         ],
                       ),
-                      SizedBox(height: 14),
+                      SizedBox(height: 12),
                       Padding(
                         padding: const EdgeInsets.only(left: 7.0),
                         child: Text(
                           "Area/Zone:",
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF4C5F7D),
                           ),
@@ -410,7 +432,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 12.0,
-                            vertical: 9,
+                            vertical: 4,
                           ),
                           child: Row(
                             children: [
@@ -441,7 +463,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                                             child: Container(
                                               padding: EdgeInsets.symmetric(
                                                 horizontal: 12,
-                                                vertical: 6,
+                                                vertical: 7,
                                               ),
                                               decoration: BoxDecoration(
                                                 color:
@@ -516,8 +538,8 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xF2E76757),
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 10,
+                                    horizontal: 12,
+                                    vertical: 3,
                                   ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
@@ -525,7 +547,10 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                                 ),
                                 child: const Text(
                                   "+ Add Area",
-                                  style: TextStyle(color: Colors.white),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                  ),
                                 ),
                               ),
                             ],
@@ -538,27 +563,27 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                 _currentAreaName == null
                     ? Padding(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 40.0,
-                        vertical: 20.0,
+                        horizontal: 30.0,
+                        vertical: 6.0,
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          SizedBox(height: 20),
+                          SizedBox(height: 15),
                           Text(
                             "Let’s Set the Table!",
                             style: TextStyle(
-                              fontSize: 22,
+                              fontSize: 18,
                               fontWeight: FontWeight.w600,
                             ),
                             textAlign: TextAlign.center,
                           ),
-                          SizedBox(height: 14),
+                          SizedBox(height: 10),
                           Text(
                             "Start by creating your first table setup to manage your restaurant floor with ease. Customize table size, shape, and seating capacity based on your layout.",
                             style: TextStyle(
-                              fontSize: 16,
+                              fontSize: 14,
                               fontWeight: FontWeight.w400,
                               color: Color(0xFF4C5F7D),
                             ),
@@ -579,12 +604,12 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                               style: TextStyle(
                                 fontFamily: 'Inter',
                                 fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                                fontSize: 14,
                               ),
                             ),
                           ),
                         ),
-                        SizedBox(height: 10),
+                        SizedBox(height: 6),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20.0),
                           child: Column(
@@ -593,18 +618,18 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                               Text(
                                 "Table name/ No.",
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 10,
                                   fontFamily: 'Inter',
                                   fontWeight: FontWeight.w900,
                                   color: Color(0xFF4C5F7D),
                                 ),
                               ),
-                              SizedBox(height: 8),
+                              SizedBox(height: 7),
 
                               // TextField Container
                               SizedBox(
                                 width: 450,
-                                height: 40,
+                                height: 38,
                                 child: Container(
                                   decoration: BoxDecoration(
                                     color: Colors.white,
@@ -623,14 +648,14 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                                           'Type here name or number or combinations',
                                       hintStyle: TextStyle(
                                         color: Color(0xFFAFACAC),
-                                        fontSize: 11,
+                                        fontSize: 10,
                                       ),
                                       border: InputBorder.none,
                                       contentPadding: EdgeInsets.fromLTRB(
                                         16,
-                                        -6,
+                                        -5,
                                         16,
-                                        0,
+                                        8,
                                       ),
                                     ),
                                   ),
@@ -642,12 +667,12 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                                 Padding(
                                   padding: const EdgeInsets.only(
                                     left: 4.0,
-                                    top: 8,
+                                    top: 6,
                                   ),
                                   child: Text(
                                     _tableErrorMessage,
                                     style: TextStyle(
-                                      fontSize: 11,
+                                      fontSize: 10,
                                       fontWeight: FontWeight.w500,
                                       color: Color(0xFFDA4A38),
                                     ),
@@ -656,7 +681,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                             ],
                           ),
                         ),
-                        SizedBox(height: 10),
+                        SizedBox(height: 6),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20.0),
                           child: Column(
@@ -665,7 +690,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                               Text(
                                 "Seating capacity",
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 10,
                                   fontFamily: 'Inter',
                                   fontWeight: FontWeight.w900,
                                   color: Color(0xFF4C5F7D),
@@ -674,7 +699,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                               SizedBox(height: 8),
                               SizedBox(
                                 width: 450,
-                                height: 40,
+                                height: 38,
                                 child: Container(
                                   decoration: BoxDecoration(
                                     color: Colors.white,
@@ -693,15 +718,15 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                                     decoration: InputDecoration(
                                       hintText: 'Enter the number',
                                       hintStyle: TextStyle(
-                                        fontSize: 11,
+                                        fontSize: 10,
                                         color: Color(0xFFAFACAC),
                                       ),
                                       border: InputBorder.none,
                                       contentPadding: EdgeInsets.fromLTRB(
                                         16,
-                                        -6,
+                                        -5,
                                         16,
-                                        0,
+                                        8,
                                       ),
                                     ),
                                   ),
@@ -716,7 +741,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                                   child: Text(
                                     _seatingCapacityErrorMessage,
                                     style: TextStyle(
-                                      fontSize: 11,
+                                      fontSize: 10,
                                       color: Color(0xFFDA4A38),
                                     ),
                                   ),
@@ -724,7 +749,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                             ],
                           ),
                         ),
-                        SizedBox(height: 14),
+                        SizedBox(height: 10),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16.0),
                           child: Align(
@@ -732,7 +757,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                             child: Text(
                               "Table Model",
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 10,
                                 fontFamily: 'Inter',
                                 fontWeight: FontWeight.w900,
                                 color: Color(0xFF4C5F7D),
@@ -740,7 +765,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                             ),
                           ),
                         ),
-                        SizedBox(height: 12),
+                        SizedBox(height: 10),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16.0),
                           child: AbsorbPointer(
@@ -763,30 +788,45 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                                     alignment: WrapAlignment.center,
                                     spacing: 40,
                                     runSpacing: 20,
-                                    children: ["square", "circle", "rectangle"].map((shape) {
-                                      bool isEnabled = _isInputValid();
+                                    children:
+                                        ["square", "circle", "rectangle"].map((
+                                          shape,
+                                        ) {
+                                          bool isEnabled = _isInputValid();
 
-                                      if (shape == "square") {
-                                        isEnabled = isEnabled && ((seatingCapacity >= 1 && seatingCapacity <= 4) || seatingCapacity % 4 == 0);
-                                      } else if (shape == "rectangle") {
-                                        isEnabled = isEnabled && ((seatingCapacity >= 1 && seatingCapacity <= 4) || seatingCapacity % 2 == 0);
-                                      }
+                                          if (shape == "square") {
+                                            isEnabled =
+                                                isEnabled &&
+                                                ((seatingCapacity >= 1 &&
+                                                        seatingCapacity <= 4) ||
+                                                    seatingCapacity % 4 == 0);
+                                          } else if (shape == "rectangle") {
+                                            isEnabled =
+                                                isEnabled &&
+                                                ((seatingCapacity >= 1 &&
+                                                        seatingCapacity <= 4) ||
+                                                    seatingCapacity % 2 == 0);
+                                          }
 
-                                      return DraggableTable(
-                                        capacity: seatingCapacity,
-                                        shape: shape,
-                                        isEnabled: isEnabled,
-                                        tableName: _tableNameController.text.trim(),
-                                        areaName: _currentAreaName ?? '',
-                                        onDragCompleted: () {
-                                          _tableNameController.clear();
-                                          _seatingCapacityController.clear();
-                                        },
-                                        onDoubleTap: (data) => widget.getTableData(data),
-                                      );
-                                    }).toList(),
-                                  )
-
+                                          return DraggableTable(
+                                            capacity: seatingCapacity,
+                                            shape: shape,
+                                            isEnabled: isEnabled,
+                                            tableName:
+                                                _tableNameController.text
+                                                    .trim(),
+                                            areaName: _currentAreaName ?? '',
+                                            onDragCompleted: () {
+                                              _tableNameController.clear();
+                                              _seatingCapacityController
+                                                  .clear();
+                                            },
+                                            onDoubleTap:
+                                                (data) =>
+                                                    widget.getTableData(data),
+                                          );
+                                        }).toList(),
+                                  ),
                                 ),
                               ),
                             ),
@@ -808,175 +848,180 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
               child: Center(
                 child: GestureDetector(
                   onTap: () {},
-                  child: Container(
-                    width: 320,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 5,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
+                  behavior: HitTestBehavior.translucent,
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.only(
+                      bottom: MediaQuery.of(context).viewInsets.bottom,
                     ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Stack(
-                          children: [
-                            Align(
-                              alignment: Alignment.center,
-                              child: Padding(
-                                padding: const EdgeInsets.only(
-                                  top: 25,
-                                  right: 25,
-                                  bottom: 20,
-                                ),
-                                child: Text(
-                                  "Let’s Create an Area/Zone",
-                                  style: TextStyle(
-                                    fontFamily: 'Inter',
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 18,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              right: 0,
-                              top: 0,
-                              child: GestureDetector(
-                                onTap: _togglePopup,
-                                child: Container(
-                                  width: 30,
-                                  height: 30,
-                                  decoration: BoxDecoration(
-                                    color: Color(0xFFF86157),
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Color(0x3F000000),
-                                        blurRadius: 11,
-                                        offset: Offset(2, 2),
-                                        spreadRadius: 0,
-                                      ),
-                                    ],
-                                  ),
-                                  child: Icon(
-                                    Icons.close,
-                                    color: Colors.white,
-                                    size: 18,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 10),
-                        Text(
-                          "Area/Zone",
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                          ),
-                        ),
-                        SizedBox(height: 10),
-                        Container(
-                          width: double.infinity,
-                          height: 45,
-                          padding: EdgeInsets.symmetric(horizontal: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            border: Border.all(color: Color(0xFFECEBEB)),
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: [BoxShadow(color: Color(0x19000000))],
-                          ),
-                          child: Row(
+                    child: Container(
+                      width: 280,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(color: Colors.black12, blurRadius: 5),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Stack(
                             children: [
-                              SizedBox(width: 10),
-                              Expanded(
-                                child: TextField(
-                                  controller: _areaNameController,
-                                  style: TextStyle(
-                                    color: Colors.black,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w500,
+                              Align(
+                                alignment: Alignment.center,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(
+                                    top: 25,
+                                    right: 25,
+                                    bottom: 20,
                                   ),
-                                  decoration: InputDecoration(
-                                    hintText: 'Type an Area/Zone name',
-                                    border: InputBorder.none,
-                                    isDense: true,
+                                  child: Text(
+                                    "Let’s Create an Area/Zone",
+                                    style: TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                right: 0,
+                                top: 0,
+                                child: GestureDetector(
+                                  onTap: _togglePopup,
+                                  child: Container(
+                                    width: 20,
+                                    height: 20,
+                                    decoration: BoxDecoration(
+                                      color: Color(0xFFF86157),
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Color(0x3F000000),
+                                          blurRadius: 11,
+                                        ),
+                                      ],
+                                    ),
+                                    child: Icon(
+                                      Icons.close,
+                                      color: Colors.white,
+                                      size: 18,
+                                    ),
                                   ),
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                        SizedBox(height: 5),
-                        if (_isDuplicateName)
-                          Padding(
-                            padding: const EdgeInsets.only(
-                              left: 4.0,
-                              bottom: 6,
-                            ),
-                            child: Text(
-                              _errorMessage,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: Color(0xFFDA4A38),
-                              ),
+                          SizedBox(height: 5),
+                          Text(
+                            "Area/Zone",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
                             ),
                           ),
-                        SizedBox(height: 30),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            ElevatedButton(
-                              onPressed: () {
-                                setState(() {
-                                  _areaNameController.clear();
-                                  _isDuplicateName = false;
-                                  _errorMessage = '';
-                                });
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.grey[100],
-                                foregroundColor: Color(0xFF4C5F7D),
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 26,
-                                  vertical: 14,
+                          SizedBox(height: 5),
+                          Container(
+                            height: 45,
+                            padding: EdgeInsets.symmetric(horizontal: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              border: Border.all(color: Color(0xFFECEBEB)),
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: [BoxShadow(color: Color(0x19000000))],
+                            ),
+                            child: Row(
+                              children: [
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: TextField(
+                                    controller: _areaNameController,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    decoration: InputDecoration(
+                                      hintText: 'Type an Area/Zone name',
+                                      border: InputBorder.none,
+                                      isDense: true,
+                                    ),
+                                  ),
                                 ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: 5),
+                          if (_isDuplicateName)
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                left: 4.0,
+                                bottom: 6,
+                              ),
+                              child: Text(
+                                _errorMessage,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFFDA4A38),
                                 ),
                               ),
-                              child: Text("Clear"),
                             ),
-                            SizedBox(width: 15),
-                            ElevatedButton(
-                              onPressed: _createArea,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Color(0xFFDA4A38),
-                                foregroundColor: Colors.white,
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 24,
-                                  vertical: 12,
+                          SizedBox(height: 7),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              ElevatedButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _areaNameController.clear();
+                                    _isDuplicateName = false;
+                                    _errorMessage = '';
+                                  });
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.grey[100],
+                                  foregroundColor: Color(0xFF4C5F7D),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 3,
+                                  ),
+                                  minimumSize: Size(0, 30),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
                                 ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
+                                child: Text(
+                                  "Clear",
+                                  style: TextStyle(fontSize: 12),
                                 ),
                               ),
-                              child: Text("Create"),
-                            ),
-                          ],
-                        ),
-                      ],
+                              SizedBox(width: 7),
+                              ElevatedButton(
+                                onPressed: _createArea,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Color(0xFFDA4A38),
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 3,
+                                  ),
+                                  minimumSize: Size(0, 30),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                child: Text(
+                                  "Create",
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -994,8 +1039,8 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
               color: Colors.black.withAlpha(80),
               child: Center(
                 child: Container(
-                  width: MediaQuery.of(context).size.width * 0.25,
-                  height: MediaQuery.of(context).size.height * 0.35,
+                  width: MediaQuery.of(context).size.width * 0.22,
+                  height: MediaQuery.of(context).size.height * 0.33,
                   decoration: ShapeDecoration(
                     color: Colors.white,
                     shape: RoundedRectangleBorder(
@@ -1011,25 +1056,25 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                           child: Center(
                             child: Image.asset(
                               'assets/check-broken.png',
-                              width: 70,
-                              height: 50,
+                              width: 50,
+                              height: 30,
                               fit: BoxFit.cover,
                             ),
                           ),
                         ),
 
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 8),
                         const Text(
                           'Are you sure ?',
                           style: TextStyle(
                             color: Color(0xFF373535),
-                            fontSize: 20,
+                            fontSize: 16,
                             fontFamily: 'Inter',
                             fontWeight: FontWeight.bold,
                             height: 1.57,
                           ),
                         ),
-                        const SizedBox(height: 13),
+                        const SizedBox(height: 10),
                         SizedBox(
                           width: 383,
                           child: Text.rich(
@@ -1040,7 +1085,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                                       'Do you want to really delete the records? This will delete ',
                                   style: TextStyle(
                                     color: Color(0xFFA19999),
-                                    fontSize: 15,
+                                    fontSize: 12,
                                     fontFamily: 'Inter',
                                     fontWeight: FontWeight.w500,
                                     height: 1.38,
@@ -1050,7 +1095,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                                   text: _currentAreaName ?? 'this area.',
                                   style: const TextStyle(
                                     color: Color(0xFF656161),
-                                    fontSize: 14,
+                                    fontSize: 10,
                                     fontFamily: 'Inter',
                                     fontWeight: FontWeight.w600,
                                     height: 1.38,
@@ -1061,7 +1106,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                             textAlign: TextAlign.center,
                           ),
                         ),
-                        const SizedBox(height: 25),
+                        const SizedBox(height: 20),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -1075,8 +1120,8 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                                 });
                               },
                               child: Container(
-                                width: 95,
-                                height: 42,
+                                width: 80,
+                                height: 32,
                                 decoration: ShapeDecoration(
                                   color: const Color(0xFFF6F6F6),
                                   shape: RoundedRectangleBorder(
@@ -1096,7 +1141,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                                   'No, Keep It.',
                                   style: TextStyle(
                                     color: Color(0xFF4C5F7D),
-                                    fontSize: 14,
+                                    fontSize: 11,
                                     fontFamily: 'Inter',
                                     fontWeight: FontWeight.w500,
                                     height: 1.10,
@@ -1104,12 +1149,12 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 30),
+                            const SizedBox(width: 25),
                             GestureDetector(
                               onTap: _deleteArea,
                               child: Container(
-                                width: 95,
-                                height: 42,
+                                width: 80,
+                                height: 32,
                                 decoration: ShapeDecoration(
                                   color: const Color(0xFFFD6464),
                                   shape: RoundedRectangleBorder(
@@ -1129,7 +1174,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                                   'Yes, Delete!',
                                   style: TextStyle(
                                     color: Color(0xFFF9F6F6),
-                                    fontSize: 14,
+                                    fontSize: 11,
                                     fontFamily: 'Inter',
                                     fontWeight: FontWeight.w500,
                                     height: 1.10,
@@ -1147,120 +1192,6 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
             ),
           ),
       ],
-    );
-  }
-
-  Widget _buildDraggableTable(int capacity, {required String shape}) {
-    bool isEnabled = _isInputValid();
-    if (shape == "square") {
-      if (!((capacity >= 1 && capacity <= 4) || capacity % 4 == 0)) {
-        isEnabled = false;
-      }
-    }
-
-    if (shape == "rectangle") {
-      if (!((capacity >= 1 && capacity <= 4) || capacity % 2 == 0)) {
-        isEnabled = false;
-      }
-    }
-
-    final data = {
-      'capacity': capacity,
-      'tableName': _tableNameController.text.trim(),
-      'areaName': _currentAreaName ?? '',
-      'shape': shape,
-    };
-
-    return AbsorbPointer(
-      absorbing: !isEnabled,
-      child: Draggable<Map<String, dynamic>>(
-        data: data,
-        feedback: Opacity(
-          opacity: 0.7,
-          child: _buildTableWidget(capacity, isEnabled, shape),
-        ),
-        onDragCompleted: () {
-          final name = _tableNameController.text.trim();
-
-          setState(() {
-            if (name.isNotEmpty && !_isTableNameDuplicate(name)) {
-              _usedTableNames.add(name.toLowerCase());
-            }
-            _tableNameController.clear();
-            _seatingCapacityController.clear();
-            _isDuplicateTableName = false;
-            _tableErrorMessage = '';
-          });
-        },
-
-        child: GestureDetector(
-          onDoubleTap: () {
-            if (isEnabled) {
-              widget.getTableData(data);
-            }
-          },
-          child: _buildTableWidget(capacity, isEnabled, shape),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTableWidget(int capacity, bool isHighlighted, String shape) {
-    final borderColor = isHighlighted ? Color(0xFF2874F0) : Colors.black45;
-    final textColor = isHighlighted ? Color(0xFF2874F0) : Colors.black45;
-
-    double width = 90;
-    double height = 90;
-    BorderType borderType = BorderType.RRect;
-    Radius radius = Radius.circular(16);
-
-    if (shape == "rectangle") {
-      width = 150;
-      height = 80;
-    } else if (shape == "circle") {
-      borderType = BorderType.Circle;
-      radius = Radius.circular(0);
-    }
-
-    return DottedBorder(
-      color: borderColor,
-      strokeWidth: 1.5,
-      dashPattern: [6, 3],
-      borderType: borderType,
-      radius: radius,
-      child: Container(
-        width: width,
-        height: height,
-        alignment: Alignment.center,
-        child:
-            shape == "circle"
-                ? ClipOval(
-                  child: Container(
-                    color: Colors.grey[200],
-                    alignment: Alignment.center,
-                    child: _buildTableText(textColor),
-                  ),
-                )
-                : ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    color: Colors.grey[200],
-                    alignment: Alignment.center,
-                    child: _buildTableText(textColor),
-                  ),
-                ),
-      ),
-    );
-  }
-  Widget _buildTableText(Color textColor) {
-    return Text(
-      "Drag to\nFloor",
-      textAlign: TextAlign.center,
-      style: TextStyle(
-        fontSize: 14,
-        color: textColor,
-        fontWeight: FontWeight.w500,
-      ),
     );
   }
 }

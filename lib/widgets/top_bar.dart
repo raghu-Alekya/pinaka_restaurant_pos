@@ -26,7 +26,7 @@ class _TopBarState extends State<TopBar> {
 
     return AppBar(
       backgroundColor: Colors.white,
-      toolbarHeight: 110,
+      toolbarHeight: 90,
       automaticallyImplyLeading: false,
       titleSpacing: 0,
       title: SingleChildScrollView(
@@ -34,18 +34,18 @@ class _TopBarState extends State<TopBar> {
         padding: EdgeInsets.symmetric(horizontal: 20),
         child: Row(
           children: [
-            SizedBox(width: 30),
+            SizedBox(width: 10),
             Image.asset(
               'assets/pinaka.png',
-              height: 80,
-              width: 70,
+              height: 60,
+              width: 55,
             ),
-            SizedBox(width: 40),
+            SizedBox(width: 25),
 
             /// Search Box
             Container(
-              width: screenWidth * 0.38,
-              height: 45,
+              width: screenWidth * 0.37,
+              height: 40,
               padding: EdgeInsets.symmetric(horizontal: 10),
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -66,7 +66,7 @@ class _TopBarState extends State<TopBar> {
                     child: TextField(
                       style: TextStyle(
                         color: Color(0xFFA19999),
-                        fontSize: 14,
+                        fontSize: 12,
                         fontWeight: FontWeight.w500,
                         height: 1,
                       ),
@@ -81,7 +81,7 @@ class _TopBarState extends State<TopBar> {
               ),
             ),
 
-            SizedBox(width: 45),
+            SizedBox(width: 40),
 
             _buildTopBarButton('+ Reserved table'),
             SizedBox(width: 20),
@@ -89,7 +89,7 @@ class _TopBarState extends State<TopBar> {
             SizedBox(width: 20),
             _buildTopBarButton('Merge table'),
 
-            SizedBox(width: 65),
+            SizedBox(width: 45),
 
             _buildProfileSection(),
           ],
@@ -110,7 +110,7 @@ class _TopBarState extends State<TopBar> {
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 14,
+          fontSize: 12,
           fontWeight: FontWeight.bold,
           color: Colors.black,
         ),
@@ -135,8 +135,8 @@ class _TopBarState extends State<TopBar> {
                 Row(
                   children: [
                     SizedBox(
-                      width: 8,
-                      height: 18,
+                      width: 7,
+                      height: 16,
                       child: CustomPaint(
                         painter: TrianglePainter(
                           isLeft: true,
@@ -147,8 +147,8 @@ class _TopBarState extends State<TopBar> {
                     ),
                     SizedBox(width: 2),
                     SizedBox(
-                      width: 8,
-                      height: 18,
+                      width: 7,
+                      height: 16,
                       child: CustomPaint(
                         painter: TrianglePainter(
                           isLeft: false,
@@ -188,7 +188,7 @@ class _TopBarState extends State<TopBar> {
               children: [
                 CircleAvatar(
                   backgroundImage: AssetImage('assets/loginname.png'),
-                  radius: 16,
+                  radius: 14,
                 ),
                 SizedBox(width: 10),
                 Column(
@@ -197,7 +197,7 @@ class _TopBarState extends State<TopBar> {
                     Text("Mohan Krishna",
                         style: TextStyle(
                             color: Colors.black,
-                            fontSize: 13,
+                            fontSize: 12,
                             fontWeight: FontWeight.bold)),
                     Text("I am manager",
                         style: TextStyle(color: Colors.grey, fontSize: 11)),
@@ -207,7 +207,7 @@ class _TopBarState extends State<TopBar> {
             ),
           ),
 
-          SizedBox(width: 20),
+          SizedBox(width: 15),
 
           /// Notification icon
           Stack(
@@ -224,13 +224,13 @@ class _TopBarState extends State<TopBar> {
                 ),
                 child: Icon(
                   Icons.notifications_none_outlined,
-                  size: 25,
+                  size: 23,
                   color: Colors.black,
                 ),
               ),
               Positioned(
-                right: 15,
-                top: 13,
+                right: 14,
+                top: 12,
                 child: Container(
                   width: 5,
                   height: 6,
