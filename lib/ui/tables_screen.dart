@@ -4,10 +4,15 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:dotted_border/dotted_border.dart';
 import '../widgets/CreateTableWidget.dart';
+import '../widgets/DeleteConfirmationDialog.dart';
 import '../widgets/EditTablePopup.dart';
 import '../widgets/TablePlacementWidget.dart';
+import '../widgets/ZoomControlsWidget.dart';
 import '../widgets/top_bar.dart';
 import '../widgets/bottom_nav_bar.dart';
+import 'MainScreen.dart';
+import '../widgets/table_helpers.dart';
+import 'guest_details_popup.dart';
 
 class TablesScreen extends StatefulWidget {
   @override
@@ -41,11 +46,19 @@ class _TablesScreenState extends State<TablesScreen> {
     });
   }
 
-  void updateTableGuestCount(int index, int guestCount) {
+  void updateTableGuestData(int index, {
+    required int guestCount,
+    required String customerName,
+    required String captain,
+  }) {
     setState(() {
       placedTables[index]['guestCount'] = guestCount;
+      placedTables[index]['customerName'] = customerName;
+      placedTables[index]['captain'] = captain;
+      // Optional: update color here, or use guestCount to trigger color change logic in build
     });
   }
+
 
 
   bool _isOverlapping(
@@ -78,7 +91,8 @@ class _TablesScreenState extends State<TablesScreen> {
       final existingPos = table['position'] as Offset;
       final shape = table['shape'] as String;
       final capacity = table['capacity'];
-      final existingSize = _getPlacedTableSize(capacity, shape);
+      final existingSize = TableHelpers.getPlacedTableSize(capacity, shape);
+
 
       final existingRect = Rect.fromLTWH(
         existingPos.dx - totalBuffer,
@@ -171,7 +185,7 @@ class _TablesScreenState extends State<TablesScreen> {
   }
 
   void _addTable(Map<String, dynamic> data, Offset position) {
-    final tableSize = _getPlacedTableSize(data['capacity'], data['shape']);
+    final tableSize = TableHelpers.getPlacedTableSize(data['capacity'], data['shape']);
     final clampedPos = _clampPositionToCanvas(position, tableSize);
     final adjustedPos = _findNonOverlappingPosition(
       clampedPos,
@@ -191,7 +205,7 @@ class _TablesScreenState extends State<TablesScreen> {
     final shape = placedTables[index]['shape'];
     final capacity = placedTables[index]['capacity'];
     final areaName = placedTables[index]['areaName'];
-    final tableSize = _getPlacedTableSize(capacity, shape);
+    final tableSize = TableHelpers.getPlacedTableSize(capacity, shape);
 
     final clampedPos = _clampPositionToCanvas(newPosition, tableSize);
     final adjustedPos = _findNonOverlappingPosition(
@@ -213,7 +227,7 @@ class _TablesScreenState extends State<TablesScreen> {
         final otherPos = otherTable['position'] as Offset;
         final otherShape = otherTable['shape'] as String;
         final otherCapacity = otherTable['capacity'];
-        final otherSize = _getPlacedTableSize(otherCapacity, otherShape);
+        final otherSize = TableHelpers.getPlacedTableSize(otherCapacity, otherShape);
 
         final thisRect = Rect.fromLTWH(
           adjustedPos.dx,
@@ -240,43 +254,6 @@ class _TablesScreenState extends State<TablesScreen> {
       }
     });
   }
-
-  Widget _buildActionButton(String type, VoidCallback onPressed) {
-    IconData icon;
-    Color backgroundColor;
-    Color borderColor;
-    Color iconColor;
-
-    if (type == "edit") {
-      icon = Icons.edit;
-      backgroundColor = Colors.red;
-      borderColor = Colors.transparent;
-      iconColor = Colors.white;
-    } else {
-      icon = Icons.delete;
-      backgroundColor = Color(0xFFFFF0F0);
-      borderColor = Colors.red;
-      iconColor = Colors.red;
-    }
-
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        margin: EdgeInsets.symmetric(vertical: 4),
-        width: 25,
-        height: 25,
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          border: Border.all(color: borderColor, width: 1.5),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Icon(icon, color: iconColor, size: 15),
-      ),
-    );
-  }
-
-
-
   Widget _buildPlacedTable(int index, Map<String, dynamic> tableData) {
     final capacity = tableData['capacity'];
     final name = tableData['tableName'];
@@ -284,7 +261,7 @@ class _TablesScreenState extends State<TablesScreen> {
     final shape = tableData['shape'];
     final Offset position = tableData['position'];
     final int guestCount = tableData['guestCount'] ?? 0;
-    final size = _getPlacedTableSize(capacity, shape);
+    final size = TableHelpers.getPlacedTableSize(capacity, shape);
 
     Widget baseTable = _buildPlacedTableWidget(name, capacity, area, shape, size, guestCount);
 
@@ -390,397 +367,6 @@ class _TablesScreenState extends State<TablesScreen> {
     );
   }
 
-
-  void _showGuestDetailsPopup(BuildContext context, int index, Map<String, dynamic> tableData){
-    List<int> selectedGuests = [];
-    String selectedCaptain = '';
-    TextEditingController customerController = TextEditingController();
-
-    List<Map<String, String>> captains = [
-      {'name': 'A Raghav kumar', 'image': 'assets/loginname.png'},
-      {'name': 'Anand vijay', 'image': 'assets/loginname.png'},
-      {'name': 'mohan krishna', 'image': 'assets/loginname.png'},
-      {'name': 'shak khalil', 'image': 'assets/loginname.png'},
-      {'name': 'jagadeesh', 'image': 'assets/loginname.png'},
-    ];
-
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: "Guest Details",
-      pageBuilder: (context, anim1, anim2) {
-        return MediaQuery.removeViewInsets(
-          removeBottom: true,
-          context: context,
-          child: StatefulBuilder(
-            builder: (context, setState) {
-              return Material(
-                type: MaterialType.transparency,
-                child: Center(
-                  child: Container(
-                    width: 840,
-                    height: 500,
-                    padding: const EdgeInsets.all(45),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Select Guest Numbers",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Wrap(
-                            spacing: 16,
-                            runSpacing: 16,
-                            children: List.generate(18, (index) {
-                              int guest = index + 1;
-                              bool isSelected = selectedGuests.contains(guest);
-                              return GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    selectedGuests = List.generate(
-                                      guest,
-                                      (i) => i + 1,
-                                    );
-                                  });
-                                },
-                                child: Container(
-                                  width: 60,
-                                  height: 50,
-                                  alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    color:
-                                        isSelected
-                                            ? const Color(0xFFE4E4E7)
-                                            : const Color(0xFFF6F6F7),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    '$guest',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color:
-                                          isSelected
-                                              ? Colors.black
-                                              : const Color(0xFF9CA3AF),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }),
-                          ),
-                          const SizedBox(height: 14),
-                          Text(
-                            "Customer Name",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Container(
-                            width: 650,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(10),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black12,
-                                  blurRadius: 5,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: TextField(
-                              controller: customerController,
-                              style: TextStyle(fontSize: 14),
-                              decoration: InputDecoration(
-                                hintText: "enter the customer name",
-                                border: InputBorder.none,
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 13,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                "Choose Captain",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: Row(
-                                  children:
-                                      captains.map((captain) {
-                                        bool isSelected =
-                                            selectedCaptain == captain['name'];
-                                        return Padding(
-                                          padding: const EdgeInsets.only(
-                                            right: 14,
-                                          ),
-                                          child: GestureDetector(
-                                            onTap:
-                                                () => setState(
-                                                  () =>
-                                                      selectedCaptain =
-                                                          captain['name']!,
-                                                ),
-                                            child: Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 14,
-                                                    vertical: 6,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color:
-                                                    isSelected
-                                                        ? const Color(
-                                                          0xFFFF4D20,
-                                                        )
-                                                        : Colors.white,
-                                                borderRadius:
-                                                    BorderRadius.circular(18),
-                                                border: Border.all(
-                                                  color:
-                                                      isSelected
-                                                          ? const Color(
-                                                            0xFFFF4D20,
-                                                          )
-                                                          : Colors.transparent,
-                                                  width: 1.5,
-                                                ),
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color: Colors.black12,
-                                                    blurRadius: 4,
-                                                    offset: Offset(0, 2),
-                                                  ),
-                                                ],
-                                              ),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  CircleAvatar(
-                                                    backgroundImage: AssetImage(
-                                                      captain['image']!,
-                                                    ),
-                                                    radius: 14,
-                                                  ),
-                                                  const SizedBox(width: 4),
-                                                  Text(
-                                                    captain['name']!,
-                                                    style: TextStyle(
-                                                      fontSize: 12,
-                                                      color:
-                                                          isSelected
-                                                              ? Colors.white
-                                                              : Colors.black,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        );
-                                      }).toList(),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 30),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              ElevatedButton(
-                                onPressed: () => Navigator.pop(context),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.grey.shade200,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
-                                    vertical: 10,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                                child: Text(
-                                  "Back",
-                                  style: TextStyle(
-                                    color: Color(0xFF4C5F7D),
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 14),
-                              ElevatedButton(
-                                  onPressed: () {
-                                    final guestCount = selectedGuests.length;
-
-                                    updateTableGuestCount(index, guestCount); // Triggers parent UI update
-
-                                    Navigator.pop(context);
-                                  },
-
-                                  style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFFF4D20),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 26,
-                                    vertical: 10,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                                child: Text(
-                                  "SELECT AND CONTINUE",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
-
-  void _showDeleteConfirmationDialog(int index) {
-    final table = placedTables[index];
-    final tableName = table['tableName'];
-    final areaName = table['areaName'];
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          backgroundColor: Color(0xFFFDFDFD),
-          contentPadding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          content: SizedBox(
-            width: 300,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Center(
-                  child: Image.asset(
-                    'assets/check-broken.png',
-                    width: 70,
-                    height: 50,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                SizedBox(height: 16),
-                Text(
-                  'Are you sure ?',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 12),
-                RichText(
-                  textAlign: TextAlign.center,
-                  text: TextSpan(
-                    style: TextStyle(color: Colors.black87),
-                    children: [
-                      TextSpan(text: 'Do you want to really delete the '),
-                      TextSpan(
-                        text: '$tableName',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      TextSpan(text: '? This will be deleted in '),
-                      TextSpan(
-                        text: '$areaName.',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    TextButton(
-                      style: TextButton.styleFrom(
-                        backgroundColor: Color(0xFFF1F4F8),
-                        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                      child: Text(
-                        'No, Keep It.',
-                        style: TextStyle(color: Color(0xFF4C5F7D)),
-                      ),
-                    ),
-                    SizedBox(width: 12),
-                    TextButton(
-                      style: TextButton.styleFrom(
-                        backgroundColor: Color(0xFFDA4A38),
-                        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          final removedTable = placedTables.removeAt(index);
-                          _usedTableNames.remove(removedTable['tableName']);
-
-                          // Reset selection and hide action menu
-                          _selectedTableIndex = null;
-                          _showActionMenu = false;
-                        });
-
-                        Navigator.of(context).pop();
-                      },
-                      child: Text(
-                        'Yes, Delete!',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-
   Widget _buildPlacedTableWidget(
       String name,
       int capacity,
@@ -813,7 +399,7 @@ class _TablesScreenState extends State<TablesScreen> {
             width: size.width,
             height: size.height,
             color: tableColor,
-            child: Center(child: _buildTableContent(name, area, guestCount)),
+            child: Center(child: TableHelpers.buildTableContent(name, area, guestCount)),
           ),
         ),
       );
@@ -828,7 +414,7 @@ class _TablesScreenState extends State<TablesScreen> {
             color: tableColor,
             borderRadius: BorderRadius.circular(shape == "square" ? 8 : 16),
           ),
-          child: Center(child: _buildTableContent(name, area, guestCount)),
+          child: Center(child: TableHelpers.buildTableContent(name, area, guestCount)),
         ),
       );
     }
@@ -847,13 +433,12 @@ class _TablesScreenState extends State<TablesScreen> {
     );
   }
 
-
   List<Widget> _buildChairs(
-    int capacity,
-    Size tableSize,
-    double margin,
-    String shape, Color chairColor,
-  ) {
+      int capacity,
+      Size tableSize,
+      double margin,
+      String shape, Color chairColor,
+      ) {
     const double chairWidth = 15;
     const double chairHeight = 48;
 
@@ -865,10 +450,10 @@ class _TablesScreenState extends State<TablesScreen> {
       final double centerY = (tableSize.height / 2) + margin;
       final double radius =
           (tableSize.width > tableSize.height
-                  ? tableSize.width
-                  : tableSize.height) /
+              ? tableSize.width
+              : tableSize.height) /
               2 +
-          12;
+              12;
 
       for (int i = 0; i < capacity && i < 12; i++) {
         final double angle = (2 * 3.1415926 / capacity) * i;
@@ -879,7 +464,7 @@ class _TablesScreenState extends State<TablesScreen> {
           Positioned(
             left: dx,
             top: dy,
-            child: Transform.rotate(angle: angle, child: _buildChairRect(chairColor)),
+            child: Transform.rotate(angle: angle, child: TableHelpers.buildChairRect(chairColor)),
           ),
         );
       }
@@ -899,7 +484,7 @@ class _TablesScreenState extends State<TablesScreen> {
             Positioned(
               left: left + (tableSize.width / 2) - (chairWidth / 2),
               top: top - chairHeight,
-              child: Transform.rotate(angle: -1.57, child: _buildChairRect(chairColor)),
+              child: Transform.rotate(angle: -1.57, child: TableHelpers.buildChairRect(chairColor)),
             ),
           );
         } else if (capacity == 2) {
@@ -907,7 +492,7 @@ class _TablesScreenState extends State<TablesScreen> {
             Positioned(
               left: (left - chairHeight) + chairLeftOffset,
               top: leftY + chairTopOffset,
-              child: Transform.rotate(angle: 3.14, child: _buildChairRect(chairColor)),
+              child: Transform.rotate(angle: 3.14, child: TableHelpers.buildChairRect(chairColor)),
             ),
           );
 
@@ -915,7 +500,7 @@ class _TablesScreenState extends State<TablesScreen> {
             Positioned(
               left: right + 10,
               top: top + (tableSize.height / 3) - (chairWidth / 3) - 10,
-              child: _buildChairRect(chairColor),
+              child: TableHelpers.buildChairRect(chairColor),
             ),
           );
         } else {
@@ -928,7 +513,7 @@ class _TablesScreenState extends State<TablesScreen> {
             Positioned(
               left: (left - chairHeight) + chairLeftOffset,
               top: leftY + chairTopOffset,
-              child: Transform.rotate(angle: 3.14, child: _buildChairRect(chairColor)),
+              child: Transform.rotate(angle: 3.14, child: TableHelpers.buildChairRect(chairColor)),
             ),
           );
 
@@ -936,7 +521,7 @@ class _TablesScreenState extends State<TablesScreen> {
           double rightY = top + (tableSize.height / 3) - (chairWidth / 3) - 10;
           double rightX = right + 10;
           chairs.add(
-            Positioned(left: rightX, top: rightY, child: _buildChairRect(chairColor)),
+            Positioned(left: rightX, top: rightY, child: TableHelpers.buildChairRect(chairColor)),
           );
 
           // Top side
@@ -948,7 +533,7 @@ class _TablesScreenState extends State<TablesScreen> {
               Positioned(
                 left: dx,
                 top: top - chairHeight,
-                child: Transform.rotate(angle: -1.57, child: _buildChairRect(chairColor)),
+                child: Transform.rotate(angle: -1.57, child: TableHelpers.buildChairRect(chairColor)),
               ),
             );
           }
@@ -956,14 +541,14 @@ class _TablesScreenState extends State<TablesScreen> {
           // Bottom side
           double bottomSpacing =
               (tableSize.width - (bottomChairs * chairWidth)) /
-              (bottomChairs + 1);
+                  (bottomChairs + 1);
           for (int i = 0; i < bottomChairs; i++) {
             double dx = left + bottomSpacing * (i + 1) + chairWidth * i;
             chairs.add(
               Positioned(
                 left: dx,
                 top: bottom,
-                child: Transform.rotate(angle: 1.57, child: _buildChairRect(chairColor)),
+                child: Transform.rotate(angle: 1.57, child: TableHelpers.buildChairRect(chairColor)),
               ),
             );
           }
@@ -983,7 +568,7 @@ class _TablesScreenState extends State<TablesScreen> {
             Positioned(
               left: dx,
               top: top - chairHeight,
-              child: Transform.rotate(angle: -1.57, child: _buildChairRect(chairColor)),
+              child: Transform.rotate(angle: -1.57, child: TableHelpers.buildChairRect(chairColor)),
             ),
           );
         }
@@ -997,21 +582,21 @@ class _TablesScreenState extends State<TablesScreen> {
           double dy = top + rightSpacing * (i + 1) + chairWidth * i - 15.0;
           double dx = right + 15.0;
 
-          chairs.add(Positioned(left: dx, top: dy, child: _buildChairRect(chairColor)));
+          chairs.add(Positioned(left: dx, top: dy, child: TableHelpers.buildChairRect(chairColor)));
         }
 
         // Bottom
         int bottomChairs = chairsPerSide + (extraChairs > 2 ? 1 : 0);
         double bottomSpacing =
             (tableSize.width - (bottomChairs * chairWidth)) /
-            (bottomChairs + 1);
+                (bottomChairs + 1);
         for (int i = 0; i < bottomChairs; i++) {
           double dx = left + bottomSpacing * (i + 1) + chairWidth * i;
           chairs.add(
             Positioned(
               left: dx,
               top: bottom,
-              child: Transform.rotate(angle: 1.57, child: _buildChairRect(chairColor)),
+              child: Transform.rotate(angle: 1.57, child: TableHelpers.buildChairRect(chairColor)),
             ),
           );
         }
@@ -1028,7 +613,7 @@ class _TablesScreenState extends State<TablesScreen> {
             Positioned(
               left: left - chairHeight + 15,
               top: dy - 12,
-              child: Transform.rotate(angle: 3.14, child: _buildChairRect(chairColor)),
+              child: Transform.rotate(angle: 3.14, child: TableHelpers.buildChairRect(chairColor)),
             ),
           );
         }
@@ -1038,95 +623,97 @@ class _TablesScreenState extends State<TablesScreen> {
     return chairs;
   }
 
-  Widget _buildChairRect(Color color) {
-    return Container(
-      width: 13,
-      height: 45,
-      decoration: ShapeDecoration(
-        color: color,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.only(
-            topRight: Radius.circular(9),
-            bottomRight: Radius.circular(9),
-          ),
+  Widget _buildActionButton(String type, VoidCallback onPressed) {
+    IconData icon;
+    Color backgroundColor;
+    Color borderColor;
+    Color iconColor;
+
+    if (type == "edit") {
+      icon = Icons.edit;
+      backgroundColor = Colors.red;
+      borderColor = Colors.transparent;
+      iconColor = Colors.white;
+    } else {
+      icon = Icons.delete;
+      backgroundColor = Color(0xFFFFF0F0);
+      borderColor = Colors.red;
+      iconColor = Colors.red;
+    }
+
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        margin: EdgeInsets.symmetric(vertical: 4),
+        width: 25,
+        height: 25,
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          border: Border.all(color: borderColor, width: 1.5),
+          borderRadius: BorderRadius.circular(6),
         ),
+        child: Icon(icon, color: iconColor, size: 15),
       ),
     );
   }
 
 
-  Widget _buildTableContent(String name, String area, int guestCount) {
-    final hasGuests = guestCount > 0;
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          'Table #$name',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: hasGuests ? Colors.orange : Colors.green,
-            fontSize: 13,
+  void _showGuestDetailsPopup(BuildContext context, int index, Map<String, dynamic> tableData) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: "Guest Details",
+      pageBuilder: (context, anim1, anim2) {
+        return MediaQuery.removeViewInsets(
+          removeBottom: true,
+          context: context,
+          child: GuestDetailsPopup(
+            index: index,
+            tableData: tableData,
+            placedTables: placedTables,
+            updateTableGuestData: ({
+              required int index,
+              required int guestCount,
+              required String customerName,
+              required String captain,
+            }) {
+              updateTableGuestData(
+                index,
+                guestCount: guestCount,
+                customerName: customerName,
+                captain: captain,
+              );
+            },
           ),
-        ),
-        SizedBox(height: 6),
-        Icon(Icons.group, size: 25, color: hasGuests ? Colors.orange : Colors.green),
-        if (hasGuests)
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Text(
-              '$guestCount',
-              style: TextStyle(
-                color: Colors.orange,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-            ),
-          ),
-      ],
+        );
+      },
     );
   }
 
 
+  void _showDeleteConfirmationDialog(int index) {
+    final table = placedTables[index];
+    final tableName = table['tableName'];
+    final areaName = table['areaName'];
 
-  Size _getPlacedTableSize(int capacity, String shape) {
-    switch (shape) {
-      case "circle":
-        {
-          double baseSize = 50.0;
-          double increasePerSeat = 10.0;
-          double size = (baseSize + (capacity * increasePerSeat)).clamp(
-            90.0,
-            160.0,
-          );
-          return Size(size, size);
-        }
-      case "square":
-        {
-          double baseSize = 50.0;
-          double increasePerSeat = 10.0;
-          double size = (baseSize + (capacity * increasePerSeat)).clamp(
-            90.0,
-            160.0,
-          );
-          return Size(size, size);
-        }
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return DeleteConfirmationDialog(
+          tableName: tableName,
+          areaName: areaName,
+          onConfirm: () {
+            setState(() {
+              final removedTable = placedTables.removeAt(index);
+              _usedTableNames.remove(removedTable['tableName']);
 
-      case "rectangle":
-        {
-          double baseWidth = 70.0;
-          double increasePerSeat = 30.0;
-          double width = (baseWidth + (capacity * increasePerSeat)).clamp(
-            150.0,
-            400.0,
-          );
-          double height = 80.0;
-          return Size(width, height);
-        }
-      default:
-        return Size(120, 120);
-    }
+              _selectedTableIndex = null;
+              _showActionMenu = false;
+            });
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -1170,7 +757,11 @@ class _TablesScreenState extends State<TablesScreen> {
             ),
           ),
 
-          _buildZoomControls(),
+          ZoomControlsWidget(
+            onZoomIn: _zoomIn,
+            onZoomOut: _zoomOut,
+            onScaleToFit: _scaleToFit,
+          ),
 
           BottomNavBar(
             selectedIndex: _selectedIndex,
@@ -1199,13 +790,13 @@ class _TablesScreenState extends State<TablesScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _buildLegendDot(Colors.green, "Available"),
+                    TableHelpers.buildLegendDot(Colors.green, "Available"),
                     SizedBox(width: 20),
-                    _buildLegendDot(Colors.red, "Dine In"),
+                    TableHelpers.buildLegendDot(Colors.red, "Dine In"),
                     SizedBox(width: 20),
-                    _buildLegendDot(Colors.orange, "Reserve"),
+                    TableHelpers.buildLegendDot(Colors.orange, "Reserve"),
                     SizedBox(width: 20),
-                    _buildLegendDot(Colors.blue, "Ready to Pay"),
+                    TableHelpers.buildLegendDot(Colors.blue, "Ready to Pay"),
                   ],
                 ),
               ),
@@ -1244,7 +835,7 @@ class _TablesScreenState extends State<TablesScreen> {
                         placedTables[_selectedTableIndex!]['capacity'],
                         placedTables[_selectedTableIndex!]['areaName'],
                         placedTables[_selectedTableIndex!]['shape'],
-                        _getPlacedTableSize(
+                        TableHelpers.getPlacedTableSize(
                           placedTables[_selectedTableIndex!]['capacity'],
                           placedTables[_selectedTableIndex!]['shape'],
                         ) *
@@ -1278,9 +869,13 @@ class _TablesScreenState extends State<TablesScreen> {
               ),
             ),
 
-          // 4. Show prompt when no tables
           if (placedTables.isEmpty && !_showPopup)
-            Center(child: _buildAddContentPrompt()),
+            Center(
+              child: TableHelpers.buildAddContentPrompt(
+                scale: _scale,
+                onTap: _togglePopup,
+              ),
+            ),
 
           // 5. Table Setup button
           if (placedTables.isNotEmpty && !_showPopup)
@@ -1369,145 +964,6 @@ class _TablesScreenState extends State<TablesScreen> {
               onAreaSelected: (areaName) => setState(() => selectedArea = areaName),
               onAreaDeleted: _handleAreaDeletion,
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-
-  Widget _buildLegendDot(Color color, String label) {
-    return Row(
-      children: [
-        Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        SizedBox(width: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: color,
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAddContentPrompt() {
-    return Stack(
-      children: [
-        Positioned(
-          top: 120,
-          left: 0,
-          right: 0,
-          child: Transform.scale(
-            scale: _scale,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Start by adding your first table\nor seating area.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 15),
-                DottedBorder(
-                  color: Colors.grey,
-                  strokeWidth: 1,
-                  borderType: BorderType.RRect,
-                  radius: Radius.circular(20),
-                  dashPattern: [6, 4],
-                  child: InkWell(
-                    onTap: _togglePopup,
-                    child: Container(
-                      padding: EdgeInsets.all(25),
-                      child: Container(
-                        width: 120,
-                        height: 120,
-                        decoration: BoxDecoration(
-                          color: Color(0xFFF1F3F9),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.add, size: 20, color: Colors.blueGrey),
-                            SizedBox(height: 8),
-                            Text(
-                              'Add table',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.blueGrey,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _zoomButton({required IconData icon, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 30,
-        height: 30,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black26,
-              blurRadius: 4,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Icon(icon, size: 15, color: Colors.black87),
-      ),
-    );
-  }
-
-  Widget _buildZoomControls() {
-    return Positioned(
-      bottom: 120,
-      left: 40,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _zoomButton(icon: Icons.add, onTap: _zoomIn),
-          SizedBox(height: 10),
-          _zoomButton(icon: Icons.remove, onTap: _zoomOut),
-          SizedBox(height: 10),
-          Row(
-            children: [
-              SizedBox(
-                width: 30,
-                child: _zoomButton(icon: Icons.fit_screen, onTap: _scaleToFit),
-              ),
-              SizedBox(width: 8),
-              Text(
-                "Scaled to fit",
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Color(0xFF4C5F7D),
-                  fontWeight: FontWeight.w500,
-                  fontFamily: 'Inter',
-                ),
-              ),
-            ],
           ),
         ],
       ),
