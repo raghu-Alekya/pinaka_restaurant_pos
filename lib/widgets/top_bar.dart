@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+/// A custom AppBar widget with a logo, search box, action buttons,
+/// and profile section including a mode toggle and notification icon.
 class TopBar extends StatefulWidget implements PreferredSizeWidget {
+  /// The preferred height of the AppBar.
   @override
   Size get preferredSize => Size.fromHeight(100);
 
@@ -9,8 +12,10 @@ class TopBar extends StatefulWidget implements PreferredSizeWidget {
 }
 
 class _TopBarState extends State<TopBar> {
+  /// Tracks the current mode state (true for light mode, false for dark mode).
   bool isLightMode = true;
 
+  /// Toggles the mode state between light and dark.
   void toggleMode() {
     setState(() {
       isLightMode = !isLightMode;
@@ -19,22 +24,24 @@ class _TopBarState extends State<TopBar> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery
-        .of(context)
-        .size
-        .width;
+    final screenWidth = MediaQuery.of(context).size.width;
 
     return AppBar(
       backgroundColor: Colors.white,
       toolbarHeight: 90,
       automaticallyImplyLeading: false,
       titleSpacing: 0,
+
+      /// The main content of the AppBar, scrollable horizontally to
+      /// accommodate smaller screens.
       title: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.symmetric(horizontal: 20),
         child: Row(
           children: [
             SizedBox(width: 10),
+
+            /// Logo image
             Image.asset(
               'assets/pinaka.png',
               height: 60,
@@ -42,7 +49,7 @@ class _TopBarState extends State<TopBar> {
             ),
             SizedBox(width: 25),
 
-            /// Search Box
+            /// Search box with icon and text field
             Container(
               width: screenWidth * 0.37,
               height: 40,
@@ -83,6 +90,7 @@ class _TopBarState extends State<TopBar> {
 
             SizedBox(width: 40),
 
+            /// Buttons for actions: Reserved table, Transfer table, Merge table
             _buildTopBarButton('+ Reserved table'),
             SizedBox(width: 20),
             _buildTopBarButton('Transfer table'),
@@ -91,6 +99,7 @@ class _TopBarState extends State<TopBar> {
 
             SizedBox(width: 45),
 
+            /// Profile section including mode toggle, user info and notification
             _buildProfileSection(),
           ],
         ),
@@ -98,6 +107,7 @@ class _TopBarState extends State<TopBar> {
     );
   }
 
+  /// Helper to build an outlined button with the given label.
   Widget _buildTopBarButton(String label) {
     return OutlinedButton(
       style: OutlinedButton.styleFrom(
@@ -106,7 +116,9 @@ class _TopBarState extends State<TopBar> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       ),
-      onPressed: () {},
+      onPressed: () {
+        // Action handler for button press can be added here.
+      },
       child: Text(
         label,
         style: TextStyle(
@@ -118,15 +130,16 @@ class _TopBarState extends State<TopBar> {
     );
   }
 
+  /// Builds the profile section on the right side of the TopBar
+  /// including mode toggle, user avatar & name, and notification icon.
   Widget _buildProfileSection() {
     return Padding(
       padding: const EdgeInsets.only(top: 15),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        // Align all children to bottom
+        crossAxisAlignment: CrossAxisAlignment.end, // Align children to bottom
         children: [
 
-          /// Mode Switch
+          /// Mode toggle button (custom double triangle icon)
           GestureDetector(
             onTap: toggleMode,
             child: Column(
@@ -140,8 +153,7 @@ class _TopBarState extends State<TopBar> {
                       child: CustomPaint(
                         painter: TrianglePainter(
                           isLeft: true,
-                          fillColor:
-                          isLightMode ? Colors.white : Colors.grey.shade400,
+                          fillColor: isLightMode ? Colors.white : Colors.grey.shade400,
                         ),
                       ),
                     ),
@@ -152,8 +164,7 @@ class _TopBarState extends State<TopBar> {
                       child: CustomPaint(
                         painter: TrianglePainter(
                           isLeft: false,
-                          fillColor:
-                          isLightMode ? Color(0xFF999393) : Colors.white,
+                          fillColor: isLightMode ? Color(0xFF999393) : Colors.white,
                         ),
                       ),
                     ),
@@ -174,7 +185,7 @@ class _TopBarState extends State<TopBar> {
 
           SizedBox(width: 10),
 
-          /// Profile Info
+          /// Profile avatar and user information
           Container(
             padding: EdgeInsets.symmetric(horizontal: 10, vertical: 2),
             decoration: BoxDecoration(
@@ -209,7 +220,7 @@ class _TopBarState extends State<TopBar> {
 
           SizedBox(width: 15),
 
-          /// Notification icon
+          /// Notification icon with red badge indicator
           Stack(
             alignment: Alignment.topRight,
             children: [
@@ -248,9 +259,14 @@ class _TopBarState extends State<TopBar> {
   }
 }
 
-  /// Custom triangle painter
+/// Custom painter to draw a triangle shape.
+///
+/// Used in the mode toggle button to visually represent left and right triangles.
 class TrianglePainter extends CustomPainter {
+  /// If true, draws a left-pointing triangle; otherwise, right-pointing.
   final bool isLeft;
+
+  /// The fill color of the triangle.
   final Color fillColor;
 
   TrianglePainter({required this.isLeft, required this.fillColor});
@@ -268,17 +284,16 @@ class TrianglePainter extends CustomPainter {
 
     Path path = Path();
 
-    // Inside TrianglePainter
+    // Draw left or right triangle based on isLeft flag
     if (isLeft) {
       path.moveTo(size.width - 1, 0);
       path.lineTo(0, size.height / 2);
       path.lineTo(size.width - 1, size.height);
     } else {
-      path.moveTo(1, 0); // inward by 1px
+      path.moveTo(1, 0); // inward by 1px to avoid overlapping border
       path.lineTo(size.width, size.height / 2);
       path.lineTo(1, size.height);
     }
-
 
     path.close();
 
