@@ -1,16 +1,31 @@
 import 'package:flutter/material.dart';
-
 import 'MainScreen.dart';
 
+/// A popup widget that collects guest details for a selected table.
+///
+/// The popup allows the user to:
+/// - Select the number of guests (1 to 18).
+/// - Enter the customer's name.
+/// - Select a captain from a predefined list.
+///
+/// Once all fields are valid, it updates the table data and navigates
+/// to the [Mainscreen] with the updated table details.
 class GuestDetailsPopup extends StatefulWidget {
+  /// Index of the selected table in the placedTables list.
   final int index;
+
+  /// The table data for the selected table.
   final Map<String, dynamic> tableData;
+
+  /// Callback to update guest-related data of the table.
   final Function({
   required int index,
   required int guestCount,
   required String customerName,
   required String captain,
   }) updateTableGuestData;
+
+  /// List of all placed tables.
   final List<Map<String, dynamic>> placedTables;
 
   const GuestDetailsPopup({
@@ -25,11 +40,18 @@ class GuestDetailsPopup extends StatefulWidget {
   State<GuestDetailsPopup> createState() => _GuestDetailsPopupState();
 }
 
+/// State class for [GuestDetailsPopup] that manages UI and data input.
 class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
+  /// List of selected guest numbers.
   List<int> selectedGuests = [];
+
+  /// The selected captain's name.
   String selectedCaptain = '';
+
+  /// Controller for customer name input.
   TextEditingController customerController = TextEditingController();
 
+  /// Predefined list of captains with names and image paths.
   final List<Map<String, String>> captains = [
     {'name': 'A Raghav kumar', 'image': 'assets/loginname.png'},
     {'name': 'Anand vijay', 'image': 'assets/loginname.png'},
@@ -55,8 +77,10 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                /// Guest number selection section
                 Text("Select Guest Numbers",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    style:
+                    TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 16,
@@ -94,9 +118,12 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                     );
                   }),
                 ),
+
+                /// Customer name input field
                 const SizedBox(height: 14),
                 Text("Customer Name",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    style:
+                    TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 const SizedBox(height: 10),
                 Container(
                   width: 650,
@@ -125,6 +152,8 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                     ),
                   ),
                 ),
+
+                /// Captain selection section
                 const SizedBox(height: 14),
                 const Text("Choose Captain",
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
@@ -188,6 +217,8 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                     }).toList(),
                   ),
                 ),
+
+                /// Action buttons
                 const SizedBox(height: 30),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -236,7 +267,7 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                             );
                           });
                         } else {
-                          // Show error
+                          // Validation error — consider showing a snackbar or alert
                         }
                       },
                       style: ElevatedButton.styleFrom(

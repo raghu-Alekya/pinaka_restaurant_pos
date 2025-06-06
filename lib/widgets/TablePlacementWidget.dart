@@ -1,4 +1,4 @@
-import 'package\:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 class TablePlacementWidget extends StatefulWidget {
   final List<Map<String, dynamic>> placedTables;
@@ -10,6 +10,7 @@ class TablePlacementWidget extends StatefulWidget {
   final Widget Function(int, Map<String, dynamic>) buildPlacedTable;
   final String? selectedArea;
   final VoidCallback onTapOutside;
+
   const TablePlacementWidget({
     Key? key,
     required this.placedTables,
@@ -21,7 +22,6 @@ class TablePlacementWidget extends StatefulWidget {
     required this.buildPlacedTable,
     required this.selectedArea,
     required this.onTapOutside,
-
   }) : super(key: key);
 
   @override
@@ -35,13 +35,12 @@ class _TablePlacementWidgetState extends State<TablePlacementWidget> {
 
   String? _selectedArea;
 
-  List<String> get areaNames =>
-      widget.placedTables
-          .map((e) => e['areaName'] as String?)
-          .where((name) => name != null && name.isNotEmpty)
-          .toSet()
-          .cast<String>()
-          .toList();
+  List<String> get areaNames => widget.placedTables
+      .map((e) => e['areaName'] as String?)
+      .where((name) => name != null && name.isNotEmpty)
+      .toSet()
+      .cast<String>()
+      .toList();
 
   void _selectArea(String area) {
     setState(() {
@@ -69,8 +68,7 @@ class _TablePlacementWidgetState extends State<TablePlacementWidget> {
     }
 
     if (widget.placedTables.length != oldWidget.placedTables.length) {
-      final lastTableArea =
-      widget.placedTables.isNotEmpty
+      final lastTableArea = widget.placedTables.isNotEmpty
           ? widget.placedTables.last['areaName'] as String?
           : null;
 
@@ -82,15 +80,13 @@ class _TablePlacementWidgetState extends State<TablePlacementWidget> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
-    final visibleTables =
-        _selectedArea == null
-            ? widget.placedTables
-            : widget.placedTables
-                .where((e) => e['areaName'] == _selectedArea)
-                .toList();
+    final visibleTables = _selectedArea == null
+        ? widget.placedTables
+        : widget.placedTables
+        .where((e) => e['areaName'] == _selectedArea)
+        .toList();
 
     return Column(
       children: [
@@ -113,9 +109,13 @@ class _TablePlacementWidgetState extends State<TablePlacementWidget> {
                     child: TextButton(
                       onPressed: () => _selectArea(area),
                       style: TextButton.styleFrom(
-                        backgroundColor: isSelected ? const Color(0xFFFD6464) : Colors.transparent,
-                        foregroundColor: isSelected ? Colors.white : Colors.black87,
-                        padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 13.0),
+                        backgroundColor: isSelected
+                            ? const Color(0xFFFD6464)
+                            : Colors.transparent,
+                        foregroundColor:
+                        isSelected ? Colors.white : Colors.black87,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 15.0, vertical: 13.0),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(5),
                         ),
@@ -134,7 +134,6 @@ class _TablePlacementWidgetState extends State<TablePlacementWidget> {
               ),
             ),
           ),
-
         Expanded(
           child: ScrollbarTheme(
             data: ScrollbarThemeData(
@@ -150,15 +149,14 @@ class _TablePlacementWidgetState extends State<TablePlacementWidget> {
                 final data = details.data;
                 final dropOffset = details.offset;
                 final RenderBox canvasBox =
-                    _canvasKey.currentContext!.findRenderObject() as RenderBox;
+                _canvasKey.currentContext!.findRenderObject()
+                as RenderBox;
                 final localPosition = canvasBox.globalToLocal(dropOffset);
-
                 final newArea = data['areaName'] as String? ?? '';
-
                 setState(() {
-                  _selectedArea = newArea.isNotEmpty ? newArea : _selectedArea;
+                  _selectedArea =
+                  newArea.isNotEmpty ? newArea : _selectedArea;
                 });
-
                 widget.addTable(data, localPosition / widget.scale);
               },
               builder: (context, candidateData, rejectedData) {
@@ -175,37 +173,50 @@ class _TablePlacementWidgetState extends State<TablePlacementWidget> {
                         child: SingleChildScrollView(
                           controller: verticalScrollController,
                           scrollDirection: Axis.vertical,
-                          child: Container(
-                            key: _canvasKey,
-                            width: 90000,
-                            height: 60000,
+                          child: Transform.scale(
+                            scale: widget.scale,
                             alignment: Alignment.topLeft,
-                            child: GestureDetector(
-                              behavior: HitTestBehavior.translucent,
-                              onTap: widget.onTapOutside,
-                              child: Stack(
-                                children: [
-                                  if (visibleTables.isEmpty && !widget.showPopup)
-                                    widget.buildAddContentPrompt(),
-                                  ...visibleTables.asMap().entries.map(
-                                        (entry) => widget.buildPlacedTable(
-                                      widget.placedTables.indexOf(entry.value),
-                                      entry.value,
+                            child: Container(
+                              key: _canvasKey,
+                              width: 90000 / widget.scale,
+                              height: 60000 / widget.scale,
+                              alignment: Alignment.topLeft,
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.translucent,
+                                onTap: widget.onTapOutside,
+                                child: Stack(
+                                  children: [
+                                    if (visibleTables.isEmpty &&
+                                        !widget.showPopup)
+                                      widget.buildAddContentPrompt(),
+                                    ...visibleTables.asMap().entries.map(
+                                          (entry) =>
+                                          widget.buildPlacedTable(
+                                            widget.placedTables
+                                                .indexOf(entry.value),
+                                            entry.value,
+                                          ),
                                     ),
-                                  ),
-                                  Positioned.fill(
-                                    child: DragTarget<int>(
-                                      onAcceptWithDetails: (details) {
-                                        final index = details.data;
-                                        final dropOffset = details.offset;
-                                        final RenderBox canvasBox = _canvasKey.currentContext!.findRenderObject() as RenderBox;
-                                        final localPos = canvasBox.globalToLocal(dropOffset);
-                                        widget.updateTablePosition(index, localPos / widget.scale);
-                                      },
-                                      builder: (context, _, __) => Container(),
+                                    Positioned.fill(
+                                      child: DragTarget<int>(
+                                        onAcceptWithDetails: (details) {
+                                          final index = details.data;
+                                          final dropOffset = details.offset;
+                                          final RenderBox canvasBox =
+                                          _canvasKey.currentContext!
+                                              .findRenderObject()
+                                          as RenderBox;
+                                          final localPos = canvasBox
+                                              .globalToLocal(dropOffset);
+                                          widget.updateTablePosition(index,
+                                              localPos / widget.scale);
+                                        },
+                                        builder: (context, _, __) =>
+                                            Container(),
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                           ),

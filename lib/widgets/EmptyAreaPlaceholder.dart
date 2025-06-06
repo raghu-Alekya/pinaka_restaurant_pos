@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+/// A placeholder widget displayed when no table setups exist.
+/// Shows a friendly message prompting the user to create their first table setup.
+/// Provides basic instructions about customizing table size, shape, and seating capacity.
 class EmptyAreaPlaceholder extends StatelessWidget {
   const EmptyAreaPlaceholder({super.key});
 
@@ -38,4 +41,3 @@ class EmptyAreaPlaceholder extends StatelessWidget {
     );
   }
 }
-

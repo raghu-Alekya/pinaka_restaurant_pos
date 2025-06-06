@@ -1,9 +1,16 @@
 import 'dart:async';
-import 'package:pinaka_restaurant_pos/ui/tables_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:pinaka_restaurant_pos/ui/tables_screen.dart';
 import '../widgets/number_pad.dart';
 import '../widgets/pin_input.dart';
 
+/// EmployeeLoginPage is a login screen for employees to authenticate using a 6-digit PIN.
+/// It features:
+/// - An auto-scrolling image carousel with captions describing the POS system.
+/// - A numeric keypad for entering the PIN.
+/// - Visual PIN feedback using the PinInput widget.
+/// - Validation of the PIN and navigation to the TablesScreen upon success.
+/// - A snackbar message on invalid PIN input.
 class EmployeeLoginPage extends StatefulWidget {
   const EmployeeLoginPage({super.key});
 
@@ -11,10 +18,13 @@ class EmployeeLoginPage extends StatefulWidget {
   _EmployeeLoginPageState createState() => _EmployeeLoginPageState();
 }
 
+/// State class for EmployeeLoginPage that manages PIN entry, image carousel logic,
+/// and login validation.
 class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
   String pin = "";
   int _currentIndex = 0;
 
+  /// Image assets used for the left-side carousel.
   final List<String> _images = [
     'assets/img_1.png',
     'assets/loginname.png',
@@ -22,6 +32,7 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
     'assets/img_1.png',
   ];
 
+  /// Corresponding captions for each image in the carousel.
   final List<String> _captions = [
     '"Designed for speed and efficiency — PINAKA POS helps you complete sales in seconds with an intuitive and user-friendly interface, reducing training time and increasing productivity."',
     '"Track sales, manage inventory, and handle staff permissions — all from one sleek dashboard that’s built for real-time data access and seamless integration with your business tools."',
@@ -37,6 +48,7 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
     super.initState();
     _pageController = PageController();
 
+    // Start timer to auto-scroll the carousel every 2 seconds
     _timer = Timer.periodic(const Duration(seconds: 2), (Timer timer) {
       _currentIndex++;
 
@@ -46,6 +58,7 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
         curve: Curves.easeInOut,
       );
 
+      // Reset to first page after the last
       if (_currentIndex == _images.length - 1) {
         Future.delayed(const Duration(milliseconds: 710), () {
           _pageController.jumpToPage(0);
@@ -62,6 +75,10 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
     super.dispose();
   }
 
+  /// Handles input from the number pad.
+  /// - "C" clears the PIN.
+  /// - "⌫" deletes the last character.
+  /// - Numeric values are appended up to 6 digits.
   void _onKeyPressed(String value) {
     setState(() {
       if (value == "C") {
@@ -74,6 +91,9 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
     });
   }
 
+  /// Validates the entered PIN.
+  /// - If valid, navigates to the TablesScreen.
+  /// - If invalid, shows a SnackBar with an error message.
   Future<void> _login() async {
     if (pin == "999999") {
       Navigator.push(
@@ -86,7 +106,6 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
       );
     }
   }
-
 
   // Future<void> _login() async {
   //   if (pin == "999999") {
@@ -106,14 +125,8 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery
-        .of(context)
-        .size
-        .width;
-    final screenHeight = MediaQuery
-        .of(context)
-        .size
-        .height;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -123,7 +136,7 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
           height: screenHeight,
           child: Row(
             children: [
-              // Left Side - Image + Caption
+              /// Left side: Image carousel with animated captions
               Expanded(
                 child: PageView.builder(
                   controller: _pageController,
@@ -139,8 +152,7 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
                         ),
                         AnimatedSwitcher(
                           duration: const Duration(milliseconds: 700),
-                          transitionBuilder: (Widget child,
-                              Animation<double> animation) {
+                          transitionBuilder: (Widget child, Animation<double> animation) {
                             final offsetAnimation = Tween<Offset>(
                               begin: const Offset(-1.0, 0.0),
                               end: Offset.zero,
@@ -150,8 +162,7 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
                           },
                           child: Container(
                             key: ValueKey<int>(index),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 150),
+                            padding: const EdgeInsets.symmetric(horizontal: 150),
                             alignment: Alignment.bottomCenter,
                             margin: const EdgeInsets.only(bottom: 40),
                             child: Text(
@@ -172,7 +183,7 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
                 ),
               ),
 
-              // Right Side - Login Form
+              /// Right side: PIN input and login form
               Expanded(
                 child: Center(
                   child: SingleChildScrollView(
@@ -219,8 +230,7 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
                                 onPressed: _login,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.red,
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 13),
+                                  padding: const EdgeInsets.symmetric(vertical: 13),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
                                   ),
@@ -252,7 +262,8 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
 }
 
 
-  class GuestDetailsDialog extends StatefulWidget {
+
+class GuestDetailsDialog extends StatefulWidget {
   @override
   _GuestDetailsDialogState createState() => _GuestDetailsDialogState();
 }

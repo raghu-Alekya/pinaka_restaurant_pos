@@ -50,19 +50,19 @@ class TableHelpers {
           textAlign: TextAlign.center,
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: hasGuests ? Colors.orange : Colors.green,
+            color: hasGuests ? Colors.red : Colors.green,
             fontSize: 13,
           ),
         ),
         SizedBox(height: 6),
-        Icon(Icons.group, size: 25, color: hasGuests ? Colors.orange : Colors.green),
+        Icon(Icons.group, size: 25, color: hasGuests ? Colors.red : Colors.green),
         if (hasGuests)
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text(
               '$guestCount',
               style: TextStyle(
-                color: Colors.orange,
+                color: Colors.red,
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
               ),

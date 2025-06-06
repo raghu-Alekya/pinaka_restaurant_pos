@@ -7,12 +7,26 @@ import 'DraggableTable.dart';
 import 'EmptyAreaPlaceholder.dart';
 import 'TableSetupHeader.dart';
 
+/// A widget that allows creating areas (zones) and tables within those areas.
+/// Supports adding/deleting areas, entering table names and seating capacities,
+/// and selecting table models with validation and duplicate checks.
 class CreateTableWidget extends StatefulWidget {
+  /// Callback triggered when the widget should be closed.
   final VoidCallback onClose;
+
+  /// Callback to send the created table data back to the parent.
   final Function(Map<String, dynamic>) getTableData;
+
+  /// Set of already used table names to prevent duplicates.
   final Set<String> usedTableNames;
+
+  /// Set of already used area names to prevent duplicates.
   final Set<String> usedAreaNames;
+
+  /// Callback triggered when an area is selected.
   final Function(String) onAreaSelected;
+
+  /// Callback triggered when an area is deleted.
   final Function(String) onAreaDeleted;
 
   const CreateTableWidget({
@@ -30,39 +44,59 @@ class CreateTableWidget extends StatefulWidget {
 }
 
 class _CreateTableWidgetState extends State<CreateTableWidget> {
+  // Controls visibility of the area creation popup.
   bool _isPopupVisible = false;
+
+  // Controls visibility of the delete confirmation popup.
   bool _isDeleteConfirmationVisible = false;
+
+  // Flags duplicate area name error state.
   bool _isDuplicateName = false;
+
+  // Error message for area name input.
   String _errorMessage = '';
 
-  // Controllers
+  // Text controllers for area name, table name, and seating capacity inputs.
   final TextEditingController _areaNameController = TextEditingController();
   final TextEditingController _tableNameController = TextEditingController();
-  final TextEditingController _seatingCapacityController =
-  TextEditingController();
+  final TextEditingController _seatingCapacityController = TextEditingController();
 
+  // List of area names created in this widget instance.
   List<String> _createdAreaNames = [];
+
+  // Currently selected area name.
   String? _currentAreaName;
+
+  // Flags invalid seating capacity input.
   bool _isSeatingCapacityInvalid = false;
+
+  // Error message for seating capacity input.
   String _seatingCapacityErrorMessage = '';
 
-  // Map to store table data per area
+  // Maps area names to lists of tables created under each area.
   Map<String, List<Map<String, dynamic>>> _areaTables = {};
+
+  // Local list of used table names within this widget instance to check duplicates.
   List<String> _usedTableNames = [];
 
+  // Flags duplicate table name error state.
+  bool _isDuplicateTableName = false;
+
+  // Error message for table name input.
+  String _tableErrorMessage = '';
+
+  /// Checks if the given table name already exists either globally or locally.
   bool _isTableNameDuplicate(String name) {
     return widget.usedTableNames.contains(name.trim().toLowerCase()) ||
         _usedTableNames.contains(name.trim().toLowerCase());
   }
 
-  bool _isDuplicateTableName = false;
-  String _tableErrorMessage = '';
-
-  // Toggle popup
+  /// Toggles the area creation popup visibility.
   void _togglePopup() {
     setState(() {
       _isPopupVisible = !_isPopupVisible;
       if (!_isPopupVisible) {
+        // Clear area name input and error states when popup closes.
         _areaNameController.clear();
         _isDuplicateName = false;
         _errorMessage = '';
@@ -70,9 +104,11 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
     });
   }
 
+  /// Creates a new area if the name is valid and not duplicate.
   void _createArea() {
     final areaName = _areaNameController.text.trim();
 
+    // Validate empty input.
     if (areaName.isEmpty) {
       setState(() {
         _isDuplicateName = true;
@@ -81,28 +117,33 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
       return;
     }
 
-    final isAlreadyUsed =
-        widget.usedAreaNames
+    // Check if area name already exists (case-insensitive).
+    final isAlreadyUsed = widget.usedAreaNames
+        .map((e) => e.toLowerCase())
+        .contains(areaName.toLowerCase()) ||
+        _createdAreaNames
             .map((e) => e.toLowerCase())
-            .contains(areaName.toLowerCase()) ||
-            _createdAreaNames
-                .map((e) => e.toLowerCase())
-                .contains(areaName.toLowerCase());
+            .contains(areaName.toLowerCase());
 
     if (!isAlreadyUsed) {
       setState(() {
+        // Add area and initialize its tables list.
         _createdAreaNames.add(areaName);
         _areaTables[areaName] = [];
         _currentAreaName = areaName;
 
+        // Notify parent of selected area.
         widget.onAreaSelected(areaName);
 
+        // Reset input fields and states.
         _areaNameController.clear();
         _tableNameController.clear();
         _seatingCapacityController.clear();
         _isDeleteConfirmationVisible = false;
         _isDuplicateName = false;
         _errorMessage = '';
+
+        // Close popup.
         _togglePopup();
       });
     } else {
@@ -113,11 +154,11 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
     }
   }
 
-
   @override
   void initState() {
     super.initState();
 
+    // Listen to changes in table name input to check duplicates in real-time.
     _tableNameController.addListener(() {
       final name = _tableNameController.text.trim().toLowerCase();
       final isDuplicate = widget.usedTableNames.contains(name);
@@ -128,6 +169,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
       });
     });
 
+    // Listen to seating capacity input changes to validate numeric input.
     _seatingCapacityController.addListener(() {
       final seating = _seatingCapacityController.text.trim();
 
@@ -144,6 +186,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
       }
     });
 
+    // Clear area name error states on input change.
     _areaNameController.addListener(() {
       setState(() {
         _isDuplicateName = false;
@@ -152,6 +195,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
     });
   }
 
+  /// Deletes the currently selected area.
   void _deleteArea() {
     if (_currentAreaName == null) return;
 
@@ -159,6 +203,8 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
     setState(() {
       _createdAreaNames.remove(areaName);
       _areaTables.remove(areaName);
+
+      // Select a new current area if any remain, else null.
       if (_createdAreaNames.isNotEmpty) {
         _currentAreaName = _createdAreaNames.first;
         widget.onAreaSelected(_currentAreaName!);
@@ -168,9 +214,11 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
       _isDeleteConfirmationVisible = false;
     });
 
+    // Notify parent about area deletion.
     widget.onAreaDeleted(areaName);
   }
 
+  /// Validates the table input fields before enabling table creation.
   bool _isInputValid() {
     final name = _tableNameController.text.trim();
 
@@ -192,8 +240,10 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
 
   @override
   Widget build(BuildContext context) {
+    // Seating capacity as int or zero if invalid.
     final int seatingCapacity =
         int.tryParse(_seatingCapacityController.text.trim()) ?? 0;
+
     return Stack(
       children: [
         Container(
@@ -202,6 +252,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
             child: Column(
               children: [
+                /// Header widget for managing area and overall controls.
                 TableSetupHeader(
                   areaNameController: _areaNameController,
                   tableNameController: _tableNameController,
@@ -222,6 +273,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                     });
                   },
                   onResetData: (cb) {
+                    // Reset all local states and inputs.
                     setState(() {
                       _areaNameController.clear();
                       _tableNameController.clear();
@@ -240,13 +292,17 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                     });
                   },
                 ),
+
+                // Show placeholder if no area is selected/created.
                 _currentAreaName == null
                     ? const EmptyAreaPlaceholder()
                     : Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Title for creating table section.
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                      padding:
+                      const EdgeInsets.symmetric(horizontal: 20.0),
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
@@ -259,9 +315,13 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                         ),
                       ),
                     ),
+
                     SizedBox(height: 6),
+
+                    // Table name input with validation error display.
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                      padding:
+                      const EdgeInsets.symmetric(horizontal: 20.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -276,7 +336,6 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                           ),
                           SizedBox(height: 7),
 
-                          // TextField Container
                           SizedBox(
                             width: 450,
                             height: 38,
@@ -312,7 +371,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                             ),
                           ),
 
-                          // Error Message
+                          // Display error if duplicate table name.
                           if (_isDuplicateTableName)
                             Padding(
                               padding: const EdgeInsets.only(
@@ -331,9 +390,13 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                         ],
                       ),
                     ),
+
                     SizedBox(height: 6),
+
+                    // Seating capacity input with validation error display.
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                      padding:
+                      const EdgeInsets.symmetric(horizontal: 20.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -360,7 +423,6 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                                     blurRadius: 5,
                                   ),
                                 ],
-                                // Removed red border logic
                               ),
                               child: TextField(
                                 controller: _seatingCapacityController,
@@ -399,9 +461,13 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                         ],
                       ),
                     ),
+
                     SizedBox(height: 10),
+
+                    // Table Model selection section.
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      padding:
+                      const EdgeInsets.symmetric(horizontal: 16.0),
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
@@ -415,9 +481,13 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                         ),
                       ),
                     ),
+
                     SizedBox(height: 10),
+
+                    // Dotted border container displaying draggable table models.
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      padding:
+                      const EdgeInsets.symmetric(horizontal: 16.0),
                       child: AbsorbPointer(
                         absorbing: !_isInputValid(),
                         child: Opacity(
@@ -425,8 +495,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                           child: DottedBorder(
                             dashPattern: [8, 4],
                             strokeWidth: 1,
-                            color:
-                            _isInputValid()
+                            color: _isInputValid()
                                 ? Color(0xFF2874F0)
                                 : Colors.black45,
                             borderType: BorderType.RRect,
@@ -438,44 +507,45 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                                 alignment: WrapAlignment.center,
                                 spacing: 40,
                                 runSpacing: 20,
-                                children:
-                                ["square", "circle", "rectangle"].map((
-                                    shape,
-                                    ) {
-                                  bool isEnabled = _isInputValid();
 
-                                  if (shape == "square") {
-                                    isEnabled =
-                                        isEnabled &&
-                                            ((seatingCapacity >= 1 &&
-                                                seatingCapacity <= 4) ||
-                                                seatingCapacity % 4 == 0);
-                                  } else if (shape == "rectangle") {
-                                    isEnabled =
-                                        isEnabled &&
-                                            ((seatingCapacity >= 1 &&
-                                                seatingCapacity <= 4) ||
-                                                seatingCapacity % 2 == 0);
-                                  }
+                                // Map shapes to draggable table widgets.
+                                children: ["square", "circle", "rectangle"]
+                                    .map(
+                                      (shape) {
+                                    bool isEnabled = _isInputValid();
 
-                                  return DraggableTable(
-                                    capacity: seatingCapacity,
-                                    shape: shape,
-                                    isEnabled: isEnabled,
-                                    tableName:
-                                    _tableNameController.text
-                                        .trim(),
-                                    areaName: _currentAreaName ?? '',
-                                    onDragCompleted: () {
-                                      _tableNameController.clear();
-                                      _seatingCapacityController
-                                          .clear();
-                                    },
-                                    onDoubleTap:
-                                        (data) =>
-                                        widget.getTableData(data),
-                                  );
-                                }).toList(),
+                                    // Enable or disable shapes based on seating capacity rules.
+                                    if (shape == "square") {
+                                      isEnabled = isEnabled &&
+                                          ((seatingCapacity >= 1 &&
+                                              seatingCapacity <= 4) ||
+                                              seatingCapacity % 4 == 0);
+                                    } else if (shape == "rectangle") {
+                                      isEnabled = isEnabled &&
+                                          ((seatingCapacity >= 1 &&
+                                              seatingCapacity <= 4) ||
+                                              seatingCapacity % 2 == 0);
+                                    }
+
+                                    return DraggableTable(
+                                      capacity: seatingCapacity,
+                                      shape: shape,
+                                      isEnabled: isEnabled,
+                                      tableName:
+                                      _tableNameController.text
+                                          .trim(),
+                                      areaName: _currentAreaName ?? '',
+                                      onDragCompleted: () {
+                                        // Clear inputs after drag completes.
+                                        _tableNameController.clear();
+                                        _seatingCapacityController.clear();
+                                      },
+                                      onDoubleTap: (data) =>
+                                          widget.getTableData(data),
+                                    );
+                                  },
+                                )
+                                    .toList(),
                               ),
                             ),
                           ),
@@ -488,6 +558,8 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
             ),
           ),
         ),
+
+        // Show area creation popup when visible.
         if (_isPopupVisible)
           AreaPopup(
             areaNameController: _areaNameController,
@@ -496,6 +568,8 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
             togglePopup: _togglePopup,
             createArea: _createArea,
           ),
+
+        // Show delete confirmation popup when visible.
         DeleteConfirmationPopup(
           isVisible: _isDeleteConfirmationVisible,
           currentAreaName: _currentAreaName,
@@ -509,7 +583,6 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
           },
           onDelete: _deleteArea,
         ),
-
       ],
     );
   }

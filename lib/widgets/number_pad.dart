@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 
 /// A customizable numeric keypad widget.
+/// Displays keys 0-9, a clear ("C") button, and a backspace ("⌫") button.
+/// Calls [onKeyPressed] callback with the label of the key pressed.
 class NumberPad extends StatelessWidget {
+  /// Callback invoked when a key is pressed, providing the key label as a string.
   final Function(String) onKeyPressed;
 
+  /// Creates a NumberPad widget.
+  /// Requires [onKeyPressed] to handle key presses.
   const NumberPad({super.key, required this.onKeyPressed});
 
   @override
   Widget build(BuildContext context) {
+    // List of keys to display on the keypad
     List<String> keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "C", "0", "⌫"];
 
     return GridView.builder(
