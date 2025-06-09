@@ -10,42 +10,94 @@ import '../widgets/TablePlacementWidget.dart';
 import '../widgets/ZoomControlsWidget.dart';
 import '../widgets/top_bar.dart';
 import '../widgets/bottom_nav_bar.dart';
-import 'MainScreen.dart';
 import '../widgets/table_helpers.dart';
 import 'guest_details_popup.dart';
 
+/// Screen widget that manages the floor plan of tables in a restaurant POS system.
+///
+/// Users can add, move, edit, and delete tables, organized by areas. Tables have
+/// shapes, capacities, guest data, and positions on a large scrollable canvas.
+///
+/// Also supports zoom controls and filtering tables by area.
+///
+/// This widget contains complex logic to prevent table overlapping, clamp table
+/// positions within a large virtual canvas, and automatically adjust positions to
+/// avoid collisions.
 class TablesScreen extends StatefulWidget {
   @override
   _TablesScreenState createState() => _TablesScreenState();
 }
 
 class _TablesScreenState extends State<TablesScreen> {
+  /// Current zoom scale applied to the floor plan canvas.
   double _scale = 1.0;
+
+  /// Index of the currently selected bottom navigation tab.
   int _selectedIndex = 0;
+
+  /// Whether the add table/area popup is visible.
   bool _showPopup = false;
+
+  /// Set of all used table names (in lowercase) to avoid duplicates.
   Set<String> _usedTableNames = {};
+
+  /// Set of all used area names (in lowercase).
   Set<String> _usedAreaNames = {};
+
+  /// Name of the currently selected area filter. Only tables from this area are shown.
   String? selectedArea;
+
+  /// Index of the currently selected table for action menu.
   int? _selectedTableIndex;
+
+  /// Whether the action menu (edit/delete) is visible for the selected table.
   bool _showActionMenu = false;
 
+  /// Whether the edit table popup is currently visible.
   bool _showEditPopup = false;
+
+  /// Data of the table currently being edited.
   Map<String, dynamic>? _editingTableData;
+
+  /// Index of the table currently being edited.
   int? _editingTableIndex;
 
-
+  /// List of all tables placed on the floor plan.
+  ///
+  /// Each table is a map containing keys like:
+  /// - 'tableName': String,
+  /// - 'areaName': String,
+  /// - 'capacity': int,
+  /// - 'shape': String,
+  /// - 'position': Offset,
+  /// - other guest or metadata fields.
   List<Map<String, dynamic>> placedTables = [];
 
+  /// Increases the zoom scale by 0.1, max limited elsewhere.
   void _zoomIn() => setState(() => _scale += 0.1);
+
+  /// Decreases the zoom scale by 0.1 but clamps between 0.5 and 3.0.
   void _zoomOut() => setState(() => _scale = (_scale - 0.1).clamp(0.5, 3.0));
+
+  /// Resets the zoom scale back to default 1.0.
   void _scaleToFit() => setState(() => _scale = 1.0);
+
+  /// Sets the selected bottom navigation index.
   void _onNavItemTapped(int index) => setState(() => _selectedIndex = index);
+
+  /// Toggles the visibility of the add table/area popup.
   void _togglePopup() {
     setState(() {
       _showPopup = !_showPopup;
     });
   }
 
+  /// Updates guest-related data for a placed table at [index].
+  ///
+  /// Parameters:
+  /// - [guestCount]: number of guests at the table
+  /// - [customerName]: name of the customer/group
+  /// - [captain]: name of the captain/server
   void updateTableGuestData(int index, {
     required int guestCount,
     required String customerName,
@@ -55,18 +107,21 @@ class _TablesScreenState extends State<TablesScreen> {
       placedTables[index]['guestCount'] = guestCount;
       placedTables[index]['customerName'] = customerName;
       placedTables[index]['captain'] = captain;
-      // Optional: update color here, or use guestCount to trigger color change logic in build
     });
   }
 
-
-
+  /// Checks if a proposed table rectangle overlaps with any existing table rectangles
+  /// in the same [areaName], except the table at [skipIndex].
+  ///
+  /// Takes a position [newPos], size [newSize], optional [skipIndex], and optional [areaName].
+  ///
+  /// Returns `true` if overlapping, `false` otherwise.
   bool _isOverlapping(
-    Offset newPos,
-    Size newSize, {
-    int? skipIndex,
-    String? areaName,
-  }) {
+      Offset newPos,
+      Size newSize, {
+        int? skipIndex,
+        String? areaName,
+      }) {
     const double tablePadding = 13.0;
     const double chairClearance = 17.0;
 
@@ -93,7 +148,6 @@ class _TablesScreenState extends State<TablesScreen> {
       final capacity = table['capacity'];
       final existingSize = TableHelpers.getPlacedTableSize(capacity, shape);
 
-
       final existingRect = Rect.fromLTWH(
         existingPos.dx - totalBuffer,
         existingPos.dy - totalBuffer,
@@ -107,12 +161,22 @@ class _TablesScreenState extends State<TablesScreen> {
     return false;
   }
 
+  /// Attempts to find a non-overlapping position close to the requested [pos] and [size].
+  ///
+  /// If the initial [pos] causes overlap, searches nearby positions in a spiral pattern.
+  /// Limits attempts to [maxAttempts].
+  ///
+  /// Optional parameters:
+  /// - [skipIndex]: index of the table to ignore during overlap checks
+  /// - [areaName]: only check overlaps within this area
+  ///
+  /// Returns a suitable non-overlapping position or the original position if none found.
   Offset _findNonOverlappingPosition(
-    Offset pos,
-    Size size, {
-    int? skipIndex,
-    String? areaName,
-  }) {
+      Offset pos,
+      Size size, {
+        int? skipIndex,
+        String? areaName,
+      }) {
     const int maxAttempts = 1000;
     const double step = 27.0;
 
@@ -147,13 +211,17 @@ class _TablesScreenState extends State<TablesScreen> {
     return pos;
   }
 
+  /// Deletes an area and all tables belonging to it.
+  ///
+  /// Removes the area from [_usedAreaNames] and all related table names from [_usedTableNames].
+  /// Updates the selected area filter accordingly.
   void _handleAreaDeletion(String areaName) {
     setState(() {
       final tablesToRemove =
-          placedTables
-              .where((t) => t['areaName'] == areaName)
-              .map((t) => t['tableName'].toString().toLowerCase())
-              .toList();
+      placedTables
+          .where((t) => t['areaName'] == areaName)
+          .map((t) => t['tableName'].toString().toLowerCase())
+          .toList();
 
       placedTables.removeWhere((table) => table['areaName'] == areaName);
 
@@ -167,6 +235,10 @@ class _TablesScreenState extends State<TablesScreen> {
     });
   }
 
+  /// Clamps a given [position] of a table so it stays within the canvas bounds.
+  ///
+  /// Uses fixed large canvas size to allow free placement.
+  /// A [buffer] space is applied to avoid edges.
   Offset _clampPositionToCanvas(Offset position, Size tableSize) {
     final double canvasWidth = 90000;
     final double canvasHeight = 60000;
@@ -184,6 +256,10 @@ class _TablesScreenState extends State<TablesScreen> {
     return Offset(clampedX, clampedY);
   }
 
+  /// Adds a new table with [data] at the requested [position].
+  ///
+  /// Clamps and adjusts position to prevent overlapping.
+  /// Updates internal state with new table and tracks used names/areas.
   void _addTable(Map<String, dynamic> data, Offset position) {
     final tableSize = TableHelpers.getPlacedTableSize(data['capacity'], data['shape']);
     final clampedPos = _clampPositionToCanvas(position, tableSize);
@@ -201,6 +277,10 @@ class _TablesScreenState extends State<TablesScreen> {
     });
   }
 
+  /// Updates the position of an existing table at [index] to [newPosition].
+  ///
+  /// Clamps and adjusts the position to avoid overlap with other tables in the same area.
+  /// If the new position causes overlap with other tables, tries to adjust those tables' positions as well.
   void _updateTablePosition(int index, Offset newPosition) {
     final shape = placedTables[index]['shape'];
     final capacity = placedTables[index]['capacity'];
@@ -254,6 +334,15 @@ class _TablesScreenState extends State<TablesScreen> {
       }
     });
   }
+  /// Builds a positioned and optionally draggable table widget to be rendered
+  /// on the canvas at its saved position.
+  ///
+  /// This method handles the visual appearance, interaction logic (tap, double tap),
+  /// guest information popup, and optional edit/delete menu display based on state.
+  ///
+  /// Parameters:
+  /// - [index]: The index of the table in the placedTables list.
+  /// - [tableData]: The table data map including name, area, shape, position, etc.
   Widget _buildPlacedTable(int index, Map<String, dynamic> tableData) {
     final capacity = tableData['capacity'];
     final name = tableData['tableName'];
@@ -263,8 +352,10 @@ class _TablesScreenState extends State<TablesScreen> {
     final int guestCount = tableData['guestCount'] ?? 0;
     final size = TableHelpers.getPlacedTableSize(capacity, shape);
 
+    // Build the basic visual representation of the table.
     Widget baseTable = _buildPlacedTableWidget(name, capacity, area, shape, size, guestCount);
 
+    // Highlighted table UI shown when selected for edit/delete actions.
     Widget highlightedTable = DottedBorder(
       color: Colors.red,
       strokeWidth: 2,
@@ -277,21 +368,23 @@ class _TablesScreenState extends State<TablesScreen> {
       ),
     );
 
+    // Table UI content depending on mode (popup or regular).
     Widget tableContent;
     if (_showPopup) {
       tableContent = Stack(
         children: [
           baseTable,
-          Positioned(
-            top: 0,
-            right: 0,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-              child: _buildActionButton("delete", () {
-                _showDeleteConfirmationDialog(index);
-              }),
+          if (guestCount == 0)
+            Positioned(
+              top: 0,
+              right: 0,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                child: _buildActionButton("delete", () {
+                  _showDeleteConfirmationDialog(index);
+                }),
+              ),
             ),
-          ),
         ],
       );
     } else {
@@ -314,7 +407,6 @@ class _TablesScreenState extends State<TablesScreen> {
                         _showActionMenu = false;
                       });
                     }),
-
                     _buildActionButton("delete", () {
                       _showDeleteConfirmationDialog(index);
                     }),
@@ -326,7 +418,7 @@ class _TablesScreenState extends State<TablesScreen> {
       );
     }
 
-
+    // Gesture logic for tap and double tap based on guest presence.
     Widget draggableWidget = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: guestCount > 0
@@ -349,7 +441,7 @@ class _TablesScreenState extends State<TablesScreen> {
       child: tableContent,
     );
 
-
+    // Wraps the table widget with drag functionality when needed.
     return Positioned(
       left: position.dx,
       top: position.dy,
@@ -363,10 +455,36 @@ class _TablesScreenState extends State<TablesScreen> {
         childWhenDragging: Opacity(opacity: 0.3, child: tableContent),
         child: draggableWidget,
       )
+          : _selectedTableIndex == index && _showActionMenu
+          ? Draggable<int>(
+        data: index,
+        feedback: Material(
+          color: Colors.transparent,
+          child: Opacity(opacity: 0.7, child: tableContent),
+        ),
+        childWhenDragging: Opacity(opacity: 0.3, child: tableContent),
+        onDragEnd: (details) {
+          final RenderBox box = context.findRenderObject() as RenderBox;
+          final Offset localOffset = box.globalToLocal(details.offset);
+          _updateTablePosition(index, localOffset);
+        },
+        child: draggableWidget,
+      )
           : draggableWidget,
     );
   }
 
+  /// Constructs the visual appearance of a table widget with chairs, color coding,
+  /// and labels inside a `SizedBox`. Shapes are rendered as either circles or rectangles
+  /// based on user configuration.
+  ///
+  /// Parameters:
+  /// - [name]: The name of the table (e.g. "T1").
+  /// - [capacity]: Number of seats on the table.
+  /// - [area]: The area name the table belongs to.
+  /// - [shape]: The shape of the table ("circle", "square", etc.).
+  /// - [size]: Calculated size of the table.
+  /// - [guestCount]: Number of guests currently seated, used for styling.
   Widget _buildPlacedTableWidget(
       String name,
       int capacity,
@@ -383,13 +501,15 @@ class _TablesScreenState extends State<TablesScreen> {
     final double stackHeight = size.height + extraSpace * 2;
 
     final hasGuests = guestCount > 0;
-    final tableColor = hasGuests
-        ? Colors.orange.withAlpha((0.25 * 255).round())
-        : const Color(0x3F22D629);
 
+    // Change table background color depending on guest presence.
+    final tableColor = hasGuests
+        ? Color(0xFFF44336).withAlpha((0.25 * 255).round()) // red-transparent
+        : const Color(0x3F22D629); // green-transparent
 
     Widget tableShape;
 
+    // Render table shape based on user selection.
     if (shape == "circle") {
       tableShape = Positioned(
         left: extraSpace,
@@ -419,6 +539,7 @@ class _TablesScreenState extends State<TablesScreen> {
       );
     }
 
+    // Stack combines table shape and surrounding chairs.
     return SizedBox(
       width: stackWidth,
       height: stackHeight,
@@ -426,13 +547,29 @@ class _TablesScreenState extends State<TablesScreen> {
         clipBehavior: Clip.none,
         children: [
           tableShape,
-          ..._buildChairs(capacity, size, extraSpace, shape, guestCount > 0 ? Colors.orange : Color(0xFF4CAF50)),
+          ..._buildChairs(
+            capacity,
+            size,
+            extraSpace,
+            shape,
+            guestCount > 0 ? Color(0xFFF44336) : Color(0xFF4CAF50), // red or green chairs
+          ),
         ],
-
       ),
     );
   }
 
+
+  /// Builds a list of positioned chair widgets around the table based on capacity and shape.
+  ///
+  /// Chairs are arranged differently depending on whether the shape is circular,
+  /// rectangular, or square. Chair colors change based on occupancy.
+  ///
+  /// - `capacity`: Total number of seats/chairs.
+  /// - `tableSize`: The size of the table.
+  /// - `margin`: Padding around the table used for spacing.
+  /// - `shape`: Shape of the table (`circle`, `rectangle`, `square`).
+  /// - `chairColor`: The color of the chairs (red if occupied, green if available).
   List<Widget> _buildChairs(
       int capacity,
       Size tableSize,
@@ -623,6 +760,12 @@ class _TablesScreenState extends State<TablesScreen> {
     return chairs;
   }
 
+  /// Builds a small icon button (edit/delete) used in the table overlay.
+  ///
+  /// Icon style and color changes based on type ("edit" or "delete").
+  ///
+  /// - `type`: Type of action ("edit" or "delete").
+  /// - `onPressed`: Callback triggered when the button is tapped.
   Widget _buildActionButton(String type, VoidCallback onPressed) {
     IconData icon;
     Color backgroundColor;
@@ -657,7 +800,14 @@ class _TablesScreenState extends State<TablesScreen> {
     );
   }
 
-
+  /// Displays a popup dialog to enter guest details for the selected table.
+  ///
+  /// Allows setting the guest count, customer name, and captain.
+  /// The dialog is dismissible and overlays the current screen.
+  ///
+  /// - `context`: The current BuildContext.
+  /// - `index`: The index of the table being modified.
+  /// - `tableData`: The table data for the selected table.
   void _showGuestDetailsPopup(BuildContext context, int index, Map<String, dynamic> tableData) {
     showGeneralDialog(
       context: context,
@@ -690,7 +840,14 @@ class _TablesScreenState extends State<TablesScreen> {
     );
   }
 
-
+  /// Displays a confirmation dialog before deleting a placed table.
+  ///
+  /// Retrieves the selected table's name and area, then presents a confirmation
+  /// dialog to the user. If confirmed, the table is removed from the `placedTables`
+  /// list, its name is removed from the `_usedTableNames` set, and any active
+  /// table selection or action menu is cleared.
+  ///
+  /// - `index`: The index of the table to be deleted from the `placedTables` list.
   void _showDeleteConfirmationDialog(int index) {
     final table = placedTables[index];
     final tableName = table['tableName'];
@@ -715,6 +872,26 @@ class _TablesScreenState extends State<TablesScreen> {
       },
     );
   }
+
+  /// Builds the main UI layout for the table management screen.
+  ///
+  /// This screen allows users to view, interact with, and manage tables within different
+  /// areas of a restaurant. It includes features like zoom controls, table setup, editing,
+  /// and legend indicators.
+  ///
+  /// The layout includes:
+  /// - A `TopBar` as the app bar.
+  /// - A `TablePlacementWidget` as the main canvas for placing and interacting with tables.
+  /// - `ZoomControlsWidget` for scaling the view.
+  /// - A bottom navigation bar (`BottomNavBar`) when the setup popup is not shown.
+  /// - A legend showing table status colors.
+  /// - A blurred background and overlay when the edit popup is active.
+  /// - A preview of the selected table with red dotted border during editing.
+  /// - A “Table Setup” button that opens the `CreateTableWidget` panel on the right.
+  /// - A right-side popup (`EditTablePopup`) for editing existing tables with overlap check logic.
+  /// - A right-side slide-in panel (`CreateTableWidget`) for creating new tables and areas.
+  ///
+  /// Returns a `Scaffold` widget that holds all the layered UI elements.
 
   @override
   Widget build(BuildContext context) {
@@ -757,18 +934,21 @@ class _TablesScreenState extends State<TablesScreen> {
             ),
           ),
 
+          // zoom controls
           ZoomControlsWidget(
             onZoomIn: _zoomIn,
             onZoomOut: _zoomOut,
             onScaleToFit: _scaleToFit,
           ),
 
-          BottomNavBar(
-            selectedIndex: _selectedIndex,
-            onItemTapped: _onNavItemTapped,
-          ),
+          if (!_showPopup)
+            BottomNavBar(
+              selectedIndex: _selectedIndex,
+              onItemTapped: _onNavItemTapped,
+            ),
 
           // 8. Legend at bottom
+          if (!_showPopup)
           Positioned(
             left: 0,
             right: 0,
@@ -913,7 +1093,6 @@ class _TablesScreenState extends State<TablesScreen> {
               ),
             ),
 
-          // 6. Right-side edit popup (moved lower in Stack so it's on top)
           if (_showEditPopup)
             AnimatedPositioned(
               duration: Duration(milliseconds: 300),
@@ -928,11 +1107,33 @@ class _TablesScreenState extends State<TablesScreen> {
                 usedAreaNames: _usedAreaNames,
                 onUpdate: (updatedData) {
                   setState(() {
-                    _usedTableNames.remove(
-                        _editingTableData!['tableName'].toString().toLowerCase());
-                    _usedTableNames.add(
-                        updatedData['tableName'].toString().toLowerCase());
-                    placedTables[_editingTableIndex!] = updatedData;
+                    final index = _editingTableIndex!;
+                    final originalData = placedTables[index];
+                    final shape = updatedData['shape'];
+                    final capacity = updatedData['capacity'];
+
+                    final currentSize = TableHelpers.getPlacedTableSize(capacity, shape);
+
+                    bool needsReposition = updatedData['areaName'] != originalData['areaName'] ||
+                        _isOverlapping(
+                          updatedData['position'] ?? originalData['position'],
+                          currentSize,
+                          skipIndex: index,
+                          areaName: updatedData['areaName'],
+                        );
+                    if (needsReposition) {
+                      Offset originalPos = updatedData['position'] ?? originalData['position'];
+                      Offset newPos = _findNonOverlappingPosition(
+                        originalPos,
+                        currentSize,
+                        skipIndex: index,
+                        areaName: updatedData['areaName'],
+                      );
+                      updatedData['position'] = newPos;
+                    }
+                    _usedTableNames.remove(_editingTableData!['tableName'].toString().toLowerCase());
+                    _usedTableNames.add(updatedData['tableName'].toString().toLowerCase());
+                    placedTables[index] = updatedData;
                     _showEditPopup = false;
                     _editingTableData = null;
                     _editingTableIndex = null;

@@ -1,11 +1,37 @@
 import 'package:flutter/material.dart';
 
+/// A modal popup widget that displays a delete confirmation dialog.
+///
+/// This widget overlays a semi-transparent dark background and shows a centered
+/// dialog asking the user to confirm deletion of a record, specifically referring
+/// to the current area name if provided.
+///
+/// The dialog presents two action buttons:
+/// - **No, Keep It.** — cancels the deletion and closes the popup.
+/// - **Yes, Delete!** — confirms the deletion and triggers the provided callback.
+///
+/// The popup is only visible when [isVisible] is true; otherwise, it renders nothing.
+///
+/// The popup dismisses if the user taps outside the dialog area.
+///
+/// The UI includes an icon, title text, descriptive rich text referencing the [currentAreaName],
+/// and two buttons styled with rounded corners and shadows.
+///
 class DeleteConfirmationPopup extends StatelessWidget {
+  /// Whether the popup is visible on screen.
   final bool isVisible;
+
+  /// The name of the current area to display in the confirmation message.
+  /// If null, a default text "this area." is shown.
   final String? currentAreaName;
+
+  /// Callback when the user cancels the deletion.
   final VoidCallback onCancel;
+
+  /// Callback when the user confirms the deletion.
   final VoidCallback onDelete;
 
+  /// Creates a [DeleteConfirmationPopup] widget.
   const DeleteConfirmationPopup({
     Key? key,
     required this.isVisible,

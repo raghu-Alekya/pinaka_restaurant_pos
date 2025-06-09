@@ -1,10 +1,30 @@
 import 'package:flutter/material.dart';
 
+/// A popup widget that allows the user to create a new Area or Zone.
+///
+/// This widget includes:
+/// - A text field for entering the name of the area
+/// - Validation and display of duplicate area name errors
+/// - Buttons to clear the input or create the area
+/// - A close button to dismiss the popup
+///
+/// The popup is displayed centered on the screen with a translucent black background.
+/// It also adjusts for the keyboard by using `MediaQuery.of(context).viewInsets.bottom`.
+
 class AreaPopup extends StatefulWidget {
+  /// Controller for the area name input field
   final TextEditingController areaNameController;
+
+  /// Flag to indicate whether the entered area name is a duplicate
   final bool isDuplicateName;
+
+  /// Error message to show when the area name is duplicate
   final String errorMessage;
+
+  /// Callback function to close the popup
   final VoidCallback togglePopup;
+
+  /// Callback function to create a new area
   final VoidCallback createArea;
 
   const AreaPopup({
@@ -20,20 +40,22 @@ class AreaPopup extends StatefulWidget {
   _AreaPopupState createState() => _AreaPopupState();
 }
 
+/// State class for `AreaPopup` that handles user interactions, validation,
+/// and UI building for area name input and creation.
 class _AreaPopupState extends State<AreaPopup> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: widget.togglePopup,
       child: Container(
-        color: Colors.black.withAlpha(100),
+        color: Colors.black.withAlpha(100), // Translucent background
         child: Center(
           child: GestureDetector(
-            onTap: () {}, // Prevent popup dismiss on tap inside
+            onTap: () {}, // Prevent popup dismissal on tap inside
             behavior: HitTestBehavior.translucent,
             child: SingleChildScrollView(
               padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
+                bottom: MediaQuery.of(context).viewInsets.bottom, // Adjust for keyboard
               ),
               child: Container(
                 width: 280,
