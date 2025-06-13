@@ -55,15 +55,21 @@ class TableHelpers {
           ),
         ),
         SizedBox(height: 6),
-        Icon(Icons.group, size: 25, color: hasGuests ? Colors.red : Colors.green),
+        Icon(
+          Icons.group,
+          size: 25,
+          color: hasGuests ? Colors.red : Colors.green,
+        ),
         if (hasGuests)
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text(
               '$guestCount',
-              style: TextStyle(
+               style: TextStyle(
                 color: Colors.red,
+
                 fontWeight: FontWeight.bold,
+
                 fontSize: 14,
               ),
             ),
@@ -79,7 +85,10 @@ class TableHelpers {
         {
           double baseSize = 50.0;
           double increasePerSeat = 10.0;
-          double size = (baseSize + (capacity * increasePerSeat)).clamp(90.0, 160.0);
+          double size = (baseSize + (capacity * increasePerSeat)).clamp(
+            90.0,
+            160.0,
+          );
           return Size(size, size);
         }
 
@@ -87,7 +96,10 @@ class TableHelpers {
         {
           double baseWidth = 70.0;
           double increasePerSeat = 30.0;
-          double width = (baseWidth + (capacity * increasePerSeat)).clamp(150.0, 400.0);
+          double width = (baseWidth + (capacity * increasePerSeat)).clamp(
+            150.0,
+            400.0,
+          );
           double height = 80.0;
           return Size(width, height);
         }
@@ -97,7 +109,10 @@ class TableHelpers {
     }
   }
 
-  static Widget buildAddContentPrompt({required double scale, required VoidCallback onTap}) {
+  static Widget buildAddContentPrompt({
+    required double scale,
+    required VoidCallback onTap,
+  }) {
     return Stack(
       children: [
         Positioned(

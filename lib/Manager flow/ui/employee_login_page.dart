@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:pinaka_restaurant_pos/ui/tables_screen.dart';
+import 'package:pinaka_restaurant_pos/Manager%20flow/ui/tables_screen.dart';
+import '../../CaptainFlow/ui/CaptainDashboardScreen.dart';
+import '../../helpers/DatabaseHelper.dart';
 import '../widgets/number_pad.dart';
 import '../widgets/pin_input.dart';
+
 
 /// EmployeeLoginPage is a login screen for employees to authenticate using a 6-digit PIN.
 /// It features:
@@ -94,11 +97,20 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
   /// Validates the entered PIN.
   /// - If valid, navigates to the TablesScreen.
   /// - If invalid, shows a SnackBar with an error message.
+
   Future<void> _login() async {
+    final dbHelper = DatabaseHelper();
+
     if (pin == "999999") {
+      final tables = await dbHelper.getAllTables();
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => TablesScreen()),
+        MaterialPageRoute(builder: (context) => TablesScreen(loadedTables: tables)),
+      );
+    } else if (pin == "123456") {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => DashboardScreen()),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -146,23 +158,27 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
                     return Stack(
                       fit: StackFit.expand,
                       children: [
-                        Image.asset(
-                          _images[index],
-                          fit: BoxFit.cover,
-                        ),
+                        Image.asset(_images[index], fit: BoxFit.cover),
                         AnimatedSwitcher(
                           duration: const Duration(milliseconds: 700),
-                          transitionBuilder: (Widget child, Animation<double> animation) {
+                          transitionBuilder: (
+                            Widget child,
+                            Animation<double> animation,
+                          ) {
                             final offsetAnimation = Tween<Offset>(
                               begin: const Offset(-1.0, 0.0),
                               end: Offset.zero,
                             ).animate(animation);
                             return SlideTransition(
-                                position: offsetAnimation, child: child);
+                              position: offsetAnimation,
+                              child: child,
+                            );
                           },
                           child: Container(
                             key: ValueKey<int>(index),
-                            padding: const EdgeInsets.symmetric(horizontal: 150),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 150,
+                            ),
                             alignment: Alignment.bottomCenter,
                             margin: const EdgeInsets.only(bottom: 40),
                             child: Text(
@@ -230,7 +246,9 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
                                 onPressed: _login,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.red,
-                                  padding: const EdgeInsets.symmetric(vertical: 13),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 13,
+                                  ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
                                   ),
@@ -261,8 +279,6 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
   }
 }
 
-
-
 class GuestDetailsDialog extends StatefulWidget {
   @override
   _GuestDetailsDialogState createState() => _GuestDetailsDialogState();
@@ -284,10 +300,11 @@ class _GuestDetailsDialogState extends State<GuestDetailsDialog> {
 
   void filterGuests(String query) {
     setState(() {
-      filteredGuests = staticGuests.where((guest) {
-        return guest["name"]!.toLowerCase().contains(query.toLowerCase()) ||
-            guest["mobile"]!.contains(query);
-      }).toList();
+      filteredGuests =
+          staticGuests.where((guest) {
+            return guest["name"]!.toLowerCase().contains(query.toLowerCase()) ||
+                guest["mobile"]!.contains(query);
+          }).toList();
     });
   }
 
@@ -354,13 +371,15 @@ class _GuestDetailsDialogState extends State<GuestDetailsDialog> {
                     SizedBox(height: 20),
                     Align(
                       alignment: Alignment.centerLeft,
-                      child: Text('Mobile Number',
-                          style: TextStyle(
-                            color: const Color(0xFF4C5F7D),
-                            fontSize: 14,
-                            fontFamily: 'Inter',
-                            fontWeight: FontWeight.w500,
-                          )),
+                      child: Text(
+                        'Mobile Number',
+                        style: TextStyle(
+                          color: const Color(0xFF4C5F7D),
+                          fontSize: 14,
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ),
                     SizedBox(height: 5),
                     Container(
@@ -391,13 +410,15 @@ class _GuestDetailsDialogState extends State<GuestDetailsDialog> {
                     SizedBox(height: 12),
                     Align(
                       alignment: Alignment.centerLeft,
-                      child: Text('Guest Name',
-                          style: TextStyle(
-                            color: const Color(0xFF4C5F7D),
-                            fontSize: 14,
-                            fontFamily: 'Inter',
-                            fontWeight: FontWeight.w500,
-                          )),
+                      child: Text(
+                        'Guest Name',
+                        style: TextStyle(
+                          color: const Color(0xFF4C5F7D),
+                          fontSize: 14,
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ),
                     SizedBox(height: 5),
                     Container(
@@ -427,18 +448,42 @@ class _GuestDetailsDialogState extends State<GuestDetailsDialog> {
                     if (filteredGuests.isNotEmpty) ...[
                       SizedBox(height: 12),
                       Container(
-                        padding: EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                        padding: EdgeInsets.symmetric(
+                          vertical: 6,
+                          horizontal: 8,
+                        ),
                         color: Color(0xFF999393),
                         child: Row(
                           children: const [
                             SizedBox(
-                                width: 20,
-                                child: Text('#', style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold))),
+                              width: 20,
+                              child: Text(
+                                '#',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
                             SizedBox(
-                                width: 150,
-                                child: Text('Name', style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold))),
+                              width: 150,
+                              child: Text(
+                                'Name',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
                             Expanded(
-                                child: Text('Mobile', style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold))),
+                              child: Text(
+                                'Mobile',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
                             SizedBox(width: 60),
                           ],
                         ),
@@ -458,38 +503,55 @@ class _GuestDetailsDialogState extends State<GuestDetailsDialog> {
                               ),
                               elevation: 1.5,
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 6,
+                                ),
                                 child: Row(
                                   children: [
-                                    SizedBox(width: 20, child: Text('${index + 1}')),
-                                    SizedBox(width: 150, child: Text(guest["name"]!)),
+                                    SizedBox(
+                                      width: 20,
+                                      child: Text('${index + 1}'),
+                                    ),
+                                    SizedBox(
+                                      width: 150,
+                                      child: Text(guest["name"]!),
+                                    ),
                                     Expanded(child: Text(guest["mobile"]!)),
                                     Row(
                                       children: [
                                         IconButton(
-                                          icon: Icon(Icons.check_circle, color: Colors.blue),
+                                          icon: Icon(
+                                            Icons.check_circle,
+                                            color: Colors.blue,
+                                          ),
                                           onPressed: () => selectGuest(guest),
                                           iconSize: 20,
                                           padding: EdgeInsets.zero,
                                         ),
                                         IconButton(
-                                          icon: Icon(Icons.edit, color: Colors.orange),
+                                          icon: Icon(
+                                            Icons.edit,
+                                            color: Colors.orange,
+                                          ),
                                           onPressed: () {
-                                            nameController.text = guest["name"]!;
-                                            mobileController.text = guest["mobile"]!;
+                                            nameController.text =
+                                                guest["name"]!;
+                                            mobileController.text =
+                                                guest["mobile"]!;
                                           },
                                           iconSize: 20,
                                           padding: EdgeInsets.zero,
                                         ),
                                       ],
-                                    )
+                                    ),
                                   ],
                                 ),
                               ),
                             );
                           },
                         ),
-                      )
+                      ),
                     ],
                     SizedBox(height: 20),
                     GestureDetector(
