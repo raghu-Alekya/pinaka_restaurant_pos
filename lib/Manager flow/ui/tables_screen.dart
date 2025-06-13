@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:dotted_border/dotted_border.dart';
+import '../../helpers/DatabaseHelper.dart';
 import '../widgets/CreateTableWidget.dart';
 import '../widgets/DeleteConfirmationDialog.dart';
 import '../widgets/EditTablePopup.dart';
@@ -24,6 +25,9 @@ import 'guest_details_popup.dart';
 /// positions within a large virtual canvas, and automatically adjust positions to
 /// avoid collisions.
 class TablesScreen extends StatefulWidget {
+  final List<Map<String, dynamic>> loadedTables;
+
+  const TablesScreen({Key? key, required this.loadedTables}) : super(key: key);
   @override
   _TablesScreenState createState() => _TablesScreenState();
 }
@@ -72,6 +76,35 @@ class _TablesScreenState extends State<TablesScreen> {
   /// - 'position': Offset,
   /// - other guest or metadata fields.
   List<Map<String, dynamic>> placedTables = [];
+  @override
+  void initState() {
+    super.initState();
+    _loadTables();
+  }
+
+  Future<void> _loadTables() async {
+    final dbHelper = DatabaseHelper();
+    final tables = await dbHelper.getAllTables();
+
+    setState(() {
+      placedTables =
+          tables.map((table) {
+            // Convert posX and posY to Offset for UI placement
+            return {...table, 'position': Offset(table['posX'], table['posY'])};
+          }).toList();
+
+      // Update used names from the loaded tables
+      _usedTableNames =
+          placedTables
+              .map((t) => t['tableName'].toString().toLowerCase())
+              .toSet();
+
+      _usedAreaNames =
+          placedTables
+              .map((t) => t['areaName'].toString().toLowerCase())
+              .toSet();
+    });
+  }
 
   /// Increases the zoom scale by 0.1, max limited elsewhere.
   void _zoomIn() => setState(() => _scale += 0.1);
@@ -98,17 +131,30 @@ class _TablesScreenState extends State<TablesScreen> {
   /// - [guestCount]: number of guests at the table
   /// - [customerName]: name of the customer/group
   /// - [captain]: name of the captain/server
-  void updateTableGuestData(int index, {
-    required int guestCount,
-    required String customerName,
-    required String captain,
-  }) {
+  void updateTableGuestData(
+      int index, {
+        required int guestCount,
+      }) async {
+    final dbHelper = DatabaseHelper();
+    final tableId = placedTables[index]['id'];
+
+    // Update in-memory table data
     setState(() {
       placedTables[index]['guestCount'] = guestCount;
-      placedTables[index]['customerName'] = customerName;
-      placedTables[index]['captain'] = captain;
+    });
+
+    // Update in database
+    await dbHelper.updateTable(tableId, {
+      'guestCount': guestCount,
+      'posX': placedTables[index]['position'].dx,
+      'posY': placedTables[index]['position'].dy,
+      'tableName': placedTables[index]['tableName'],
+      'capacity': placedTables[index]['capacity'],
+      'shape': placedTables[index]['shape'],
+      'areaName': placedTables[index]['areaName'],
     });
   }
+
 
   /// Checks if a proposed table rectangle overlaps with any existing table rectangles
   /// in the same [areaName], except the table at [skipIndex].
@@ -117,11 +163,11 @@ class _TablesScreenState extends State<TablesScreen> {
   ///
   /// Returns `true` if overlapping, `false` otherwise.
   bool _isOverlapping(
-      Offset newPos,
-      Size newSize, {
-        int? skipIndex,
-        String? areaName,
-      }) {
+    Offset newPos,
+    Size newSize, {
+    int? skipIndex,
+    String? areaName,
+  }) {
     const double tablePadding = 13.0;
     const double chairClearance = 17.0;
 
@@ -172,11 +218,11 @@ class _TablesScreenState extends State<TablesScreen> {
   ///
   /// Returns a suitable non-overlapping position or the original position if none found.
   Offset _findNonOverlappingPosition(
-      Offset pos,
-      Size size, {
-        int? skipIndex,
-        String? areaName,
-      }) {
+    Offset pos,
+    Size size, {
+    int? skipIndex,
+    String? areaName,
+  }) {
     const int maxAttempts = 1000;
     const double step = 27.0;
 
@@ -215,24 +261,30 @@ class _TablesScreenState extends State<TablesScreen> {
   ///
   /// Removes the area from [_usedAreaNames] and all related table names from [_usedTableNames].
   /// Updates the selected area filter accordingly.
-  void _handleAreaDeletion(String areaName) {
+  void _handleAreaDeletion(String areaName) async {
+    final dbHelper = DatabaseHelper();
+
     setState(() {
       final tablesToRemove =
-      placedTables
-          .where((t) => t['areaName'] == areaName)
-          .map((t) => t['tableName'].toString().toLowerCase())
-          .toList();
+          placedTables
+              .where((t) => t['areaName'] == areaName)
+              .map((t) => t['tableName'].toString().toLowerCase())
+              .toList();
 
+      // Remove from local state
       placedTables.removeWhere((table) => table['areaName'] == areaName);
-
       _usedAreaNames.remove(areaName);
-
       _usedTableNames.removeAll(tablesToRemove);
 
+      // Update selected area if needed
       if (selectedArea == areaName) {
         selectedArea = _usedAreaNames.isNotEmpty ? _usedAreaNames.first : '';
       }
     });
+
+    // Delete from database
+    await dbHelper.deleteArea(areaName);
+    await dbHelper.deleteTablesByArea(areaName);
   }
 
   /// Clamps a given [position] of a table so it stays within the canvas bounds.
@@ -260,8 +312,11 @@ class _TablesScreenState extends State<TablesScreen> {
   ///
   /// Clamps and adjusts position to prevent overlapping.
   /// Updates internal state with new table and tracks used names/areas.
-  void _addTable(Map<String, dynamic> data, Offset position) {
-    final tableSize = TableHelpers.getPlacedTableSize(data['capacity'], data['shape']);
+  Future<void> _addTable(Map<String, dynamic> data, Offset position) async {
+    final tableSize = TableHelpers.getPlacedTableSize(
+      data['capacity'],
+      data['shape'],
+    );
     final clampedPos = _clampPositionToCanvas(position, tableSize);
     final adjustedPos = _findNonOverlappingPosition(
       clampedPos,
@@ -269,8 +324,27 @@ class _TablesScreenState extends State<TablesScreen> {
       areaName: data['areaName'],
     );
 
+    final tableData = {
+      'tableName': data['tableName'],
+      'capacity': data['capacity'],
+      'shape': data['shape'],
+      'areaName': data['areaName'],
+      'posX': adjustedPos.dx,
+      'posY': adjustedPos.dy,
+      'guestCount': data['guestCount'] ?? 0,
+      'customerName': data['customerName'] ?? '',
+      'captain': data['captain'] ?? '',
+    };
+
+    final dbHelper = DatabaseHelper();
+    final id = await dbHelper.insertTable(tableData);
+
     setState(() {
-      placedTables.add({...data, 'position': adjustedPos});
+      placedTables.add({
+        ...tableData,
+        'id': id,
+        'position': adjustedPos,
+      });
       _usedTableNames.add(data['tableName'].toString().toLowerCase());
       _usedAreaNames.add(data['areaName'].toString().toLowerCase());
       selectedArea = data['areaName'];
@@ -281,7 +355,7 @@ class _TablesScreenState extends State<TablesScreen> {
   ///
   /// Clamps and adjusts the position to avoid overlap with other tables in the same area.
   /// If the new position causes overlap with other tables, tries to adjust those tables' positions as well.
-  void _updateTablePosition(int index, Offset newPosition) {
+  void _updateTablePosition(int index, Offset newPosition) async {
     final shape = placedTables[index]['shape'];
     final capacity = placedTables[index]['capacity'];
     final areaName = placedTables[index]['areaName'];
@@ -297,6 +371,7 @@ class _TablesScreenState extends State<TablesScreen> {
 
     setState(() {
       placedTables[index]['position'] = adjustedPos;
+
       for (int i = 0; i < placedTables.length; i++) {
         if (i == index) continue;
 
@@ -307,7 +382,10 @@ class _TablesScreenState extends State<TablesScreen> {
         final otherPos = otherTable['position'] as Offset;
         final otherShape = otherTable['shape'] as String;
         final otherCapacity = otherTable['capacity'];
-        final otherSize = TableHelpers.getPlacedTableSize(otherCapacity, otherShape);
+        final otherSize = TableHelpers.getPlacedTableSize(
+          otherCapacity,
+          otherShape,
+        );
 
         final thisRect = Rect.fromLTWH(
           adjustedPos.dx,
@@ -330,10 +408,21 @@ class _TablesScreenState extends State<TablesScreen> {
             areaName: areaName,
           );
           placedTables[i]['position'] = newOtherPos;
+          DatabaseHelper().updateTable(otherTable['id'], {
+            'posX': newOtherPos.dx,
+            'posY': newOtherPos.dy,
+          });
         }
       }
     });
+
+    final tableId = placedTables[index]['id'];
+    await DatabaseHelper().updateTable(tableId, {
+      'posX': adjustedPos.dx,
+      'posY': adjustedPos.dy,
+    });
   }
+
   /// Builds a positioned and optionally draggable table widget to be rendered
   /// on the canvas at its saved position.
   ///
@@ -353,7 +442,14 @@ class _TablesScreenState extends State<TablesScreen> {
     final size = TableHelpers.getPlacedTableSize(capacity, shape);
 
     // Build the basic visual representation of the table.
-    Widget baseTable = _buildPlacedTableWidget(name, capacity, area, shape, size, guestCount);
+    Widget baseTable = _buildPlacedTableWidget(
+      name,
+      capacity,
+      area,
+      shape,
+      size,
+      guestCount,
+    );
 
     // Highlighted table UI shown when selected for edit/delete actions.
     Widget highlightedTable = DottedBorder(
@@ -362,10 +458,7 @@ class _TablesScreenState extends State<TablesScreen> {
       dashPattern: [4, 3],
       borderType: BorderType.RRect,
       radius: Radius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: baseTable,
-      ),
+      child: Padding(padding: const EdgeInsets.all(20.0), child: baseTable),
     );
 
     // Table UI content depending on mode (popup or regular).
@@ -379,7 +472,10 @@ class _TablesScreenState extends State<TablesScreen> {
               top: 0,
               right: 0,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8.0,
+                  vertical: 4.0,
+                ),
                 child: _buildActionButton("delete", () {
                   _showDeleteConfirmationDialog(index);
                 }),
@@ -390,19 +486,26 @@ class _TablesScreenState extends State<TablesScreen> {
     } else {
       tableContent = Stack(
         children: [
-          _selectedTableIndex == index && _showActionMenu ? highlightedTable : baseTable,
+          _selectedTableIndex == index && _showActionMenu
+              ? highlightedTable
+              : baseTable,
           if (_selectedTableIndex == index && _showActionMenu)
             Positioned(
               top: 0,
               right: 0,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8.0,
+                  vertical: 4.0,
+                ),
                 child: Column(
                   children: [
                     _buildActionButton("edit", () {
                       setState(() {
                         _editingTableIndex = index;
-                        _editingTableData = Map<String, dynamic>.from(tableData);
+                        _editingTableData = Map<String, dynamic>.from(
+                          tableData,
+                        );
                         _showEditPopup = true;
                         _showActionMenu = false;
                       });
@@ -421,23 +524,25 @@ class _TablesScreenState extends State<TablesScreen> {
     // Gesture logic for tap and double tap based on guest presence.
     Widget draggableWidget = GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: guestCount > 0
-          ? null
-          : () {
-        if (!_showPopup) {
-          _showGuestDetailsPopup(context, index, tableData);
-        }
-      },
-      onDoubleTap: guestCount > 0
-          ? null
-          : () {
-        if (!_showPopup) {
-          setState(() {
-            _selectedTableIndex = index;
-            _showActionMenu = true;
-          });
-        }
-      },
+      onTap:
+          guestCount > 0
+              ? null
+              : () {
+                if (!_showPopup) {
+                  _showGuestDetailsPopup(context, index, tableData);
+                }
+              },
+      onDoubleTap:
+          guestCount > 0
+              ? null
+              : () {
+                if (!_showPopup) {
+                  setState(() {
+                    _selectedTableIndex = index;
+                    _showActionMenu = true;
+                  });
+                }
+              },
       child: tableContent,
     );
 
@@ -445,32 +550,33 @@ class _TablesScreenState extends State<TablesScreen> {
     return Positioned(
       left: position.dx,
       top: position.dy,
-      child: _showPopup
-          ? Draggable<int>(
-        data: index,
-        feedback: Material(
-          color: Colors.transparent,
-          child: Opacity(opacity: 0.7, child: tableContent),
-        ),
-        childWhenDragging: Opacity(opacity: 0.3, child: tableContent),
-        child: draggableWidget,
-      )
-          : _selectedTableIndex == index && _showActionMenu
-          ? Draggable<int>(
-        data: index,
-        feedback: Material(
-          color: Colors.transparent,
-          child: Opacity(opacity: 0.7, child: tableContent),
-        ),
-        childWhenDragging: Opacity(opacity: 0.3, child: tableContent),
-        onDragEnd: (details) {
-          final RenderBox box = context.findRenderObject() as RenderBox;
-          final Offset localOffset = box.globalToLocal(details.offset);
-          _updateTablePosition(index, localOffset);
-        },
-        child: draggableWidget,
-      )
-          : draggableWidget,
+      child:
+          _showPopup
+              ? Draggable<int>(
+                data: index,
+                feedback: Material(
+                  color: Colors.transparent,
+                  child: Opacity(opacity: 0.7, child: tableContent),
+                ),
+                childWhenDragging: Opacity(opacity: 0.3, child: tableContent),
+                child: draggableWidget,
+              )
+              : _selectedTableIndex == index && _showActionMenu
+              ? Draggable<int>(
+                data: index,
+                feedback: Material(
+                  color: Colors.transparent,
+                  child: Opacity(opacity: 0.7, child: tableContent),
+                ),
+                childWhenDragging: Opacity(opacity: 0.3, child: tableContent),
+                onDragEnd: (details) {
+                  final RenderBox box = context.findRenderObject() as RenderBox;
+                  final Offset localOffset = box.globalToLocal(details.offset);
+                  _updateTablePosition(index, localOffset);
+                },
+                child: draggableWidget,
+              )
+              : draggableWidget,
     );
   }
 
@@ -486,13 +592,13 @@ class _TablesScreenState extends State<TablesScreen> {
   /// - [size]: Calculated size of the table.
   /// - [guestCount]: Number of guests currently seated, used for styling.
   Widget _buildPlacedTableWidget(
-      String name,
-      int capacity,
-      String area,
-      String shape,
-      Size size,
-      int guestCount,
-      ) {
+    String name,
+    int capacity,
+    String area,
+    String shape,
+    Size size,
+    int guestCount,
+  ) {
     const double chairSize = 20;
     const double offset = 10;
     final double extraSpace = chairSize + offset;
@@ -503,9 +609,12 @@ class _TablesScreenState extends State<TablesScreen> {
     final hasGuests = guestCount > 0;
 
     // Change table background color depending on guest presence.
-    final tableColor = hasGuests
-        ? Color(0xFFF44336).withAlpha((0.25 * 255).round()) // red-transparent
-        : const Color(0x3F22D629); // green-transparent
+    final tableColor =
+        hasGuests
+            ? Color(0xFFF44336).withAlpha(
+              (0.25 * 255).round(),
+            ) // red-transparent
+            : const Color(0x3F22D629); // green-transparent
 
     Widget tableShape;
 
@@ -519,7 +628,9 @@ class _TablesScreenState extends State<TablesScreen> {
             width: size.width,
             height: size.height,
             color: tableColor,
-            child: Center(child: TableHelpers.buildTableContent(name, area, guestCount)),
+            child: Center(
+              child: TableHelpers.buildTableContent(name, area, guestCount),
+            ),
           ),
         ),
       );
@@ -534,7 +645,9 @@ class _TablesScreenState extends State<TablesScreen> {
             color: tableColor,
             borderRadius: BorderRadius.circular(shape == "square" ? 8 : 16),
           ),
-          child: Center(child: TableHelpers.buildTableContent(name, area, guestCount)),
+          child: Center(
+            child: TableHelpers.buildTableContent(name, area, guestCount),
+          ),
         ),
       );
     }
@@ -552,13 +665,14 @@ class _TablesScreenState extends State<TablesScreen> {
             size,
             extraSpace,
             shape,
-            guestCount > 0 ? Color(0xFFF44336) : Color(0xFF4CAF50), // red or green chairs
+            guestCount > 0
+                ? Color(0xFFF44336)
+                : Color(0xFF4CAF50), // red or green chairs
           ),
         ],
       ),
     );
   }
-
 
   /// Builds a list of positioned chair widgets around the table based on capacity and shape.
   ///
@@ -571,11 +685,12 @@ class _TablesScreenState extends State<TablesScreen> {
   /// - `shape`: Shape of the table (`circle`, `rectangle`, `square`).
   /// - `chairColor`: The color of the chairs (red if occupied, green if available).
   List<Widget> _buildChairs(
-      int capacity,
-      Size tableSize,
-      double margin,
-      String shape, Color chairColor,
-      ) {
+    int capacity,
+    Size tableSize,
+    double margin,
+    String shape,
+    Color chairColor,
+  ) {
     const double chairWidth = 15;
     const double chairHeight = 48;
 
@@ -587,10 +702,10 @@ class _TablesScreenState extends State<TablesScreen> {
       final double centerY = (tableSize.height / 2) + margin;
       final double radius =
           (tableSize.width > tableSize.height
-              ? tableSize.width
-              : tableSize.height) /
+                  ? tableSize.width
+                  : tableSize.height) /
               2 +
-              12;
+          12;
 
       for (int i = 0; i < capacity && i < 12; i++) {
         final double angle = (2 * 3.1415926 / capacity) * i;
@@ -601,7 +716,10 @@ class _TablesScreenState extends State<TablesScreen> {
           Positioned(
             left: dx,
             top: dy,
-            child: Transform.rotate(angle: angle, child: TableHelpers.buildChairRect(chairColor)),
+            child: Transform.rotate(
+              angle: angle,
+              child: TableHelpers.buildChairRect(chairColor),
+            ),
           ),
         );
       }
@@ -621,7 +739,10 @@ class _TablesScreenState extends State<TablesScreen> {
             Positioned(
               left: left + (tableSize.width / 2) - (chairWidth / 2),
               top: top - chairHeight,
-              child: Transform.rotate(angle: -1.57, child: TableHelpers.buildChairRect(chairColor)),
+              child: Transform.rotate(
+                angle: -1.57,
+                child: TableHelpers.buildChairRect(chairColor),
+              ),
             ),
           );
         } else if (capacity == 2) {
@@ -629,7 +750,10 @@ class _TablesScreenState extends State<TablesScreen> {
             Positioned(
               left: (left - chairHeight) + chairLeftOffset,
               top: leftY + chairTopOffset,
-              child: Transform.rotate(angle: 3.14, child: TableHelpers.buildChairRect(chairColor)),
+              child: Transform.rotate(
+                angle: 3.14,
+                child: TableHelpers.buildChairRect(chairColor),
+              ),
             ),
           );
 
@@ -650,7 +774,10 @@ class _TablesScreenState extends State<TablesScreen> {
             Positioned(
               left: (left - chairHeight) + chairLeftOffset,
               top: leftY + chairTopOffset,
-              child: Transform.rotate(angle: 3.14, child: TableHelpers.buildChairRect(chairColor)),
+              child: Transform.rotate(
+                angle: 3.14,
+                child: TableHelpers.buildChairRect(chairColor),
+              ),
             ),
           );
 
@@ -658,7 +785,11 @@ class _TablesScreenState extends State<TablesScreen> {
           double rightY = top + (tableSize.height / 3) - (chairWidth / 3) - 10;
           double rightX = right + 10;
           chairs.add(
-            Positioned(left: rightX, top: rightY, child: TableHelpers.buildChairRect(chairColor)),
+            Positioned(
+              left: rightX,
+              top: rightY,
+              child: TableHelpers.buildChairRect(chairColor),
+            ),
           );
 
           // Top side
@@ -670,7 +801,10 @@ class _TablesScreenState extends State<TablesScreen> {
               Positioned(
                 left: dx,
                 top: top - chairHeight,
-                child: Transform.rotate(angle: -1.57, child: TableHelpers.buildChairRect(chairColor)),
+                child: Transform.rotate(
+                  angle: -1.57,
+                  child: TableHelpers.buildChairRect(chairColor),
+                ),
               ),
             );
           }
@@ -678,14 +812,17 @@ class _TablesScreenState extends State<TablesScreen> {
           // Bottom side
           double bottomSpacing =
               (tableSize.width - (bottomChairs * chairWidth)) /
-                  (bottomChairs + 1);
+              (bottomChairs + 1);
           for (int i = 0; i < bottomChairs; i++) {
             double dx = left + bottomSpacing * (i + 1) + chairWidth * i;
             chairs.add(
               Positioned(
                 left: dx,
                 top: bottom,
-                child: Transform.rotate(angle: 1.57, child: TableHelpers.buildChairRect(chairColor)),
+                child: Transform.rotate(
+                  angle: 1.57,
+                  child: TableHelpers.buildChairRect(chairColor),
+                ),
               ),
             );
           }
@@ -705,7 +842,10 @@ class _TablesScreenState extends State<TablesScreen> {
             Positioned(
               left: dx,
               top: top - chairHeight,
-              child: Transform.rotate(angle: -1.57, child: TableHelpers.buildChairRect(chairColor)),
+              child: Transform.rotate(
+                angle: -1.57,
+                child: TableHelpers.buildChairRect(chairColor),
+              ),
             ),
           );
         }
@@ -719,21 +859,30 @@ class _TablesScreenState extends State<TablesScreen> {
           double dy = top + rightSpacing * (i + 1) + chairWidth * i - 15.0;
           double dx = right + 15.0;
 
-          chairs.add(Positioned(left: dx, top: dy, child: TableHelpers.buildChairRect(chairColor)));
+          chairs.add(
+            Positioned(
+              left: dx,
+              top: dy,
+              child: TableHelpers.buildChairRect(chairColor),
+            ),
+          );
         }
 
         // Bottom
         int bottomChairs = chairsPerSide + (extraChairs > 2 ? 1 : 0);
         double bottomSpacing =
             (tableSize.width - (bottomChairs * chairWidth)) /
-                (bottomChairs + 1);
+            (bottomChairs + 1);
         for (int i = 0; i < bottomChairs; i++) {
           double dx = left + bottomSpacing * (i + 1) + chairWidth * i;
           chairs.add(
             Positioned(
               left: dx,
               top: bottom,
-              child: Transform.rotate(angle: 1.57, child: TableHelpers.buildChairRect(chairColor)),
+              child: Transform.rotate(
+                angle: 1.57,
+                child: TableHelpers.buildChairRect(chairColor),
+              ),
             ),
           );
         }
@@ -750,7 +899,10 @@ class _TablesScreenState extends State<TablesScreen> {
             Positioned(
               left: left - chairHeight + 15,
               top: dy - 12,
-              child: Transform.rotate(angle: 3.14, child: TableHelpers.buildChairRect(chairColor)),
+              child: Transform.rotate(
+                angle: 3.14,
+                child: TableHelpers.buildChairRect(chairColor),
+              ),
             ),
           );
         }
@@ -808,7 +960,11 @@ class _TablesScreenState extends State<TablesScreen> {
   /// - `context`: The current BuildContext.
   /// - `index`: The index of the table being modified.
   /// - `tableData`: The table data for the selected table.
-  void _showGuestDetailsPopup(BuildContext context, int index, Map<String, dynamic> tableData) {
+  void _showGuestDetailsPopup(
+    BuildContext context,
+    int index,
+    Map<String, dynamic> tableData,
+  ) {
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -824,14 +980,10 @@ class _TablesScreenState extends State<TablesScreen> {
             updateTableGuestData: ({
               required int index,
               required int guestCount,
-              required String customerName,
-              required String captain,
             }) {
               updateTableGuestData(
                 index,
                 guestCount: guestCount,
-                customerName: customerName,
-                captain: captain,
               );
             },
           ),
@@ -849,6 +1001,7 @@ class _TablesScreenState extends State<TablesScreen> {
   ///
   /// - `index`: The index of the table to be deleted from the `placedTables` list.
   void _showDeleteConfirmationDialog(int index) {
+    final dbHelper = DatabaseHelper();
     final table = placedTables[index];
     final tableName = table['tableName'];
     final areaName = table['areaName'];
@@ -859,7 +1012,11 @@ class _TablesScreenState extends State<TablesScreen> {
         return DeleteConfirmationDialog(
           tableName: tableName,
           areaName: areaName,
-          onConfirm: () {
+          onConfirm: () async {
+            // First delete from database
+            await dbHelper.deleteTableByNameAndArea(tableName, areaName);
+
+            // Then remove from local state
             setState(() {
               final removedTable = placedTables.removeAt(index);
               _usedTableNames.remove(removedTable['tableName']);
@@ -949,39 +1106,39 @@ class _TablesScreenState extends State<TablesScreen> {
 
           // 8. Legend at bottom
           if (!_showPopup)
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 90,
-            child: Center(
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Color(0xFFFAFBFF),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 4,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TableHelpers.buildLegendDot(Colors.green, "Available"),
-                    SizedBox(width: 20),
-                    TableHelpers.buildLegendDot(Colors.red, "Dine In"),
-                    SizedBox(width: 20),
-                    TableHelpers.buildLegendDot(Colors.orange, "Reserve"),
-                    SizedBox(width: 20),
-                    TableHelpers.buildLegendDot(Colors.blue, "Ready to Pay"),
-                  ],
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 90,
+              child: Center(
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Color(0xFFFAFBFF),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TableHelpers.buildLegendDot(Colors.green, "Available"),
+                      SizedBox(width: 20),
+                      TableHelpers.buildLegendDot(Colors.red, "Dine In"),
+                      SizedBox(width: 20),
+                      TableHelpers.buildLegendDot(Colors.orange, "Reserve"),
+                      SizedBox(width: 20),
+                      TableHelpers.buildLegendDot(Colors.blue, "Ready to Pay"),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
 
           // 2. Blur background when popup is shown
           if (_showEditPopup)
@@ -1016,9 +1173,9 @@ class _TablesScreenState extends State<TablesScreen> {
                         placedTables[_selectedTableIndex!]['areaName'],
                         placedTables[_selectedTableIndex!]['shape'],
                         TableHelpers.getPlacedTableSize(
-                          placedTables[_selectedTableIndex!]['capacity'],
-                          placedTables[_selectedTableIndex!]['shape'],
-                        ) *
+                              placedTables[_selectedTableIndex!]['capacity'],
+                              placedTables[_selectedTableIndex!]['shape'],
+                            ) *
                             0.8,
                         placedTables[_selectedTableIndex!]['guestCount'] ?? 0,
                       ),
@@ -1035,11 +1192,12 @@ class _TablesScreenState extends State<TablesScreen> {
                         borderType: BorderType.RRect,
                         radius: Radius.circular(16),
                         customPath: (size) {
-                          return Path()
-                            ..addRRect(RRect.fromRectAndRadius(
+                          return Path()..addRRect(
+                            RRect.fromRectAndRadius(
                               Offset.zero & size,
                               Radius.circular(16),
-                            ));
+                            ),
+                          );
                         },
                         child: Container(),
                       ),
@@ -1105,34 +1263,61 @@ class _TablesScreenState extends State<TablesScreen> {
                 tableData: _editingTableData!,
                 usedTableNames: _usedTableNames,
                 usedAreaNames: _usedAreaNames,
-                onUpdate: (updatedData) {
-                  setState(() {
-                    final index = _editingTableIndex!;
-                    final originalData = placedTables[index];
-                    final shape = updatedData['shape'];
-                    final capacity = updatedData['capacity'];
+                onUpdate: (updatedData) async {
+                  final index = _editingTableIndex!;
+                  final originalData = placedTables[index];
+                  final shape = updatedData['shape'];
+                  final capacity = updatedData['capacity'];
 
-                    final currentSize = TableHelpers.getPlacedTableSize(capacity, shape);
+                  final currentSize = TableHelpers.getPlacedTableSize(
+                    capacity,
+                    shape,
+                  );
 
-                    bool needsReposition = updatedData['areaName'] != originalData['areaName'] ||
-                        _isOverlapping(
-                          updatedData['position'] ?? originalData['position'],
-                          currentSize,
-                          skipIndex: index,
-                          areaName: updatedData['areaName'],
-                        );
-                    if (needsReposition) {
-                      Offset originalPos = updatedData['position'] ?? originalData['position'];
-                      Offset newPos = _findNonOverlappingPosition(
-                        originalPos,
+                  bool needsReposition =
+                      updatedData['areaName'] != originalData['areaName'] ||
+                      _isOverlapping(
+                        updatedData['position'] ?? originalData['position'],
                         currentSize,
                         skipIndex: index,
                         areaName: updatedData['areaName'],
                       );
-                      updatedData['position'] = newPos;
-                    }
-                    _usedTableNames.remove(_editingTableData!['tableName'].toString().toLowerCase());
-                    _usedTableNames.add(updatedData['tableName'].toString().toLowerCase());
+
+                  if (needsReposition) {
+                    Offset originalPos =
+                        updatedData['position'] ?? originalData['position'];
+                    Offset newPos = _findNonOverlappingPosition(
+                      originalPos,
+                      currentSize,
+                      skipIndex: index,
+                      areaName: updatedData['areaName'],
+                    );
+                    updatedData['position'] = newPos;
+                  }
+
+                  // Keep the ID in the updated table
+                  updatedData['id'] = originalData['id'];
+
+                  final dbHelper = DatabaseHelper();
+                  await dbHelper.updateTable(updatedData['id'], {
+                    'tableName': updatedData['tableName'],
+                    'capacity': updatedData['capacity'],
+                    'shape': updatedData['shape'],
+                    'areaName': updatedData['areaName'],
+                    'posX': updatedData['position'].dx,
+                    'posY': updatedData['position'].dy,
+                    'guestCount': updatedData['guestCount'] ?? 0,
+                    'customerName': updatedData['customerName'] ?? '',
+                    'captain': updatedData['captain'] ?? '',
+                  });
+
+                  setState(() {
+                    _usedTableNames.remove(
+                      _editingTableData!['tableName'].toString().toLowerCase(),
+                    );
+                    _usedTableNames.add(
+                      updatedData['tableName'].toString().toLowerCase(),
+                    );
                     placedTables[index] = updatedData;
                     _showEditPopup = false;
                     _editingTableData = null;
@@ -1148,7 +1333,6 @@ class _TablesScreenState extends State<TablesScreen> {
                 },
               ),
             ),
-
           // 7. Right-side CreateTableWidget (Table Setup panel)
           AnimatedPositioned(
             duration: Duration(milliseconds: 300),
@@ -1162,7 +1346,8 @@ class _TablesScreenState extends State<TablesScreen> {
               getTableData: (data) {},
               usedTableNames: _usedTableNames,
               usedAreaNames: _usedAreaNames,
-              onAreaSelected: (areaName) => setState(() => selectedArea = areaName),
+              onAreaSelected:
+                  (areaName) => setState(() => selectedArea = areaName),
               onAreaDeleted: _handleAreaDeletion,
             ),
           ),

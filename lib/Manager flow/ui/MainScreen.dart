@@ -16,8 +16,6 @@ class Mainscreen extends StatelessWidget {
             Text('Area Name: ${tableData['areaName']}'),
             Text('Table Name: ${tableData['tableName']}'),
             Text('Guest Count: ${tableData['guestCount']}'),
-            Text('Customer Name: ${tableData['customerName']}'),
-            Text('Captain: ${tableData['captain']}'),
             Text('Capacity: ${tableData['capacity']}'),
           ],
         ),

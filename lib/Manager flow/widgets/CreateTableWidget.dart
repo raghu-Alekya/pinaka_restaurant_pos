@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:dotted_border/dotted_border.dart';
+import '../../helpers/DatabaseHelper.dart';
 import 'AreaPopup.dart';
 import 'DeleteConfirmationPopup.dart';
 import 'DraggableTable.dart';
@@ -16,6 +17,7 @@ class CreateTableWidget extends StatefulWidget {
 
   /// Callback to send the created table data back to the parent.
   final Function(Map<String, dynamic>) getTableData;
+
 
   /// Set of already used table names to prevent duplicates.
   final Set<String> usedTableNames;
@@ -90,6 +92,18 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
     return widget.usedTableNames.contains(name.trim().toLowerCase()) ||
         _usedTableNames.contains(name.trim().toLowerCase());
   }
+  final DatabaseHelper _dbHelper = DatabaseHelper();
+  void _loadAreasFromDatabase() async {
+    final areas = await _dbHelper.getAllAreas();
+    setState(() {
+      _createdAreaNames = areas;
+      if (_createdAreaNames.isNotEmpty && _currentAreaName == null) {
+        _currentAreaName = _createdAreaNames.first;
+        widget.onAreaSelected(_currentAreaName!);
+      }
+    });
+  }
+
 
   /// Toggles the area creation popup visibility.
   void _togglePopup() {
@@ -105,10 +119,9 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
   }
 
   /// Creates a new area if the name is valid and not duplicate.
-  void _createArea() {
+  void _createArea() async {
     final areaName = _areaNameController.text.trim();
 
-    // Validate empty input.
     if (areaName.isEmpty) {
       setState(() {
         _isDuplicateName = true;
@@ -117,7 +130,6 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
       return;
     }
 
-    // Check if area name already exists (case-insensitive).
     final isAlreadyUsed = widget.usedAreaNames
         .map((e) => e.toLowerCase())
         .contains(areaName.toLowerCase()) ||
@@ -126,16 +138,15 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
             .contains(areaName.toLowerCase());
 
     if (!isAlreadyUsed) {
+      await _dbHelper.insertArea(areaName);
+
       setState(() {
-        // Add area and initialize its tables list.
         _createdAreaNames.add(areaName);
         _areaTables[areaName] = [];
         _currentAreaName = areaName;
 
-        // Notify parent of selected area.
         widget.onAreaSelected(areaName);
 
-        // Reset input fields and states.
         _areaNameController.clear();
         _tableNameController.clear();
         _seatingCapacityController.clear();
@@ -143,7 +154,6 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
         _isDuplicateName = false;
         _errorMessage = '';
 
-        // Close popup.
         _togglePopup();
       });
     } else {
@@ -154,10 +164,12 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
     }
   }
 
+
   @override
   void initState() {
     super.initState();
 
+    _loadAreasFromDatabase();
     // Listen to changes in table name input to check duplicates in real-time.
     _tableNameController.addListener(() {
       final name = _tableNameController.text.trim().toLowerCase();
@@ -204,7 +216,6 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
       _createdAreaNames.remove(areaName);
       _areaTables.remove(areaName);
 
-      // Select a new current area if any remain, else null.
       if (_createdAreaNames.isNotEmpty) {
         _currentAreaName = _createdAreaNames.first;
         widget.onAreaSelected(_currentAreaName!);
@@ -214,9 +225,11 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
       _isDeleteConfirmationVisible = false;
     });
 
-    // Notify parent about area deletion.
     widget.onAreaDeleted(areaName);
+
+    _dbHelper.deleteArea(areaName);
   }
+
 
   /// Validates the table input fields before enabling table creation.
   bool _isInputValid() {
@@ -264,6 +277,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                     setState(() {
                       _currentAreaName = area;
                     });
+                    widget.onAreaSelected(area);
                   },
                   togglePopup: _togglePopup,
                   isDeleteConfirmationVisible: _isDeleteConfirmationVisible,
