@@ -94,13 +94,13 @@ class TableHelpers {
 
       case "rectangle":
         {
-          double baseWidth = 70.0;
-          double increasePerSeat = 30.0;
+          double baseWidth = 80.0;
+          double increasePerSeat = 35.0;
           double width = (baseWidth + (capacity * increasePerSeat)).clamp(
-            150.0,
-            400.0,
+            170.0,
+            450.0,
           );
-          double height = 80.0;
+          double height = 110.0;
           return Size(width, height);
         }
 
@@ -108,6 +108,8 @@ class TableHelpers {
         return Size(120, 120);
     }
   }
+
+
 
   static Widget buildAddContentPrompt({
     required double scale,

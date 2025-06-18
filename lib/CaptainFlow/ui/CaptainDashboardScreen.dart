@@ -21,6 +21,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
+  void _navigateToTables() async {
+    final dbHelper = DatabaseHelper();
+    final tables = await dbHelper.getAllTables();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CaptionTablesScreen(loadedTables: tables),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -29,16 +40,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: [
           Center(
             child: ElevatedButton(
-              onPressed: () async {
-                final dbHelper = DatabaseHelper();
-                final tables = await dbHelper.getAllTables();
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => CaptionTablesScreen(loadedTables: tables),
-                  ),
-                );
-              },
+              onPressed: _navigateToTables,
               child: const Text('Create New Order'),
             ),
           ),
