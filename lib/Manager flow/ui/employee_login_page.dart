@@ -5,6 +5,7 @@ import '../../CaptainFlow/ui/CaptainDashboardScreen.dart';
 import '../../helpers/DatabaseHelper.dart';
 import '../widgets/number_pad.dart';
 import '../widgets/pin_input.dart';
+import 'ManagerDashboardScreen.dart';
 
 
 /// EmployeeLoginPage is a login screen for employees to authenticate using a 6-digit PIN.
@@ -99,13 +100,10 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
   /// - If invalid, shows a SnackBar with an error message.
 
   Future<void> _login() async {
-    final dbHelper = DatabaseHelper();
-
     if (pin == "999999") {
-      final tables = await dbHelper.getAllTables();
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => TablesScreen(loadedTables: tables)),
+        MaterialPageRoute(builder: (context) => ManagerDashboardScreen()),
       );
     } else if (pin == "123456") {
       Navigator.push(
@@ -118,6 +116,7 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
       );
     }
   }
+
 
   // Future<void> _login() async {
   //   if (pin == "999999") {
