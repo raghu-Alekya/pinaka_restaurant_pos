@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
-class TopBar extends StatefulWidget implements PreferredSizeWidget {
+class CaptainTopBar extends StatefulWidget implements PreferredSizeWidget {
   @override
   Size get preferredSize => Size.fromHeight(100);
 
   @override
-  _TopBarState createState() => _TopBarState();
+  _CaptainTopBarState createState() => _CaptainTopBarState();
 }
 
-class _TopBarState extends State<TopBar> {
+class _CaptainTopBarState extends State<CaptainTopBar> {
   bool isLightMode = true;
 
   void toggleMode() {

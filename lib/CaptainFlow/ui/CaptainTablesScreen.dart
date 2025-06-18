@@ -5,22 +5,26 @@ import 'package:flutter/material.dart';
 import '../../Manager flow/ui/guest_details_popup.dart';
 import '../../Manager flow/widgets/ZoomControlsWidget.dart';
 import '../../Manager flow/widgets/table_helpers.dart';
-import '../../Manager flow/widgets/top_bar.dart';
 import '../../helpers/CaptainNavigationHelper.dart';
 import '../../helpers/DatabaseHelper.dart';
 import '../Widgets/CaptainBottomNavBar.dart';
+import '../Widgets/Captain_Top_bar.dart';
 
 class CaptionTablesScreen extends StatefulWidget {
   final List<Map<String, dynamic>> loadedTables;
 
-  const CaptionTablesScreen({Key? key, required this.loadedTables}) : super(key: key);
+  const CaptionTablesScreen({Key? key, required this.loadedTables})
+    : super(key: key);
 
   @override
   State<CaptionTablesScreen> createState() => _CaptionTablesScreenState();
 }
+enum ViewMode { normal, gridShapeBased, gridCommonImage }
+
+ViewMode _currentViewMode = ViewMode.normal;
+
 
 class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
-
   List<Map<String, dynamic>> placedTables = [];
   List<Map<String, dynamic>> allTables = [];
   List<Map<String, dynamic>> displayedTables = [];
@@ -28,6 +32,7 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
   String selectedArea = '';
   final ScrollController horizontalScrollController = ScrollController();
   final ScrollController verticalScrollController = ScrollController();
+  final ScrollController gridScrollController = ScrollController();
   double _scale = 1.0;
   int _selectedIndex = 1;
 
@@ -38,14 +43,12 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
     });
   }
 
-
   @override
   void dispose() {
     horizontalScrollController.dispose();
     verticalScrollController.dispose();
     super.dispose();
   }
-
 
   @override
   void initState() {
@@ -59,23 +62,27 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
     String initialArea = areaList.isNotEmpty ? areaList.first : '';
 
     setState(() {
-      allTables = widget.loadedTables.map((table) {
-        return {
-          ...table,
-          'position': Offset(table['posX'], table['posY']),
-        };
-      }).toList();
+      allTables =
+          widget.loadedTables.map((table) {
+            return {...table, 'position': Offset(table['posX'], table['posY'])};
+          }).toList();
 
       areas = areaList;
       selectedArea = initialArea;
-      displayedTables = allTables.where((table) => table['areaName'] == selectedArea).toList();
+      displayedTables =
+          allTables
+              .where((table) => table['areaName'] == selectedArea)
+              .toList();
     });
   }
 
   void _selectArea(String area) {
     setState(() {
       selectedArea = area;
-      displayedTables = allTables.where((table) => table['areaName'] == selectedArea).toList();
+      displayedTables =
+          allTables
+              .where((table) => table['areaName'] == selectedArea)
+              .toList();
     });
   }
 
@@ -99,8 +106,11 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
     });
   }
 
-
   Widget _buildAreaFilter() {
+    if (areas.isEmpty) {
+      return SizedBox.shrink();
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: SingleChildScrollView(
@@ -114,42 +124,50 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
-            children: areas.map((area) {
-              final bool isSelected = area == selectedArea;
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                child: TextButton(
-                  onPressed: () => _selectArea(area),
-                  style: TextButton.styleFrom(
-                    backgroundColor: isSelected
-                        ? const Color(0xFFFD6464)
-                        : Colors.transparent,
-                    foregroundColor: isSelected ? Colors.white : Colors.black87,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 15.0, vertical: 13.0),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(5),
+            children:
+                areas.map((area) {
+                  final bool isSelected = area == selectedArea;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                    child: TextButton(
+                      onPressed: () => _selectArea(area),
+                      style: TextButton.styleFrom(
+                        backgroundColor:
+                            isSelected
+                                ? const Color(0xFFFD6464)
+                                : Colors.transparent,
+                        foregroundColor:
+                            isSelected ? Colors.white : Colors.black87,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 15.0,
+                          vertical: 13.0,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        textStyle: const TextStyle(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 12.5,
+                        ),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      child: Text(area),
                     ),
-                    textStyle: const TextStyle(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 12.5,
-                    ),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    visualDensity: VisualDensity.compact,
-                  ),
-                  child: Text(area),
-                ),
-              );
-            }).toList(),
+                  );
+                }).toList(),
           ),
         ),
       ),
     );
   }
 
-
-  void _showGuestDetailsPopup(BuildContext context, int index, Map<String, dynamic> tableData) {
+  void _showGuestDetailsPopup(
+    BuildContext context,
+    int index,
+    Map<String, dynamic> tableData,
+  ) {
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -161,15 +179,12 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
           child: GuestDetailsPopup(
             index: index,
             tableData: tableData,
-            placedTables: displayedTables, // Use displayedTables directly
+            placedTables: displayedTables,
             updateTableGuestData: ({
               required int index,
               required int guestCount,
             }) {
-              updateTableGuestData(
-                index,
-                guestCount: guestCount,
-              );
+              updateTableGuestData(index, guestCount: guestCount);
             },
           ),
         );
@@ -203,16 +218,32 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
     final shape = tableData['shape'];
     final Offset position = tableData['position'];
     final int guestCount = tableData['guestCount'] ?? 0;
+    final double rotation = tableData['rotation'] ?? 0.0;
+
     final size = TableHelpers.getPlacedTableSize(capacity, shape);
 
-    Widget baseTable = _buildPlacedTableWidget(name, capacity, area, shape, size, guestCount);
+    Widget baseTable = _buildPlacedTableWidget(
+      name,
+      capacity,
+      area,
+      shape,
+      size,
+      guestCount,
+    );
+
+    Widget rotatedTable = Transform.rotate(
+      angle: rotation * pi / 180,
+      child: baseTable,
+    );
 
     Widget gestureWidget = GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () {
-        _showGuestDetailsPopup(context, index, tableData);
+      onTap: guestCount > 0
+          ? null
+          : () {
+          _showGuestDetailsPopup(context, index, tableData);
       },
-      child: baseTable,
+      child: rotatedTable,
     );
 
     return Positioned(
@@ -222,12 +253,15 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
     );
   }
 
-  Widget _buildPlacedTableWidget(String name,
-      int capacity,
-      String area,
-      String shape,
-      Size size,
-      int guestCount,) {
+
+  Widget _buildPlacedTableWidget(
+    String name,
+    int capacity,
+    String area,
+    String shape,
+    Size size,
+    int guestCount,
+  ) {
     const double chairSize = 20;
     const double offset = 10;
     final double extraSpace = chairSize + offset;
@@ -237,9 +271,12 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
 
     final hasGuests = guestCount > 0;
 
-    final tableColor = hasGuests
-        ? Color(0xFFF44336).withAlpha((0.25 * 255).round()) // red-transparent
-        : const Color(0x3F22D629); // green-transparent
+    final tableColor =
+        hasGuests
+            ? Color(0xFFF44336).withAlpha(
+              (0.25 * 255).round(),
+            ) // red-transparent
+            : const Color(0x3F22D629); // green-transparent
 
     Widget tableShape;
 
@@ -253,7 +290,8 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
             height: size.height,
             color: tableColor,
             child: Center(
-                child: TableHelpers.buildTableContent(name, area, guestCount)),
+              child: TableHelpers.buildTableContent(name, area, guestCount),
+            ),
           ),
         ),
       );
@@ -269,7 +307,8 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
             borderRadius: BorderRadius.circular(shape == "square" ? 8 : 16),
           ),
           child: Center(
-              child: TableHelpers.buildTableContent(name, area, guestCount)),
+            child: TableHelpers.buildTableContent(name, area, guestCount),
+          ),
         ),
       );
     }
@@ -281,17 +320,25 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
         clipBehavior: Clip.none,
         children: [
           tableShape,
-          ..._buildChairs(capacity, size, extraSpace, shape,
-              guestCount > 0 ? Color(0xFFF44336) : Color(0xFF4CAF50)),
+          ..._buildChairs(
+            capacity,
+            size,
+            extraSpace,
+            shape,
+            guestCount > 0 ? Color(0xFFF44336) : Color(0xFF4CAF50),
+          ),
         ],
       ),
     );
   }
 
-  List<Widget> _buildChairs(int capacity,
-      Size tableSize,
-      double margin,
-      String shape, Color chairColor,) {
+  List<Widget> _buildChairs(
+    int capacity,
+    Size tableSize,
+    double margin,
+    String shape,
+    Color chairColor,
+  ) {
     const double chairWidth = 15;
     const double chairHeight = 48;
 
@@ -303,10 +350,10 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
       final double centerY = (tableSize.height / 2) + margin;
       final double radius =
           (tableSize.width > tableSize.height
-              ? tableSize.width
-              : tableSize.height) /
+                  ? tableSize.width
+                  : tableSize.height) /
               2 +
-              12;
+          12;
 
       for (int i = 0; i < capacity && i < 12; i++) {
         final double angle = (2 * 3.1415926 / capacity) * i;
@@ -318,7 +365,9 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
             left: dx,
             top: dy,
             child: Transform.rotate(
-                angle: angle, child: TableHelpers.buildChairRect(chairColor)),
+              angle: angle,
+              child: TableHelpers.buildChairRect(chairColor),
+            ),
           ),
         );
       }
@@ -339,7 +388,9 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
               left: left + (tableSize.width / 2) - (chairWidth / 2),
               top: top - chairHeight,
               child: Transform.rotate(
-                  angle: -1.57, child: TableHelpers.buildChairRect(chairColor)),
+                angle: -1.57,
+                child: TableHelpers.buildChairRect(chairColor),
+              ),
             ),
           );
         } else if (capacity == 2) {
@@ -348,7 +399,9 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
               left: (left - chairHeight) + chairLeftOffset,
               top: leftY + chairTopOffset,
               child: Transform.rotate(
-                  angle: 3.14, child: TableHelpers.buildChairRect(chairColor)),
+                angle: 3.14,
+                child: TableHelpers.buildChairRect(chairColor),
+              ),
             ),
           );
 
@@ -370,7 +423,9 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
               left: (left - chairHeight) + chairLeftOffset,
               top: leftY + chairTopOffset,
               child: Transform.rotate(
-                  angle: 3.14, child: TableHelpers.buildChairRect(chairColor)),
+                angle: 3.14,
+                child: TableHelpers.buildChairRect(chairColor),
+              ),
             ),
           );
 
@@ -378,9 +433,11 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
           double rightY = top + (tableSize.height / 3) - (chairWidth / 3) - 10;
           double rightX = right + 10;
           chairs.add(
-            Positioned(left: rightX,
-                top: rightY,
-                child: TableHelpers.buildChairRect(chairColor)),
+            Positioned(
+              left: rightX,
+              top: rightY,
+              child: TableHelpers.buildChairRect(chairColor),
+            ),
           );
 
           // Top side
@@ -392,8 +449,10 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
               Positioned(
                 left: dx,
                 top: top - chairHeight,
-                child: Transform.rotate(angle: -1.57,
-                    child: TableHelpers.buildChairRect(chairColor)),
+                child: Transform.rotate(
+                  angle: -1.57,
+                  child: TableHelpers.buildChairRect(chairColor),
+                ),
               ),
             );
           }
@@ -401,15 +460,17 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
           // Bottom side
           double bottomSpacing =
               (tableSize.width - (bottomChairs * chairWidth)) /
-                  (bottomChairs + 1);
+              (bottomChairs + 1);
           for (int i = 0; i < bottomChairs; i++) {
             double dx = left + bottomSpacing * (i + 1) + chairWidth * i;
             chairs.add(
               Positioned(
                 left: dx,
                 top: bottom,
-                child: Transform.rotate(angle: 1.57,
-                    child: TableHelpers.buildChairRect(chairColor)),
+                child: Transform.rotate(
+                  angle: 1.57,
+                  child: TableHelpers.buildChairRect(chairColor),
+                ),
               ),
             );
           }
@@ -430,7 +491,9 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
               left: dx,
               top: top - chairHeight,
               child: Transform.rotate(
-                  angle: -1.57, child: TableHelpers.buildChairRect(chairColor)),
+                angle: -1.57,
+                child: TableHelpers.buildChairRect(chairColor),
+              ),
             ),
           );
         }
@@ -444,16 +507,20 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
           double dy = top + rightSpacing * (i + 1) + chairWidth * i - 15.0;
           double dx = right + 15.0;
 
-          chairs.add(Positioned(left: dx,
+          chairs.add(
+            Positioned(
+              left: dx,
               top: dy,
-              child: TableHelpers.buildChairRect(chairColor)));
+              child: TableHelpers.buildChairRect(chairColor),
+            ),
+          );
         }
 
         // Bottom
         int bottomChairs = chairsPerSide + (extraChairs > 2 ? 1 : 0);
         double bottomSpacing =
             (tableSize.width - (bottomChairs * chairWidth)) /
-                (bottomChairs + 1);
+            (bottomChairs + 1);
         for (int i = 0; i < bottomChairs; i++) {
           double dx = left + bottomSpacing * (i + 1) + chairWidth * i;
           chairs.add(
@@ -461,7 +528,9 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
               left: dx,
               top: bottom,
               child: Transform.rotate(
-                  angle: 1.57, child: TableHelpers.buildChairRect(chairColor)),
+                angle: 1.57,
+                child: TableHelpers.buildChairRect(chairColor),
+              ),
             ),
           );
         }
@@ -479,7 +548,9 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
               left: left - chairHeight + 15,
               top: dy - 12,
               child: Transform.rotate(
-                  angle: 3.14, child: TableHelpers.buildChairRect(chairColor)),
+                angle: 3.14,
+                child: TableHelpers.buildChairRect(chairColor),
+              ),
             ),
           );
         }
@@ -487,6 +558,174 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
     }
 
     return chairs;
+  }
+  Widget _buildModeButton(String title, ViewMode mode, bool isFirst, bool isLast) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _currentViewMode = mode;
+        });
+      },
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: _currentViewMode == mode ? Color(0xFF0A1B4D) : Colors.white,
+          border: Border.all(color: Colors.black),
+          borderRadius: BorderRadius.horizontal(
+            left: isFirst ? Radius.circular(8) : Radius.zero,
+            right: isLast ? Radius.circular(8) : Radius.zero,
+          ),
+        ),
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 12,
+            color: _currentViewMode == mode ? Colors.white : Colors.black,
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+      ),
+    );
+  }
+
+
+  Widget _buildShapeBasedGridItem(Map<String, dynamic> tableData, int index) {
+    final shape = tableData['shape'];
+    final name = tableData['tableName'];
+    final guestCount = tableData['guestCount'] ?? 0;
+
+    String imagePath;
+    if (shape == 'circle') {
+      imagePath = guestCount > 0 ? 'assets/circle2.png' : 'assets/circle1.png';
+    } else if (shape == 'square') {
+      imagePath = guestCount > 0 ? 'assets/square2.png' : 'assets/square1.png';
+    } else {
+      imagePath = guestCount > 0 ? 'assets/rectangle2.png' : 'assets/rectangle1.png';
+    }
+
+    return GestureDetector(
+      onTap: guestCount > 0
+          ? null
+          : () {
+          _showGuestDetailsPopup(context, index, tableData);
+      },
+      child: _buildGridItem(imagePath, name, guestCount),
+    );
+  }
+
+  Widget _buildCommonGridItem(Map<String, dynamic> tableData, int index) {
+    final name = tableData['tableName'];
+    final guestCount = tableData['guestCount'] ?? 0;
+
+    return GestureDetector(
+      onTap: guestCount > 0
+          ? null
+          : () {
+          _showGuestDetailsPopup(context, index, tableData);
+
+      },
+      child: _buildGridItem1(name, guestCount),
+    );
+  }
+
+  Widget _buildGridItem1(String name, int guestCount) {
+    final bool isOccupied = guestCount > 0;
+
+    // Define color schemes
+    final Color backgroundColor = isOccupied ? Colors.red[100]! : Colors.green[100]!;
+    final Color textColor = isOccupied ? Colors.red : Colors.green[800]!;
+    final Color iconColor = textColor;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(color: Colors.black12, blurRadius: 2, offset: Offset(0, 1)),
+        ],
+      ),
+      padding: EdgeInsets.symmetric(vertical: 12, horizontal: 8), // Increased padding
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SizedBox(height: 8),
+          Text(
+            "Table #$name",
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: textColor,
+            ),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.group, size: 22, color: iconColor),
+              SizedBox(width: 6),
+              Text(
+                isOccupied ? '$guestCount' : '-',
+                style: TextStyle(
+                  fontSize: 15, // Increased font size
+                  color: textColor,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+
+  Widget _buildGridItem(String imagePath, String name, int guestCount) {
+    final bool isOccupied = guestCount > 0;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(color: Colors.black12, blurRadius: 2, offset: Offset(0, 1)),
+        ],
+      ),
+      padding: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            "Table #$name",
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: isOccupied ? Colors.red : Colors.green,
+            ),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.group, size: 16, color: isOccupied ? Colors.red : Colors.green),
+              SizedBox(width: 4),
+              Text(
+                isOccupied ? '$guestCount' : '-',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isOccupied ? Colors.red : Colors.green,
+                ),
+              ),
+            ],
+          ),
+          Image.asset(
+            imagePath,
+            width: 45,
+            height: 45,
+            fit: BoxFit.contain,
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -496,55 +735,97 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
       body: Stack(
         children: [
           // Top Bar
+          Positioned(top: 0, left: 0, right: 0, child: CaptainTopBar()),
+
+          // Mode Switch Buttons
           Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: TopBar(),
+            top: 120,
+            left: 35,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildModeButton('Normal', ViewMode.normal, true, false),
+                _buildModeButton('Grid-Shape', ViewMode.gridShapeBased, false, false),
+                _buildModeButton('Grid-Common', ViewMode.gridCommonImage, false, true),
+              ],
+            ),
           ),
 
-          Padding(
-            padding: const EdgeInsets.only(top: 120.0),
-            child: Column(
-              children: [
-                Container(child: _buildAreaFilter()),
-                const SizedBox(height: 10),
-                Expanded(
-                  child: ScrollbarTheme(
-                    data: ScrollbarThemeData(
-                      thickness: WidgetStateProperty.all(12.0),
-                      radius: const Radius.circular(8),
-                      thumbVisibility: WidgetStateProperty.all(true),
-                      minThumbLength: 500,
-                      thumbColor: WidgetStateProperty.all(Color(0xFFB6B6B6)),
-                      trackColor: WidgetStateProperty.all(Colors.grey.shade800),
-                    ),
-                    child: Scrollbar(
-                      controller: horizontalScrollController,
+          // Area Filter
+          Positioned(
+            top: 100,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: _buildAreaFilter(),
+            ),
+          ),
+
+          // Normal View
+          if (_currentViewMode == ViewMode.normal)
+            Padding(
+              padding: const EdgeInsets.only(top: 125.0),
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                  Expanded(
+                    child: displayedTables.isEmpty
+                        ? Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 200),
+                        Center(
+                          child: Text(
+                            'No tables are present',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: Colors.grey[700],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                        : ScrollbarTheme(
+                      data: ScrollbarThemeData(
+                        thickness: WidgetStateProperty.all(12.0),
+                        radius: const Radius.circular(8),
+                        thumbVisibility: WidgetStateProperty.all(true),
+                        minThumbLength: 500,
+                        thumbColor: WidgetStateProperty.all(
+                          Color(0xFFB6B6B6),
+                        ),
+                        trackColor: WidgetStateProperty.all(
+                          Colors.grey.shade800,
+                        ),
+                      ),
                       child: Scrollbar(
-                        controller: verticalScrollController,
-                        notificationPredicate: (_) => true,
-                        child: SingleChildScrollView(
-                          controller: horizontalScrollController,
-                          scrollDirection: Axis.horizontal,
+                        controller: horizontalScrollController,
+                        child: Scrollbar(
+                          controller: verticalScrollController,
+                          notificationPredicate: (_) => true,
                           child: SingleChildScrollView(
-                            controller: verticalScrollController,
-                            scrollDirection: Axis.vertical,
-                            child: Transform.scale(
-                              scale: _scale,
-                              alignment: Alignment.topLeft,
-                              child: Container(
-                                width: 90000,
-                                height: 60000,
-                                child: Stack(
-                                  children: displayedTables
-                                      .asMap()
-                                      .entries
-                                      .map((entry) {
-                                    int index = entry.key;
-                                    Map<String, dynamic> tableData = entry.value;
-                                    return _buildPlacedTable(index, tableData);
-                                  }).toList(),
+                            controller: horizontalScrollController,
+                            scrollDirection: Axis.horizontal,
+                            child: SingleChildScrollView(
+                              controller: verticalScrollController,
+                              scrollDirection: Axis.vertical,
+                              child: Transform.scale(
+                                scale: _scale,
+                                alignment: Alignment.topLeft,
+                                child: Container(
+                                  width: 90000,
+                                  height: 60000,
+                                  child: Stack(
+                                    children: displayedTables
+                                        .asMap()
+                                        .entries
+                                        .map((entry) {
+                                      int index = entry.key;
+                                      Map<String, dynamic> tableData = entry.value;
+                                      return _buildPlacedTable(index, tableData);
+                                    }).toList(),
+                                  ),
                                 ),
                               ),
                             ),
@@ -553,17 +834,122 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
 
-          // Zoom Controls at Bottom Left
+          // Grid View
+          if (_currentViewMode == ViewMode.gridShapeBased || _currentViewMode == ViewMode.gridCommonImage)
+            Padding(
+              padding: const EdgeInsets.only(top: 160.0),
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                  Expanded(
+                    child: displayedTables.isEmpty
+                        ? Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 200),
+                        Center(
+                          child: Text(
+                            'No tables are present',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: Colors.grey[700],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                        : Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: ScrollbarTheme(
+                        data: ScrollbarThemeData(
+                          thickness: WidgetStateProperty.all(10.0),
+                          radius: const Radius.circular(8),
+                          thumbVisibility: WidgetStateProperty.all(true),
+                          thumbColor: WidgetStateProperty.all(
+                            Color(0xFFB6B6B6),
+                          ),
+                          trackColor: WidgetStateProperty.all(
+                            Colors.grey.shade800,
+                          ),
+                        ),
+                        child: Scrollbar(
+                          controller: gridScrollController,
+                          child: GridView.builder(
+                            controller: gridScrollController,
+                            itemCount: displayedTables.length,
+                            padding: const EdgeInsets.all(10),
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 9,
+                              crossAxisSpacing: 20,
+                              mainAxisSpacing: 20,
+                              childAspectRatio: 0.9,
+                            ),
+                            itemBuilder: (context, index) {
+                              if (_currentViewMode == ViewMode.gridShapeBased) {
+                                return _buildShapeBasedGridItem(displayedTables[index], index);
+                              } else {
+                                return _buildCommonGridItem(displayedTables[index], index);
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+
+
+  // Zoom Controls at Bottom Left
           ZoomControlsWidget(
             onZoomIn: _zoomIn,
             onZoomOut: _zoomOut,
             onScaleToFit: _scaleToFit,
           ),
+
+          // Legend
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 90,
+            child: Center(
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Color(0xFFFAFBFF),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TableHelpers.buildLegendDot(Colors.green, "Available"),
+                    SizedBox(width: 20),
+                    TableHelpers.buildLegendDot(Colors.red, "Dine In"),
+                    SizedBox(width: 20),
+                    TableHelpers.buildLegendDot(Colors.orange, "Reserve"),
+                    SizedBox(width: 20),
+                    TableHelpers.buildLegendDot(Colors.blue, "Ready to Pay"),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Bottom Navigation Bar
           CaptionBottomNavBar(
             selectedIndex: _selectedIndex,
             onItemTapped: _onItemTapped,
@@ -573,4 +959,3 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
     );
   }
 }
-

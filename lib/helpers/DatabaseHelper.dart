@@ -18,7 +18,7 @@ class DatabaseHelper {
     final path = join(await getDatabasesPath(), 'tables.db');
     return await openDatabase(
       path,
-      version: 1,
+      version: 2, // Increment version to trigger onUpgrade
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE tables(
@@ -29,7 +29,8 @@ class DatabaseHelper {
             areaName TEXT,
             posX REAL,
             posY REAL,
-            guestCount INTEGER
+            guestCount INTEGER,
+            rotation REAL DEFAULT 0.0
           )
         ''');
 
@@ -40,6 +41,11 @@ class DatabaseHelper {
           )
         ''');
       },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion == 1 && newVersion == 2) {
+          await db.execute('ALTER TABLE tables ADD COLUMN rotation REAL DEFAULT 0.0');
+        }
+      },
     );
   }
 
@@ -48,10 +54,12 @@ class DatabaseHelper {
     final db = await database;
     await db.insert('areas', {'areaName': areaName});
   }
+
   Future<void> deleteTablesByArea(String areaName) async {
     final db = await database;
     await db.delete('tables', where: 'areaName = ?', whereArgs: [areaName]);
   }
+
   Future<void> deleteTableByNameAndArea(String tableName, String areaName) async {
     final db = await database;
     await db.delete(
@@ -60,6 +68,7 @@ class DatabaseHelper {
       whereArgs: [tableName, areaName],
     );
   }
+
   // Get all areas
   Future<List<String>> getAllAreas() async {
     final db = await database;
