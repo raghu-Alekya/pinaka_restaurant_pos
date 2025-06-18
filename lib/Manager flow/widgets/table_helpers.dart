@@ -46,12 +46,12 @@ class TableHelpers {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
-          'Table #$name',
+          name,
           textAlign: TextAlign.center,
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: hasGuests ? Colors.red : Colors.green,
-            fontSize: 13,
+            fontSize: 16,
           ),
         ),
         SizedBox(height: 6),
@@ -70,7 +70,7 @@ class TableHelpers {
 
                 fontWeight: FontWeight.bold,
 
-                fontSize: 14,
+                fontSize: 16,
               ),
             ),
           ),
