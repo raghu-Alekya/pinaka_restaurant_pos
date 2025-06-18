@@ -164,8 +164,8 @@ class TableSetupHeader extends StatelessWidget {
                                     ),
                                     SizedBox(width: 12),
                                     SizedBox(
-                                      width: 100,
-                                      height: 40,
+                                      width: 110,
+                                      height: 45,
                                       child: ElevatedButton(
                                         onPressed: () {
                                           // Reset data and close popup on confirmation
@@ -200,14 +200,14 @@ class TableSetupHeader extends StatelessWidget {
               Text(
                 "Table Setup",
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: 17,
                   fontWeight: FontWeight.w800,
                   color: Color(0xFF15315E),
                 ),
               ),
             ],
           ),
-          SizedBox(height: 12),
+          SizedBox(height: 14),
 
           // Area/Zone Selector Label
           Padding(
@@ -215,7 +215,7 @@ class TableSetupHeader extends StatelessWidget {
             child: Text(
               "Area/Zone:",
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF4C5F7D),
               ),
