@@ -21,7 +21,7 @@ class CaptionTablesScreen extends StatefulWidget {
 }
 enum ViewMode { normal, gridShapeBased, gridCommonImage }
 
-ViewMode _currentViewMode = ViewMode.normal;
+ViewMode _currentViewMode = ViewMode.gridCommonImage;
 
 
 class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
@@ -125,49 +125,47 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children:
-                areas.map((area) {
-                  final bool isSelected = area == selectedArea;
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                    child: TextButton(
-                      onPressed: () => _selectArea(area),
-                      style: TextButton.styleFrom(
-                        backgroundColor:
-                            isSelected
-                                ? const Color(0xFFFD6464)
-                                : Colors.transparent,
-                        foregroundColor:
-                            isSelected ? Colors.white : Colors.black87,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 15.0,
-                          vertical: 13.0,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                        textStyle: const TextStyle(
-                          fontWeight: FontWeight.w500,
-                          fontSize: 12.5,
-                        ),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        visualDensity: VisualDensity.compact,
-                      ),
-                      child: Text(area),
+            areas.map((area) {
+              final bool isSelected = area == selectedArea;
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                child: TextButton(
+                  onPressed: () => _selectArea(area),
+                  style: TextButton.styleFrom(
+                    backgroundColor:
+                    isSelected
+                        ? const Color(0xFFFD6464)
+                        : Colors.transparent,
+                    foregroundColor:
+                    isSelected ? Colors.white : Colors.black87,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 15.0,
+                      vertical: 13.0,
                     ),
-                  );
-                }).toList(),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    textStyle: const TextStyle(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 12.5,
+                    ),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  child: Text(area),
+                ),
+              );
+            }).toList(),
           ),
         ),
       ),
     );
   }
 
-  void _showGuestDetailsPopup(
-    BuildContext context,
-    int index,
-    Map<String, dynamic> tableData,
-  ) {
+  void _showGuestDetailsPopup(BuildContext context,
+      int index,
+      Map<String, dynamic> tableData,) {
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -241,7 +239,7 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
       onTap: guestCount > 0
           ? null
           : () {
-          _showGuestDetailsPopup(context, index, tableData);
+        _showGuestDetailsPopup(context, index, tableData);
       },
       child: rotatedTable,
     );
@@ -254,14 +252,12 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
   }
 
 
-  Widget _buildPlacedTableWidget(
-    String name,
-    int capacity,
-    String area,
-    String shape,
-    Size size,
-    int guestCount,
-  ) {
+  Widget _buildPlacedTableWidget(String name,
+      int capacity,
+      String area,
+      String shape,
+      Size size,
+      int guestCount,) {
     const double chairSize = 20;
     const double offset = 10;
     final double extraSpace = chairSize + offset;
@@ -272,11 +268,11 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
     final hasGuests = guestCount > 0;
 
     final tableColor =
-        hasGuests
-            ? Color(0xFFF44336).withAlpha(
-              (0.25 * 255).round(),
-            ) // red-transparent
-            : const Color(0x3F22D629); // green-transparent
+    hasGuests
+        ? Color(0xFFF44336).withAlpha(
+      (0.25 * 255).round(),
+    ) // red-transparent
+        : const Color(0x3F22D629); // green-transparent
 
     Widget tableShape;
 
@@ -332,13 +328,11 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
     );
   }
 
-  List<Widget> _buildChairs(
-    int capacity,
-    Size tableSize,
-    double margin,
-    String shape,
-    Color chairColor,
-  ) {
+  List<Widget> _buildChairs(int capacity,
+      Size tableSize,
+      double margin,
+      String shape,
+      Color chairColor,) {
     const double chairWidth = 15;
     const double chairHeight = 48;
 
@@ -350,10 +344,10 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
       final double centerY = (tableSize.height / 2) + margin;
       final double radius =
           (tableSize.width > tableSize.height
-                  ? tableSize.width
-                  : tableSize.height) /
+              ? tableSize.width
+              : tableSize.height) /
               2 +
-          12;
+              12;
 
       for (int i = 0; i < capacity && i < 12; i++) {
         final double angle = (2 * 3.1415926 / capacity) * i;
@@ -460,7 +454,7 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
           // Bottom side
           double bottomSpacing =
               (tableSize.width - (bottomChairs * chairWidth)) /
-              (bottomChairs + 1);
+                  (bottomChairs + 1);
           for (int i = 0; i < bottomChairs; i++) {
             double dx = left + bottomSpacing * (i + 1) + chairWidth * i;
             chairs.add(
@@ -520,7 +514,7 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
         int bottomChairs = chairsPerSide + (extraChairs > 2 ? 1 : 0);
         double bottomSpacing =
             (tableSize.width - (bottomChairs * chairWidth)) /
-            (bottomChairs + 1);
+                (bottomChairs + 1);
         for (int i = 0; i < bottomChairs; i++) {
           double dx = left + bottomSpacing * (i + 1) + chairWidth * i;
           chairs.add(
@@ -559,7 +553,9 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
 
     return chairs;
   }
-  Widget _buildModeButton(String title, ViewMode mode, bool isFirst, bool isLast) {
+
+  Widget _buildModeButton(String title, ViewMode mode, bool isFirst,
+      bool isLast) {
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -600,14 +596,15 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
     } else if (shape == 'square') {
       imagePath = guestCount > 0 ? 'assets/square2.png' : 'assets/square1.png';
     } else {
-      imagePath = guestCount > 0 ? 'assets/rectangle2.png' : 'assets/rectangle1.png';
+      imagePath =
+      guestCount > 0 ? 'assets/rectangle2.png' : 'assets/rectangle1.png';
     }
 
     return GestureDetector(
       onTap: guestCount > 0
           ? null
           : () {
-          _showGuestDetailsPopup(context, index, tableData);
+        _showGuestDetailsPopup(context, index, tableData);
       },
       child: _buildGridItem(imagePath, name, guestCount),
     );
@@ -621,8 +618,7 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
       onTap: guestCount > 0
           ? null
           : () {
-          _showGuestDetailsPopup(context, index, tableData);
-
+        _showGuestDetailsPopup(context, index, tableData);
       },
       child: _buildGridItem1(name, guestCount),
     );
@@ -632,7 +628,8 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
     final bool isOccupied = guestCount > 0;
 
     // Define color schemes
-    final Color backgroundColor = isOccupied ? Colors.red[100]! : Colors.green[100]!;
+    final Color backgroundColor = isOccupied ? Colors.red[100]! : Colors
+        .green[100]!;
     final Color textColor = isOccupied ? Colors.red : Colors.green[800]!;
     final Color iconColor = textColor;
 
@@ -644,16 +641,17 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
           BoxShadow(color: Colors.black12, blurRadius: 2, offset: Offset(0, 1)),
         ],
       ),
-      padding: EdgeInsets.symmetric(vertical: 12, horizontal: 8), // Increased padding
+      padding: EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      // Increased padding
       child: Column(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           SizedBox(height: 8),
           Text(
-            "Table #$name",
+            name,
             style: TextStyle(
-              fontSize: 15,
+              fontSize: 16,
               fontWeight: FontWeight.bold,
               color: textColor,
             ),
@@ -666,7 +664,7 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
               Text(
                 isOccupied ? '$guestCount' : '-',
                 style: TextStyle(
-                  fontSize: 15, // Increased font size
+                  fontSize: 16,
                   color: textColor,
                 ),
               ),
@@ -696,9 +694,9 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
-            "Table #$name",
+            name,
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 16,
               fontWeight: FontWeight.bold,
               color: isOccupied ? Colors.red : Colors.green,
             ),
@@ -706,12 +704,13 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.group, size: 16, color: isOccupied ? Colors.red : Colors.green),
+              Icon(Icons.group, size: 16,
+                  color: isOccupied ? Colors.red : Colors.green),
               SizedBox(width: 4),
               Text(
                 isOccupied ? '$guestCount' : '-',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 14,
                   color: isOccupied ? Colors.red : Colors.green,
                 ),
               ),
@@ -736,20 +735,6 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
         children: [
           // Top Bar
           Positioned(top: 0, left: 0, right: 0, child: CaptainTopBar()),
-
-          // Mode Switch Buttons
-          Positioned(
-            top: 120,
-            left: 35,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildModeButton('Normal', ViewMode.normal, true, false),
-                _buildModeButton('Grid-Shape', ViewMode.gridShapeBased, false, false),
-                _buildModeButton('Grid-Common', ViewMode.gridCommonImage, false, true),
-              ],
-            ),
-          ),
 
           // Area Filter
           Positioned(
@@ -804,27 +789,32 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
                         child: Scrollbar(
                           controller: verticalScrollController,
                           notificationPredicate: (_) => true,
-                          child: SingleChildScrollView(
-                            controller: horizontalScrollController,
-                            scrollDirection: Axis.horizontal,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.translucent,
                             child: SingleChildScrollView(
-                              controller: verticalScrollController,
-                              scrollDirection: Axis.vertical,
-                              child: Transform.scale(
-                                scale: _scale,
-                                alignment: Alignment.topLeft,
-                                child: Container(
-                                  width: 90000,
-                                  height: 60000,
-                                  child: Stack(
-                                    children: displayedTables
-                                        .asMap()
-                                        .entries
-                                        .map((entry) {
-                                      int index = entry.key;
-                                      Map<String, dynamic> tableData = entry.value;
-                                      return _buildPlacedTable(index, tableData);
-                                    }).toList(),
+                              controller: horizontalScrollController,
+                              scrollDirection: Axis.horizontal,
+                              child: SingleChildScrollView(
+                                controller: verticalScrollController,
+                                scrollDirection: Axis.vertical,
+                                child: Transform.scale(
+                                  scale: _scale,
+                                  alignment: Alignment.topLeft,
+                                  child: Container(
+                                    width: 90000,
+                                    height: 60000,
+                                    child: Stack(
+                                      children: displayedTables
+                                          .asMap()
+                                          .entries
+                                          .map((entry) {
+                                        int index = entry.key;
+                                        Map<String, dynamic> tableData =
+                                            entry.value;
+                                        return _buildPlacedTable(
+                                            index, tableData);
+                                      }).toList(),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -839,7 +829,8 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
             ),
 
           // Grid View
-          if (_currentViewMode == ViewMode.gridShapeBased || _currentViewMode == ViewMode.gridCommonImage)
+          if (_currentViewMode == ViewMode.gridShapeBased ||
+              _currentViewMode == ViewMode.gridCommonImage)
             Padding(
               padding: const EdgeInsets.only(top: 160.0),
               child: Column(
@@ -883,17 +874,31 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
                             controller: gridScrollController,
                             itemCount: displayedTables.length,
                             padding: const EdgeInsets.all(10),
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 9,
+                            gridDelegate:
+                            _currentViewMode == ViewMode.gridShapeBased
+                                ? SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 10,
                               crossAxisSpacing: 20,
                               mainAxisSpacing: 20,
                               childAspectRatio: 0.9,
+                            )
+                                : SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 12,
+                              crossAxisSpacing:
+                              15,
+                              mainAxisSpacing:
+                              15,
+                              childAspectRatio:
+                              1.0,
                             ),
                             itemBuilder: (context, index) {
-                              if (_currentViewMode == ViewMode.gridShapeBased) {
-                                return _buildShapeBasedGridItem(displayedTables[index], index);
+                              if (_currentViewMode ==
+                                  ViewMode.gridShapeBased) {
+                                return _buildShapeBasedGridItem(
+                                    displayedTables[index], index);
                               } else {
-                                return _buildCommonGridItem(displayedTables[index], index);
+                                return _buildCommonGridItem(
+                                    displayedTables[index], index);
                               }
                             },
                           ),
@@ -905,9 +910,7 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
               ),
             ),
 
-
-
-  // Zoom Controls at Bottom Left
+          // Zoom Controls at Bottom Left
           ZoomControlsWidget(
             onZoomIn: _zoomIn,
             onZoomOut: _zoomOut,
@@ -954,8 +957,113 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
             selectedIndex: _selectedIndex,
             onItemTapped: _onItemTapped,
           ),
+
+          // Mode Switch Buttons - Move to bottom for higher z-index
+          Positioned(
+            top: 120,
+            left: 35,
+            child: ViewLayoutDropdown1(
+              onModeSelected: (mode) {
+                setState(() {
+                  _currentViewMode = mode;
+                });
+              },
+            ),
+          ),
         ],
       ),
     );
   }
 }
+
+class ViewLayoutDropdown1 extends StatefulWidget {
+  final Function(ViewMode) onModeSelected;
+
+  const ViewLayoutDropdown1({Key? key, required this.onModeSelected}) : super(key: key);
+
+  @override
+  _ViewLayoutDropdown1State createState() => _ViewLayoutDropdown1State();
+}
+class _ViewLayoutDropdown1State extends State<ViewLayoutDropdown1> {
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<ViewMode>(
+      onSelected: (ViewMode mode) {
+        setState(() {
+          _currentViewMode = mode;
+        });
+        widget.onModeSelected(mode);
+      },
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      offset: Offset(0, 40),
+      color: Colors.white, // Set dropdown background color to white
+      itemBuilder: (BuildContext context) => <PopupMenuEntry<ViewMode>>[
+        _buildMenuItem(ViewMode.gridCommonImage, 'Small layout',Icons.grid_view),
+        _buildMenuItem(ViewMode.gridShapeBased, 'Medium layout', Icons.grid_on),
+        _buildMenuItem(ViewMode.normal, 'Design layout', Icons.center_focus_strong),
+      ],
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 52, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: Colors.black),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'View layout',
+              style: TextStyle(
+                color: const Color(0xFF5D5A5A),
+                fontSize: 16,
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(width:10),
+            Icon(Icons.arrow_drop_down, color: Colors.black),
+          ],
+        ),
+      ),
+    );
+  }
+
+  PopupMenuItem<ViewMode> _buildMenuItem(ViewMode mode, String title, IconData icon) {
+    bool isSelected = _currentViewMode == mode;
+
+    return PopupMenuItem<ViewMode>(
+      value: mode,
+      padding: EdgeInsets.zero,
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.grey.shade300 : Colors.white,
+        ),
+        padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        child: Row(
+          children: [
+            if (isSelected)
+              Icon(Icons.circle, color: Colors.orange, size: 10)
+            else
+              SizedBox(width: 10),
+            SizedBox(width: 10),
+            Icon(icon, size: 24, color: Colors.black),
+            SizedBox(width: 12),
+            Text(
+              title,
+              style: TextStyle(
+                color: const Color(0xFF5D5A5A),
+                fontSize: 14,
+                fontFamily: 'Inter',
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+

@@ -324,13 +324,13 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                           style: TextStyle(
                             fontFamily: 'Inter',
                             fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                            fontSize: 18,
                           ),
                         ),
                       ),
                     ),
 
-                    SizedBox(height: 6),
+                    SizedBox(height: 12),
 
                     // Table name input with validation error display.
                     Padding(
@@ -342,13 +342,13 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                           Text(
                             "Table name/ No.",
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 14,
                               fontFamily: 'Inter',
                               fontWeight: FontWeight.w900,
                               color: Color(0xFF4C5F7D),
                             ),
                           ),
-                          SizedBox(height: 7),
+                          SizedBox(height: 12),
 
                           SizedBox(
                             width: 450,
@@ -405,7 +405,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                       ),
                     ),
 
-                    SizedBox(height: 6),
+                    SizedBox(height: 12),
 
                     // Seating capacity input with validation error display.
                     Padding(
@@ -417,7 +417,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                           Text(
                             "Seating capacity",
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 14,
                               fontFamily: 'Inter',
                               fontWeight: FontWeight.w900,
                               color: Color(0xFF4C5F7D),
@@ -476,7 +476,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                       ),
                     ),
 
-                    SizedBox(height: 10),
+                    SizedBox(height: 14),
 
                     // Table Model selection section.
                     Padding(
@@ -487,7 +487,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                         child: Text(
                           "Table Model",
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 14,
                             fontFamily: 'Inter',
                             fontWeight: FontWeight.w900,
                             color: Color(0xFF4C5F7D),
@@ -496,7 +496,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                       ),
                     ),
 
-                    SizedBox(height: 10),
+                    SizedBox(height: 14),
 
                     // Dotted border container displaying draggable table models.
                     Padding(
