@@ -554,36 +554,6 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
     return chairs;
   }
 
-  Widget _buildModeButton(String title, ViewMode mode, bool isFirst,
-      bool isLast) {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _currentViewMode = mode;
-        });
-      },
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: _currentViewMode == mode ? Color(0xFF0A1B4D) : Colors.white,
-          border: Border.all(color: Colors.black),
-          borderRadius: BorderRadius.horizontal(
-            left: isFirst ? Radius.circular(8) : Radius.zero,
-            right: isLast ? Radius.circular(8) : Radius.zero,
-          ),
-        ),
-        child: Text(
-          title,
-          style: TextStyle(
-            fontSize: 12,
-            color: _currentViewMode == mode ? Colors.white : Colors.black,
-            fontWeight: FontWeight.w400,
-          ),
-        ),
-      ),
-    );
-  }
-
 
   Widget _buildShapeBasedGridItem(Map<String, dynamic> tableData, int index) {
     final shape = tableData['shape'];
@@ -828,11 +798,9 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
               ),
             ),
 
-          // Grid View
-          if (_currentViewMode == ViewMode.gridShapeBased ||
-              _currentViewMode == ViewMode.gridCommonImage)
+          if (_currentViewMode == ViewMode.gridShapeBased || _currentViewMode == ViewMode.gridCommonImage)
             Padding(
-              padding: const EdgeInsets.only(top: 160.0),
+              padding: const EdgeInsets.only(top: 170.0),
               child: Column(
                 children: [
                   const SizedBox(height: 10),
@@ -841,7 +809,7 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
                         ? Column(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        const SizedBox(height: 200),
+                        const SizedBox(height: 160),
                         Center(
                           child: Text(
                             'No tables are present',
@@ -870,37 +838,50 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
                         ),
                         child: Scrollbar(
                           controller: gridScrollController,
-                          child: GridView.builder(
-                            controller: gridScrollController,
-                            itemCount: displayedTables.length,
-                            padding: const EdgeInsets.all(10),
-                            gridDelegate:
-                            _currentViewMode == ViewMode.gridShapeBased
-                                ? SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 10,
-                              crossAxisSpacing: 20,
-                              mainAxisSpacing: 20,
-                              childAspectRatio: 0.9,
-                            )
-                                : SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 12,
-                              crossAxisSpacing:
-                              15,
-                              mainAxisSpacing:
-                              15,
-                              childAspectRatio:
-                              1.0,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.translucent,
+                            child: SingleChildScrollView(
+                              controller: horizontalScrollController,
+                              scrollDirection: Axis.horizontal,
+                              child: SingleChildScrollView(
+                                controller: verticalScrollController,
+                                scrollDirection: Axis.vertical,
+                                child: Transform.scale(
+                                  scale: _scale,
+                                  alignment: Alignment.topLeft,
+                                  child: Container(
+                                    width: MediaQuery.of(context).size.width,
+                                    child: GridView.builder(
+                                      controller: gridScrollController,
+                                      shrinkWrap: true,
+                                      physics: NeverScrollableScrollPhysics(),
+                                      itemCount: displayedTables.length,
+                                      padding: const EdgeInsets.all(10),
+                                      gridDelegate: _currentViewMode == ViewMode.gridShapeBased
+                                          ? SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 10,
+                                        crossAxisSpacing: 20,
+                                        mainAxisSpacing: 20,
+                                        childAspectRatio: 0.9,
+                                      )
+                                          : SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 12,
+                                        crossAxisSpacing: 15,
+                                        mainAxisSpacing: 15,
+                                        childAspectRatio: 1.0,
+                                      ),
+                                      itemBuilder: (context, index) {
+                                        if (_currentViewMode == ViewMode.gridShapeBased) {
+                                          return _buildShapeBasedGridItem(displayedTables[index], index);
+                                        } else {
+                                          return _buildCommonGridItem(displayedTables[index], index);
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
-                            itemBuilder: (context, index) {
-                              if (_currentViewMode ==
-                                  ViewMode.gridShapeBased) {
-                                return _buildShapeBasedGridItem(
-                                    displayedTables[index], index);
-                              } else {
-                                return _buildCommonGridItem(
-                                    displayedTables[index], index);
-                              }
-                            },
                           ),
                         ),
                       ),
@@ -909,7 +890,6 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
                 ],
               ),
             ),
-
           // Zoom Controls at Bottom Left
           ZoomControlsWidget(
             onZoomIn: _zoomIn,
