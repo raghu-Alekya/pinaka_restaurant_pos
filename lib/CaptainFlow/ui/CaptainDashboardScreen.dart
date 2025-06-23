@@ -3,19 +3,27 @@ import '../../helpers/CaptainNavigationHelper.dart';
 import '../../helpers/DatabaseHelper.dart';
 import '../Widgets/CaptainBottomNavBar.dart';
 import 'CaptainTablesScreen.dart';
-
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({Key? key}) : super(key: key);
+  final String pin;
+  final String associatedManagerPin;
+
+  const DashboardScreen({
+    Key? key,
+    required this.pin,
+    required this.associatedManagerPin,
+  }) : super(key: key);
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
+
+
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
 
   void _onItemTapped(int index) {
-    CaptionNavigationHelper.handleNavigation(context, _selectedIndex, index);
+    CaptionNavigationHelper.handleNavigation(context, _selectedIndex, index, widget.pin,widget.associatedManagerPin);
     setState(() {
       _selectedIndex = index;
     });
@@ -23,14 +31,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _navigateToTables() async {
     final dbHelper = DatabaseHelper();
-    final tables = await dbHelper.getAllTables();
+    final tables = await dbHelper.getTablesByManagerPin(widget.associatedManagerPin);
+
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => CaptionTablesScreen(loadedTables: tables),
+        builder: (context) => CaptionTablesScreen(
+          loadedTables: tables,
+          pin: widget.pin,
+          associatedManagerPin: widget.associatedManagerPin,
+        ),
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
