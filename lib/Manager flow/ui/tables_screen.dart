@@ -16,6 +16,7 @@ import '../widgets/top_bar.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/table_helpers.dart';
 import 'guest_details_popup.dart';
+import 'dart:math' as math;
 
 /// Screen widget that manages the floor plan of tables in a restaurant POS system.
 ///
@@ -29,8 +30,10 @@ import 'guest_details_popup.dart';
 /// avoid collisions.
 class TablesScreen extends StatefulWidget {
   final List<Map<String, dynamic>> loadedTables;
+  final String pin;
 
-  const TablesScreen({Key? key, required this.loadedTables}) : super(key: key);
+  const TablesScreen({Key? key, required this.loadedTables, required this.pin}) : super(key: key);
+
   @override
   _TablesScreenState createState() => _TablesScreenState();
 }
@@ -45,11 +48,13 @@ class _TablesScreenState extends State<TablesScreen> {
   int _selectedIndex = 1;
 
   void _onNavItemTapped(int index) {
-    NavigationHelper.handleNavigation(context, _selectedIndex, index);
+    NavigationHelper.handleNavigation(context, _selectedIndex, index,widget.pin);
     setState(() {
       _selectedIndex = index;
     });
   }
+
+  final GlobalKey _canvasKey = GlobalKey();
 
   /// Whether the add table/area popup is visible.
   bool _showPopup = false;
@@ -121,7 +126,7 @@ class _TablesScreenState extends State<TablesScreen> {
 
   Future<void> _loadTables() async {
     final dbHelper = DatabaseHelper();
-    final tables = await dbHelper.getAllTables();
+    final tables = await dbHelper.getTablesByManagerPin(widget.pin);
 
     setState(() {
       placedTables =
@@ -183,6 +188,7 @@ class _TablesScreenState extends State<TablesScreen> {
       'capacity': placedTables[index]['capacity'],
       'shape': placedTables[index]['shape'],
       'areaName': placedTables[index]['areaName'],
+      'pin': widget.pin,
     });
   }
 
@@ -517,6 +523,7 @@ class _TablesScreenState extends State<TablesScreen> {
       'posY': adjustedPos.dy,
       'guestCount': data['guestCount'] ?? 0,
       'rotation': 0.0,
+      'pin': widget.pin,
     };
 
     final dbHelper = DatabaseHelper();
@@ -611,6 +618,7 @@ class _TablesScreenState extends State<TablesScreen> {
   /// Parameters:
   /// - [index]: The index of the table in the placedTables list.
   /// - [tableData]: The table data map including name, area, shape, position, etc.
+
   Widget _buildPlacedTable(int index, Map<String, dynamic> tableData) {
     final capacity = tableData['capacity'];
     final name = tableData['tableName'];
@@ -619,172 +627,124 @@ class _TablesScreenState extends State<TablesScreen> {
     final Offset position = tableData['position'];
     final int guestCount = tableData['guestCount'] ?? 0;
     final double rotation = tableData['rotation'] ?? 0.0;
+
     final size = TableHelpers.getPlacedTableSize(capacity, shape);
 
-    Widget baseTable = _buildPlacedTableWidget(
+    // Build table content with rotation awareness
+    Widget tableContent = _buildPlacedTableWidget(
       name,
       capacity,
       area,
       shape,
       size,
       guestCount,
+      rotation,
     );
 
-    Widget rotatedTable =
-        shape == 'rectangle'
-            ? Transform.rotate(
-              angle: rotation * 3.1415926535 / 180,
-              child: baseTable,
-            )
-            : baseTable;
-
-    Widget highlightedTable =
-        shape == 'rectangle'
-            ? Transform.rotate(
-              angle: rotation * 3.1415926535 / 180,
-              child: DottedBorder(
-                color: Colors.red,
-                strokeWidth: 2,
-                dashPattern: [4, 3],
-                borderType: BorderType.RRect,
-                radius: Radius.circular(12),
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: baseTable,
-                ),
-              ),
-            )
-            : DottedBorder(
-              color: Colors.red,
-              strokeWidth: 2,
-              dashPattern: [4, 3],
-              borderType: BorderType.RRect,
-              radius: Radius.circular(12),
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: baseTable,
-              ),
-            );
-
-    Widget tableContent;
-
-    if (_showPopup) {
-      tableContent = Stack(
-        children: [
-          rotatedTable,
-          if (guestCount == 0)
-            Positioned(
-              top: 0,
-              right: 0,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8.0,
-                  vertical: 4.0,
-                ),
-                child: Column(
-                  children: [
-                    _buildActionButton("delete", () {
-                      _showDeleteConfirmationDialog(index);
-                    }),
-                    SizedBox(height: 6),
-                    if (shape == 'rectangle')
-                      _buildActionButton("rotate", () {
-                        _rotateTable(index);
-                      }),
-                  ],
-                ),
-              ),
-            ),
-        ],
-      );
-    } else {
-      tableContent = Stack(
-        children: [
-          _selectedTableIndex == index && _showActionMenu
-              ? highlightedTable
-              : rotatedTable,
-          if (_selectedTableIndex == index && _showActionMenu)
-            Positioned(
-              top: 0,
-              right: 0,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8.0,
-                  vertical: 4.0,
-                ),
-                child: Column(
-                  children: [
-                    _buildActionButton("edit", () {
-                      setState(() {
-                        _editingTableIndex = index;
-                        _editingTableData = Map<String, dynamic>.from(
-                          tableData,
-                        );
-                        _showEditPopup = true;
-                        _showActionMenu = false;
-                      });
-                    }),
-                    SizedBox(height: 6),
-                    _buildActionButton("delete", () {
-                      _showDeleteConfirmationDialog(index);
-                    }),
-                    SizedBox(height: 6),
-                    if (shape == 'rectangle')
-                      _buildActionButton("rotate", () {
-                        _rotateTable(index);
-                      }),
-                  ],
-                ),
-              ),
-            ),
-        ],
-      );
-    }
-
-    Widget draggableWidget = GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onTap:
-          guestCount > 0
-              ? null
-              : () {
-                if (!_showPopup) {
-                  _showGuestDetailsPopup(context, index, tableData);
-                }
-              },
-      onDoubleTap:
-          guestCount > 0
-              ? null
-              : () {
-                if (!_showPopup) {
-                  setState(() {
-                    _selectedTableIndex = index;
-                    _showActionMenu = true;
-                  });
-                }
-              },
+    Widget paddedTable = Padding(
+      padding: const EdgeInsets.all(8.0),
       child: tableContent,
     );
+
+    Widget borderedTable = Stack(
+      clipBehavior: Clip.none,
+      children: [
+        DottedBorder(
+          color: _selectedTableIndex == index && _showActionMenu ? Colors.red : Colors.transparent,
+          strokeWidth: 2,
+          dashPattern: [4, 3],
+          borderType: BorderType.RRect,
+          radius: Radius.circular(12),
+          child: paddedTable,
+        ),
+      ],
+    );
+
+    int quarterTurns = (rotation ~/ 90) % 4;
+
+    Widget gestureTable = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: guestCount > 0
+          ? null
+          : () {
+        if (!_showPopup) {
+          _showGuestDetailsPopup(context, index, tableData);
+        }
+      },
+      onDoubleTap: guestCount > 0
+          ? null
+          : () {
+        if (!_showPopup) {
+          setState(() {
+            _selectedTableIndex = index;
+            _showActionMenu = true;
+          });
+        }
+      },
+      child: RotatedBox(
+        quarterTurns: quarterTurns,
+        child: borderedTable,
+      ),
+    );
+
+    Widget actionButtons = (_showPopup || (_selectedTableIndex == index && _showActionMenu)) && guestCount == 0
+        ? Positioned(
+      top: 0,
+      right: 0,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+        child: Column(
+          children: [
+            if (!_showPopup)
+              _buildActionButton("edit", () {
+                setState(() {
+                  _editingTableIndex = index;
+                  _editingTableData = Map<String, dynamic>.from(tableData);
+                  _showEditPopup = true;
+                  _showActionMenu = false;
+                });
+              }),
+            if (!_showPopup) SizedBox(height: 6),
+            _buildActionButton("delete", () {
+              _showDeleteConfirmationDialog(index);
+            }),
+            if (!_showPopup) SizedBox(height: 6),
+            if (shape == 'rectangle')
+              _buildActionButton("rotate", () {
+                _rotateTable(index);
+              }),
+          ],
+        ),
+      ),
+    )
+        : SizedBox.shrink();
+
 
     return Positioned(
       left: position.dx,
       top: position.dy,
-      child:
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
           _showPopup || (_selectedTableIndex == index && _showActionMenu)
               ? Draggable<int>(
-                data: index,
-                feedback: Material(
-                  color: Colors.transparent,
-                  child: Opacity(opacity: 0.7, child: tableContent),
-                ),
-                childWhenDragging: Opacity(opacity: 0.3, child: tableContent),
-                onDragEnd: (details) {
-                  final RenderBox box = context.findRenderObject() as RenderBox;
-                  final Offset localOffset = box.globalToLocal(details.offset);
-                  _updateTablePosition(index, localOffset);
-                },
-                child: draggableWidget,
-              )
-              : draggableWidget,
+            data: index,
+            feedback: Material(
+              color: Colors.transparent,
+              child: Opacity(opacity: 0.7, child: gestureTable),
+            ),
+            childWhenDragging: Opacity(opacity: 0.3, child: gestureTable),
+            onDragEnd: (details) {
+              final RenderBox box = _canvasKey.currentContext!.findRenderObject() as RenderBox;
+              final Offset localOffset = box.globalToLocal(details.offset);
+              _updateTablePosition(index, localOffset);
+            },
+            child: gestureTable,
+          )
+              : gestureTable,
+          actionButtons,
+        ],
+      ),
     );
   }
 
@@ -792,20 +752,64 @@ class _TablesScreenState extends State<TablesScreen> {
     final currentRotation = placedTables[index]['rotation'] ?? 0.0;
     final newRotation = currentRotation == 0.0 ? 90.0 : 0.0;
 
+    final shape = placedTables[index]['shape'];
+    final capacity = placedTables[index]['capacity'];
+    final areaName = placedTables[index]['areaName'];
+
+    Size newSize = TableHelpers.getPlacedTableSize(capacity, shape);
+    if (shape == 'rectangle' && newRotation == 90.0) {
+      newSize = Size(newSize.height, newSize.width);
+    }
+
+    Offset currentPos = placedTables[index]['position'];
+
+    bool willOverlap = _isOverlapping(
+      currentPos,
+      newSize,
+      skipIndex: index,
+      areaName: areaName,
+    );
+
+    Offset newPos = currentPos;
+
+    if (willOverlap) {
+      newPos = _findNonOverlappingPosition(
+        currentPos,
+        newSize,
+        skipIndex: index,
+        areaName: areaName,
+      );
+    }
+
+    newPos = _clampPositionToCanvas(newPos, newSize);
+
     setState(() {
       placedTables[index]['rotation'] = newRotation;
+      placedTables[index]['position'] = newPos;
+      placedTables[index]['posX'] = newPos.dx;
+      placedTables[index]['posY'] = newPos.dy;
+
+      // Hide action menu after rotation
+      _selectedTableIndex = null;
+      _showActionMenu = false;
     });
 
     final tableId = placedTables[index]['id'];
-    await DatabaseHelper().updateTable(tableId, {'rotation': newRotation});
+    await DatabaseHelper().updateTable(tableId, {
+      'rotation': newRotation,
+      'posX': newPos.dx,
+      'posY': newPos.dy,
+    });
   }
+
 
   void _handleTapOutside() {
     setState(() {
-      _selectedTableIndex = -1; // Clear selection
-      _showActionMenu = false; // Hide action buttons
+      _selectedTableIndex = -1;
+      _showActionMenu = false;
     });
   }
+
 
   /// Constructs the visual appearance of a table widget with chairs, color coding,
   /// and labels inside a `SizedBox`. Shapes are rendered as either circles or rectangles
@@ -819,13 +823,14 @@ class _TablesScreenState extends State<TablesScreen> {
   /// - [size]: Calculated size of the table.
   /// - [guestCount]: Number of guests currently seated, used for styling.
   Widget _buildPlacedTableWidget(
-    String name,
-    int capacity,
-    String area,
-    String shape,
-    Size size,
-    int guestCount,
-  ) {
+      String name,
+      int capacity,
+      String area,
+      String shape,
+      Size size,
+      int guestCount,
+      double rotation, // Pass rotation here
+      ) {
     const double chairSize = 20;
     const double offset = 10;
     final double extraSpace = chairSize + offset;
@@ -835,12 +840,9 @@ class _TablesScreenState extends State<TablesScreen> {
 
     final hasGuests = guestCount > 0;
 
-    final tableColor =
-        hasGuests
-            ? Color(0xFFF44336).withAlpha(
-              (0.25 * 255).round(),
-            ) // red-transparent
-            : const Color(0x3F22D629);
+    final tableColor = hasGuests
+        ? Color(0xFFF44336).withAlpha((0.25 * 255).round()) // red-transparent
+        : const Color(0x3F22D629);
 
     Widget tableShape;
     if (shape == "circle") {
@@ -853,7 +855,10 @@ class _TablesScreenState extends State<TablesScreen> {
             height: size.height,
             color: tableColor,
             child: Center(
-              child: TableHelpers.buildTableContent(name, area, guestCount),
+              child: Transform.rotate(
+                angle: -rotation * (math.pi / 180), // Keep text upright
+                child: TableHelpers.buildTableContent(name, area, guestCount),
+              ),
             ),
           ),
         ),
@@ -870,11 +875,15 @@ class _TablesScreenState extends State<TablesScreen> {
             borderRadius: BorderRadius.circular(shape == "square" ? 8 : 16),
           ),
           child: Center(
-            child: TableHelpers.buildTableContent(name, area, guestCount),
+            child: Transform.rotate(
+              angle: -rotation * (math.pi / 180), // Keep text upright
+              child: TableHelpers.buildTableContent(name, area, guestCount),
+            ),
           ),
         ),
       );
     }
+
     return SizedBox(
       width: stackWidth,
       height: stackHeight,
@@ -887,14 +896,13 @@ class _TablesScreenState extends State<TablesScreen> {
             size,
             extraSpace,
             shape,
-            guestCount > 0
-                ? Color(0xFFF44336)
-                : Color(0xFF4CAF50), // red or green chairs
+            guestCount > 0 ? Color(0xFFF44336) : Color(0xFF4CAF50), // red or green chairs
           ),
         ],
       ),
     );
   }
+
 
   /// Builds a list of positioned chair widgets around the table based on capacity and shape.
   ///
@@ -1372,40 +1380,42 @@ class _TablesScreenState extends State<TablesScreen> {
                   thumbVisibility: true,
                   thickness: 10,
                   radius: Radius.circular(8),
-                  child: GridView.builder(
-                    controller: gridScrollController,
-                    itemCount: _filteredTables.length,
-                    padding: EdgeInsets.all(10),
-                    gridDelegate:
-                        _currentViewMode == ViewMode.gridShapeBased
-                            ? SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 10,
-                              crossAxisSpacing: 20,
-                              mainAxisSpacing: 20,
-                              childAspectRatio: 0.9,
-                            )
-                            : SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 12,
-                              crossAxisSpacing:
-                                  15,
-                              mainAxisSpacing:
-                                  15,
-                              childAspectRatio:
-                                  1.0,
-                            ),
-                    itemBuilder: (context, index) {
-                      if (_currentViewMode == ViewMode.gridShapeBased) {
-                        return _buildShapeBasedGridItem(
-                          _filteredTables[index],
-                          index,
-                        );
-                      } else {
-                        return _buildCommonGridItem(
-                          _filteredTables[index],
-                          index,
-                        );
-                      }
-                    },
+                  child: Transform.scale(
+                    scale: _scale,
+                    alignment:
+                        Alignment.topLeft,
+                    child: GridView.builder(
+                      controller: gridScrollController,
+                      itemCount: _filteredTables.length,
+                      padding: EdgeInsets.all(10),
+                      gridDelegate:
+                          _currentViewMode == ViewMode.gridShapeBased
+                              ? SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 10,
+                                crossAxisSpacing: 20,
+                                mainAxisSpacing: 20,
+                                childAspectRatio: 0.9,
+                              )
+                              : SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 12,
+                                crossAxisSpacing: 15,
+                                mainAxisSpacing: 15,
+                                childAspectRatio: 1.0,
+                              ),
+                      itemBuilder: (context, index) {
+                        if (_currentViewMode == ViewMode.gridShapeBased) {
+                          return _buildShapeBasedGridItem(
+                            _filteredTables[index],
+                            index,
+                          );
+                        } else {
+                          return _buildCommonGridItem(
+                            _filteredTables[index],
+                            index,
+                          );
+                        }
+                      },
+                    ),
                   ),
                 ),
               ),
@@ -1424,7 +1434,6 @@ class _TablesScreenState extends State<TablesScreen> {
             ),
           ),
 
-          // Shared Area Filter (ALWAYS VISIBLE)
           Positioned(
             top: 10,
             left: 0,
@@ -1519,6 +1528,7 @@ class _TablesScreenState extends State<TablesScreen> {
                             ) *
                             0.8,
                         placedTables[_selectedTableIndex!]['guestCount'] ?? 0,
+                        placedTables[_selectedTableIndex!]['rotation'] ?? 0.0,
                       ),
                     ),
                   ),
@@ -1648,6 +1658,7 @@ class _TablesScreenState extends State<TablesScreen> {
                     'posX': updatedData['position'].dx,
                     'posY': updatedData['position'].dy,
                     'guestCount': updatedData['guestCount'] ?? 0,
+                    'pin': widget.pin,
                   });
 
                   setState(() {
@@ -1685,9 +1696,9 @@ class _TablesScreenState extends State<TablesScreen> {
               getTableData: (data) {},
               usedTableNames: _usedTableNames,
               usedAreaNames: _usedAreaNames,
-              onAreaSelected:
-                  (areaName) => setState(() => selectedArea = areaName),
+              onAreaSelected: (areaName) => setState(() => selectedArea = areaName),
               onAreaDeleted: _handleAreaDeletion,
+              pin: widget.pin,
             ),
           ),
         ],

@@ -12,13 +12,20 @@ import '../Widgets/Captain_Top_bar.dart';
 
 class CaptionTablesScreen extends StatefulWidget {
   final List<Map<String, dynamic>> loadedTables;
+  final String pin;
+  final String associatedManagerPin;
 
-  const CaptionTablesScreen({Key? key, required this.loadedTables})
-    : super(key: key);
+  const CaptionTablesScreen({
+    Key? key,
+    required this.loadedTables,
+    required this.pin,
+    required this.associatedManagerPin,
+  }) : super(key: key);
 
   @override
-  State<CaptionTablesScreen> createState() => _CaptionTablesScreenState();
+  _CaptionTablesScreenState createState() => _CaptionTablesScreenState();
 }
+
 enum ViewMode { normal, gridShapeBased, gridCommonImage }
 
 ViewMode _currentViewMode = ViewMode.gridCommonImage;
@@ -37,11 +44,12 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
   int _selectedIndex = 1;
 
   void _onItemTapped(int index) {
-    CaptionNavigationHelper.handleNavigation(context, _selectedIndex, index);
+    CaptionNavigationHelper.handleNavigation(context, _selectedIndex, index,widget.pin,widget.associatedManagerPin,);
     setState(() {
       _selectedIndex = index;
     });
   }
+
 
   @override
   void dispose() {
@@ -58,23 +66,26 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
 
   Future<void> _loadData() async {
     final dbHelper = DatabaseHelper();
-    final areaList = await dbHelper.getAllAreas();
+    final areaList = await dbHelper.getAreasByPin(widget.associatedManagerPin);
+
     String initialArea = areaList.isNotEmpty ? areaList.first : '';
 
     setState(() {
-      allTables =
-          widget.loadedTables.map((table) {
-            return {...table, 'position': Offset(table['posX'], table['posY'])};
-          }).toList();
+      allTables = widget.loadedTables
+          .where((table) => table['pin'] == widget.associatedManagerPin)
+          .map((table) {
+        return {...table, 'position': Offset(table['posX'], table['posY'])};
+      }).toList();
 
       areas = areaList;
       selectedArea = initialArea;
-      displayedTables =
-          allTables
-              .where((table) => table['areaName'] == selectedArea)
-              .toList();
+      displayedTables = allTables
+          .where((table) => table['areaName'] == selectedArea)
+          .toList();
     });
   }
+
+
 
   void _selectArea(String area) {
     setState(() {
@@ -208,7 +219,6 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
       'areaName': displayedTables[index]['areaName'],
     });
   }
-
   Widget _buildPlacedTable(int index, Map<String, dynamic> tableData) {
     final capacity = tableData['capacity'];
     final name = tableData['tableName'];
@@ -229,8 +239,10 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
       guestCount,
     );
 
-    Widget rotatedTable = Transform.rotate(
-      angle: rotation * pi / 180,
+    int quarterTurns = (rotation ~/ 90) % 4;
+
+    Widget rotatedTable = RotatedBox(
+      quarterTurns: quarterTurns,
       child: baseTable,
     );
 
@@ -554,36 +566,6 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
     return chairs;
   }
 
-  Widget _buildModeButton(String title, ViewMode mode, bool isFirst,
-      bool isLast) {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _currentViewMode = mode;
-        });
-      },
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: _currentViewMode == mode ? Color(0xFF0A1B4D) : Colors.white,
-          border: Border.all(color: Colors.black),
-          borderRadius: BorderRadius.horizontal(
-            left: isFirst ? Radius.circular(8) : Radius.zero,
-            right: isLast ? Radius.circular(8) : Radius.zero,
-          ),
-        ),
-        child: Text(
-          title,
-          style: TextStyle(
-            fontSize: 12,
-            color: _currentViewMode == mode ? Colors.white : Colors.black,
-            fontWeight: FontWeight.w400,
-          ),
-        ),
-      ),
-    );
-  }
-
 
   Widget _buildShapeBasedGridItem(Map<String, dynamic> tableData, int index) {
     final shape = tableData['shape'];
@@ -828,11 +810,9 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
               ),
             ),
 
-          // Grid View
-          if (_currentViewMode == ViewMode.gridShapeBased ||
-              _currentViewMode == ViewMode.gridCommonImage)
+          if (_currentViewMode == ViewMode.gridShapeBased || _currentViewMode == ViewMode.gridCommonImage)
             Padding(
-              padding: const EdgeInsets.only(top: 160.0),
+              padding: const EdgeInsets.only(top: 170.0),
               child: Column(
                 children: [
                   const SizedBox(height: 10),
@@ -841,7 +821,7 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
                         ? Column(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        const SizedBox(height: 200),
+                        const SizedBox(height: 160),
                         Center(
                           child: Text(
                             'No tables are present',
@@ -870,37 +850,50 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
                         ),
                         child: Scrollbar(
                           controller: gridScrollController,
-                          child: GridView.builder(
-                            controller: gridScrollController,
-                            itemCount: displayedTables.length,
-                            padding: const EdgeInsets.all(10),
-                            gridDelegate:
-                            _currentViewMode == ViewMode.gridShapeBased
-                                ? SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 10,
-                              crossAxisSpacing: 20,
-                              mainAxisSpacing: 20,
-                              childAspectRatio: 0.9,
-                            )
-                                : SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 12,
-                              crossAxisSpacing:
-                              15,
-                              mainAxisSpacing:
-                              15,
-                              childAspectRatio:
-                              1.0,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.translucent,
+                            child: SingleChildScrollView(
+                              controller: horizontalScrollController,
+                              scrollDirection: Axis.horizontal,
+                              child: SingleChildScrollView(
+                                controller: verticalScrollController,
+                                scrollDirection: Axis.vertical,
+                                child: Transform.scale(
+                                  scale: _scale,
+                                  alignment: Alignment.topLeft,
+                                  child: Container(
+                                    width: MediaQuery.of(context).size.width,
+                                    child: GridView.builder(
+                                      controller: gridScrollController,
+                                      shrinkWrap: true,
+                                      physics: NeverScrollableScrollPhysics(),
+                                      itemCount: displayedTables.length,
+                                      padding: const EdgeInsets.all(10),
+                                      gridDelegate: _currentViewMode == ViewMode.gridShapeBased
+                                          ? SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 10,
+                                        crossAxisSpacing: 20,
+                                        mainAxisSpacing: 20,
+                                        childAspectRatio: 0.9,
+                                      )
+                                          : SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 12,
+                                        crossAxisSpacing: 15,
+                                        mainAxisSpacing: 15,
+                                        childAspectRatio: 1.0,
+                                      ),
+                                      itemBuilder: (context, index) {
+                                        if (_currentViewMode == ViewMode.gridShapeBased) {
+                                          return _buildShapeBasedGridItem(displayedTables[index], index);
+                                        } else {
+                                          return _buildCommonGridItem(displayedTables[index], index);
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
-                            itemBuilder: (context, index) {
-                              if (_currentViewMode ==
-                                  ViewMode.gridShapeBased) {
-                                return _buildShapeBasedGridItem(
-                                    displayedTables[index], index);
-                              } else {
-                                return _buildCommonGridItem(
-                                    displayedTables[index], index);
-                              }
-                            },
                           ),
                         ),
                       ),
@@ -909,7 +902,6 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
                 ],
               ),
             ),
-
           // Zoom Controls at Bottom Left
           ZoomControlsWidget(
             onZoomIn: _zoomIn,
@@ -998,9 +990,9 @@ class _ViewLayoutDropdown1State extends State<ViewLayoutDropdown1> {
       offset: Offset(0, 40),
       color: Colors.white, // Set dropdown background color to white
       itemBuilder: (BuildContext context) => <PopupMenuEntry<ViewMode>>[
-        _buildMenuItem(ViewMode.gridCommonImage, 'Small layout',Icons.grid_view),
-        _buildMenuItem(ViewMode.gridShapeBased, 'Medium layout', Icons.grid_on),
-        _buildMenuItem(ViewMode.normal, 'Design layout', Icons.center_focus_strong),
+        _buildMenuItem(ViewMode.gridCommonImage, 'Basic layout',Icons.grid_view),
+        _buildMenuItem(ViewMode.gridShapeBased, 'Standard layout', Icons.grid_on),
+        _buildMenuItem(ViewMode.normal, 'Advanced layout', Icons.center_focus_strong),
       ],
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 52, vertical: 6),

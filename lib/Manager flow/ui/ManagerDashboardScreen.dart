@@ -5,7 +5,9 @@ import '../widgets/NavigationHelper.dart';
 import '../widgets/bottom_nav_bar.dart';
 
 class ManagerDashboardScreen extends StatefulWidget {
-  const ManagerDashboardScreen({Key? key}) : super(key: key);
+  final String pin;
+
+  const ManagerDashboardScreen({Key? key, required this.pin}) : super(key: key);
 
   @override
   State<ManagerDashboardScreen> createState() => _ManagerDashboardScreenState();
@@ -15,18 +17,24 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
   int _selectedIndex = 0;
 
   void _onNavItemTapped(int index) {
-    NavigationHelper.handleNavigation(context, _selectedIndex, index);
+    NavigationHelper.handleNavigation(context, _selectedIndex, index, widget.pin);
     setState(() {
       _selectedIndex = index;
     });
   }
+
+
   void _navigateToTables() async {
     final dbHelper = DatabaseHelper();
-    final tables = await dbHelper.getAllTables();
+    final tables = await dbHelper.getTablesByManagerPin(widget.pin);
+
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => TablesScreen(loadedTables: tables),
+        builder: (context) => TablesScreen(
+          loadedTables: tables,
+          pin: widget.pin,
+        ),
       ),
     );
   }
@@ -44,11 +52,11 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
       body: Stack(
         children: [
           Center(
-              child: ElevatedButton(
-                onPressed: _navigateToTables,
-                child: const Text('Create New Order'),
-              ),
+            child: ElevatedButton(
+              onPressed: _navigateToTables,
+              child: const Text('Create New Order'),
             ),
+          ),
           BottomNavBar(
             selectedIndex: _selectedIndex,
             onItemTapped: _onNavItemTapped,
