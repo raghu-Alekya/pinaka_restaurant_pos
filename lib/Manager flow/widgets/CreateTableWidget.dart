@@ -12,24 +12,14 @@ import 'TableSetupHeader.dart';
 /// Supports adding/deleting areas, entering table names and seating capacities,
 /// and selecting table models with validation and duplicate checks.
 class CreateTableWidget extends StatefulWidget {
-  /// Callback triggered when the widget should be closed.
   final VoidCallback onClose;
-
-  /// Callback to send the created table data back to the parent.
   final Function(Map<String, dynamic>) getTableData;
-
-
-  /// Set of already used table names to prevent duplicates.
   final Set<String> usedTableNames;
-
-  /// Set of already used area names to prevent duplicates.
   final Set<String> usedAreaNames;
-
-  /// Callback triggered when an area is selected.
   final Function(String) onAreaSelected;
-
-  /// Callback triggered when an area is deleted.
   final Function(String) onAreaDeleted;
+
+  final String pin;
 
   const CreateTableWidget({
     Key? key,
@@ -39,11 +29,13 @@ class CreateTableWidget extends StatefulWidget {
     required this.usedAreaNames,
     required this.onAreaSelected,
     required this.onAreaDeleted,
+    required this.pin,
   }) : super(key: key);
 
   @override
   _CreateTableWidgetState createState() => _CreateTableWidgetState();
 }
+
 
 class _CreateTableWidgetState extends State<CreateTableWidget> {
   // Controls visibility of the area creation popup.
@@ -94,7 +86,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
   }
   final DatabaseHelper _dbHelper = DatabaseHelper();
   void _loadAreasFromDatabase() async {
-    final areas = await _dbHelper.getAllAreas();
+    final areas = await _dbHelper.getAreasByPin(widget.pin);
     setState(() {
       _createdAreaNames = areas;
       if (_createdAreaNames.isNotEmpty && _currentAreaName == null) {
@@ -138,7 +130,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
             .contains(areaName.toLowerCase());
 
     if (!isAlreadyUsed) {
-      await _dbHelper.insertArea(areaName);
+      await _dbHelper.insertArea(areaName, widget.pin);
 
       setState(() {
         _createdAreaNames.add(areaName);
@@ -156,7 +148,8 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
 
         _togglePopup();
       });
-    } else {
+    }
+    else {
       setState(() {
         _isDuplicateName = true;
         _errorMessage = 'This Area/Zone name already exists';
@@ -324,13 +317,13 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                           style: TextStyle(
                             fontFamily: 'Inter',
                             fontWeight: FontWeight.bold,
-                            fontSize: 18,
+                            fontSize: 16,
                           ),
                         ),
                       ),
                     ),
 
-                    SizedBox(height: 12),
+                    SizedBox(height: 8),
 
                     // Table name input with validation error display.
                     Padding(
@@ -342,13 +335,13 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                           Text(
                             "Table name/ No.",
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 13,
                               fontFamily: 'Inter',
                               fontWeight: FontWeight.w900,
                               color: Color(0xFF4C5F7D),
                             ),
                           ),
-                          SizedBox(height: 12),
+                          SizedBox(height: 8),
 
                           SizedBox(
                             width: 450,
@@ -405,7 +398,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                       ),
                     ),
 
-                    SizedBox(height: 12),
+                    SizedBox(height: 10),
 
                     // Seating capacity input with validation error display.
                     Padding(
@@ -417,7 +410,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                           Text(
                             "Seating capacity",
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 13,
                               fontFamily: 'Inter',
                               fontWeight: FontWeight.w900,
                               color: Color(0xFF4C5F7D),
@@ -476,7 +469,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                       ),
                     ),
 
-                    SizedBox(height: 14),
+                    SizedBox(height: 20),
 
                     // Table Model selection section.
                     Padding(
@@ -487,7 +480,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                         child: Text(
                           "Table Model",
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 13,
                             fontFamily: 'Inter',
                             fontWeight: FontWeight.w900,
                             color: Color(0xFF4C5F7D),
@@ -496,7 +489,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                       ),
                     ),
 
-                    SizedBox(height: 14),
+                    SizedBox(height: 15),
 
                     // Dotted border container displaying draggable table models.
                     Padding(

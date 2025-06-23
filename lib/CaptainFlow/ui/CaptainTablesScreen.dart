@@ -12,13 +12,20 @@ import '../Widgets/Captain_Top_bar.dart';
 
 class CaptionTablesScreen extends StatefulWidget {
   final List<Map<String, dynamic>> loadedTables;
+  final String pin;
+  final String associatedManagerPin;
 
-  const CaptionTablesScreen({Key? key, required this.loadedTables})
-    : super(key: key);
+  const CaptionTablesScreen({
+    Key? key,
+    required this.loadedTables,
+    required this.pin,
+    required this.associatedManagerPin,
+  }) : super(key: key);
 
   @override
-  State<CaptionTablesScreen> createState() => _CaptionTablesScreenState();
+  _CaptionTablesScreenState createState() => _CaptionTablesScreenState();
 }
+
 enum ViewMode { normal, gridShapeBased, gridCommonImage }
 
 ViewMode _currentViewMode = ViewMode.gridCommonImage;
@@ -37,11 +44,12 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
   int _selectedIndex = 1;
 
   void _onItemTapped(int index) {
-    CaptionNavigationHelper.handleNavigation(context, _selectedIndex, index);
+    CaptionNavigationHelper.handleNavigation(context, _selectedIndex, index,widget.pin,widget.associatedManagerPin,);
     setState(() {
       _selectedIndex = index;
     });
   }
+
 
   @override
   void dispose() {
@@ -58,23 +66,26 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
 
   Future<void> _loadData() async {
     final dbHelper = DatabaseHelper();
-    final areaList = await dbHelper.getAllAreas();
+    final areaList = await dbHelper.getAreasByPin(widget.associatedManagerPin);
+
     String initialArea = areaList.isNotEmpty ? areaList.first : '';
 
     setState(() {
-      allTables =
-          widget.loadedTables.map((table) {
-            return {...table, 'position': Offset(table['posX'], table['posY'])};
-          }).toList();
+      allTables = widget.loadedTables
+          .where((table) => table['pin'] == widget.associatedManagerPin)
+          .map((table) {
+        return {...table, 'position': Offset(table['posX'], table['posY'])};
+      }).toList();
 
       areas = areaList;
       selectedArea = initialArea;
-      displayedTables =
-          allTables
-              .where((table) => table['areaName'] == selectedArea)
-              .toList();
+      displayedTables = allTables
+          .where((table) => table['areaName'] == selectedArea)
+          .toList();
     });
   }
+
+
 
   void _selectArea(String area) {
     setState(() {
@@ -208,7 +219,6 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
       'areaName': displayedTables[index]['areaName'],
     });
   }
-
   Widget _buildPlacedTable(int index, Map<String, dynamic> tableData) {
     final capacity = tableData['capacity'];
     final name = tableData['tableName'];
@@ -229,8 +239,10 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
       guestCount,
     );
 
-    Widget rotatedTable = Transform.rotate(
-      angle: rotation * pi / 180,
+    int quarterTurns = (rotation ~/ 90) % 4;
+
+    Widget rotatedTable = RotatedBox(
+      quarterTurns: quarterTurns,
       child: baseTable,
     );
 
@@ -978,9 +990,9 @@ class _ViewLayoutDropdown1State extends State<ViewLayoutDropdown1> {
       offset: Offset(0, 40),
       color: Colors.white, // Set dropdown background color to white
       itemBuilder: (BuildContext context) => <PopupMenuEntry<ViewMode>>[
-        _buildMenuItem(ViewMode.gridCommonImage, 'Small layout',Icons.grid_view),
-        _buildMenuItem(ViewMode.gridShapeBased, 'Medium layout', Icons.grid_on),
-        _buildMenuItem(ViewMode.normal, 'Design layout', Icons.center_focus_strong),
+        _buildMenuItem(ViewMode.gridCommonImage, 'Basic layout',Icons.grid_view),
+        _buildMenuItem(ViewMode.gridShapeBased, 'Standard layout', Icons.grid_on),
+        _buildMenuItem(ViewMode.normal, 'Advanced layout', Icons.center_focus_strong),
       ],
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 52, vertical: 6),

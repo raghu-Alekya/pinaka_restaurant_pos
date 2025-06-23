@@ -27,9 +27,9 @@ class _ViewLayoutDropdownState extends State<ViewLayoutDropdown> {
       offset: Offset(0, 40),
       color: Colors.white, // Set dropdown background color to white
       itemBuilder: (BuildContext context) => <PopupMenuEntry<ViewMode>>[
-        _buildMenuItem(ViewMode.normal, 'Design layout', Icons.center_focus_strong),
-        _buildMenuItem(ViewMode.gridShapeBased, 'Medium layout', Icons.grid_on),
-        _buildMenuItem(ViewMode.gridCommonImage, 'Small layout',Icons.grid_view),
+        _buildMenuItem(ViewMode.normal, 'Advanced layout', Icons.center_focus_strong),
+        _buildMenuItem(ViewMode.gridShapeBased, 'Standard layout', Icons.grid_on),
+        _buildMenuItem(ViewMode.gridCommonImage, 'Basic layout',Icons.grid_view),
       ],
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 52, vertical: 6),

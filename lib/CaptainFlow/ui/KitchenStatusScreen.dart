@@ -3,16 +3,22 @@ import '../../helpers/CaptainNavigationHelper.dart';
 import '../Widgets/CaptainBottomNavBar.dart';
 
 class KitchenStatusScreen extends StatefulWidget {
+  final String pin;
+  final String associatedManagerPin;
+  const KitchenStatusScreen({Key? key, required this.pin, required this.associatedManagerPin}) : super(key: key);
+
   @override
   _KitchenStatusScreenState createState() => _KitchenStatusScreenState();
 }
+
+
 
 class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   final List<int> cardList = List.generate(12, (index) => index);
   int _selectedIndex = 2;
 
   void _onItemTapped(int index) {
-    CaptionNavigationHelper.handleNavigation(context, _selectedIndex, index);
+    CaptionNavigationHelper.handleNavigation(context, _selectedIndex, index,widget.pin,widget.associatedManagerPin);
     setState(() {
       _selectedIndex = index;
     });

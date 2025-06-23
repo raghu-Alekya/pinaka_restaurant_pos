@@ -30,8 +30,10 @@ import 'dart:math' as math;
 /// avoid collisions.
 class TablesScreen extends StatefulWidget {
   final List<Map<String, dynamic>> loadedTables;
+  final String pin;
 
-  const TablesScreen({Key? key, required this.loadedTables}) : super(key: key);
+  const TablesScreen({Key? key, required this.loadedTables, required this.pin}) : super(key: key);
+
   @override
   _TablesScreenState createState() => _TablesScreenState();
 }
@@ -46,7 +48,7 @@ class _TablesScreenState extends State<TablesScreen> {
   int _selectedIndex = 1;
 
   void _onNavItemTapped(int index) {
-    NavigationHelper.handleNavigation(context, _selectedIndex, index);
+    NavigationHelper.handleNavigation(context, _selectedIndex, index,widget.pin);
     setState(() {
       _selectedIndex = index;
     });
@@ -124,7 +126,7 @@ class _TablesScreenState extends State<TablesScreen> {
 
   Future<void> _loadTables() async {
     final dbHelper = DatabaseHelper();
-    final tables = await dbHelper.getAllTables();
+    final tables = await dbHelper.getTablesByManagerPin(widget.pin);
 
     setState(() {
       placedTables =
@@ -186,6 +188,7 @@ class _TablesScreenState extends State<TablesScreen> {
       'capacity': placedTables[index]['capacity'],
       'shape': placedTables[index]['shape'],
       'areaName': placedTables[index]['areaName'],
+      'pin': widget.pin,
     });
   }
 
@@ -520,6 +523,7 @@ class _TablesScreenState extends State<TablesScreen> {
       'posY': adjustedPos.dy,
       'guestCount': data['guestCount'] ?? 0,
       'rotation': 0.0,
+      'pin': widget.pin,
     };
 
     final dbHelper = DatabaseHelper();
@@ -683,7 +687,7 @@ class _TablesScreenState extends State<TablesScreen> {
       ),
     );
 
-    Widget actionButtons = (_showPopup || (_selectedTableIndex == index && _showActionMenu))
+    Widget actionButtons = (_showPopup || (_selectedTableIndex == index && _showActionMenu)) && guestCount == 0
         ? Positioned(
       top: 0,
       right: 0,
@@ -714,6 +718,7 @@ class _TablesScreenState extends State<TablesScreen> {
       ),
     )
         : SizedBox.shrink();
+
 
     return Positioned(
       left: position.dx,
@@ -1653,6 +1658,7 @@ class _TablesScreenState extends State<TablesScreen> {
                     'posX': updatedData['position'].dx,
                     'posY': updatedData['position'].dy,
                     'guestCount': updatedData['guestCount'] ?? 0,
+                    'pin': widget.pin,
                   });
 
                   setState(() {
@@ -1690,9 +1696,9 @@ class _TablesScreenState extends State<TablesScreen> {
               getTableData: (data) {},
               usedTableNames: _usedTableNames,
               usedAreaNames: _usedAreaNames,
-              onAreaSelected:
-                  (areaName) => setState(() => selectedArea = areaName),
+              onAreaSelected: (areaName) => setState(() => selectedArea = areaName),
               onAreaDeleted: _handleAreaDeletion,
+              pin: widget.pin,
             ),
           ),
         ],

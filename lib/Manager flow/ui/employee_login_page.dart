@@ -98,17 +98,27 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
   /// Validates the entered PIN.
   /// - If valid, navigates to the TablesScreen.
   /// - If invalid, shows a SnackBar with an error message.
-
   Future<void> _login() async {
-    if (pin == "999999") {
+    if (pin == "999999" || pin == "111111") {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => ManagerDashboardScreen()),
+        MaterialPageRoute(
+          builder: (context) => ManagerDashboardScreen(pin: pin),
+        ),
       );
     } else if (pin == "123456") {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => DashboardScreen()),
+        MaterialPageRoute(
+          builder: (context) => DashboardScreen(pin: pin, associatedManagerPin: '999999'),
+        ),
+      );
+    } else if (pin == "222222") {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DashboardScreen(pin: pin, associatedManagerPin: '111111'),
+        ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -116,6 +126,7 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
       );
     }
   }
+
 
 
   // Future<void> _login() async {
