@@ -3,8 +3,11 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:dotted_border/dotted_border.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../CaptainFlow/ui/CaptainTablesScreen.dart';
+import '../../blocs/Bloc Logic/zone_bloc.dart';
 import '../../helpers/DatabaseHelper.dart';
+import '../../repositories/zone_repository.dart';
 import '../widgets/CreateTableWidget.dart';
 import '../widgets/DeleteConfirmationDialog.dart';
 import '../widgets/EditTablePopup.dart';
@@ -31,8 +34,9 @@ import 'dart:math' as math;
 class TablesScreen extends StatefulWidget {
   final List<Map<String, dynamic>> loadedTables;
   final String pin;
+  final String token;
 
-  const TablesScreen({Key? key, required this.loadedTables, required this.pin}) : super(key: key);
+  const TablesScreen({Key? key, required this.loadedTables, required this.pin,required this.token}) : super(key: key);
 
   @override
   _TablesScreenState createState() => _TablesScreenState();
@@ -48,7 +52,7 @@ class _TablesScreenState extends State<TablesScreen> {
   int _selectedIndex = 1;
 
   void _onNavItemTapped(int index) {
-    NavigationHelper.handleNavigation(context, _selectedIndex, index,widget.pin);
+    NavigationHelper.handleNavigation(context, _selectedIndex, index,widget.pin,widget.token);
     setState(() {
       _selectedIndex = index;
     });
@@ -163,6 +167,21 @@ class _TablesScreenState extends State<TablesScreen> {
   void _togglePopup() {
     setState(() {
       _showPopup = !_showPopup;
+    });
+  }
+  void _handleAreaNameUpdated(String oldName, String newName) {
+    setState(() {
+      // Update area names inside tables
+      for (var table in placedTables) {
+        if (table['areaName'] == oldName) {
+          table['areaName'] = newName;
+        }
+      }
+
+      // If the selected area is the one being updated, update it
+      if (selectedArea == oldName) {
+        selectedArea = newName;
+      }
     });
   }
 
@@ -1341,7 +1360,9 @@ class _TablesScreenState extends State<TablesScreen> {
         child: TopBar(),
       ),
       body: Stack(
+
         children: [
+
           if (_currentViewMode == ViewMode.normal)
             AnimatedPositioned(
               duration: Duration(milliseconds: 300),
@@ -1691,14 +1712,19 @@ class _TablesScreenState extends State<TablesScreen> {
             right: _showPopup ? 0 : -MediaQuery.of(context).size.width,
             bottom: 0,
             width: popupWidth,
-            child: CreateTableWidget(
-              onClose: _togglePopup,
-              getTableData: (data) {},
-              usedTableNames: _usedTableNames,
-              usedAreaNames: _usedAreaNames,
-              onAreaSelected: (areaName) => setState(() => selectedArea = areaName),
-              onAreaDeleted: _handleAreaDeletion,
-              pin: widget.pin,
+            child: BlocProvider(
+              create: (context) => ZoneBloc(ZoneRepository()),
+              child: CreateTableWidget(
+                onClose: _togglePopup,
+                getTableData: (data) {},
+                usedTableNames: _usedTableNames,
+                usedAreaNames: _usedAreaNames,
+                onAreaSelected: (areaName) => setState(() => selectedArea = areaName),
+                onAreaDeleted: _handleAreaDeletion,
+                onAreaNameUpdated: _handleAreaNameUpdated,
+                pin: widget.pin,
+                token: widget.token,
+              ),
             ),
           ),
         ],
