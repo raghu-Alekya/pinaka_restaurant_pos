@@ -6,8 +6,9 @@ import '../widgets/bottom_nav_bar.dart';
 
 class ManagerDashboardScreen extends StatefulWidget {
   final String pin;
+  final String token;
 
-  const ManagerDashboardScreen({Key? key, required this.pin}) : super(key: key);
+  const ManagerDashboardScreen({Key? key, required this.pin,required this.token}) : super(key: key);
 
   @override
   State<ManagerDashboardScreen> createState() => _ManagerDashboardScreenState();
@@ -17,7 +18,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
   int _selectedIndex = 0;
 
   void _onNavItemTapped(int index) {
-    NavigationHelper.handleNavigation(context, _selectedIndex, index, widget.pin);
+    NavigationHelper.handleNavigation(context, _selectedIndex, index, widget.pin,widget.token);
     setState(() {
       _selectedIndex = index;
     });
@@ -34,6 +35,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
         builder: (context) => TablesScreen(
           loadedTables: tables,
           pin: widget.pin,
+          token:widget.token,
         ),
       ),
     );

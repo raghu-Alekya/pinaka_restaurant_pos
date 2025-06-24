@@ -1,53 +1,22 @@
+// ✅ TableSetupHeader.dart
 import 'package:flutter/material.dart';
 
-/// A header widget for the table setup screen that manages area selection,
-/// displays the back button with exit confirmation, and allows adding or deleting areas.
-///
-/// This widget displays:
-/// - A back button that triggers a confirmation dialog before exiting the setup.
-/// - The current title "Table Setup".
-/// - A horizontal scrollable list of created area names as selectable chips.
-/// - A button to add a new area.
-///
-/// The widget also manages clearing the input controllers when switching areas,
-/// and shows a delete button for the currently selected area.
-///
-/// Callbacks and state controls are passed from the parent widget for full interaction.
 class TableSetupHeader extends StatelessWidget {
-  /// Controller for the area name input field.
   final TextEditingController areaNameController;
-
-  /// Controller for the table name input field.
   final TextEditingController tableNameController;
-
-  /// Controller for the seating capacity input field.
   final TextEditingController seatingCapacityController;
-
-  /// List of all created area/zone names to display as selectable options.
   final List<String> createdAreaNames;
-
-  /// Currently selected area/zone name. Used to highlight the selected chip.
   final String? currentAreaName;
-
-  /// Callback triggered when the header's back button exit is confirmed.
   final VoidCallback onClose;
-
-  /// Callback to notify the parent when a different area is selected from the chips.
   final Function(String) onAreaSelected;
-
-  /// Callback to toggle the popup for adding a new area.
   final VoidCallback togglePopup;
-
-  /// Callback to reset the data in the parent widget when exiting setup.
   final Function(VoidCallback) onResetData;
-
-  /// Callback triggered when user confirms deletion of the currently selected area.
   final VoidCallback onDeleteAreaConfirmed;
-
-  /// Flag to indicate whether the delete confirmation dialog is visible.
   final bool isDeleteConfirmationVisible;
+  final Function(String, String) onUpdateAreaName;
+  final Function(String) onShowAreaOptions;
+  final Function(String) onShowEditPopup;
 
-  /// Creates a [TableSetupHeader] widget with the required controllers, state, and callbacks.
   const TableSetupHeader({
     super.key,
     required this.areaNameController,
@@ -61,6 +30,9 @@ class TableSetupHeader extends StatelessWidget {
     required this.onResetData,
     required this.onDeleteAreaConfirmed,
     required this.isDeleteConfirmationVisible,
+    required this.onUpdateAreaName,
+    required this.onShowAreaOptions,
+    required this.onShowEditPopup,
   });
 
   @override
@@ -70,7 +42,6 @@ class TableSetupHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Row with Back Button and Title
           Row(
             children: [
               Container(
@@ -93,7 +64,6 @@ class TableSetupHeader extends StatelessWidget {
                     padding: EdgeInsets.zero,
                     constraints: BoxConstraints(),
                     onPressed: () {
-                      // Show confirmation dialog on back button press
                       showDialog(
                         context: context,
                         barrierDismissible: false,
@@ -156,10 +126,7 @@ class TableSetupHeader extends StatelessWidget {
                                           ),
                                           padding: EdgeInsets.zero,
                                         ),
-                                        child: Text(
-                                          'Stay Here',
-                                          style: TextStyle(fontSize: 15),
-                                        ),
+                                        child: Text('Stay Here', style: TextStyle(fontSize: 15)),
                                       ),
                                     ),
                                     SizedBox(width: 12),
@@ -168,7 +135,6 @@ class TableSetupHeader extends StatelessWidget {
                                       height: 45,
                                       child: ElevatedButton(
                                         onPressed: () {
-                                          // Reset data and close popup on confirmation
                                           onResetData(() {});
                                           Navigator.of(context).pop();
                                           onClose();
@@ -196,7 +162,6 @@ class TableSetupHeader extends StatelessWidget {
                 ),
               ),
               SizedBox(width: 10),
-              // Title Text
               Text(
                 "Table Setup",
                 style: TextStyle(
@@ -208,8 +173,6 @@ class TableSetupHeader extends StatelessWidget {
             ],
           ),
           SizedBox(height: 14),
-
-          // Area/Zone Selector Label
           Padding(
             padding: const EdgeInsets.only(left: 7.0),
             child: Text(
@@ -222,8 +185,6 @@ class TableSetupHeader extends StatelessWidget {
             ),
           ),
           SizedBox(height: 4),
-
-          // Card containing horizontally scrollable list of area names and Add Area button
           Card(
             color: Colors.white,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -241,7 +202,6 @@ class TableSetupHeader extends StatelessWidget {
                             padding: const EdgeInsets.only(right: 10.0),
                             child: GestureDetector(
                               onTap: () {
-                                // Select this area and clear table name and seating capacity inputs
                                 onAreaSelected(name);
                                 tableNameController.clear();
                                 seatingCapacityController.clear();
@@ -268,7 +228,7 @@ class TableSetupHeader extends StatelessWidget {
                                     SizedBox(width: 8),
                                     if (name == currentAreaName)
                                       GestureDetector(
-                                        onTap: onDeleteAreaConfirmed,
+                                        onTap: () => onShowAreaOptions(name),
                                         child: Container(
                                           padding: EdgeInsets.all(2),
                                           decoration: BoxDecoration(
@@ -287,10 +247,7 @@ class TableSetupHeader extends StatelessWidget {
                       ),
                     ),
                   ),
-
                   SizedBox(width: 8),
-
-                  // Button to open popup to add a new area
                   ElevatedButton(
                     onPressed: togglePopup,
                     style: ElevatedButton.styleFrom(

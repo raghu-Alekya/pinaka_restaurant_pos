@@ -1,3 +1,4 @@
+// lib/database/database_helper.dart
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
@@ -18,7 +19,7 @@ class DatabaseHelper {
     final path = join(await getDatabasesPath(), 'tables.db');
     return await openDatabase(
       path,
-      version: 4,
+      version: 6, // ⬅️ Updated version
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE tables(
@@ -38,45 +39,90 @@ class DatabaseHelper {
         await db.execute('''
           CREATE TABLE areas(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            zoneId INTEGER,
             areaName TEXT,
             pin TEXT,
             UNIQUE(areaName, pin)
           )
         ''');
+
+        await db.execute('''
+          CREATE TABLE user_login (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            pin TEXT NOT NULL,
+            token TEXT NOT NULL
+          )
+        ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 3) {
+          await db.execute('ALTER TABLE tables ADD COLUMN pin TEXT');
+        }
         if (oldVersion < 4) {
           await db.execute('DROP TABLE IF EXISTS areas');
           await db.execute('''
             CREATE TABLE areas(
               id INTEGER PRIMARY KEY AUTOINCREMENT,
+              zoneId INTEGER,
               areaName TEXT,
               pin TEXT,
               UNIQUE(areaName, pin)
             )
           ''');
         }
-
-        if (oldVersion < 3) {
-          await db.execute('ALTER TABLE tables ADD COLUMN pin TEXT');
+        if (oldVersion < 5) {
+          await db.execute('''
+            CREATE TABLE user_login (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              pin TEXT NOT NULL,
+              token TEXT NOT NULL
+            )
+          ''');
+        }
+        if (oldVersion < 6) {
+          await db.execute('ALTER TABLE areas ADD COLUMN zoneId INTEGER');
         }
       },
     );
   }
+
+  // ================= Login Table Functions =================
+
+  Future<void> insertLogin(String pin, String token) async {
+    final db = await database;
+    await db.insert(
+      'user_login',
+      {'pin': pin, 'token': token},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<Map<String, dynamic>?> getLogin() async {
+    final db = await database;
+    final result = await db.query('user_login', limit: 1);
+    return result.isNotEmpty ? result.first : null;
+  }
+
+  Future<void> clearLogin() async {
+    final db = await database;
+    await db.delete('user_login');
+  }
+
+  // ================= Area Table Functions =================
 
   Future<void> insertArea(String areaName, String pin) async {
     final db = await database;
     await db.insert('areas', {'areaName': areaName, 'pin': pin});
   }
 
-  Future<void> deleteTablesByArea(String areaName) async {
+  Future<void> insertAreaWithZoneId(String areaName, String pin, int zoneId) async {
     final db = await database;
-    await db.delete('tables', where: 'areaName = ?', whereArgs: [areaName]);
+    await db.insert('areas', {'areaName': areaName, 'pin': pin, 'zoneId': zoneId});
   }
 
-  Future<void> deleteTableByNameAndArea(String tableName, String areaName) async {
+  Future<void> deleteArea(String areaName) async {
     final db = await database;
-    await db.delete('tables', where: 'tableName = ? AND areaName = ?', whereArgs: [tableName, areaName]);
+    await db.delete('areas', where: 'areaName = ?', whereArgs: [areaName]);
   }
 
   Future<List<String>> getAllAreas() async {
@@ -85,10 +131,50 @@ class DatabaseHelper {
     return maps.map((map) => map['areaName'] as String).toList();
   }
 
-  Future<void> deleteArea(String areaName) async {
+  Future<List<String>> getAreasByPin(String pin) async {
     final db = await database;
-    await db.delete('areas', where: 'areaName = ?', whereArgs: [areaName]);
+    final List<Map<String, dynamic>> maps = await db.query(
+      'areas',
+      where: 'pin = ?',
+      whereArgs: [pin],
+    );
+    return maps.map((map) => map['areaName'] as String).toList();
   }
+
+  Future<int?> getZoneIdByAreaName(String areaName) async {
+    final db = await database;
+    final result = await db.query(
+      'areas',
+      columns: ['zoneId'],
+      where: 'areaName = ?',
+      whereArgs: [areaName],
+      limit: 1,
+    );
+    if (result.isNotEmpty) {
+      return result.first['zoneId'] as int?;
+    }
+    return null;
+  }
+
+  Future<void> updateAreaName(String oldName, String newName) async {
+    final db = await database;
+
+    await db.update(
+      'areas',
+      {'areaName': newName},
+      where: 'areaName = ?',
+      whereArgs: [oldName],
+    );
+
+    await db.update(
+      'tables',
+      {'areaName': newName},
+      where: 'areaName = ?',
+      whereArgs: [oldName],
+    );
+  }
+
+  // ================= Table Functions =================
 
   Future<int> insertTable(Map<String, dynamic> table) async {
     final db = await database;
@@ -105,6 +191,16 @@ class DatabaseHelper {
     await db.delete('tables', where: 'id = ?', whereArgs: [id]);
   }
 
+  Future<void> deleteTablesByArea(String areaName) async {
+    final db = await database;
+    await db.delete('tables', where: 'areaName = ?', whereArgs: [areaName]);
+  }
+
+  Future<void> deleteTableByNameAndArea(String tableName, String areaName) async {
+    final db = await database;
+    await db.delete('tables', where: 'tableName = ? AND areaName = ?', whereArgs: [tableName, areaName]);
+  }
+
   Future<List<Map<String, dynamic>>> getAllTables() async {
     final db = await database;
     return await db.query('tables');
@@ -113,15 +209,5 @@ class DatabaseHelper {
   Future<List<Map<String, dynamic>>> getTablesByManagerPin(String managerPin) async {
     final db = await database;
     return await db.query('tables', where: 'pin = ?', whereArgs: [managerPin]);
-  }
-
-  Future<List<String>> getAreasByPin(String pin) async {
-    final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'areas',
-      where: 'pin = ?',
-      whereArgs: [pin],
-    );
-    return maps.map((map) => map['areaName'] as String).toList();
   }
 }

@@ -1,20 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:pinaka_restaurant_pos/Manager%20flow/ui/tables_screen.dart';
-import '../../CaptainFlow/ui/CaptainDashboardScreen.dart';
-import '../../helpers/DatabaseHelper.dart';
-import '../widgets/number_pad.dart';
-import '../widgets/pin_input.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pinaka_restaurant_pos/Manager%20flow/widgets/number_pad.dart';
+import 'package:pinaka_restaurant_pos/Manager%20flow/widgets/pin_input.dart';
+
+import '../../blocs/Bloc Logic/auth_bloc.dart';
 import 'ManagerDashboardScreen.dart';
 
-
-/// EmployeeLoginPage is a login screen for employees to authenticate using a 6-digit PIN.
-/// It features:
-/// - An auto-scrolling image carousel with captions describing the POS system.
-/// - A numeric keypad for entering the PIN.
-/// - Visual PIN feedback using the PinInput widget.
-/// - Validation of the PIN and navigation to the TablesScreen upon success.
-/// - A snackbar message on invalid PIN input.
 class EmployeeLoginPage extends StatefulWidget {
   const EmployeeLoginPage({super.key});
 
@@ -22,13 +14,10 @@ class EmployeeLoginPage extends StatefulWidget {
   _EmployeeLoginPageState createState() => _EmployeeLoginPageState();
 }
 
-/// State class for EmployeeLoginPage that manages PIN entry, image carousel logic,
-/// and login validation.
 class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
   String pin = "";
   int _currentIndex = 0;
 
-  /// Image assets used for the left-side carousel.
   final List<String> _images = [
     'assets/img_1.png',
     'assets/loginname.png',
@@ -36,7 +25,6 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
     'assets/img_1.png',
   ];
 
-  /// Corresponding captions for each image in the carousel.
   final List<String> _captions = [
     '"Designed for speed and efficiency — PINAKA POS helps you complete sales in seconds with an intuitive and user-friendly interface, reducing training time and increasing productivity."',
     '"Track sales, manage inventory, and handle staff permissions — all from one sleek dashboard that’s built for real-time data access and seamless integration with your business tools."',
@@ -52,21 +40,22 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
     super.initState();
     _pageController = PageController();
 
-    // Start timer to auto-scroll the carousel every 2 seconds
     _timer = Timer.periodic(const Duration(seconds: 2), (Timer timer) {
-      _currentIndex++;
+      if (!mounted) return;
 
-      _pageController.animateToPage(
-        _currentIndex,
-        duration: const Duration(milliseconds: 700),
-        curve: Curves.easeInOut,
-      );
-
-      // Reset to first page after the last
-      if (_currentIndex == _images.length - 1) {
+      if (_currentIndex < _images.length - 1) {
+        _currentIndex++;
+        _pageController.animateToPage(
+          _currentIndex,
+          duration: const Duration(milliseconds: 700),
+          curve: Curves.easeInOut,
+        );
+      } else {
         Future.delayed(const Duration(milliseconds: 710), () {
-          _pageController.jumpToPage(0);
-          _currentIndex = 0;
+          if (mounted) {
+            _pageController.jumpToPage(0);
+            _currentIndex = 0;
+          }
         });
       }
     });
@@ -74,15 +63,11 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
 
   @override
   void dispose() {
-    _pageController.dispose();
     _timer.cancel();
+    _pageController.dispose();
     super.dispose();
   }
 
-  /// Handles input from the number pad.
-  /// - "C" clears the PIN.
-  /// - "⌫" deletes the last character.
-  /// - Numeric values are appended up to 6 digits.
   void _onKeyPressed(String value) {
     setState(() {
       if (value == "C") {
@@ -95,199 +80,198 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
     });
   }
 
-  /// Validates the entered PIN.
-  /// - If valid, navigates to the TablesScreen.
-  /// - If invalid, shows a SnackBar with an error message.
-  Future<void> _login() async {
-    if (pin == "999999" || pin == "111111") {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ManagerDashboardScreen(pin: pin),
-        ),
-      );
-    } else if (pin == "123456") {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => DashboardScreen(pin: pin, associatedManagerPin: '999999'),
-        ),
-      );
-    } else if (pin == "222222") {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => DashboardScreen(pin: pin, associatedManagerPin: '111111'),
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Invalid PIN")),
-      );
-    }
-  }
-
-
-
-  // Future<void> _login() async {
-  //   if (pin == "999999") {
-  //     showDialog(
-  //       context: context,
-  //       barrierDismissible: false,
-  //       builder: (BuildContext context) {
-  //         return GuestDetailsDialog();
-  //       },
-  //     );
-  //   } else {
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       const SnackBar(content: Text("Invalid PIN")),
-  //     );
-  //   }
-  // }
-
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SizedBox(
-          width: screenWidth,
-          height: screenHeight,
-          child: Row(
-            children: [
-              /// Left side: Image carousel with animated captions
-              Expanded(
-                child: PageView.builder(
-                  controller: _pageController,
-                  itemCount: _images.length,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemBuilder: (context, index) {
-                    return Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Image.asset(_images[index], fit: BoxFit.cover),
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 700),
-                          transitionBuilder: (
-                            Widget child,
-                            Animation<double> animation,
-                          ) {
-                            final offsetAnimation = Tween<Offset>(
-                              begin: const Offset(-1.0, 0.0),
-                              end: Offset.zero,
-                            ).animate(animation);
-                            return SlideTransition(
-                              position: offsetAnimation,
-                              child: child,
-                            );
-                          },
-                          child: Container(
-                            key: ValueKey<int>(index),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 150,
-                            ),
-                            alignment: Alignment.bottomCenter,
-                            margin: const EdgeInsets.only(bottom: 40),
-                            child: Text(
-                              _captions[index],
-                              style: const TextStyle(
-                                fontFamily: 'Inter',
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w400,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
+    return BlocProvider(
+      create: (_) => AuthBloc(RepositoryProvider.of(context)),
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: BlocConsumer<AuthBloc, AuthState>(
+            listener: (context, state) {
+              if (state is AuthFailure) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(state.message)),
+                );
+              }
+              if (state is AuthSuccess) {
+                _timer.cancel();
 
-              /// Right side: PIN input and login form
-              Expanded(
-                child: Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Image.asset(
-                          'assets/pinaka.png',
-                          height: screenHeight * 0.1,
-                        ),
-                        const SizedBox(height: 18),
-                        const Text(
-                          'Employee Login',
-                          style: TextStyle(
-                            color: Colors.red,
-                            fontSize: 23,
-                            fontFamily: 'Inter',
-                            fontWeight: FontWeight.w600,
-                            height: 0.9,
-                          ),
-                        ),
-                        const SizedBox(height: 22),
-                        const Text(
-                          'Please Input your PIN to Validate your self',
-                          style: TextStyle(
-                            color: Color(0xFF4C5F7D),
-                            fontSize: 18,
-                            fontFamily: 'Inter',
-                            fontWeight: FontWeight.w500,
-                            height: 0.92,
-                          ),
-                        ),
-                        const SizedBox(height: 22),
-                        SizedBox(
-                          width: screenWidth * 0.3,
-                          child: Column(
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ManagerDashboardScreen(pin: state.pin, token: state.token),
+                  ),
+                );
+              }
+            },
+            builder: (context, state) {
+              return SizedBox(
+                width: screenWidth,
+                height: screenHeight,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: PageView.builder(
+                        controller: _pageController,
+                        itemCount: _images.length,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemBuilder: (context, index) {
+                          return Stack(
+                            fit: StackFit.expand,
                             children: [
-                              PinInput(pin: pin),
-                              const SizedBox(height: 20),
-                              NumberPad(onKeyPressed: _onKeyPressed),
-                              const SizedBox(height: 25),
-                              ElevatedButton(
-                                onPressed: _login,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 13,
+                              Image.asset(_images[index], fit: BoxFit.cover),
+                              AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 700),
+                                transitionBuilder: (Widget child, Animation<double> animation) {
+                                  final offsetAnimation = Tween<Offset>(
+                                    begin: const Offset(-1.0, 0.0),
+                                    end: Offset.zero,
+                                  ).animate(animation);
+                                  return SlideTransition(
+                                    position: offsetAnimation,
+                                    child: child,
+                                  );
+                                },
+                                child: Container(
+                                  key: ValueKey<int>(index),
+                                  padding: const EdgeInsets.symmetric(horizontal: 150),
+                                  alignment: Alignment.bottomCenter,
+                                  margin: const EdgeInsets.only(bottom: 40),
+                                  child: Text(
+                                    _captions[index],
+                                    style: const TextStyle(
+                                      fontFamily: 'Inter',
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w400,
+                                    ),
+                                    textAlign: TextAlign.center,
                                   ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  minimumSize: Size(screenWidth * 0.29, 25),
                                 ),
-                                child: const Text(
-                                  "Login",
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                    Expanded(
+                      child: Center(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Image.asset(
+                                'assets/pinaka.png',
+                                height: screenHeight * 0.1,
+                              ),
+                              const SizedBox(height: 18),
+                              const Text(
+                                'Employee Login',
+                                style: TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 23,
+                                  fontFamily: 'Inter',
+                                  fontWeight: FontWeight.w600,
+                                  height: 0.9,
+                                ),
+                              ),
+                              const SizedBox(height: 22),
+                              const Text(
+                                'Please Input your PIN to Validate yourself',
+                                style: TextStyle(
+                                  color: Color(0xFF4C5F7D),
+                                  fontSize: 18,
+                                  fontFamily: 'Inter',
+                                  fontWeight: FontWeight.w500,
+                                  height: 0.92,
+                                ),
+                              ),
+                              const SizedBox(height: 22),
+                              SizedBox(
+                                width: screenWidth * 0.3,
+                                child: Column(
+                                  children: [
+                                    PinInput(pin: pin),
+                                    const SizedBox(height: 20),
+                                    NumberPad(onKeyPressed: _onKeyPressed),
+                                    const SizedBox(height: 25),
+                                    ElevatedButton(
+                                      onPressed: (state is AuthLoading)
+                                          ? null
+                                          : () {
+                                        if (pin.length == 6) {
+                                          BlocProvider.of<AuthBloc>(context).add(LoginEvent(pin.trim()));
+                                        } else {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('PIN must be exactly 6 digits')),
+                                          );
+                                        }
+                                      },
+                                      style: ButtonStyle(
+                                        backgroundColor: WidgetStateProperty.resolveWith<Color>(
+                                              (Set<WidgetState> states) {
+                                            if (states.contains(WidgetState.disabled)) {
+                                              return Colors.red;
+                                            }
+                                            return Colors.red;
+                                          },
+                                        ),
+                                        foregroundColor: WidgetStateProperty.all<Color>(Colors.white),
+                                        padding: WidgetStateProperty.all<EdgeInsets>(
+                                          const EdgeInsets.symmetric(vertical: 13),
+                                        ),
+                                        shape: WidgetStateProperty.all<RoundedRectangleBorder>(
+                                          RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                        ),
+                                        minimumSize: WidgetStateProperty.all<Size>(Size(screenWidth * 0.29, 25)),
+                                      ),
+                                      child: (state is AuthLoading)
+                                          ? const SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                          backgroundColor: Colors.transparent,
+                                        ),
+                                      )
+                                          : const Text(
+                                        "Login",
+                                        style: TextStyle(
+                                          fontSize: 20,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+
+                                  ],
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ),
-            ],
+              );
+            },
           ),
         ),
       ),
     );
   }
 }
+
+
 
 class GuestDetailsDialog extends StatefulWidget {
   @override
