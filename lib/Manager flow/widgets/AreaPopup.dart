@@ -27,6 +27,8 @@ class AreaPopup extends StatefulWidget {
   /// Callback function to create a new area
   final VoidCallback createArea;
 
+  final bool isLoading;
+
   const AreaPopup({
     Key? key,
     required this.areaNameController,
@@ -34,6 +36,7 @@ class AreaPopup extends StatefulWidget {
     required this.errorMessage,
     required this.togglePopup,
     required this.createArea,
+    required this.isLoading,
   }) : super(key: key);
 
   @override
@@ -178,7 +181,7 @@ class _AreaPopupState extends State<AreaPopup> {
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         ElevatedButton(
-                          onPressed: () {
+                          onPressed: widget.isLoading ? null : () {
                             setState(() {
                               widget.areaNameController.clear();
                             });
@@ -186,38 +189,43 @@ class _AreaPopupState extends State<AreaPopup> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.grey[100],
                             foregroundColor: Color(0xFF4C5F7D),
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 3,
-                            ),
+                            padding: EdgeInsets.symmetric(horizontal: 14, vertical: 3),
                             minimumSize: Size(0, 30),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
-                          child: Text(
-                            "Clear",
-                            style: TextStyle(fontSize: 12),
-                          ),
+                          child: Text("Clear", style: TextStyle(fontSize: 12)),
                         ),
                         SizedBox(width: 7),
                         ElevatedButton(
-                          onPressed: widget.createArea,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Color(0xFFDA4A38),
-                            foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 3,
+                          onPressed: widget.isLoading ? null : widget.createArea,
+                          style: ButtonStyle(
+                            backgroundColor: WidgetStateProperty.resolveWith<Color>(
+                                  (Set<WidgetState> states) {
+                                return Colors.red;
+                              },
                             ),
-                            minimumSize: Size(0, 30),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                            foregroundColor: WidgetStateProperty.all<Color>(Colors.white),
+                            padding: WidgetStateProperty.all<EdgeInsets>(
+                              const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
+                            ),
+                            minimumSize: WidgetStateProperty.all<Size>(const Size(0, 30)),
+                            shape: WidgetStateProperty.all<RoundedRectangleBorder>(
+                              RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                             ),
                           ),
-                          child: Text(
+                          child: widget.isLoading
+                              ? const SizedBox(
+                            width: 15,
+                            height: 15,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                              backgroundColor: Colors.transparent,
+                            ),
+                          )
+                              : const Text(
                             "Create",
-                            style: TextStyle(fontSize: 12),
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                           ),
                         ),
                       ],

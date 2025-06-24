@@ -7,13 +7,13 @@ import '../ui/tables_screen.dart';
 
 
 class NavigationHelper {
-  static void handleNavigation(BuildContext context, int currentIndex, int tappedIndex, String pin) async {
+  static void handleNavigation(BuildContext context, int currentIndex, int tappedIndex, String pin,String token) async {
     if (tappedIndex == currentIndex) return;
 
     if (tappedIndex == 0) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => ManagerDashboardScreen(pin: pin)),
+        MaterialPageRoute(builder: (context) => ManagerDashboardScreen(pin: pin,token:token)),
       );
     } else if (tappedIndex == 1) {
       final dbHelper = DatabaseHelper();
@@ -21,7 +21,7 @@ class NavigationHelper {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => TablesScreen(loadedTables: tables, pin: pin,),
+          builder: (context) => TablesScreen(loadedTables: tables, pin: pin,token:token),
         ),
       );
     } else {

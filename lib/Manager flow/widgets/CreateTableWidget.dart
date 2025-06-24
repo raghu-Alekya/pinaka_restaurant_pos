@@ -1,12 +1,19 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:dotted_border/dotted_border.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../blocs/Bloc Logic/zone_bloc.dart';
 import '../../helpers/DatabaseHelper.dart';
+import '../../repositories/zone_repository.dart';
 import 'AreaPopup.dart';
 import 'DeleteConfirmationPopup.dart';
 import 'DraggableTable.dart';
 import 'EmptyAreaPlaceholder.dart';
 import 'TableSetupHeader.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+
 
 /// A widget that allows creating areas (zones) and tables within those areas.
 /// Supports adding/deleting areas, entering table names and seating capacities,
@@ -18,8 +25,10 @@ class CreateTableWidget extends StatefulWidget {
   final Set<String> usedAreaNames;
   final Function(String) onAreaSelected;
   final Function(String) onAreaDeleted;
-
+  final Function(String oldName, String newName) onAreaNameUpdated; // ✅ Add this
   final String pin;
+  final String token;
+
 
   const CreateTableWidget({
     Key? key,
@@ -29,8 +38,11 @@ class CreateTableWidget extends StatefulWidget {
     required this.usedAreaNames,
     required this.onAreaSelected,
     required this.onAreaDeleted,
+    required this.onAreaNameUpdated, // ✅ Add this
     required this.pin,
+    required this.token,
   }) : super(key: key);
+
 
   @override
   _CreateTableWidgetState createState() => _CreateTableWidgetState();
@@ -49,6 +61,11 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
 
   // Error message for area name input.
   String _errorMessage = '';
+  String? _selectedAreaForOptions;
+  String? _selectedAreaForEdit;
+  bool _showOptionsPopup = false;
+  bool _showEditPopup = false;
+
 
   // Text controllers for area name, table name, and seating capacity inputs.
   final TextEditingController _areaNameController = TextEditingController();
@@ -84,7 +101,9 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
     return widget.usedTableNames.contains(name.trim().toLowerCase()) ||
         _usedTableNames.contains(name.trim().toLowerCase());
   }
+
   final DatabaseHelper _dbHelper = DatabaseHelper();
+
   void _loadAreasFromDatabase() async {
     final areas = await _dbHelper.getAreasByPin(widget.pin);
     setState(() {
@@ -95,7 +114,6 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
       }
     });
   }
-
 
   /// Toggles the area creation popup visibility.
   void _togglePopup() {
@@ -110,51 +128,21 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
     });
   }
 
-  /// Creates a new area if the name is valid and not duplicate.
-  void _createArea() async {
-    final areaName = _areaNameController.text.trim();
+  void _showAreaOptions(String name) {
+    setState(() {
+      _selectedAreaForOptions = name;
+      _showOptionsPopup = true;
+    });
+  }
 
-    if (areaName.isEmpty) {
-      setState(() {
-        _isDuplicateName = true;
-        _errorMessage = 'Area name cannot be empty';
-      });
-      return;
-    }
+  final TextEditingController _editController = TextEditingController();
 
-    final isAlreadyUsed = widget.usedAreaNames
-        .map((e) => e.toLowerCase())
-        .contains(areaName.toLowerCase()) ||
-        _createdAreaNames
-            .map((e) => e.toLowerCase())
-            .contains(areaName.toLowerCase());
-
-    if (!isAlreadyUsed) {
-      await _dbHelper.insertArea(areaName, widget.pin);
-
-      setState(() {
-        _createdAreaNames.add(areaName);
-        _areaTables[areaName] = [];
-        _currentAreaName = areaName;
-
-        widget.onAreaSelected(areaName);
-
-        _areaNameController.clear();
-        _tableNameController.clear();
-        _seatingCapacityController.clear();
-        _isDeleteConfirmationVisible = false;
-        _isDuplicateName = false;
-        _errorMessage = '';
-
-        _togglePopup();
-      });
-    }
-    else {
-      setState(() {
-        _isDuplicateName = true;
-        _errorMessage = 'This Area/Zone name already exists';
-      });
-    }
+  void _showEditArea(String name) {
+    setState(() {
+      _selectedAreaForEdit = name;
+      _editController.text = name;
+      _showEditPopup = true;
+    });
   }
 
 
@@ -237,12 +225,50 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
       return false;
     }
     if (_isSeatingCapacityInvalid ||
-        _seatingCapacityController.text.trim().isEmpty) {
+        _seatingCapacityController.text
+            .trim()
+            .isEmpty) {
       return false;
     }
 
     return true;
   }
+  void _handleUpdateAreaName(String oldAreaName, String newAreaName) async {
+    final zoneRepository = ZoneRepository();
+
+    bool isUpdated = await zoneRepository.updateZoneName(
+      token: widget.token,
+      pin: widget.pin,
+      oldAreaName: oldAreaName,
+      newAreaName: newAreaName,
+    );
+
+    if (isUpdated) {
+      // Call your UI update function
+      widget.onAreaNameUpdated(oldAreaName, newAreaName);
+
+      setState(() {
+        int index = _createdAreaNames.indexOf(oldAreaName);
+        if (index != -1) {
+          _createdAreaNames[index] = newAreaName;
+        }
+
+        if (_currentAreaName == oldAreaName) {
+          _currentAreaName = newAreaName;
+        }
+
+        if (_areaTables.containsKey(oldAreaName)) {
+          _areaTables[newAreaName] = _areaTables[oldAreaName]!;
+          _areaTables.remove(oldAreaName);
+        }
+      });
+    } else {
+      // You can show an error message here
+      print('❌ Failed to update area name.');
+    }
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -298,6 +324,9 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                       _isPopupVisible = false;
                     });
                   },
+                  onUpdateAreaName: _handleUpdateAreaName,
+                  onShowAreaOptions: _showAreaOptions,
+                  onShowEditPopup: _showEditArea,
                 ),
 
                 // Show placeholder if no area is selected/created.
@@ -568,13 +597,56 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
 
         // Show area creation popup when visible.
         if (_isPopupVisible)
-          AreaPopup(
-            areaNameController: _areaNameController,
-            isDuplicateName: _isDuplicateName,
-            errorMessage: _errorMessage,
-            togglePopup: _togglePopup,
-            createArea: _createArea,
+          BlocConsumer<ZoneBloc, ZoneState>(
+            listener: (context, state) {
+              if (state is ZoneSuccess) {
+                setState(() {
+                  _createdAreaNames.add(state.areaName);
+                  _areaTables[state.areaName] = [];
+                  _currentAreaName = state.areaName;
+
+                  widget.onAreaSelected(state.areaName);
+
+                  _areaNameController.clear();
+                  _tableNameController.clear();
+                  _seatingCapacityController.clear();
+                  _isDeleteConfirmationVisible = false;
+                  _isDuplicateName = false;
+                  _errorMessage = '';
+
+                  _togglePopup();
+                });
+
+                print('✅ Zone successfully created: ${state.areaName}');
+              } else if (state is ZoneFailure) {
+                setState(() {
+                  _isDuplicateName = true;
+                  _errorMessage = state.message;
+                });
+              }
+            },
+            builder: (context, state) {
+              return AreaPopup(
+                areaNameController: _areaNameController,
+                isDuplicateName: _isDuplicateName,
+                errorMessage: _errorMessage,
+                togglePopup: _togglePopup,
+                createArea: () {
+                  BlocProvider.of<ZoneBloc>(context).add(
+                    CreateZoneEvent(
+                      token: widget.token,
+                      pin: widget.pin,
+                      areaName: _areaNameController.text.trim(),
+                      usedAreaNames: widget.usedAreaNames.union(
+                          _createdAreaNames.toSet()),
+                    ),
+                  );
+                },
+                isLoading: state is ZoneLoading, // Pass loading state
+              );
+            },
           ),
+
 
         // Show delete confirmation popup when visible.
         DeleteConfirmationPopup(
@@ -590,7 +662,279 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
           },
           onDelete: _deleteArea,
         ),
+        if (_showOptionsPopup && _selectedAreaForOptions != null)
+          Center(
+            child: Material(
+              color: Colors.transparent,
+              child: _buildAreaOptionsPopup(_selectedAreaForOptions!),
+            ),
+          ),
+
+        if (_showEditPopup && _selectedAreaForEdit != null)
+          Center(
+            child: Material(
+              color: Colors.transparent,
+              child: _buildEditAreaPopup(_selectedAreaForEdit!),
+            ),
+          ),
       ],
+    );
+  }
+
+  Widget _buildAreaOptionsPopup(String areaName) {
+    return GestureDetector(
+      onTap: () => setState(() => _showOptionsPopup = false),
+      child: Container(
+        color: Colors.black.withAlpha(80),
+        child: Center(
+          child: Container(
+            width: 300,
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 8)],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Choose Action',
+                      style: TextStyle(
+                        color: Color(0xFF373535),
+                        fontSize: 16,
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => setState(() => _showOptionsPopup = false),
+                      child: Container(
+                        margin: EdgeInsets.only(top: 4, right: 4),
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: Color(0xFFF86157),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Color(0x3F000000),
+                              blurRadius: 11,
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _showOptionsPopup = false;
+                      _showEditPopup = true;
+                      _selectedAreaForEdit = areaName;
+                      _editController.text = areaName;
+                    });
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: Color(0xFFF6F6F6),
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0x19000000),
+                          blurRadius: 4,
+                          offset: Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit, color: Colors.blue),
+                        SizedBox(width: 10),
+                        Text(
+                          'Edit',
+                          style: TextStyle(
+                            color: Color(0xFF4C5F7D),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _showOptionsPopup = false;
+                      _isDeleteConfirmationVisible = true;
+                    });
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: Color(0xFFF6F6F6),
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0x19000000),
+                          blurRadius: 4,
+                          offset: Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete, color: Colors.red),
+                        SizedBox(width: 10),
+                        Text(
+                          'Delete',
+                          style: TextStyle(
+                            color: Color(0xFFFD6464),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+
+  Widget _buildEditAreaPopup(String oldName) {
+    return GestureDetector(
+      onTap: () => setState(() => _showEditPopup = false),
+      child: Container(
+        color: Colors.black.withAlpha(80),
+        child: Center(
+          child: Container(
+            width: 300,
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 8)],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Edit Area Name',
+                  style: TextStyle(
+                    color: Color(0xFF373535),
+                    fontSize: 16,
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: _editController,
+                  decoration: InputDecoration(
+                    labelText: 'Area Name',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    GestureDetector(
+                      onTap: () => setState(() => _showEditPopup = false),
+                      child: Container(
+                        width: 80,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: Color(0xFFF6F6F6),
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Color(0x19000000),
+                              blurRadius: 4,
+                              offset: Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        alignment: Alignment.center,
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(
+                            color: Color(0xFF4C5F7D),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 25),
+                    GestureDetector(
+                      onTap: () {
+                        final newName = _editController.text.trim();
+                        if (newName.isNotEmpty && newName != oldName) {
+                          _handleUpdateAreaName(oldName, newName);
+                          widget.onAreaSelected(newName);
+                        }
+                        setState(() => _showEditPopup = false);
+                      },
+                      child: Container(
+                        width: 80,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: Color(0xFFFD6464),
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Color(0x19000000),
+                              blurRadius: 4,
+                              offset: Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        alignment: Alignment.center,
+                        child: const Text(
+                          'Update',
+                          style: TextStyle(
+                            color: Color(0xFFF9F6F6),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
