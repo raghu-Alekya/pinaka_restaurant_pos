@@ -108,6 +108,17 @@ class DatabaseHelper {
     await db.delete('user_login');
   }
 
+  Future<void> updateAreaNameById(int zoneId, String newAreaName) async {
+    final db = await database;
+    await db.update(
+      'areas',
+      {'area_name': newAreaName},
+      where: 'zone_id = ?',
+      whereArgs: [zoneId],
+    );
+  }
+
+
   // ================= Area Table Functions =================
 
   Future<void> insertArea(String areaName, String pin) async {
@@ -115,10 +126,27 @@ class DatabaseHelper {
     await db.insert('areas', {'areaName': areaName, 'pin': pin});
   }
 
-  Future<void> insertAreaWithZoneId(String areaName, String pin, int zoneId) async {
+  Future<void> insertAreaWithZoneIdIfNotExists(String areaName, String pin, int zoneId) async {
     final db = await database;
-    await db.insert('areas', {'areaName': areaName, 'pin': pin, 'zoneId': zoneId});
+
+    final existing = await db.query(
+      'areas',
+      where: 'areaName = ? AND pin = ?',
+      whereArgs: [areaName, pin],
+    );
+
+    if (existing.isEmpty) {
+      await db.insert('areas', {
+        'areaName': areaName,
+        'pin': pin,
+        'zoneId': zoneId,
+      });
+    } else {
+      // Optionally log or handle duplicate gracefully
+      print('Area "$areaName" with PIN "$pin" already exists in DB. Skipping insert.');
+    }
   }
+
 
   Future<void> deleteArea(String areaName) async {
     final db = await database;

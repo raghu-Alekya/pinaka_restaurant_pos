@@ -2,6 +2,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../blocs/Bloc Event/ZoneEvent.dart';
+import '../../blocs/Bloc State/ZoneState.dart';
 import '../../blocs/Bloc Logic/zone_bloc.dart';
 import '../../helpers/DatabaseHelper.dart';
 import '../../repositories/zone_repository.dart';
@@ -10,8 +12,8 @@ import 'DeleteConfirmationPopup.dart';
 import 'DraggableTable.dart';
 import 'EmptyAreaPlaceholder.dart';
 import 'TableSetupHeader.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+
+
 
 
 
@@ -65,6 +67,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
   String? _selectedAreaForEdit;
   bool _showOptionsPopup = false;
   bool _showEditPopup = false;
+  bool _isUpdatingAreaName = false;
 
 
   // Text controllers for area name, table name, and seating capacity inputs.
@@ -72,11 +75,15 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
   final TextEditingController _tableNameController = TextEditingController();
   final TextEditingController _seatingCapacityController = TextEditingController();
 
+
   // List of area names created in this widget instance.
   List<String> _createdAreaNames = [];
 
   // Currently selected area name.
   String? _currentAreaName;
+
+
+  final ZoneRepository _zoneRepository = ZoneRepository();
 
   // Flags invalid seating capacity input.
   bool _isSeatingCapacityInvalid = false;
@@ -93,6 +100,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
   // Flags duplicate table name error state.
   bool _isDuplicateTableName = false;
 
+
   // Error message for table name input.
   String _tableErrorMessage = '';
 
@@ -104,16 +112,20 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
 
   final DatabaseHelper _dbHelper = DatabaseHelper();
 
-  void _loadAreasFromDatabase() async {
-    final areas = await _dbHelper.getAreasByPin(widget.pin);
+  void _fetchAreasFromServer() async {
+    final zoneList = await _zoneRepository.getAllZones(widget.token);
+
     setState(() {
-      _createdAreaNames = areas;
+      _createdAreaNames = zoneList.map((zone) => zone['zone_name'] as String).toList();
+
       if (_createdAreaNames.isNotEmpty && _currentAreaName == null) {
         _currentAreaName = _createdAreaNames.first;
         widget.onAreaSelected(_currentAreaName!);
       }
     });
   }
+
+
 
   /// Toggles the area creation popup visibility.
   void _togglePopup() {
@@ -150,7 +162,8 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
   void initState() {
     super.initState();
 
-    _loadAreasFromDatabase();
+    _fetchAreasFromServer(); // Call API instead of local DB
+
     // Listen to changes in table name input to check duplicates in real-time.
     _tableNameController.addListener(() {
       final name = _tableNameController.text.trim().toLowerCase();
@@ -187,6 +200,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
       });
     });
   }
+
 
   /// Deletes the currently selected area.
   void _deleteArea() {
@@ -233,41 +247,40 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
 
     return true;
   }
-  void _handleUpdateAreaName(String oldAreaName, String newAreaName) async {
-    final zoneRepository = ZoneRepository();
 
-    bool isUpdated = await zoneRepository.updateZoneName(
-      token: widget.token,
-      pin: widget.pin,
-      oldAreaName: oldAreaName,
-      newAreaName: newAreaName,
-    );
+  Future<void> _updateAreaNameInDatabase(String oldAreaName, String newAreaName) async {
+    try {
+      final success = await _zoneRepository.updateZoneName(
+        token: widget.token,
+        pin: widget.pin,
+        oldAreaName: oldAreaName,
+        newAreaName: newAreaName,
+      );
 
-    if (isUpdated) {
-      // Call your UI update function
-      widget.onAreaNameUpdated(oldAreaName, newAreaName);
+      if (success) {
+        widget.onAreaNameUpdated(oldAreaName, newAreaName);
 
-      setState(() {
-        int index = _createdAreaNames.indexOf(oldAreaName);
-        if (index != -1) {
-          _createdAreaNames[index] = newAreaName;
-        }
+        // Refresh all areas from server
+        final zoneList = await _zoneRepository.getAllZones(widget.token);
+        final updatedAreaNames = zoneList.map((zone) => zone['zone_name'] as String).toList();
 
-        if (_currentAreaName == oldAreaName) {
-          _currentAreaName = newAreaName;
-        }
+        setState(() {
+          _createdAreaNames = updatedAreaNames;
 
-        if (_areaTables.containsKey(oldAreaName)) {
-          _areaTables[newAreaName] = _areaTables[oldAreaName]!;
-          _areaTables.remove(oldAreaName);
-        }
-      });
-    } else {
-      // You can show an error message here
-      print('❌ Failed to update area name.');
+          if (_currentAreaName == oldAreaName) {
+            _currentAreaName = newAreaName;
+          }
+
+          if (_areaTables.containsKey(oldAreaName)) {
+            _areaTables[newAreaName] = _areaTables[oldAreaName]!;
+            _areaTables.remove(oldAreaName);
+          }
+        });
+      }
+    } catch (e) {
+      print('Error updating area name: $e');
     }
   }
-
 
 
   @override
@@ -284,6 +297,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
             child: Column(
               children: [
+
                 /// Header widget for managing area and overall controls.
                 TableSetupHeader(
                   areaNameController: _areaNameController,
@@ -324,7 +338,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                       _isPopupVisible = false;
                     });
                   },
-                  onUpdateAreaName: _handleUpdateAreaName,
+                  onUpdateAreaName: _updateAreaNameInDatabase,
                   onShowAreaOptions: _showAreaOptions,
                   onShowEditPopup: _showEditArea,
                 ),
@@ -822,8 +836,6 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
       ),
     );
   }
-
-
   Widget _buildEditAreaPopup(String oldName) {
     return GestureDetector(
       onTap: () => setState(() => _showEditPopup = false),
@@ -858,8 +870,8 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
+                    contentPadding:
+                    EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -895,13 +907,19 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                     ),
                     const SizedBox(width: 25),
                     GestureDetector(
-                      onTap: () {
+                      onTap: () async {
                         final newName = _editController.text.trim();
                         if (newName.isNotEmpty && newName != oldName) {
-                          _handleUpdateAreaName(oldName, newName);
+                          setState(() => _isUpdatingAreaName = true);
+                          await _updateAreaNameInDatabase(oldName, newName);
                           widget.onAreaSelected(newName);
+                          setState(() {
+                            _isUpdatingAreaName = false;
+                            _showEditPopup = false;
+                          });
+                        } else {
+                          setState(() => _showEditPopup = false);
                         }
-                        setState(() => _showEditPopup = false);
                       },
                       child: Container(
                         width: 80,
@@ -918,13 +936,31 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                           ],
                         ),
                         alignment: Alignment.center,
-                        child: const Text(
-                          'Update',
-                          style: TextStyle(
-                            color: Color(0xFFF9F6F6),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                          ),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Opacity(
+                              opacity: _isUpdatingAreaName ? 0.0 : 1.0,
+                              child: const Text(
+                                'Update',
+                                style: TextStyle(
+                                  color: Color(0xFFF9F6F6),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            if (_isUpdatingAreaName)
+                              const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     ),
