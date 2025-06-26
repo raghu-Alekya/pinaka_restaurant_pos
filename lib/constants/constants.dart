@@ -10,5 +10,4 @@ class AppConstants {
   static const String updateZoneEndpoint = '$baseDomain/wp-json/pinaka-pos/v1/zones/update-zone';
   static const String getAllZonesEndpoint = '$baseDomain/wp-json/pinaka-pos/v1/zones/get-all-zones';
   static const String deleteZoneEndpoint = '$baseDomain/wp-json/pinaka-pos/v1/zones/delete-zone';
-  static const String getZoneByIdEndpoint = '$baseDomain/wp-json/pinaka-pos/v1/zones/get-zones-by-id';
 }
