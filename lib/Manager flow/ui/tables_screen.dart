@@ -1367,17 +1367,21 @@ class _TablesScreenState extends State<TablesScreen> {
               left: 0,
               right: _showPopup ? popupWidth : 0,
               bottom: 0,
-              child: TablePlacementWidget(
-                placedTables: placedTables,
-                scale: _scale,
-                showPopup: _showPopup,
-                addTable: _addTable,
-                updateTablePosition: _updateTablePosition,
-                buildAddContentPrompt: () => SizedBox.shrink(),
-                buildPlacedTable: _buildPlacedTable,
-                selectedArea: selectedArea,
-                onTapOutside: _handleTapOutside,
-              ),
+              child:
+                  (!_showPopup &&
+                          (selectedArea == null || selectedArea!.isEmpty))
+                      ? Center(child: CircularProgressIndicator())
+                      : TablePlacementWidget(
+                        placedTables: placedTables,
+                        scale: _scale,
+                        showPopup: _showPopup,
+                        addTable: _addTable,
+                        updateTablePosition: _updateTablePosition,
+                        buildAddContentPrompt: () => SizedBox.shrink(),
+                        buildPlacedTable: _buildPlacedTable,
+                        selectedArea: selectedArea ?? '',
+                        onTapOutside: _handleTapOutside,
+                      ),
             )
           else
             Positioned.fill(

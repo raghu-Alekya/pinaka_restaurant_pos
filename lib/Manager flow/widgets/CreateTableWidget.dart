@@ -14,9 +14,6 @@ import 'EmptyAreaPlaceholder.dart';
 import 'TableSetupHeader.dart';
 
 
-
-
-
 /// A widget that allows creating areas (zones) and tables within those areas.
 /// Supports adding/deleting areas, entering table names and seating capacities,
 /// and selecting table models with validation and duplicate checks.
@@ -276,12 +273,18 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
             _areaTables.remove(oldAreaName);
           }
         });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Area name update failed. It might already exist.')),
+        );
       }
     } catch (e) {
       print('Error updating area name: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Something went wrong. Please try again.')),
+      );
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
