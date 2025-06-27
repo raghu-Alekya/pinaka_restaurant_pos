@@ -108,8 +108,56 @@ class TableHelpers {
         return Size(120, 120);
     }
   }
+  static Offset clampPositionToCanvas(Offset position, Size tableSize) {
+    final double canvasWidth = 90000;
+    final double canvasHeight = 60000;
+    const double buffer = 12.0;
 
+    final double clampedX = position.dx.clamp(
+      buffer,
+      canvasWidth - tableSize.width - buffer,
+    );
+    final double clampedY = position.dy.clamp(
+      buffer,
+      canvasHeight - tableSize.height - buffer,
+    );
 
+    return Offset(clampedX, clampedY);
+  }
+
+  static Offset findNonOverlappingPosition(
+      Offset pos,
+      Size size, {
+        required bool Function(Offset pos, Size size) isOverlapping,
+      }) {
+    const int maxAttempts = 1000;
+    const double step = 27.0;
+
+    Offset current = pos;
+    int dx = 0, dy = 0;
+    int segmentLength = 1;
+    int xDir = 1, yDir = 0;
+
+    for (int i = 0; i < maxAttempts; i++) {
+      if (!isOverlapping(current, size)) {
+        return current;
+      }
+
+      current = Offset(pos.dx + dx * step, pos.dy + dy * step);
+
+      if (i % segmentLength == 0) {
+        final temp = xDir;
+        xDir = -yDir;
+        yDir = temp;
+        if (yDir == 0) segmentLength++;
+      }
+
+      dx += xDir;
+      dy += yDir;
+    }
+
+    return pos;
+  }
 
   static Widget buildAddContentPrompt({
     required double scale,

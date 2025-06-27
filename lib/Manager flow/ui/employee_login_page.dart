@@ -5,6 +5,7 @@ import 'package:pinaka_restaurant_pos/Manager%20flow/widgets/number_pad.dart';
 import 'package:pinaka_restaurant_pos/Manager%20flow/widgets/pin_input.dart';
 
 import '../../blocs/Bloc Logic/auth_bloc.dart';
+import '../../utils/logger.dart';
 import 'ManagerDashboardScreen.dart';
 
 class EmployeeLoginPage extends StatefulWidget {
@@ -100,14 +101,26 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
               if (state is AuthSuccess) {
                 _timer.cancel();
 
+                AppLogger.info("Navigating with:");
+                AppLogger.info("PIN: ${state.pin}");
+                AppLogger.info("Token: ${state.token}");
+                AppLogger.info("Restaurant ID: ${state.restaurantId}");
+                AppLogger.info("Restaurant Name: ${state.restaurantName}");
+
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => ManagerDashboardScreen(pin: state.pin, token: state.token),
+                    builder: (context) => ManagerDashboardScreen(
+                      pin: state.pin,
+                      token: state.token,
+                      restaurantId: state.restaurantId,
+                      restaurantName: state.restaurantName,
+                    ),
                   ),
                 );
               }
             },
+
             builder: (context, state) {
               return SizedBox(
                 width: screenWidth,

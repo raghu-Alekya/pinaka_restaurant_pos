@@ -1,10 +1,8 @@
-// lib/helpers/NavigationHelper.dart
-
 import 'package:flutter/material.dart';
-import '../../helpers/DatabaseHelper.dart';
 import '../CaptainFlow/ui/CaptainDashboardScreen.dart';
 import '../CaptainFlow/ui/CaptainTablesScreen.dart';
 import '../CaptainFlow/ui/KitchenStatusScreen.dart';
+import '../local database/table_dao.dart';
 
 class CaptionNavigationHelper {
   static void handleNavigation(
@@ -12,7 +10,7 @@ class CaptionNavigationHelper {
       int currentIndex,
       int tappedIndex,
       String pin,
-      String associatedManagerPin, // ✅ Add this
+      String associatedManagerPin,
       ) async {
     if (tappedIndex == currentIndex) return;
 
@@ -22,13 +20,13 @@ class CaptionNavigationHelper {
         MaterialPageRoute(
           builder: (context) => DashboardScreen(
             pin: pin,
-            associatedManagerPin: associatedManagerPin, // ✅ Pass correctly
+            associatedManagerPin: associatedManagerPin,
           ),
         ),
       );
     } else if (tappedIndex == 1) {
-      final dbHelper = DatabaseHelper();
-      final tables = await dbHelper.getTablesByManagerPin(associatedManagerPin);
+      final tableDao = TableDao();
+      final tables = await tableDao.getTablesByManagerPin(associatedManagerPin);
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -43,12 +41,15 @@ class CaptionNavigationHelper {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => KitchenStatusScreen(pin: pin, associatedManagerPin: associatedManagerPin),
+          builder: (context) => KitchenStatusScreen(
+            pin: pin,
+            associatedManagerPin: associatedManagerPin,
+          ),
         ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Screen not implemented yet')),
+        const SnackBar(content: Text('Screen not implemented yet')),
       );
     }
   }

@@ -1,14 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:pinaka_restaurant_pos/Manager%20flow/ui/tables_screen.dart';
-import '../../helpers/DatabaseHelper.dart';
+import '../../local database/table_dao.dart';
 import '../widgets/NavigationHelper.dart';
 import '../widgets/bottom_nav_bar.dart';
 
 class ManagerDashboardScreen extends StatefulWidget {
   final String pin;
   final String token;
+  final String restaurantId;
+  final String restaurantName;
 
-  const ManagerDashboardScreen({Key? key, required this.pin,required this.token}) : super(key: key);
+  const ManagerDashboardScreen({
+    Key? key,
+    required this.pin,
+    required this.token,
+    required this.restaurantId,
+    required this.restaurantName,
+  }) : super(key: key);
 
   @override
   State<ManagerDashboardScreen> createState() => _ManagerDashboardScreenState();
@@ -16,9 +24,14 @@ class ManagerDashboardScreen extends StatefulWidget {
 
 class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
   int _selectedIndex = 0;
+  final tableDao= TableDao();
 
   void _onNavItemTapped(int index) {
-    NavigationHelper.handleNavigation(context, _selectedIndex, index, widget.pin,widget.token);
+    NavigationHelper.handleNavigation(context, _selectedIndex, index,
+        widget.pin,
+        widget.token,
+        widget.restaurantId,
+      widget.restaurantName);
     setState(() {
       _selectedIndex = index;
     });
@@ -26,8 +39,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
 
 
   void _navigateToTables() async {
-    final dbHelper = DatabaseHelper();
-    final tables = await dbHelper.getTablesByManagerPin(widget.pin);
+    final tables = await tableDao.getTablesByManagerPin(widget.pin);
 
     Navigator.push(
       context,
@@ -36,6 +48,8 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
           loadedTables: tables,
           pin: widget.pin,
           token:widget.token,
+          restaurantId:widget.restaurantId,
+          restaurantName:widget.restaurantName,
         ),
       ),
     );

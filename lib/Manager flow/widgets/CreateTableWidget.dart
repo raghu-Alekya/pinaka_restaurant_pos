@@ -5,7 +5,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../blocs/Bloc Event/ZoneEvent.dart';
 import '../../blocs/Bloc State/ZoneState.dart';
 import '../../blocs/Bloc Logic/zone_bloc.dart';
-import '../../helpers/DatabaseHelper.dart';
+import '../../local database/area_dao.dart';
+import '../../local database/login_dao.dart';
+import '../../local database/table_dao.dart';
 import '../../repositories/zone_repository.dart';
 import 'AreaPopup.dart';
 import 'DeleteConfirmationPopup.dart';
@@ -24,10 +26,10 @@ class CreateTableWidget extends StatefulWidget {
   final Set<String> usedAreaNames;
   final Function(String) onAreaSelected;
   final Function(String) onAreaDeleted;
-  final Function(String oldName, String newName) onAreaNameUpdated; // ✅ Add this
+  final Function(String oldName, String newName) onAreaNameUpdated;
   final String pin;
   final String token;
-
+  final String restaurantId;
 
   const CreateTableWidget({
     Key? key,
@@ -37,9 +39,10 @@ class CreateTableWidget extends StatefulWidget {
     required this.usedAreaNames,
     required this.onAreaSelected,
     required this.onAreaDeleted,
-    required this.onAreaNameUpdated, // ✅ Add this
+    required this.onAreaNameUpdated,
     required this.pin,
     required this.token,
+    required this.restaurantId,
   }) : super(key: key);
 
 
@@ -65,6 +68,9 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
   bool _showOptionsPopup = false;
   bool _showEditPopup = false;
   bool _isUpdatingAreaName = false;
+  final areaDao = AreaDao();
+  final tableDao = TableDao();
+  final loginDao = LoginDao();
 
 
   // Text controllers for area name, table name, and seating capacity inputs.
@@ -101,19 +107,19 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
   // Error message for table name input.
   String _tableErrorMessage = '';
 
+  String? _editAreaErrorMessage;
   /// Checks if the given table name already exists either globally or locally.
   bool _isTableNameDuplicate(String name) {
     return widget.usedTableNames.contains(name.trim().toLowerCase()) ||
         _usedTableNames.contains(name.trim().toLowerCase());
   }
 
-  final DatabaseHelper _dbHelper = DatabaseHelper();
-
   void _fetchAreasFromServer() async {
     final zoneList = await _zoneRepository.getAllZones(widget.token);
 
     setState(() {
-      _createdAreaNames = zoneList.map((zone) => zone['zone_name'] as String).toList();
+      _createdAreaNames =
+          zoneList.map((zone) => zone['zone_name'] as String).toList();
 
       if (_createdAreaNames.isNotEmpty && _currentAreaName == null) {
         _currentAreaName = _createdAreaNames.first;
@@ -121,7 +127,6 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
       }
     });
   }
-
 
 
   /// Toggles the area creation popup visibility.
@@ -219,7 +224,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
 
     widget.onAreaDeleted(areaName);
 
-    _dbHelper.deleteArea(areaName);
+    areaDao.deleteArea(areaName);
   }
 
 
@@ -262,6 +267,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
         final updatedAreaNames = zoneList.map((zone) => zone['zone_name'] as String).toList();
 
         setState(() {
+          _editAreaErrorMessage = null;
           _createdAreaNames = updatedAreaNames;
 
           if (_currentAreaName == oldAreaName) {
@@ -274,17 +280,18 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
           }
         });
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Area name update failed. It might already exist.')),
-        );
+        setState(() {
+          _editAreaErrorMessage = 'Area name update failed. It might already exist.';
+        });
       }
     } catch (e) {
       print('Error updating area name: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Something went wrong. Please try again.')),
-      );
+      setState(() {
+        _editAreaErrorMessage = 'Something went wrong. Please try again.';
+      });
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -650,16 +657,16 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                 togglePopup: _togglePopup,
                 createArea: () {
                   BlocProvider.of<ZoneBloc>(context).add(
-                    CreateZoneEvent(
-                      token: widget.token,
-                      pin: widget.pin,
-                      areaName: _areaNameController.text.trim(),
-                      usedAreaNames: widget.usedAreaNames.union(
-                          _createdAreaNames.toSet()),
-                    ),
+                      CreateZoneEvent(
+                        token: widget.token,
+                        pin: widget.pin,
+                        areaName: _areaNameController.text.trim(),
+                        usedAreaNames: widget.usedAreaNames.union(_createdAreaNames.toSet()),
+                        restaurantId: widget.restaurantId,
+                      ),
                   );
                 },
-                isLoading: state is ZoneLoading, // Pass loading state
+                isLoading: state is ZoneLoading,
               );
             },
           ),
@@ -839,6 +846,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
       ),
     );
   }
+
   Widget _buildEditAreaPopup(String oldName) {
     return GestureDetector(
       onTap: () => setState(() => _showEditPopup = false),
@@ -847,22 +855,27 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
         child: Center(
           child: Container(
             width: 300,
-            padding: EdgeInsets.all(20),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 8)],
+              boxShadow: const [
+                BoxShadow(color: Colors.black26, blurRadius: 8)
+              ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Edit Area Name',
-                  style: TextStyle(
-                    color: Color(0xFF373535),
-                    fontSize: 16,
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.bold,
+                const Center(
+                  child: Text(
+                    'Edit Area Name',
+                    style: TextStyle(
+                      color: Color(0xFF373535),
+                      fontSize: 16,
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -873,23 +886,34 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    contentPadding:
-                    EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
                   ),
                 ),
+                if (_editAreaErrorMessage != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    _editAreaErrorMessage!,
+                    style: const TextStyle(color: Colors.red, fontSize: 12),
+                  ),
+                ],
                 const SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     GestureDetector(
-                      onTap: () => setState(() => _showEditPopup = false),
+                      onTap: () =>
+                          setState(() {
+                            _showEditPopup = false;
+                            _editAreaErrorMessage = null;
+                          }),
                       child: Container(
                         width: 80,
                         height: 32,
                         decoration: BoxDecoration(
-                          color: Color(0xFFF6F6F6),
+                          color: const Color(0xFFF6F6F6),
                           borderRadius: BorderRadius.circular(10),
-                          boxShadow: [
+                          boxShadow: const [
                             BoxShadow(
                               color: Color(0x19000000),
                               blurRadius: 4,
@@ -913,24 +937,33 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                       onTap: () async {
                         final newName = _editController.text.trim();
                         if (newName.isNotEmpty && newName != oldName) {
-                          setState(() => _isUpdatingAreaName = true);
+                          setState(() {
+                            _isUpdatingAreaName = true;
+                            _editAreaErrorMessage = null;
+                          });
                           await _updateAreaNameInDatabase(oldName, newName);
-                          widget.onAreaSelected(newName);
                           setState(() {
                             _isUpdatingAreaName = false;
-                            _showEditPopup = false;
                           });
+
+                          if (_editAreaErrorMessage == null) {
+                            widget.onAreaSelected(newName);
+                            setState(() => _showEditPopup = false);
+                          }
                         } else {
-                          setState(() => _showEditPopup = false);
+                          setState(() {
+                            _editAreaErrorMessage =
+                            'Please enter a new name different from current.';
+                          });
                         }
                       },
                       child: Container(
                         width: 80,
                         height: 32,
                         decoration: BoxDecoration(
-                          color: Color(0xFFFD6464),
+                          color: const Color(0xFFFD6464),
                           borderRadius: BorderRadius.circular(10),
-                          boxShadow: [
+                          boxShadow: const [
                             BoxShadow(
                               color: Color(0x19000000),
                               blurRadius: 4,

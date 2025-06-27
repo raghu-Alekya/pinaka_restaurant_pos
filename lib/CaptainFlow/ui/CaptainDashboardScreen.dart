@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../helpers/CaptainNavigationHelper.dart';
-import '../../helpers/DatabaseHelper.dart';
+import '../../local database/table_dao.dart';
 import '../Widgets/CaptainBottomNavBar.dart';
 import 'CaptainTablesScreen.dart';
 class DashboardScreen extends StatefulWidget {
@@ -17,10 +17,9 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-
-
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
+  final tableDao = TableDao();
 
   void _onItemTapped(int index) {
     CaptionNavigationHelper.handleNavigation(context, _selectedIndex, index, widget.pin,widget.associatedManagerPin);
@@ -30,8 +29,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _navigateToTables() async {
-    final dbHelper = DatabaseHelper();
-    final tables = await dbHelper.getTablesByManagerPin(widget.associatedManagerPin);
+    final tables = await tableDao.getTablesByManagerPin(widget.associatedManagerPin);
 
     Navigator.push(
       context,

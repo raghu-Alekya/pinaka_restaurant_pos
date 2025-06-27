@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pinaka_restaurant_pos/Manager%20flow/ui/splash_screen.dart';
 import 'package:pinaka_restaurant_pos/repositories/auth_repository.dart';
+import 'package:pinaka_restaurant_pos/repositories/table_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/zone_repository.dart';
 import 'package:pinaka_restaurant_pos/blocs/Bloc%20Logic/auth_bloc.dart';
 import 'package:pinaka_restaurant_pos/blocs/Bloc%20Logic/zone_bloc.dart';
+
+import 'blocs/Bloc Logic/table_bloc.dart';
 
 void main() {
   runApp(const MyApp());
@@ -23,6 +26,9 @@ class MyApp extends StatelessWidget {
         RepositoryProvider<ZoneRepository>(
           create: (context) => ZoneRepository(),
         ),
+        RepositoryProvider<TableRepository>(
+          create: (context) => TableRepository(),
+        ),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -34,6 +40,12 @@ class MyApp extends StatelessWidget {
           BlocProvider<ZoneBloc>(
             create: (context) => ZoneBloc(
               zoneRepository: RepositoryProvider.of<ZoneRepository>(context),
+            ),
+          ),
+          BlocProvider<TableBloc>(
+            create: (context) => TableBloc(
+              zoneRepository: RepositoryProvider.of<ZoneRepository>(context),
+              tableRepository: RepositoryProvider.of<TableRepository>(context),
             ),
           ),
         ],
