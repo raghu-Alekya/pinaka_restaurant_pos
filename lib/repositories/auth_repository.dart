@@ -3,15 +3,15 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../constants/constants.dart';
-import '../helpers/DatabaseHelper.dart';
+import '../local database/login_dao.dart';
 import '../utils/logger.dart';
 
 class AuthRepository {
   final String baseUrl = AppConstants.authTokenEndpoint;
+  final loginDao = LoginDao();
 
   Future<Map<String, dynamic>> login(String pin) async {
     final url = Uri.parse(baseUrl);
-
     AppLogger.info('Sending login request for PIN: $pin');
 
     var request = http.MultipartRequest('POST', url);
@@ -25,25 +25,37 @@ class AuthRepository {
     final responseData = jsonDecode(response.body);
 
     if (response.statusCode == 200 && responseData['success'] == true) {
-      String token = responseData['data']['token'];
-      await DatabaseHelper().insertLogin(pin, token);
-      AppLogger.info('Login successful. Token saved.');
-      return {'success': true, 'token': token};
+      final data = responseData['data'];
+
+      String token = data['token'];
+      String restaurantId = data['restaurant_id'].toString();
+      String restaurantName = data['restaurant_name'].toString();
+
+      await loginDao.insertLogin(pin, token, restaurantId, restaurantName);
+
+      AppLogger.info('Login successful. Token and restaurant data saved.');
+      AppLogger.info('Restaurant ID: $restaurantId');
+      AppLogger.info('Restaurant Name: $restaurantName');
+
+      return {
+        'success': true,
+        'token': token,
+        'restaurant_id': restaurantId,
+        'restaurant_name': restaurantName
+      };
     } else {
-      // Even if the status is not 200, try to show the error message from API response
       String errorMessage = responseData['message'] ?? "Login failed";
       AppLogger.warning('Login failed: $errorMessage');
       return {'success': false, 'message': errorMessage};
     }
   }
 
-
   Future<Map<String, dynamic>?> getSavedLogin() async {
-    return await DatabaseHelper().getLogin();
+    return await loginDao.getLogin();
   }
 
   Future<void> logout() async {
-    await DatabaseHelper().clearLogin();
+    await loginDao.clearLogin();
     AppLogger.info('User logged out. Local login cleared.');
   }
 }

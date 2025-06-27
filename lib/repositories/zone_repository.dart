@@ -1,14 +1,18 @@
+import 'dart:ui';
+
+import '../Manager flow/widgets/table_helpers.dart';
 import '../constants/constants.dart';
-import '../helpers/DatabaseHelper.dart';
+import '../local database/area_dao.dart';
+import '../local database/table_dao.dart';
 import '../utils/logger.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ZoneRepository {
-  final DatabaseHelper _dbHelper = DatabaseHelper();
+  final areaDao = AreaDao();
 
-  /// ✅ Fetches zone_id from server using area name
-  Future<int?> getZoneIdFromServerByAreaName(String areaName, String token) async {
+  /// ✅ Fetches zone_id, restaurant_id, and restaurant_name from server using area name
+  Future<Map<String, dynamic>?> getZoneDetailsFromServerByAreaName(String areaName, String token) async {
     final url = Uri.parse(AppConstants.getAllZonesEndpoint);
 
     try {
@@ -19,7 +23,7 @@ class ZoneRepository {
         },
       );
 
-      AppLogger.debug('Get All Zones (for ID lookup) Response: ${response.body}');
+      AppLogger.debug('Get All Zones (for zone lookup) Response: ${response.body}');
 
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
@@ -28,7 +32,11 @@ class ZoneRepository {
           final List zones = responseData['zone_details'];
           for (var zone in zones) {
             if (zone['zone_name'] == areaName) {
-              return zone['zone_id'];
+              return {
+                'zone_id': zone['zone_id'],
+                'restaurant_id': zone['restaurant_id'],
+                'restaurant_name': zone['restaurant_name'],
+              };
             }
           }
           AppLogger.error('Zone not found on server for areaName: $areaName');
@@ -42,20 +50,21 @@ class ZoneRepository {
         return null;
       }
     } catch (e) {
-      AppLogger.error('Exception during zone ID fetch: $e');
+      AppLogger.error('Exception during zone fetch: $e');
       return null;
     }
   }
 
-  /// ✅ Creates a new zone on the server and stores it locally
+
   Future<Map<String, dynamic>> createZone({
     required String token,
     required String pin,
     required String areaName,
+    required String restaurantId,
   }) async {
     final url = Uri.parse(AppConstants.createZoneEndpoint);
 
-    AppLogger.info('Sending create zone request: $areaName');
+    AppLogger.info('Sending create zone request: $areaName for restaurant ID: $restaurantId');
 
     final response = await http.post(
       url,
@@ -63,7 +72,10 @@ class ZoneRepository {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
-      body: json.encode({'zone_name': areaName}),
+      body: json.encode({
+        'zone_name': areaName,
+        'restaurant_id': restaurantId,
+      }),
     );
 
     AppLogger.debug('Zone API Response: ${response.body}');
@@ -72,10 +84,18 @@ class ZoneRepository {
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       final int zoneId = responseData['zone_id'];
-      await _dbHelper.insertAreaWithZoneIdIfNotExists(areaName, pin, zoneId);
+      final String zoneStatus = responseData['zone_status'] ?? 'unknown';
 
-      AppLogger.info('Zone created and saved locally: $areaName with ID: $zoneId');
-      return {'success': true, 'zoneId': zoneId, 'areaName': areaName};
+      await areaDao.insertArea(areaName, pin, zoneId);
+
+      AppLogger.info('Zone created and saved locally: $areaName with ID: $zoneId and status: $zoneStatus');
+
+      return {
+        'success': true,
+        'zoneId': zoneId,
+        'areaName': areaName,
+        'zoneStatus': zoneStatus,
+      };
     } else {
       String errorMessage = responseData['message'] ?? 'Zone creation failed';
       AppLogger.error('Zone creation failed: $errorMessage');
@@ -90,12 +110,15 @@ class ZoneRepository {
     required String oldAreaName,
     required String newAreaName,
   }) async {
-    final int? zoneId = await getZoneIdFromServerByAreaName(oldAreaName, token);
+    // ✅ Fetch zone details
+    final zoneDetails = await getZoneDetailsFromServerByAreaName(oldAreaName, token);
 
-    if (zoneId == null) {
+    if (zoneDetails == null || zoneDetails['zone_id'] == null) {
       AppLogger.error('Zone ID not found for area: $oldAreaName');
       return false;
     }
+
+    final int zoneId = zoneDetails['zone_id'];
 
     final url = Uri.parse(AppConstants.updateZoneEndpoint);
 
@@ -115,7 +138,8 @@ class ZoneRepository {
     AppLogger.debug('Update Zone Response: ${response.body}');
 
     if (response.statusCode == 200) {
-      await _dbHelper.updateAreaName(oldAreaName, newAreaName);
+      // ✅ Update name locally too
+      await areaDao.updateAreaName(oldAreaName, newAreaName);
       AppLogger.info('Zone name updated locally and remotely from "$oldAreaName" to "$newAreaName"');
       return true;
     } else {
@@ -123,6 +147,7 @@ class ZoneRepository {
       return false;
     }
   }
+
 
   /// ✅ Fetches all zones from the server
   Future<List<Map<String, dynamic>>> getAllZones(String token) async {
@@ -193,4 +218,5 @@ class ZoneRepository {
       return false;
     }
   }
+
 }
