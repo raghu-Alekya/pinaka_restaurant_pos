@@ -6,7 +6,9 @@ import '../../Manager flow/ui/guest_details_popup.dart';
 import '../../Manager flow/widgets/ZoomControlsWidget.dart';
 import '../../Manager flow/widgets/table_helpers.dart';
 import '../../helpers/CaptainNavigationHelper.dart';
-import '../../helpers/DatabaseHelper.dart';
+import '../../local database/area_dao.dart';
+import '../../local database/login_dao.dart';
+import '../../local database/table_dao.dart';
 import '../Widgets/CaptainBottomNavBar.dart';
 import '../Widgets/Captain_Top_bar.dart';
 
@@ -42,6 +44,9 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
   final ScrollController gridScrollController = ScrollController();
   double _scale = 1.0;
   int _selectedIndex = 1;
+  final areaDao = AreaDao();
+  final tableDao = TableDao();
+  final loginDao = LoginDao();
 
   void _onItemTapped(int index) {
     CaptionNavigationHelper.handleNavigation(context, _selectedIndex, index,widget.pin,widget.associatedManagerPin,);
@@ -65,8 +70,7 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
   }
 
   Future<void> _loadData() async {
-    final dbHelper = DatabaseHelper();
-    final areaList = await dbHelper.getAreasByPin(widget.associatedManagerPin);
+    final areaList = await areaDao.getAreasByPin(widget.associatedManagerPin);
 
     String initialArea = areaList.isNotEmpty ? areaList.first : '';
 
@@ -202,14 +206,13 @@ class _CaptionTablesScreenState extends State<CaptionTablesScreen> {
   }
 
   void updateTableGuestData(int index, {required int guestCount}) async {
-    final dbHelper = DatabaseHelper();
     final tableId = displayedTables[index]['id'];
 
     setState(() {
       displayedTables[index]['guestCount'] = guestCount;
     });
 
-    await dbHelper.updateTable(tableId, {
+    await tableDao.updateTable(tableId, {
       'guestCount': guestCount,
       'posX': displayedTables[index]['position'].dx,
       'posY': displayedTables[index]['position'].dy,

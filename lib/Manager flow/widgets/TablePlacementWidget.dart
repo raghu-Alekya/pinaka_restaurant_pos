@@ -10,6 +10,7 @@ class TablePlacementWidget extends StatefulWidget {
   final Widget Function(int, Map<String, dynamic>) buildPlacedTable;
   final String? selectedArea;
   final VoidCallback onTapOutside;
+  final bool isLoading;
 
   const TablePlacementWidget({
     Key? key,
@@ -22,6 +23,7 @@ class TablePlacementWidget extends StatefulWidget {
     required this.buildPlacedTable,
     required this.selectedArea,
     required this.onTapOutside,
+    required this.isLoading,
   }) : super(key: key);
 
   @override
@@ -58,8 +60,7 @@ class _TablePlacementWidgetState extends State<TablePlacementWidget> {
                 final data = details.data;
                 final dropOffset = details.offset;
                 final RenderBox canvasBox =
-                _canvasKey.currentContext!.findRenderObject()
-                as RenderBox;
+                _canvasKey.currentContext!.findRenderObject() as RenderBox;
                 final localPosition = canvasBox.globalToLocal(dropOffset);
                 widget.addTable(data, localPosition / widget.scale);
               },
@@ -91,12 +92,13 @@ class _TablePlacementWidgetState extends State<TablePlacementWidget> {
                                 child: Stack(
                                   children: [
                                     if (visibleTables.isEmpty &&
-                                        !widget.showPopup)
+                                        !widget.showPopup &&
+                                        !widget.isLoading) // ✅ only show if not loading
                                       widget.buildAddContentPrompt(),
                                     ...visibleTables.asMap().entries.map(
                                           (entry) => widget.buildPlacedTable(
-                                        widget.placedTables.indexOf(
-                                            entry.value),
+                                        widget.placedTables
+                                            .indexOf(entry.value),
                                         entry.value,
                                       ),
                                     ),
@@ -107,12 +109,13 @@ class _TablePlacementWidgetState extends State<TablePlacementWidget> {
                                           final dropOffset = details.offset;
                                           final RenderBox canvasBox =
                                           _canvasKey.currentContext!
-                                              .findRenderObject()
-                                          as RenderBox;
+                                              .findRenderObject() as RenderBox;
                                           final localPos = canvasBox
                                               .globalToLocal(dropOffset);
-                                          widget.updateTablePosition(index,
-                                              localPos / widget.scale);
+                                          widget.updateTablePosition(
+                                            index,
+                                            localPos / widget.scale,
+                                          );
                                         },
                                         builder: (context, _, __) =>
                                             Container(),

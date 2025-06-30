@@ -14,8 +14,17 @@ class AuthLoading extends AuthState {}
 class AuthSuccess extends AuthState {
   final String pin;
   final String token;
-  AuthSuccess({required this.pin, required this.token});
+  final String restaurantId;
+  final String restaurantName;
+
+  AuthSuccess({
+    required this.pin,
+    required this.token,
+    required this.restaurantId,
+    required this.restaurantName,
+  });
 }
+
 class AuthFailure extends AuthState {
   final String message;
   AuthFailure(this.message);
@@ -36,7 +45,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       try {
         final result = await authRepository.login(event.pin);
         if (result['success']) {
-          emit(AuthSuccess(pin: event.pin, token: result['token']));
+          final result = await authRepository.login(event.pin);
+          if (result['success']) {
+            emit(AuthSuccess(
+              pin: event.pin,
+              token: result['token'],
+              restaurantId: result['restaurant_id'],
+              restaurantName: result['restaurant_name'],
+            ));
+          }
         } else {
           emit(AuthFailure(result['message']));
         }
