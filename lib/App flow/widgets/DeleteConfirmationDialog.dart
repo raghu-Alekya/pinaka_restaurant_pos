@@ -1,14 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// A confirmation dialog widget that prompts the user to confirm deletion of a table within a specific area.
-///
-/// This dialog displays a warning message with the table and area names highlighted in bold,
-/// and provides two action buttons:
-/// - **No, Keep It.** to cancel the deletion and close the dialog.
-/// - **Yes, Delete!** to confirm the deletion and execute the provided callback before closing the dialog.
-///
-/// The dialog uses a rounded rectangular shape with custom padding and colors,
-/// and includes an image icon at the top for visual emphasis.
 class DeleteConfirmationDialog extends StatelessWidget {
   final String tableName;
   final String areaName;
@@ -96,8 +87,10 @@ class DeleteConfirmationDialog extends StatelessWidget {
                     ),
                   ),
                   onPressed: () {
-                    onConfirm();
                     Navigator.of(context).pop();
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      onConfirm();
+                    });
                   },
                   child: const Text(
                     'Yes, Delete!',

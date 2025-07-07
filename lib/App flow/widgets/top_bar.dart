@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 
-class CaptainTopBar extends StatefulWidget implements PreferredSizeWidget {
+import '../ui/CheckinPopup.dart';
+
+class TopBar extends StatefulWidget implements PreferredSizeWidget {
   @override
   Size get preferredSize => Size.fromHeight(100);
 
   @override
-  _CaptainTopBarState createState() => _CaptainTopBarState();
+  _TopBarState createState() => _TopBarState();
 }
 
-class _CaptainTopBarState extends State<CaptainTopBar> {
+class _TopBarState extends State<TopBar> {
   bool isLightMode = true;
 
   void toggleMode() {
@@ -46,7 +48,7 @@ class _CaptainTopBarState extends State<CaptainTopBar> {
 
             /// Search Box
             Container(
-              width: screenWidth * 0.42,
+              width: screenWidth * 0.40,
               height: 40,
               padding: EdgeInsets.symmetric(horizontal: 10),
               decoration: BoxDecoration(
@@ -83,12 +85,14 @@ class _CaptainTopBarState extends State<CaptainTopBar> {
               ),
             ),
 
-            SizedBox(width: 180),
+            SizedBox(width: 160),
 
             /// Icon Buttons
             _buildModeToggle(),
             SizedBox(width: 15),
             _buildIconButton(Icons.light_mode),
+            SizedBox(width: 15),
+            _buildExitIconButton(),
             SizedBox(width: 15),
             _buildNotificationIconButton(),
             SizedBox(width: 15),
@@ -102,6 +106,36 @@ class _CaptainTopBarState extends State<CaptainTopBar> {
             _buildProfileSection(),
             SizedBox(width: 20),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExitIconButton() {
+    return GestureDetector(
+      onTap: () {
+        showDialog(
+          context: context,
+          barrierDismissible: true,
+          builder: (context) => const Checkinpopup(),
+        );
+      },
+      child: Container(
+        width: 34,
+        height: 34,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(color: Colors.grey.shade300, blurRadius: 5),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(7.0),
+          child: Image.asset(
+            'assets/logout.png',
+            fit: BoxFit.contain,
+          ),
         ),
       ),
     );
@@ -308,4 +342,3 @@ class TrianglePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
-

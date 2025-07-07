@@ -93,7 +93,7 @@ class _TablePlacementWidgetState extends State<TablePlacementWidget> {
                                   children: [
                                     if (visibleTables.isEmpty &&
                                         !widget.showPopup &&
-                                        !widget.isLoading) // ✅ only show if not loading
+                                        !widget.isLoading)
                                       widget.buildAddContentPrompt(),
                                     ...visibleTables.asMap().entries.map(
                                           (entry) => widget.buildPlacedTable(

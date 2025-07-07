@@ -1,36 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:pinaka_restaurant_pos/repositories/zone_repository.dart';
 
-/// A popup widget that allows editing details of a table such as
-/// name, seating capacity, shape, and area.
-///
-/// It validates for duplicate table names and ensures the shape
-/// matches the seating capacity constraints.
-///
-/// On successful update, it triggers [onUpdate] callback with updated table data.
-/// The popup can be closed by calling the [onClose] callback.
 class EditTablePopup extends StatefulWidget {
-  /// Initial data of the table to edit.
   final Map<String, dynamic> tableData;
-
-  /// Set of all used table names to validate duplicates.
   final Set<String> usedTableNames;
-
-  /// Set of all area names available for selection.
-  final Set<String> usedAreaNames;
-
-  /// Callback to call when the table is updated with new data.
   final Function(Map<String, dynamic>) onUpdate;
-
-  /// Callback to call when the popup should be closed.
   final VoidCallback onClose;
+  final bool isUpdating;
+  final String token;
 
   const EditTablePopup({
     Key? key,
     required this.tableData,
     required this.usedTableNames,
-    required this.usedAreaNames,
     required this.onUpdate,
     required this.onClose,
+    required this.isUpdating,
+    required this.token,
   }) : super(key: key);
 
   @override
@@ -44,53 +30,61 @@ class _EditTablePopupState extends State<EditTablePopup> {
   late String _selectedShape;
   bool _isDuplicateName = false;
 
+  final ZoneRepository _zoneRepo = ZoneRepository();
+  Set<String> _areaNames = {};
+  bool _isLoadingZones = true;
+
   @override
   void initState() {
     super.initState();
-    // Initialize controllers and variables with current table data
     _nameController = TextEditingController(text: widget.tableData['tableName']);
     _capacity = widget.tableData['capacity'];
     _selectedArea = widget.tableData['areaName'];
     _selectedShape = widget.tableData['shape'];
 
-    // Validate if the shape is valid for the given capacity, else fallback
     if (!_isShapeValidForCapacity(_selectedShape, _capacity)) {
-      _selectedShape = 'circle'; // default fallback shape
+      _selectedShape = 'circle';
+    }
+
+    _fetchZones();
+  }
+
+  Future<void> _fetchZones() async {
+    try {
+      final zones = await _zoneRepo.getAllZones(widget.token);
+      final names = zones.map((z) => z['zone_name'].toString()).toSet();
+      setState(() {
+        _areaNames = names;
+        _isLoadingZones = false;
+        if (!_areaNames.contains(_selectedArea) && _areaNames.isNotEmpty) {
+          _selectedArea = _areaNames.first;
+        }
+      });
+    } catch (e) {
+      setState(() => _isLoadingZones = false);
     }
   }
 
-  /// Checks if a given shape is valid for the seating capacity.
-  ///
-  /// - 'square': capacity must be between 1-4 or a multiple of 4.
-  /// - 'rectangle': capacity must be between 1-4 or even.
-  /// - 'circle': always valid.
+
   bool _isShapeValidForCapacity(String shape, int capacity) {
     if (shape == 'square') {
       return (capacity >= 1 && capacity <= 4) || capacity % 4 == 0;
     } else if (shape == 'rectangle') {
       return (capacity >= 1 && capacity <= 4) || capacity % 2 == 0;
     }
-    return true; // circle always valid
+    return true;
   }
 
-  /// Validates the input fields:
-  /// - Table name should not be empty.
-  /// - Capacity should be positive.
-  /// - Table name should not be duplicate (except if same as current).
   bool _validate() {
     final name = _nameController.text.trim();
     bool duplicate = widget.usedTableNames.contains(name.toLowerCase()) &&
         name.toLowerCase() != widget.tableData['tableName'].toString().toLowerCase();
-
     setState(() {
       _isDuplicateName = duplicate;
     });
-
     return name.isNotEmpty && _capacity > 0 && !duplicate;
   }
 
-  /// Handles the update button press.
-  /// Validates input and triggers the [onUpdate] callback with updated data.
   void _onUpdatePressed() {
     if (_validate()) {
       final updatedData = Map<String, dynamic>.from(widget.tableData);
@@ -102,16 +96,12 @@ class _EditTablePopupState extends State<EditTablePopup> {
     }
   }
 
-  /// Adjusts the selected shape if it becomes invalid due to capacity change.
   void _adjustShapeIfNeeded() {
     if (!_isShapeValidForCapacity(_selectedShape, _capacity)) {
-      setState(() {
-        _selectedShape = 'circle';
-      });
+      setState(() => _selectedShape = 'circle');
     }
   }
 
-  /// Increments seating capacity and adjusts shape if needed.
   void _incrementCapacity() {
     setState(() {
       _capacity++;
@@ -119,8 +109,6 @@ class _EditTablePopupState extends State<EditTablePopup> {
     });
   }
 
-  /// Decrements seating capacity and adjusts shape if needed.
-  /// Minimum capacity is 1.
   void _decrementCapacity() {
     if (_capacity > 1) {
       setState(() {
@@ -132,7 +120,6 @@ class _EditTablePopupState extends State<EditTablePopup> {
 
   @override
   Widget build(BuildContext context) {
-    // Filter shape options based on current capacity and validity
     final shapeOptions = ['rectangle', 'circle', 'square'].where((shape) {
       if (shape == _selectedShape) return true;
       if (shape == 'square') {
@@ -141,22 +128,19 @@ class _EditTablePopupState extends State<EditTablePopup> {
         return (_capacity >= 1 && _capacity <= 4) || _capacity % 2 == 0;
       }
       return true;
-    }).map((shape) => DropdownMenuItem(
-      value: shape,
-      child: Row(
-        children: [
-          CustomPaint(
-            size: const Size(24, 24),
-            painter: ShapePainter(shape),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            shape[0].toUpperCase() + shape.substring(1),
-            style: const TextStyle(fontSize: 14),
-          ),
-        ],
-      ),
-    )).toList();
+    }).map((shape) {
+      return DropdownMenuItem(
+        value: shape,
+        child: Row(
+          children: [
+            CustomPaint(size: const Size(24, 24), painter: ShapePainter(shape)),
+            const SizedBox(width: 8),
+            Text(shape[0].toUpperCase() + shape.substring(1),
+                style: const TextStyle(fontSize: 14)),
+          ],
+        ),
+      );
+    }).toList();
 
     return Center(
       child: Material(
@@ -170,20 +154,15 @@ class _EditTablePopupState extends State<EditTablePopup> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header Row with Title and Close button
-              const SizedBox(height: 24),
+              const SizedBox(height: 26),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Edit Table',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text('Edit Table', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   GestureDetector(
                     onTap: widget.onClose,
                     child: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.red,
-                      ),
+                      decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.red),
                       padding: const EdgeInsets.all(4),
                       child: const Icon(Icons.close, size: 20, color: Colors.white),
                     ),
@@ -191,13 +170,13 @@ class _EditTablePopupState extends State<EditTablePopup> {
                 ],
               ),
               const SizedBox(height: 4),
-              // Display current table name
               Text(widget.tableData['tableName'],
                   style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w400)),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
 
-              // Table Name Input
-              const Text('Table name/ No.', style: TextStyle(color: Color(0xFF4C5F7D), fontSize: 13, fontWeight: FontWeight.w500)),
+              // Table Name
+              const Text('Table name/ No.',
+                  style: TextStyle(color: Color(0xFF4C5F7D), fontSize: 13, fontWeight: FontWeight.w500)),
               const SizedBox(height: 6),
               TextField(
                 controller: _nameController,
@@ -219,10 +198,11 @@ class _EditTablePopupState extends State<EditTablePopup> {
                 ),
                 onChanged: (_) => _validate(),
               ),
-              const SizedBox(height: 13),
+              const SizedBox(height: 15),
 
-              // Seating Capacity Input with increment/decrement buttons
-              const Text('Seating capacity', style: TextStyle(color: Color(0xFF4C5F7D), fontSize: 13, fontWeight: FontWeight.w500)),
+              // Capacity
+              const Text('Seating capacity',
+                  style: TextStyle(color: Color(0xFF4C5F7D), fontSize: 13, fontWeight: FontWeight.w500)),
               const SizedBox(height: 4),
               Container(
                 decoration: BoxDecoration(
@@ -263,14 +243,11 @@ class _EditTablePopupState extends State<EditTablePopup> {
                   ],
                 ),
               ),
-              const SizedBox(height: 13),
+              const SizedBox(height: 15),
 
-              // Shape selection dropdown
-              Row(
-                children: const [
-                  Text('Shape', style: TextStyle(color: Color(0xFF4C5F7D), fontSize: 13, fontWeight: FontWeight.w500)),
-                ],
-              ),
+              // Shape
+              const Text('Shape',
+                  style: TextStyle(color: Color(0xFF4C5F7D), fontSize: 13, fontWeight: FontWeight.w500)),
               const SizedBox(height: 6),
               Theme(
                 data: Theme.of(context).copyWith(canvasColor: Colors.white),
@@ -297,19 +274,24 @@ class _EditTablePopupState extends State<EditTablePopup> {
                   ),
                 ),
               ),
-              const SizedBox(height: 13),
+              const SizedBox(height: 15),
 
-              // Area selection dropdown
-              const Text('Area', style: TextStyle(color: Color(0xFF4C5F7D), fontSize: 13, fontWeight: FontWeight.w500)),
+              // Area
+              const Text('Area',
+                  style: TextStyle(color: Color(0xFF4C5F7D), fontSize: 13, fontWeight: FontWeight.w500)),
               const SizedBox(height: 4),
-              Theme(
-                data: Theme.of(context).copyWith(
-                  canvasColor: Colors.white,
-                ),
+              _isLoadingZones
+                  ? const Center(child: CircularProgressIndicator())
+                  : Theme(
+                data: Theme.of(context).copyWith(canvasColor: Colors.white),
                 child: DropdownButtonFormField<String>(
                   isExpanded: true,
-                  value: _selectedArea,
-                  items: widget.usedAreaNames.map((area) {
+                  value: _areaNames.contains(_selectedArea)
+                      ? _selectedArea
+                      : _areaNames.isNotEmpty
+                      ? _areaNames.first
+                      : null,
+                  items: _areaNames.map((area) {
                     return DropdownMenuItem(
                       value: area,
                       child: Text(area, style: const TextStyle(fontSize: 14)),
@@ -334,9 +316,9 @@ class _EditTablePopupState extends State<EditTablePopup> {
                   ),
                 ),
               ),
-              const SizedBox(height: 13),
+              const Spacer(),
 
-              // Update button aligned to the right
+              // Update Button
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
@@ -345,12 +327,16 @@ class _EditTablePopupState extends State<EditTablePopup> {
                       backgroundColor: Colors.indigo.shade900,
                       foregroundColor: Colors.white,
                       fixedSize: const Size(140, 40),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
-                    onPressed: _validate() ? _onUpdatePressed : null,
-                    child: const Text('Update Table'),
+                    onPressed: (_validate() && !widget.isUpdating) ? _onUpdatePressed : null,
+                    child: widget.isUpdating
+                        ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    )
+                        : const Text('Update Table'),
                   ),
                 ],
               ),
@@ -362,7 +348,6 @@ class _EditTablePopupState extends State<EditTablePopup> {
   }
 }
 
-/// Custom painter to draw table shape preview icons in the dropdown.
 class ShapePainter extends CustomPainter {
   final String shape;
   ShapePainter(this.shape);

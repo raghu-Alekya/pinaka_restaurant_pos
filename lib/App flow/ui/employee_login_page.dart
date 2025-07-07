@@ -1,11 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:pinaka_restaurant_pos/Manager%20flow/widgets/number_pad.dart';
-import 'package:pinaka_restaurant_pos/Manager%20flow/widgets/pin_input.dart';
-
 import '../../blocs/Bloc Logic/auth_bloc.dart';
 import '../../utils/logger.dart';
+import '../widgets/number_pad.dart';
+import '../widgets/pin_input.dart';
 import 'ManagerDashboardScreen.dart';
 
 class EmployeeLoginPage extends StatefulWidget {

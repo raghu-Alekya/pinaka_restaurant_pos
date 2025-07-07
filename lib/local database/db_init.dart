@@ -7,7 +7,7 @@ class DatabaseInitializer {
 
     return await openDatabase(
       path,
-      version: 6,
+      version: 8, // ✅ bump version
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE tables(
@@ -20,7 +20,10 @@ class DatabaseInitializer {
             posY REAL,
             guestCount INTEGER,
             rotation REAL DEFAULT 0.0,
-            pin TEXT
+            pin TEXT,
+            table_id INTEGER,
+            zone_id INTEGER,
+            restaurant_id INTEGER
           )
         ''');
 
@@ -73,6 +76,13 @@ class DatabaseInitializer {
         }
         if (oldVersion < 6) {
           await db.execute('ALTER TABLE areas ADD COLUMN zoneId INTEGER');
+        }
+        if (oldVersion < 7) {
+          await db.execute('ALTER TABLE tables ADD COLUMN table_id INTEGER');
+        }
+        if (oldVersion < 8) {
+          await db.execute('ALTER TABLE tables ADD COLUMN zone_id INTEGER');
+          await db.execute('ALTER TABLE tables ADD COLUMN restaurant_id INTEGER');
         }
       },
     );
