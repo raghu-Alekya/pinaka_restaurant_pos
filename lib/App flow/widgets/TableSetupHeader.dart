@@ -189,7 +189,7 @@ class TableSetupHeader extends StatelessWidget {
             color: Colors.white,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6),
               child: Row(
                 children: [
                   Expanded(
@@ -207,7 +207,7 @@ class TableSetupHeader extends StatelessWidget {
                                 seatingCapacityController.clear();
                               },
                               child: Container(
-                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                                 decoration: BoxDecoration(
                                   color: name == currentAreaName ? Color(0xFFFFE1E1) : Color(0xFFF2F2F2),
                                   borderRadius: BorderRadius.circular(8),
@@ -230,12 +230,13 @@ class TableSetupHeader extends StatelessWidget {
                                       GestureDetector(
                                         onTap: () => onShowAreaOptions(name),
                                         child: Container(
-                                          padding: EdgeInsets.all(2),
+                                          padding: EdgeInsets.all(5),
                                           decoration: BoxDecoration(
                                             color: Color(0xFFEE796A),
                                             borderRadius: BorderRadius.circular(15),
                                           ),
-                                          child: Icon(Icons.close, size: 16, color: Colors.white),
+                                          child: Image.asset(
+                                              'assets/edit.png'),
                                         ),
                                       ),
                                   ],

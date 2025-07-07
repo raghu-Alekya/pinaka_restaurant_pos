@@ -1,11 +1,23 @@
 import 'package:flutter/material.dart';
-import '../../helpers/CaptainNavigationHelper.dart';
-import '../Widgets/CaptainBottomNavBar.dart';
+import '../widgets/NavigationHelper.dart';
+import '../widgets/bottom_nav_bar.dart';
 
 class KitchenStatusScreen extends StatefulWidget {
   final String pin;
   final String associatedManagerPin;
-  const KitchenStatusScreen({Key? key, required this.pin, required this.associatedManagerPin}) : super(key: key);
+  final String token;
+  final String restaurantId;
+  final String restaurantName;
+
+  const KitchenStatusScreen({
+    Key? key,
+    required this.pin,
+    required this.associatedManagerPin,
+    required this.token,
+    required this.restaurantId,
+    required this.restaurantName,
+  }) : super(key: key);
+
 
   @override
   _KitchenStatusScreenState createState() => _KitchenStatusScreenState();
@@ -17,8 +29,16 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   final List<int> cardList = List.generate(12, (index) => index);
   int _selectedIndex = 2;
 
-  void _onItemTapped(int index) {
-    CaptionNavigationHelper.handleNavigation(context, _selectedIndex, index,widget.pin,widget.associatedManagerPin);
+  void _onNavItemTapped(int index) {
+    NavigationHelper.handleNavigation(
+      context,
+      _selectedIndex,
+      index,
+      widget.pin,
+      widget.token,
+      widget.restaurantId,
+      widget.restaurantName,
+    );
     setState(() {
       _selectedIndex = index;
     });
@@ -79,9 +99,9 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
           ),
 
           // Bottom Navigation Bar
-          CaptionBottomNavBar(
+          BottomNavBar(
             selectedIndex: _selectedIndex,
-            onItemTapped: _onItemTapped,
+            onItemTapped: _onNavItemTapped,
           ),
         ],
       ),

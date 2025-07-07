@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:pinaka_restaurant_pos/Manager%20flow/ui/tables_screen.dart';
+import 'package:pinaka_restaurant_pos/App%20flow/ui/tables_screen.dart';
 import '../../local database/table_dao.dart';
 import '../widgets/NavigationHelper.dart';
 import '../widgets/bottom_nav_bar.dart';
