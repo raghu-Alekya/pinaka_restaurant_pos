@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
-
+import 'package:shared_preferences/shared_preferences.dart';
 import '../ui/CheckinPopup.dart';
+import '../ui/DailyAttendanceScreen.dart';
+import '../ui/employee_login_page.dart';
+import 'LogoutConfirmationDialog.dart';
 
 class TopBar extends StatefulWidget implements PreferredSizeWidget {
   @override
@@ -18,94 +21,175 @@ class _TopBarState extends State<TopBar> {
       isLightMode = !isLightMode;
     });
   }
+
   @override
   Size get preferredSize => Size.fromHeight(70);
-
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
 
-    return AppBar(
-      backgroundColor:Colors.white,
-      toolbarHeight: 70,
-      automaticallyImplyLeading: false,
-      elevation: 0,
-      titleSpacing: 0,
-      title: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 15),
-        child: Row(
-          children: [
-            /// Logo
-            Image.asset(
-              'assets/pinaka.png',
-              height: 40,
-              width: 100,
-              fit: BoxFit.contain,
-            ),
-
-            SizedBox(width: 15),
-
-            /// Search Box
-            Container(
-              width: screenWidth * 0.40,
-              height: 40,
-              padding: EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(color: Color(0xFFECEBEB)),
-                borderRadius: BorderRadius.circular(15),
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0x19000000),
-                    blurRadius: 10,
-                  ),
-                ],
+    return Container(
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withAlpha((0.3 * 255).toInt()),
+            spreadRadius: 0,
+            blurRadius: 8,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: AppBar(
+        backgroundColor: Colors.white,
+        toolbarHeight: 70,
+        automaticallyImplyLeading: false,
+        elevation: 0,
+        titleSpacing: 0,
+        title: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 15),
+          child: Row(
+            children: [
+              /// Logo
+              Image.asset(
+                'assets/pinaka.png',
+                height: 40,
+                width: 100,
+                fit: BoxFit.contain,
               ),
-              child: Row(
-                children: [
-                  Icon(Icons.search, color: Color(0xFFA19999), size: 20),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: TextField(
-                      style: TextStyle(
-                        color: Color(0xFFA19999),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        height: 1,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: 'Search item or short code....',
-                        border: InputBorder.none,
-                        isDense: true,
+
+              SizedBox(width: 15),
+
+              /// Search Box
+              Container(
+                width: screenWidth * 0.40,
+                height: 40,
+                padding: EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(color: Color(0xFFECEBEB)),
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0x19000000),
+                      blurRadius: 10,
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.search, color: Color(0xFFA19999), size: 20),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: TextField(
+                        style: TextStyle(
+                          color: Color(0xFFA19999),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          height: 1,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'Search item or short code....',
+                          border: InputBorder.none,
+                          isDense: true,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
 
-            SizedBox(width: 160),
+              SizedBox(width: 140),
 
-            /// Icon Buttons
-            _buildModeToggle(),
-            SizedBox(width: 15),
-            _buildIconButton(Icons.light_mode),
-            SizedBox(width: 15),
-            _buildExitIconButton(),
-            SizedBox(width: 15),
-            _buildNotificationIconButton(),
-            SizedBox(width: 15),
-            _buildIconButton(Icons.settings),
-            SizedBox(width: 15),
-            _buildIconButton(Icons.sync),
+              /// Icon Buttons
+              _buildModeToggle(),
+              SizedBox(width: 15),
+              _buildIconButton(Icons.light_mode),
+              SizedBox(width: 15),
+              _buildExitIconButton(),
+              SizedBox(width: 15),
+              _buildAttendanceIconButton(context),
+              SizedBox(width: 15),
+              _buildNotificationIconButton(),
+              SizedBox(width: 15),
+              _buildIconButton(Icons.settings),
+              SizedBox(width: 15),
+            _buildIconButton(Icons.logout, onPressed: () async {
+              final result = await showDialog<bool>(
+                context: context,
+                barrierDismissible: true,
+                builder: (_) => LogoutConfirmationDialog(
+                  onCancel: () => Navigator.pop(context, false),
+                  onConfirm: () => Navigator.pop(context, true),
+                ),
+              );
 
+              if (result == true) {
+                final prefs = await SharedPreferences.getInstance();
+                final pin = prefs.getString('pin');
+                if (pin != null) {
+                  await prefs.remove('popupsShown_$pin');
+                }
+                await prefs.clear();
+
+                if (context.mounted) {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const EmployeeLoginPage()),
+                        (route) => false,
+                  );
+                }
+              }
+            }),
             SizedBox(width: 25),
 
-            /// Profile Info
-            _buildProfileSection(),
-            SizedBox(width: 20),
+              /// Profile Info
+              _buildProfileSection(),
+              SizedBox(width: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  Widget _buildAttendanceIconButton(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        showDialog(
+          context: context,
+          barrierDismissible: true,
+          builder: (_) => AttendancePopup(
+            employees: [
+              Employee(id: '#30421', name: 'Jagdish'),
+              Employee(id: '#30432', name: 'Arjun Kumar'),
+              Employee(id: '#30356', name: 'Srinath'),
+              Employee(id: '#30421', name: 'Jagdish'),
+              Employee(id: '#30432', name: 'Arjun Kumar'),
+              Employee(id: '#30356', name: 'Srinath'),
+              Employee(id: '#30421', name: 'Jagdish'),
+              Employee(id: '#30432', name: 'Arjun Kumar'),
+              Employee(id: '#30357', name: 'Srinath'),
+            ],
+            isUpdateMode: true,
+          ),
+        );
+      },
+      child: Container(
+        width: 34,
+        height: 34,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(color: Colors.grey.shade300, blurRadius: 5),
           ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(7.0),
+          child: Image.asset(
+            'assets/attendance.png',
+            fit: BoxFit.contain,
+          ),
         ),
       ),
     );
@@ -141,14 +225,9 @@ class _TopBarState extends State<TopBar> {
     );
   }
 
-  /// Builds the custom mode toggle button
   Widget _buildModeToggle() {
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          isLightMode = !isLightMode;
-        });
-      },
+      onTap: toggleMode,
       child: Container(
         width: 34,
         height: 34,
@@ -163,7 +242,6 @@ class _TopBarState extends State<TopBar> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Left Triangle
               CustomPaint(
                 size: Size(7, 14),
                 painter: TrianglePainter(
@@ -172,7 +250,6 @@ class _TopBarState extends State<TopBar> {
                 ),
               ),
               SizedBox(width: 4),
-              // Right Triangle
               CustomPaint(
                 size: Size(7, 14),
                 painter: TrianglePainter(
@@ -186,11 +263,11 @@ class _TopBarState extends State<TopBar> {
       ),
     );
   }
+
   Widget _buildNotificationIconButton() {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        // Base Icon Button
         Container(
           width: 32,
           height: 32,
@@ -198,10 +275,7 @@ class _TopBarState extends State<TopBar> {
             color: Colors.white,
             shape: BoxShape.circle,
             boxShadow: [
-              BoxShadow(
-                color: Colors.grey.shade300,
-                blurRadius: 5,
-              ),
+              BoxShadow(color: Colors.grey.shade300, blurRadius: 5),
             ],
           ),
           child: Icon(
@@ -210,7 +284,6 @@ class _TopBarState extends State<TopBar> {
             color: Colors.black,
           ),
         ),
-        // Red Dot Badge
         Positioned(
           top: 8,
           right: 8,
@@ -220,10 +293,7 @@ class _TopBarState extends State<TopBar> {
             decoration: BoxDecoration(
               color: Colors.red,
               shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.white,
-                width: 1.5,
-              ),
+              border: Border.all(color: Colors.white, width: 1.5),
             ),
           ),
         ),
@@ -231,29 +301,28 @@ class _TopBarState extends State<TopBar> {
     );
   }
 
-
-
-  /// Builds a circular icon button matching the uploaded image
-  Widget _buildIconButton(IconData icon) {
-    return Container(
-      width: 34,
-      height: 34,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(color: Colors.grey.shade300, blurRadius: 5),
-        ],
-      ),
-      child: Icon(
-        icon,
-        size: 18,
-        color: Colors.black,
+  Widget _buildIconButton(IconData icon, {VoidCallback? onPressed}) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        width: 34,
+        height: 34,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(color: Colors.grey.shade300, blurRadius: 5),
+          ],
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: Colors.black,
+        ),
       ),
     );
   }
 
-  /// Builds the profile section on the right
   Widget _buildProfileSection() {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -295,7 +364,6 @@ class _TopBarState extends State<TopBar> {
       ),
     );
   }
-
 }
 
 class TrianglePainter extends CustomPainter {
@@ -333,9 +401,7 @@ class TrianglePainter extends CustomPainter {
       path.close();
     }
 
-    // Fill the triangle
     canvas.drawPath(path, paint);
-    // Draw the border
     canvas.drawPath(path, borderPaint);
   }
 

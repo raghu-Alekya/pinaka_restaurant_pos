@@ -207,7 +207,8 @@ class TableSetupHeader extends StatelessWidget {
                                 seatingCapacityController.clear();
                               },
                               child: Container(
-                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                                height: 40,
+                                padding: EdgeInsets.symmetric(horizontal: 12),
                                 decoration: BoxDecoration(
                                   color: name == currentAreaName ? Color(0xFFFFE1E1) : Color(0xFFF2F2F2),
                                   borderRadius: BorderRadius.circular(8),
@@ -217,26 +218,29 @@ class TableSetupHeader extends StatelessWidget {
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
                                     Text(
                                       name,
                                       style: TextStyle(
                                         color: Colors.black87,
                                         fontWeight: FontWeight.w500,
+                                        fontSize: 13,
                                       ),
                                     ),
-                                    SizedBox(width: 8),
+                                    SizedBox(width: name == currentAreaName ? 8 : 0),
                                     if (name == currentAreaName)
                                       GestureDetector(
                                         onTap: () => onShowAreaOptions(name),
                                         child: Container(
-                                          padding: EdgeInsets.all(5),
+                                          width: 20,
+                                          height: 20,
+                                          padding: EdgeInsets.all(3),
                                           decoration: BoxDecoration(
                                             color: Color(0xFFEE796A),
                                             borderRadius: BorderRadius.circular(15),
                                           ),
-                                          child: Image.asset(
-                                              'assets/edit.png'),
+                                          child: Image.asset('assets/edit.png'),
                                         ),
                                       ),
                                   ],

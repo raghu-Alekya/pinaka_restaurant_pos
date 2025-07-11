@@ -1,10 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'employee_login_page.dart';
-
-/// SplashScreen widget that displays an animated logo and text before navigating to the login page.
-/// It utilizes various Flutter animations such as `AnimatedAlign`, `AnimatedOpacity`, `AnimatedScale`, and `AnimatedRotation`
-/// to create a smooth transition effect.
+import 'tables_screen.dart';
+import '../../local database/table_dao.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -13,58 +12,73 @@ class SplashScreen extends StatefulWidget {
   _SplashScreenState createState() => _SplashScreenState();
 }
 
-/// State class for SplashScreen that handles animations and automatic navigation to the next screen.
 class _SplashScreenState extends State<SplashScreen> {
-  // Initial positions for animations
   Alignment topPartAlignment = const Alignment(-1.2, -1.2);
   Alignment middlePartAlignment = Alignment.center;
   Alignment bottomPartAlignment = const Alignment(1.2, 1.2);
 
-  // Initial opacities for fade-in effect
   double topOpacity = 0.0;
   double middleOpacity = 0.0;
   double bottomOpacity = 0.0;
 
-  // Scaling and rotation variables
   double middleScale = 0.2;
   double bottomScale = 0.1;
   double middleRotation = 0.0;
 
-  /// Called when the state is initialized. Triggers animations and navigation.
   @override
   void initState() {
     super.initState();
 
-    // Delayed animation start
     Future.delayed(const Duration(milliseconds: 500), () {
       setState(() {
-        // Updating alignments for animation
         topPartAlignment = const Alignment(0.0, -0.15);
         bottomPartAlignment = const Alignment(0.0, 0.1);
         middlePartAlignment = Alignment.center;
-
-        // Making images fully visible
         topOpacity = 1.0;
         middleOpacity = 1.0;
         bottomOpacity = 1.0;
-
-        // Scaling and rotating elements
         middleScale = 1.0;
         bottomScale = 1.0;
         middleRotation = 360;
       });
     });
-
-    // Timer to navigate to the next screen after 4 seconds
-    Timer(const Duration(seconds: 4), () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const EmployeeLoginPage()),
-      );
-    });
+    Timer(const Duration(seconds: 4), _checkLoginStatus);
   }
 
-  /// Builds the UI for the splash screen with animated elements.
+  Future<void> _checkLoginStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final pin = prefs.getString('pin');
+    final token = prefs.getString('token');
+    final restaurantId = prefs.getString('restaurantId');
+    final restaurantName = prefs.getString('restaurantName');
+
+    if (pin != null && token != null && restaurantId != null && restaurantName != null) {
+      final tableDao = TableDao();
+      final tables = await tableDao.getTablesByManagerPin(pin);
+
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => TablesScreen(
+            pin: pin,
+            token: token,
+            restaurantId: restaurantId,
+            restaurantName: restaurantName,
+            loadedTables: tables,
+          ),
+        ),
+      );
+    } else {
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const EmployeeLoginPage()),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -72,7 +86,6 @@ class _SplashScreenState extends State<SplashScreen> {
       body: Stack(
         alignment: Alignment.center,
         children: [
-          // Top part (Arrow animation)
           AnimatedAlign(
             duration: const Duration(seconds: 3),
             curve: Curves.easeOut,
@@ -83,8 +96,6 @@ class _SplashScreenState extends State<SplashScreen> {
               child: Image.asset('assets/top.jpg', width: 20),
             ),
           ),
-
-          // Middle part (Rotating and scaling red arc)
           AnimatedAlign(
             duration: const Duration(seconds: 3),
             curve: Curves.easeOut,
@@ -105,8 +116,6 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
             ),
           ),
-
-          // Bottom part (Scaling text "PINAKA")
           AnimatedAlign(
             duration: const Duration(seconds: 3),
             curve: Curves.easeOut,

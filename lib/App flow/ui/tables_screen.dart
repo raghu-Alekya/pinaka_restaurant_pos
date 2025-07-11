@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../blocs/Bloc Event/TableEvent.dart';
 import '../../blocs/Bloc Event/ZoneEvent.dart';
 import '../../blocs/Bloc Logic/table_bloc.dart';
@@ -30,6 +31,8 @@ import '../widgets/table_grid_item.dart';
 import '../widgets/top_bar.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/table_helpers.dart';
+import 'CheckinPopup.dart';
+import 'DailyAttendanceScreen.dart';
 import 'guest_details_popup.dart';
 
 /// Screen widget that manages the floor plan of tables in a restaurant POS system.
@@ -92,6 +95,8 @@ class _TablesScreenState extends State<TablesScreen> {
   }
 
   final GlobalKey _canvasKey = GlobalKey();
+  bool _popupsHandled = false;
+  bool _isCheckInDone = false;
 
   /// Whether the add table/area popup is visible.
   bool _showPopup = false;
@@ -168,6 +173,65 @@ class _TablesScreenState extends State<TablesScreen> {
   void initState() {
     super.initState();
     context.read<TableBloc>().add(LoadTablesEvent(widget.token));
+
+    // Show popups after first build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_popupsHandled) {
+        _popupsHandled = true;
+        _showInitialPopups();
+      }
+    });
+  }
+
+  void _showInitialPopups() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasShownPopups = prefs.getBool('popupsShown_${widget.pin}') ?? false;
+
+    if (hasShownPopups) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AttendancePopup(
+        employees: [
+          Employee(id: '#30421', name: 'Jagdish'),
+          Employee(id: '#30432', name: 'Arjun Kumar'),
+          Employee(id: '#30356', name: 'Srinath'),
+          Employee(id: '#30421', name: 'Jagdish'),
+          Employee(id: '#30432', name: 'Arjun Kumar'),
+          Employee(id: '#30356', name: 'Srinath'),
+          Employee(id: '#30421', name: 'Jagdish'),
+          Employee(id: '#30432', name: 'Arjun Kumar'),
+          Employee(id: '#30357', name: 'Srinath'),
+        ],
+        onComplete: () {
+          Navigator.of(context).pop();
+
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => Checkinpopup(
+              onCheckIn: () async {
+                Navigator.of(context).pop();
+                setState(() {
+                  _isCheckInDone = true;
+                });
+
+                await prefs.setBool('popupsShown_${widget.pin}', true);
+              },
+              onCancel: () async {
+                Navigator.of(context).pop();
+                setState(() {
+                  _isCheckInDone = false;
+                });
+
+                await prefs.setBool('popupsShown_${widget.pin}', true);
+              },
+            ),
+          );
+        },
+      ),
+    );
   }
 
   /// Increases the zoom scale by 0.1, max limited elsewhere.
@@ -329,9 +393,9 @@ class _TablesScreenState extends State<TablesScreen> {
   }
 
   Widget _buildShapeBasedGridItem(
-      Map<String, dynamic> tableData,
-      int filteredIndex,
-      ) {
+    Map<String, dynamic> tableData,
+    int filteredIndex,
+  ) {
     final actualIndex = placedTables.indexOf(tableData);
 
     return ShapeBasedGridItem(
@@ -345,9 +409,9 @@ class _TablesScreenState extends State<TablesScreen> {
   }
 
   Widget _buildCommonGridItem(
-      Map<String, dynamic> tableData,
-      int filteredIndex,
-      ) {
+    Map<String, dynamic> tableData,
+    int filteredIndex,
+  ) {
     final actualIndex = placedTables.indexOf(tableData);
 
     return CommonGridItem(
@@ -611,6 +675,8 @@ class _TablesScreenState extends State<TablesScreen> {
                 ),
                 childWhenDragging: Opacity(opacity: 0.3, child: gestureTable),
                 onDragEnd: (details) {
+                  if (_canvasKey.currentContext == null) return;
+
                   final RenderBox box =
                       _canvasKey.currentContext!.findRenderObject()
                           as RenderBox;
@@ -639,13 +705,14 @@ class _TablesScreenState extends State<TablesScreen> {
       final shape = table['shape'];
       final capacity = table['capacity'];
       final areaName = table['areaName'];
+      final tableName = table['tableName'];
 
       Size newSize = TableHelpers.getPlacedTableSize(capacity, shape);
       if (shape == 'rectangle' && newRotation == 90.0) {
         newSize = Size(newSize.height, newSize.width);
       }
 
-      Offset currentPos = table['position'];
+      final currentPos = table['position'] as Offset;
       Offset newPos = currentPos;
 
       final willOverlap = _isOverlapping(
@@ -685,6 +752,16 @@ class _TablesScreenState extends State<TablesScreen> {
         _selectedTableIndex = null;
         _showActionMenu = false;
       });
+      AreaMovementNotifier.showPopup(
+        context: context,
+        fromArea: '',
+        toArea: '',
+        tableName: tableName,
+        oldRotation: currentRotation,
+        newRotation: newRotation,
+        oldPos: currentPos,
+        newPos: newPos,
+      );
     } catch (e) {
       AppLogger.error('Rotation failed: $e');
     } finally {
@@ -882,7 +959,7 @@ class _TablesScreenState extends State<TablesScreen> {
 
     return MultiBlocListener(
       listeners: [
-        // Listener for TableBloc
+        /// Listener for TableBloc
         BlocListener<TableBloc, TableState>(
           listener: (context, state) {
             setState(() {
@@ -900,13 +977,22 @@ class _TablesScreenState extends State<TablesScreen> {
               final deletedName = state.tableName.toLowerCase();
 
               final index = placedTables.indexWhere(
-                    (table) =>
-                table['tableName'].toString().toLowerCase() == deletedName,
+                (table) =>
+                    table['tableName'].toString().toLowerCase() == deletedName,
               );
 
               if (index != -1) {
+                final removed = placedTables[index];
+
+                AreaMovementNotifier.showPopup(
+                  context: context,
+                  fromArea: removed['areaName'],
+                  toArea: '',
+                  tableName: removed['tableName'],
+                );
+
                 setState(() {
-                  final removed = placedTables.removeAt(index);
+                  placedTables.removeAt(index);
                   _usedTableNames.remove(
                     removed['tableName'].toString().toLowerCase(),
                   );
@@ -914,15 +1000,13 @@ class _TablesScreenState extends State<TablesScreen> {
                   _showActionMenu = false;
                   _isDeletingTable = false;
                 });
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Table "$deletedName" deleted successfully')),
-                );
               }
             } else if (state is TableDeleteErrorState) {
               setState(() => _isDeletingTable = false);
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Failed to delete table: ${state.message}')),
+                SnackBar(
+                  content: Text('Failed to delete table: ${state.message}'),
+                ),
               );
             } else if (state is TableLoadedState) {
               setState(() {
@@ -941,45 +1025,83 @@ class _TablesScreenState extends State<TablesScreen> {
                 );
                 selectedArea = state.tableData['areaName'];
               });
+
+              AreaMovementNotifier.showPopup(
+                context: context,
+                fromArea: '',
+                toArea: state.tableData['areaName'],
+                tableName: state.tableData['tableName'],
+              );
             } else if (state is TableAddErrorState) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(state.message)),
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(state.message)));
+
+              AreaMovementNotifier.showPopup(
+                context: context,
+                fromArea: '',
+                toArea: '',
+                tableName: 'Failed to add table',
               );
             } else if (state is TableLoadErrorState) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Failed to load tables: ${state.error}')),
+                SnackBar(
+                  content: Text('Failed to load tables: ${state.error}'),
+                ),
+              );
+
+              AreaMovementNotifier.showPopup(
+                context: context,
+                fromArea: '',
+                toArea: '',
+                tableName: 'Failed to load tables',
               );
             }
           },
         ),
+
+        /// Listener for ZoneBloc (Area management)
         BlocListener<ZoneBloc, ZoneState>(
           listener: (context, state) async {
             if (state is ZoneDeleteSuccess) {
               final areaName = state.areaName;
 
+              AreaMovementNotifier.showPopup(
+                context: context,
+                fromArea: areaName,
+                toArea: '',
+                tableName: 'Area',
+              );
+
               setState(() {
-                final tablesToRemove = placedTables
-                    .where((t) => t['areaName'] == areaName)
-                    .map((t) => t['tableName'].toString().toLowerCase())
-                    .toList();
+                final tablesToRemove =
+                    placedTables
+                        .where((t) => t['areaName'] == areaName)
+                        .map((t) => t['tableName'].toString().toLowerCase())
+                        .toList();
 
                 placedTables.removeWhere((t) => t['areaName'] == areaName);
                 _usedAreaNames.remove(areaName.toLowerCase());
                 _usedTableNames.removeAll(tablesToRemove);
 
                 if (selectedArea == areaName) {
-                  selectedArea = _usedAreaNames.isNotEmpty
-                      ? _usedAreaNames.first
-                      : '';
+                  selectedArea =
+                      _usedAreaNames.isNotEmpty ? _usedAreaNames.first : '';
                 }
 
                 _isDeletingArea = false;
               });
-              final zoneRepository = RepositoryProvider.of<ZoneRepository>(context);
-              final updatedZones = await zoneRepository.getAllZones(widget.token);
-              final updatedAreaNames = updatedZones
-                  .map((z) => z['zone_name'].toString().toLowerCase())
-                  .toSet();
+
+              final zoneRepository = RepositoryProvider.of<ZoneRepository>(
+                context,
+              );
+              final updatedZones = await zoneRepository.getAllZones(
+                widget.token,
+              );
+              final updatedAreaNames =
+                  updatedZones
+                      .map((z) => z['zone_name'].toString().toLowerCase())
+                      .toSet();
 
               setState(() {
                 _usedAreaNames = updatedAreaNames;
@@ -987,7 +1109,16 @@ class _TablesScreenState extends State<TablesScreen> {
             } else if (state is ZoneDeleteFailure) {
               setState(() => _isDeletingArea = false);
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Failed to delete area: ${state.error}')),
+                SnackBar(
+                  content: Text('Failed to delete area: ${state.error}'),
+                ),
+              );
+
+              AreaMovementNotifier.showPopup(
+                context: context,
+                fromArea: '',
+                toArea: '',
+                tableName: 'Failed to delete area',
               );
             }
           },
@@ -995,7 +1126,7 @@ class _TablesScreenState extends State<TablesScreen> {
       ],
 
       child: Scaffold(
-        backgroundColor: const Color(0xFFF6F7FB),
+        backgroundColor: const Color(0xFFF0F3FC),
         resizeToAvoidBottomInset: false,
         appBar: PreferredSize(
           preferredSize: const Size.fromHeight(70),
@@ -1095,25 +1226,6 @@ class _TablesScreenState extends State<TablesScreen> {
                   ),
                 ),
               ),
-            if (!_showPopup)
-              Positioned(
-                top: 20,
-                left: 20,
-                child: ViewLayoutToggle(
-                  selectedMode: _currentViewMode,
-                  onModeSelected: (mode) {
-                    setState(() {
-                      _currentViewMode = mode;
-                    });
-                  },
-                ),
-              ),
-            Positioned(
-              top: 10,
-              left: 0,
-              right: 0,
-              child: Center(child: _buildSharedAreaFilter()),
-            ),
 
             // Zoom Controls
             ZoomControlsWidget(
@@ -1196,16 +1308,22 @@ class _TablesScreenState extends State<TablesScreen> {
                         ),
                         child: PlacedTableBuilder.buildPlacedTableWidget(
                           name: placedTables[_selectedTableIndex!]['tableName'],
-                          capacity: placedTables[_selectedTableIndex!]['capacity'],
+                          capacity:
+                              placedTables[_selectedTableIndex!]['capacity'],
                           area: placedTables[_selectedTableIndex!]['areaName'],
                           shape: placedTables[_selectedTableIndex!]['shape'],
-                          size: TableHelpers.getPlacedTableSize(
-                            placedTables[_selectedTableIndex!]['capacity'],
-                            placedTables[_selectedTableIndex!]['shape'],
-                          ) *
+                          size:
+                              TableHelpers.getPlacedTableSize(
+                                placedTables[_selectedTableIndex!]['capacity'],
+                                placedTables[_selectedTableIndex!]['shape'],
+                              ) *
                               0.8,
-                          guestCount: placedTables[_selectedTableIndex!]['guestCount'] ?? 0,
-                          rotation: placedTables[_selectedTableIndex!]['rotation'] ?? 0.0,
+                          guestCount:
+                              placedTables[_selectedTableIndex!]['guestCount'] ??
+                              0,
+                          rotation:
+                              placedTables[_selectedTableIndex!]['rotation'] ??
+                              0.0,
                         ),
                       ),
                     ),
@@ -1243,47 +1361,71 @@ class _TablesScreenState extends State<TablesScreen> {
                 ),
               ),
 
-            // 5. Table Setup button
-            if (placedTables.isNotEmpty && !_showPopup)
-              Positioned(
-                top: 25,
-                right: 50,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Color(0xFF15315E),
-                    borderRadius: BorderRadius.circular(6),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color.fromARGB(25, 0, 0, 0),
-                        blurRadius: 4,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: InkWell(
-                    onTap: () {
-                      if (_currentViewMode != ViewMode.normal) {
-                        setState(() => _showModeChangeDialog = true);
-                      } else {
-                        _togglePopup();
-                      }
-                    },
-                    borderRadius: BorderRadius.circular(20),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Table Setup',
-                          style: TextStyle(color: Colors.white, fontSize: 14),
-                        ),
-                        SizedBox(width: 8),
-                        Icon(Icons.edit, color: Colors.white, size: 14),
-                      ],
+            Positioned(
+              top: 20,
+              left: 30,
+              right: 30,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  if (!_showPopup)
+                    ViewLayoutToggle(
+                      selectedMode: _currentViewMode,
+                      onModeSelected: (mode) {
+                        setState(() {
+                          _currentViewMode = mode;
+                        });
+                      },
+                    ),
+
+                  if (!_showPopup) const SizedBox(width: 20),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.center,
+                      child: _buildSharedAreaFilter(),
                     ),
                   ),
-                ),
+
+                  if (!_showPopup) const SizedBox(width: 20),
+                  if (placedTables.isNotEmpty && !_showPopup)
+                    Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF15315E),
+                        borderRadius: BorderRadius.circular(6),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color.fromARGB(25, 0, 0, 0),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: InkWell(
+                        onTap: () {
+                          if (_currentViewMode != ViewMode.normal) {
+                            setState(() => _showModeChangeDialog = true);
+                          } else {
+                            _togglePopup();
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(20),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Table Setup',
+                              style: TextStyle(color: Colors.white, fontSize: 14),
+                            ),
+                            SizedBox(width: 8),
+                            Icon(Icons.edit, color: Colors.white, size: 14),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
               ),
+            ),
 
             if (_showEditPopup)
               AnimatedPositioned(
@@ -1306,28 +1448,41 @@ class _TablesScreenState extends State<TablesScreen> {
                     final oldArea = originalData['areaName'];
                     final newArea = updatedData['areaName'];
 
+                    final oldPos = originalData['position'] as Offset;
+                    final newPos = updatedData['position'] as Offset? ?? oldPos;
+
+                    final oldRotation = originalData['rotation'] ?? 0.0;
+                    final newRotation =
+                        double.tryParse(
+                          updatedData['rotation']?.toString() ?? '',
+                        ) ??
+                        oldRotation;
+
                     final shape = updatedData['shape'];
                     final capacity = updatedData['capacity'];
-                    final currentSize = TableHelpers.getPlacedTableSize(capacity, shape);
+                    final currentSize = TableHelpers.getPlacedTableSize(
+                      capacity,
+                      shape,
+                    );
 
                     bool needsReposition =
                         newArea != oldArea ||
-                            _isOverlapping(
-                              updatedData['position'] ?? originalData['position'],
-                              currentSize,
-                              skipIndex: index,
-                              areaName: newArea,
-                            );
+                        _isOverlapping(
+                          newPos,
+                          currentSize,
+                          skipIndex: index,
+                          areaName: newArea,
+                        );
 
+                    Offset finalPos = newPos;
                     if (needsReposition) {
-                      Offset originalPos = updatedData['position'] ?? originalData['position'];
-                      Offset newPos = _findNonOverlappingPosition(
-                        originalPos,
+                      finalPos = _findNonOverlappingPosition(
+                        newPos,
                         currentSize,
                         skipIndex: index,
                         areaName: newArea,
                       );
-                      updatedData['position'] = newPos;
+                      updatedData['position'] = finalPos;
                     }
 
                     final serverTableId = originalData['table_id'];
@@ -1341,8 +1496,7 @@ class _TablesScreenState extends State<TablesScreen> {
                     }
 
                     updatedData['table_id'] = serverTableId;
-                    updatedData['rotation'] =
-                        double.tryParse(updatedData['rotation']?.toString() ?? '') ?? 0.0;
+                    updatedData['rotation'] = newRotation;
 
                     await TableRepository().updateTableOnServerAndLocal(
                       tableData: updatedData,
@@ -1351,22 +1505,28 @@ class _TablesScreenState extends State<TablesScreen> {
                       tableDao: tableDao,
                     );
 
+                    AreaMovementNotifier.showPopup(
+                      context: context,
+                      fromArea: oldArea,
+                      toArea: newArea,
+                      tableName: updatedData['tableName'],
+                      oldRotation: oldRotation.toDouble(),
+                      newRotation: newRotation.toDouble(),
+                    );
+
                     if (oldArea != newArea) {
-                      AreaMovementNotifier.showPopup(
-                        context: context,
-                        fromArea: oldArea,
-                        toArea: newArea,
-                        tableName: updatedData['tableName'],
-                      );
-                      setState(() {
-                        selectedArea = newArea;
-                      });
+                      setState(() => selectedArea = newArea);
                     }
 
-
                     setState(() {
-                      _usedTableNames.remove(_editingTableData!['tableName'].toString().toLowerCase());
-                      _usedTableNames.add(updatedData['tableName'].toString().toLowerCase());
+                      _usedTableNames.remove(
+                        _editingTableData!['tableName']
+                            .toString()
+                            .toLowerCase(),
+                      );
+                      _usedTableNames.add(
+                        updatedData['tableName'].toString().toLowerCase(),
+                      );
                       placedTables[index] = updatedData;
                       _showEditPopup = false;
                       _editingTableData = null;
@@ -1399,8 +1559,8 @@ class _TablesScreenState extends State<TablesScreen> {
                     getTableData: (data) {},
                     usedTableNames: _usedTableNames,
                     usedAreaNames: _usedAreaNames,
-                    onAreaSelected: (areaName) =>
-                        setState(() => selectedArea = areaName),
+                    onAreaSelected:
+                        (areaName) => setState(() => selectedArea = areaName),
                     onAreaDeleted: (areaName) {
                       setState(() => _isDeletingArea = true);
                       context.read<ZoneBloc>().add(
@@ -1411,7 +1571,8 @@ class _TablesScreenState extends State<TablesScreen> {
                       );
                     },
                     onAreaNameUpdated: _handleAreaNameUpdated,
-                    onDeleteAreaStarted: () => setState(() => _isDeletingArea = true),
+                    onDeleteAreaStarted:
+                        () => setState(() => _isDeletingArea = true),
                     pin: widget.pin,
                     token: widget.token,
                     restaurantId: widget.restaurantId,

@@ -20,9 +20,10 @@ class PlacedTableBuilder {
     final double stackHeight = size.height + extraSpace * 2;
 
     final hasGuests = guestCount > 0;
-    final tableColor = hasGuests
-        ? const Color(0xFFF44336).withAlpha((0.25 * 255).round())
-        : const Color(0x3F22D629);
+    final tableColor =
+        hasGuests
+            ? const Color(0xFFF44336).withAlpha((0.25 * 255).round())
+            : const Color(0x3F22D629);
 
     Widget tableShape;
     if (shape == "circle") {
@@ -84,12 +85,12 @@ class PlacedTableBuilder {
   }
 
   static List<Widget> _buildChairs(
-      int capacity,
-      Size tableSize,
-      double margin,
-      String shape,
-      Color chairColor,
-      ) {
+    int capacity,
+    Size tableSize,
+    double margin,
+    String shape,
+    Color chairColor,
+  ) {
     const double chairWidth = 15;
     const double chairHeight = 48;
 
@@ -131,7 +132,7 @@ class PlacedTableBuilder {
           chairs.add(
             Positioned(
               left: left + (tableSize.width / 2) - (chairWidth / 2),
-              top: top - chairHeight,
+              top: top - chairHeight + 8,
               child: Transform.rotate(
                 angle: -1.57,
                 child: TableHelpers.buildChairRect(chairColor),
@@ -141,7 +142,7 @@ class PlacedTableBuilder {
         } else if (capacity == 2) {
           chairs.add(
             Positioned(
-              left: (left - chairHeight) + chairLeftOffset,
+              left: (left - chairHeight) + chairLeftOffset + 9,
               top: leftY + chairTopOffset,
               child: Transform.rotate(
                 angle: pi,
@@ -152,7 +153,7 @@ class PlacedTableBuilder {
 
           chairs.add(
             Positioned(
-              left: right + 10,
+              left: right + 7,
               top: top + (tableSize.height / 3) - (chairWidth / 3) - 10,
               child: TableHelpers.buildChairRect(chairColor),
             ),
@@ -164,7 +165,7 @@ class PlacedTableBuilder {
 
           chairs.add(
             Positioned(
-              left: (left - chairHeight) + chairLeftOffset,
+              left: (left - chairHeight) + chairLeftOffset + 8,
               top: leftY + chairTopOffset,
               child: Transform.rotate(
                 angle: pi,
@@ -175,8 +176,8 @@ class PlacedTableBuilder {
 
           chairs.add(
             Positioned(
-              left: right + 10,
-              top: top + (tableSize.height / 3) - (chairWidth / 3) - 10,
+              left: right + 6,
+              top: top + (tableSize.height / 3) - (chairWidth / 3) - 5,
               child: TableHelpers.buildChairRect(chairColor),
             ),
           );
@@ -188,7 +189,7 @@ class PlacedTableBuilder {
             chairs.add(
               Positioned(
                 left: dx,
-                top: top - chairHeight,
+                top: top - chairHeight + 8,
                 child: Transform.rotate(
                   angle: -1.57,
                   child: TableHelpers.buildChairRect(chairColor),
@@ -199,13 +200,13 @@ class PlacedTableBuilder {
 
           double bottomSpacing =
               (tableSize.width - (bottomChairs * chairWidth)) /
-                  (bottomChairs + 1);
+              (bottomChairs + 1);
           for (int i = 0; i < bottomChairs; i++) {
             double dx = left + bottomSpacing * (i + 1) + chairWidth * i;
             chairs.add(
               Positioned(
                 left: dx,
-                top: bottom,
+                top: bottom - 5,
                 child: Transform.rotate(
                   angle: 1.57,
                   child: TableHelpers.buildChairRect(chairColor),
@@ -228,7 +229,7 @@ class PlacedTableBuilder {
           chairs.add(
             Positioned(
               left: dx,
-              top: top - chairHeight,
+              top: top - chairHeight + 10,
               child: Transform.rotate(
                 angle: -1.57,
                 child: TableHelpers.buildChairRect(chairColor),
@@ -240,12 +241,11 @@ class PlacedTableBuilder {
         // Right
         int rightChairs = chairsPerSide + (extraChairs > 1 ? 1 : 0);
         double rightSpacing =
-            (tableSize.height - (rightChairs * chairWidth)) /
-                (rightChairs + 1);
+            (tableSize.height - (rightChairs * chairWidth)) / (rightChairs + 1);
 
         for (int i = 0; i < rightChairs; i++) {
           double dy = top + rightSpacing * (i + 1) + chairWidth * i - 15.0;
-          double dx = right + 15.0;
+          double dx = right + 8.0;
 
           chairs.add(
             Positioned(
@@ -260,13 +260,14 @@ class PlacedTableBuilder {
         int bottomChairs = chairsPerSide + (extraChairs > 2 ? 1 : 0);
         double bottomSpacing =
             (tableSize.width - (bottomChairs * chairWidth)) /
-                (bottomChairs + 1);
+            (bottomChairs + 1);
+
         for (int i = 0; i < bottomChairs; i++) {
           double dx = left + bottomSpacing * (i + 1) + chairWidth * i;
           chairs.add(
             Positioned(
               left: dx,
-              top: bottom,
+              top: bottom - 5,
               child: Transform.rotate(
                 angle: 1.57,
                 child: TableHelpers.buildChairRect(chairColor),
@@ -278,15 +279,14 @@ class PlacedTableBuilder {
         // Left
         int leftChairs = chairsPerSide;
         double leftSpacing =
-            (tableSize.height - (leftChairs * chairWidth)) /
-                (leftChairs + 1);
+            (tableSize.height - (leftChairs * chairWidth)) / (leftChairs + 1);
 
         for (int i = 0; i < leftChairs; i++) {
           double dy = top + leftSpacing * (i + 1) + chairWidth * i;
 
           chairs.add(
             Positioned(
-              left: left - chairHeight + 15,
+              left: left - chairHeight + 27,
               top: dy - 12,
               child: Transform.rotate(
                 angle: pi,
@@ -297,7 +297,6 @@ class PlacedTableBuilder {
         }
       }
     }
-
     return chairs;
   }
 }
