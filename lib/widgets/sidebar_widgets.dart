@@ -4,7 +4,8 @@ import '../bloc/category_bloc.dart';
 import '../bloc/menu_bloc.dart';
 
 class SideBarWidgets extends StatefulWidget {
-  const SideBarWidgets({super.key});
+
+const SideBarWidgets({super.key});
 
   @override
   State<SideBarWidgets> createState() => _SideBarWidgetsState();
