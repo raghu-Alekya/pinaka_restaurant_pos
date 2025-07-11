@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pinaka_restaurant_pos/App%20flow/ui/tables_screen.dart';
 import '../../blocs/Bloc Logic/auth_bloc.dart';
-import '../../utils/logger.dart';
+import '../../local database/table_dao.dart';
 import '../widgets/number_pad.dart';
 import '../widgets/pin_input.dart';
-import 'ManagerDashboardScreen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class EmployeeLoginPage extends StatefulWidget {
   const EmployeeLoginPage({super.key});
@@ -91,29 +92,33 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
         backgroundColor: Colors.white,
         body: SafeArea(
           child: BlocConsumer<AuthBloc, AuthState>(
-            listener: (context, state) {
+            listener: (context, state) async {
               if (state is AuthFailure) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text(state.message)),
                 );
               }
+
               if (state is AuthSuccess) {
                 _timer.cancel();
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setString('pin', state.pin);
+                await prefs.setString('token', state.token);
+                await prefs.setString('restaurantId', state.restaurantId);
+                await prefs.setString('restaurantName', state.restaurantName);
 
-                AppLogger.info("Navigating with:");
-                AppLogger.info("PIN: ${state.pin}");
-                AppLogger.info("Token: ${state.token}");
-                AppLogger.info("Restaurant ID: ${state.restaurantId}");
-                AppLogger.info("Restaurant Name: ${state.restaurantName}");
+                final tableDao = TableDao();
+                final tables = await tableDao.getTablesByManagerPin(state.pin);
 
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => ManagerDashboardScreen(
+                    builder: (context) => TablesScreen(
                       pin: state.pin,
                       token: state.token,
                       restaurantId: state.restaurantId,
                       restaurantName: state.restaurantName,
+                      loadedTables: tables,
                     ),
                   ),
                 );

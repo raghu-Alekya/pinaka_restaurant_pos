@@ -1,18 +1,45 @@
+// import 'package:flutter/material.dart';
+// import 'package:flutter_bloc/flutter_bloc.dart';
+// import 'package:path/path.dart';
+// import 'package:pinaka_restaurant_pos/repositories/auth_repository.dart';
+// import 'package:pinaka_restaurant_pos/repositories/table_repository.dart';
+// import 'package:pinaka_restaurant_pos/repositories/zone_repository.dart';
+// import 'package:pinaka_restaurant_pos/blocs/Bloc%20Logic/auth_bloc.dart';
+// import 'package:pinaka_restaurant_pos/blocs/Bloc%20Logic/zone_bloc.dart';
+// import 'package:sqflite/sqflite.dart';
+//
+// import 'App flow/ui/splash_screen.dart';
+// import 'blocs/Bloc Logic/table_bloc.dart';
+//
+// void main() async {
+//   WidgetsFlutterBinding.ensureInitialized();
+//
+//   final dbPath = await getDatabasesPath();
+//   await deleteDatabase(join(dbPath, 'tables.db'));
+//
+//   runApp(MyApp());
+// }
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart';
-import 'package:pinaka_restaurant_pos/repositories/auth_repository.dart';
-import 'package:pinaka_restaurant_pos/repositories/table_repository.dart';
-import 'package:pinaka_restaurant_pos/repositories/zone_repository.dart';
-import 'package:pinaka_restaurant_pos/blocs/Bloc%20Logic/auth_bloc.dart';
-import 'package:pinaka_restaurant_pos/blocs/Bloc%20Logic/zone_bloc.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'App flow/ui/splash_screen.dart';
+import 'blocs/Bloc Logic/auth_bloc.dart';
 import 'blocs/Bloc Logic/table_bloc.dart';
+import 'blocs/Bloc Logic/zone_bloc.dart';
+import 'repositories/auth_repository.dart';
+import 'repositories/table_repository.dart';
+import 'repositories/zone_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
 
   final dbPath = await getDatabasesPath();
   await deleteDatabase(join(dbPath, 'tables.db'));

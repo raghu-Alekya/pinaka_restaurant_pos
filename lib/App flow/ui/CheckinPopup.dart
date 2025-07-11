@@ -230,7 +230,7 @@ class _CheckinpopupState extends State<Checkinpopup> {
         child: ElevatedButton(
           onPressed: _onClear,
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.redAccent,
+            backgroundColor:Colors.red.shade400,
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(6),

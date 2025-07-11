@@ -11,6 +11,7 @@ import 'DeleteConfirmationPopup.dart';
 import 'DraggableTable.dart';
 import 'EmptyAreaPlaceholder.dart';
 import 'TableSetupHeader.dart';
+import 'area_movement_notifier.dart';
 import 'area_popup_widgets.dart';
 
 /// A widget that allows creating areas (zones) and tables within those areas.
@@ -229,9 +230,9 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
   }
 
   Future<void> _updateAreaNameInDatabase(
-    String oldAreaName,
-    String newAreaName,
-  ) async {
+      String oldAreaName,
+      String newAreaName,
+      ) async {
     try {
       final success = await _zoneRepository.updateZoneName(
         token: widget.token,
@@ -243,10 +244,16 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
       if (success) {
         widget.onAreaNameUpdated(oldAreaName, newAreaName);
 
-        // Refresh all areas from server
+        AreaMovementNotifier.showPopup(
+          context: context,
+          fromArea: oldAreaName,
+          toArea: newAreaName,
+          tableName: 'Area',
+        );
+
         final zoneList = await _zoneRepository.getAllZones(widget.token);
         final updatedAreaNames =
-            zoneList.map((zone) => zone['zone_name'] as String).toList();
+        zoneList.map((zone) => zone['zone_name'] as String).toList();
 
         setState(() {
           _editAreaErrorMessage = null;
@@ -264,7 +271,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
       } else {
         setState(() {
           _editAreaErrorMessage =
-              'Area name update failed. It might already exist.';
+          'Area name update failed. It might already exist.';
         });
       }
     } catch (e) {
@@ -274,6 +281,7 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
       });
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -595,7 +603,6 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
           ),
         ),
 
-        // Show area creation popup when visible.
         if (_isPopupVisible)
           BlocConsumer<ZoneBloc, ZoneState>(
             listener: (context, state) {
@@ -616,6 +623,14 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
 
                   _togglePopup();
                 });
+
+                /// ✅ Show popup for new area creation
+                AreaMovementNotifier.showPopup(
+                  context: context,
+                  fromArea: '',
+                  toArea: state.areaName,
+                  tableName: 'Area Created',
+                );
 
                 print('✅ Zone successfully created: ${state.areaName}');
               } else if (state is ZoneFailure) {
