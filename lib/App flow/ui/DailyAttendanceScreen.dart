@@ -57,7 +57,7 @@ class _AttendancePopupState extends State<AttendancePopup> {
 
   void _updateStatus(Employee emp, String status) {
     setState(() {
-      emp.status = status;
+      emp.status = emp.status == status ? '' : status;
     });
   }
 
@@ -218,46 +218,47 @@ class _AttendancePopupState extends State<AttendancePopup> {
                 ),
               ),
             ),
-            const SizedBox(width: 20),
-            const Text("Shift timings:", style: TextStyle(fontSize: 16)),
-            const SizedBox(width: 10),
-            Container(
-              height: 40,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade400),
-                borderRadius: BorderRadius.circular(8),
-                color: Colors.white,
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: selectedShift,
-                  icon: const Icon(Icons.arrow_drop_down),
-                  dropdownColor: Colors.white,
-                  items: [
-                    '6.00 AM to 2.00 PM',
-                    '2.00 PM to 10.00 PM',
-                    '10.00 PM to 6.00 AM',
-                    '12.00 AM to 8.00 AM',
-                    '8.00 AM to 4.00 PM',
-                    '4.00 PM to 12.00 AM',
-                    'Weekend Shift',
-                    'Night Shift - Extended',
-                  ].map((String value) {
-                    return DropdownMenuItem(
-                      value: value,
-                      child: Text(
-                        value,
-                        style: const TextStyle(fontSize: 14),
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (newVal) {
-                    setState(() => selectedShift = newVal!);
-                  },
-                ),
+
+          const SizedBox(width: 20),
+          const Text("Shift timings:", style: TextStyle(fontSize: 16)),
+          const SizedBox(width: 10),
+          Container(
+            height: 40,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade400),
+              borderRadius: BorderRadius.circular(8),
+              color: Colors.white,
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: selectedShift,
+                icon: const Icon(Icons.arrow_drop_down),
+                dropdownColor: Colors.white,
+                items: [
+                  '6.00 AM to 2.00 PM',
+                  '2.00 PM to 10.00 PM',
+                  '10.00 PM to 6.00 AM',
+                  '12.00 AM to 8.00 AM',
+                  '8.00 AM to 4.00 PM',
+                  '4.00 PM to 12.00 AM',
+                  'Weekend Shift',
+                  'Night Shift - Extended',
+                ].map((String value) {
+                  return DropdownMenuItem(
+                    value: value,
+                    child: Text(
+                      value,
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  );
+                }).toList(),
+                onChanged: (newVal) {
+                  setState(() => selectedShift = newVal!);
+                },
               ),
             ),
+          ),
             const Spacer(),
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,

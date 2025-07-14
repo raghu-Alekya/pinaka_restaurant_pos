@@ -114,34 +114,36 @@ class _TopBarState extends State<TopBar> {
               SizedBox(width: 15),
               _buildIconButton(Icons.settings),
               SizedBox(width: 15),
-            _buildIconButton(Icons.logout, onPressed: () async {
-              final result = await showDialog<bool>(
-                context: context,
-                barrierDismissible: true,
-                builder: (_) => LogoutConfirmationDialog(
-                  onCancel: () => Navigator.pop(context, false),
-                  onConfirm: () => Navigator.pop(context, true),
-                ),
-              );
+              _buildIconButton(Icons.logout, onPressed: () async {
+                final result = await showDialog<bool>(
+                  context: context,
+                  barrierDismissible: true,
+                  builder: (_) => LogoutConfirmationDialog(
+                    onCancel: () => Navigator.pop(context, false),
+                    onConfirm: () => Navigator.pop(context, true),
+                  ),
+                );
 
-              if (result == true) {
-                final prefs = await SharedPreferences.getInstance();
-                final pin = prefs.getString('pin');
-                if (pin != null) {
-                  await prefs.remove('popupsShown_$pin');
-                }
-                await prefs.clear();
+                if (result == true) {
+                  final prefs = await SharedPreferences.getInstance();
+                  final pin = prefs.getString('pin');
+                  if (pin != null) {
+                    await prefs.remove('attendanceShown_$pin');
+                    await prefs.remove('shiftCreated_$pin');
+                    await prefs.clear();
+                  }
+                  await prefs.clear();
 
-                if (context.mounted) {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (_) => const EmployeeLoginPage()),
-                        (route) => false,
-                  );
+                  if (context.mounted) {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (_) => const EmployeeLoginPage()),
+                          (route) => false,
+                    );
+                  }
                 }
-              }
-            }),
-            SizedBox(width: 25),
+              }),
+              SizedBox(width: 25),
 
               /// Profile Info
               _buildProfileSection(),
