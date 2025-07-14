@@ -3,17 +3,22 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../blocs/Bloc Event/TableEvent.dart';
 import '../../blocs/Bloc Event/ZoneEvent.dart';
+import '../../blocs/Bloc Event/attendance_event.dart';
+import '../../blocs/Bloc Logic/attendance_bloc.dart';
 import '../../blocs/Bloc Logic/table_bloc.dart';
 import '../../blocs/Bloc Logic/zone_bloc.dart';
 import '../../blocs/Bloc State/ZoneState.dart';
+import '../../blocs/Bloc State/attendance_state.dart';
 import '../../blocs/Bloc State/table_state.dart';
 import '../../local database/area_dao.dart';
 import '../../local database/login_dao.dart';
 import '../../local database/table_dao.dart';
 import '../../models/view_mode.dart';
+import '../../repositories/employee_repository.dart';
 import '../../repositories/table_repository.dart';
 import '../../repositories/zone_repository.dart';
 import '../../utils/logger.dart';
@@ -97,6 +102,7 @@ class _TablesScreenState extends State<TablesScreen> {
   final GlobalKey _canvasKey = GlobalKey();
   bool _popupsHandled = false;
   bool _isCheckInDone = false;
+  bool _isShiftCreating = false;
 
   /// Whether the add table/area popup is visible.
   bool _showPopup = false;
@@ -148,20 +154,13 @@ class _TablesScreenState extends State<TablesScreen> {
   bool _isLoadingTables = true;
 
   List<Map<String, dynamic>> get _filteredTables {
-    if (selectedArea == null) return placedTables;
+    if (selectedArea == null || selectedArea!.isEmpty) return placedTables;
     return placedTables
         .where((table) => table['areaName'] == selectedArea)
         .toList();
   }
 
-  List<String> get areaNames {
-    return placedTables
-        .map((e) => e['areaName'] as String?)
-        .where((name) => name != null && name.isNotEmpty)
-        .toSet()
-        .cast<String>()
-        .toList();
-  }
+  List<String> get areaNames => _usedAreaNames.toList();
 
   void _selectArea(String area) {
     setState(() {
@@ -172,66 +171,34 @@ class _TablesScreenState extends State<TablesScreen> {
   @override
   void initState() {
     super.initState();
+    _loadZones();
     context.read<TableBloc>().add(LoadTablesEvent(widget.token));
-
-    // Show popups after first build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_popupsHandled) {
         _popupsHandled = true;
-        _showInitialPopups();
+        context.read<AttendanceBloc>().add(
+          InitializeAttendanceFlow(token: widget.token, pin: widget.pin),
+        );
       }
     });
   }
 
-  void _showInitialPopups() async {
-    final prefs = await SharedPreferences.getInstance();
-    final hasShownPopups = prefs.getBool('popupsShown_${widget.pin}') ?? false;
+  Future<void> _loadZones() async {
+    try {
+      final zoneRepository = ZoneRepository();
+      final zones = await zoneRepository.getAllZones(widget.token);
 
-    if (hasShownPopups) return;
+      final zoneNames = zones.map((z) => z['zone_name'].toString()).toSet();
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => AttendancePopup(
-        employees: [
-          Employee(id: '#30421', name: 'Jagdish'),
-          Employee(id: '#30432', name: 'Arjun Kumar'),
-          Employee(id: '#30356', name: 'Srinath'),
-          Employee(id: '#30421', name: 'Jagdish'),
-          Employee(id: '#30432', name: 'Arjun Kumar'),
-          Employee(id: '#30356', name: 'Srinath'),
-          Employee(id: '#30421', name: 'Jagdish'),
-          Employee(id: '#30432', name: 'Arjun Kumar'),
-          Employee(id: '#30357', name: 'Srinath'),
-        ],
-        onComplete: () {
-          Navigator.of(context).pop();
-
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (_) => Checkinpopup(
-              onCheckIn: () async {
-                Navigator.of(context).pop();
-                setState(() {
-                  _isCheckInDone = true;
-                });
-
-                await prefs.setBool('popupsShown_${widget.pin}', true);
-              },
-              onCancel: () async {
-                Navigator.of(context).pop();
-                setState(() {
-                  _isCheckInDone = false;
-                });
-
-                await prefs.setBool('popupsShown_${widget.pin}', true);
-              },
-            ),
-          );
-        },
-      ),
-    );
+      setState(() {
+        _usedAreaNames = zoneNames;
+        if (selectedArea == null && _usedAreaNames.isNotEmpty) {
+          selectedArea = _usedAreaNames.first;
+        }
+      });
+    } catch (e) {
+      AppLogger.error('Failed to load zones: $e');
+    }
   }
 
   /// Increases the zoom scale by 0.1, max limited elsewhere.
@@ -252,14 +219,15 @@ class _TablesScreenState extends State<TablesScreen> {
 
   void _handleAreaNameUpdated(String oldName, String newName) {
     setState(() {
-      // Update area names inside tables
+      _usedAreaNames.remove(oldName);
+      _usedAreaNames.add(newName);
+
       for (var table in placedTables) {
         if (table['areaName'] == oldName) {
           table['areaName'] = newName;
         }
       }
 
-      // If the selected area is the one being updated, update it
       if (selectedArea == oldName) {
         selectedArea = newName;
       }
@@ -1012,7 +980,6 @@ class _TablesScreenState extends State<TablesScreen> {
               setState(() {
                 placedTables = state.tables;
                 _usedTableNames = state.usedTableNames;
-                _usedAreaNames = state.usedAreaNames;
               });
             } else if (state is TableAddedState) {
               setState(() {
@@ -1020,9 +987,8 @@ class _TablesScreenState extends State<TablesScreen> {
                 _usedTableNames.add(
                   state.tableData['tableName'].toString().toLowerCase(),
                 );
-                _usedAreaNames.add(
-                  state.tableData['areaName'].toString().toLowerCase(),
-                );
+                _usedAreaNames.add(state.tableData['areaName']);
+                selectedArea = state.tableData['areaName'];
                 selectedArea = state.tableData['areaName'];
               });
 
@@ -1081,9 +1047,8 @@ class _TablesScreenState extends State<TablesScreen> {
                         .toList();
 
                 placedTables.removeWhere((t) => t['areaName'] == areaName);
-                _usedAreaNames.remove(areaName.toLowerCase());
+                _usedAreaNames.remove(areaName);
                 _usedTableNames.removeAll(tablesToRemove);
-
                 if (selectedArea == areaName) {
                   selectedArea =
                       _usedAreaNames.isNotEmpty ? _usedAreaNames.first : '';
@@ -1091,7 +1056,6 @@ class _TablesScreenState extends State<TablesScreen> {
 
                 _isDeletingArea = false;
               });
-
               final zoneRepository = RepositoryProvider.of<ZoneRepository>(
                 context,
               );
@@ -1100,26 +1064,120 @@ class _TablesScreenState extends State<TablesScreen> {
               );
               final updatedAreaNames =
                   updatedZones
-                      .map((z) => z['zone_name'].toString().toLowerCase())
-                      .toSet();
+                      .map((z) => z['zone_name'].toString())
+                      .toSet()
+                      .cast<String>();
 
               setState(() {
                 _usedAreaNames = updatedAreaNames;
               });
-            } else if (state is ZoneDeleteFailure) {
-              setState(() => _isDeletingArea = false);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Failed to delete area: ${state.error}'),
-                ),
-              );
+            }
+          },
+        ),
+        BlocListener<AttendanceBloc, AttendanceState>(
+          listener: (context, state) async {
+            final prefs = await SharedPreferences.getInstance();
 
-              AreaMovementNotifier.showPopup(
+            if (state is AttendancePopupReady) {
+              showDialog(
                 context: context,
-                fromArea: '',
-                toArea: '',
-                tableName: 'Failed to delete area',
+                barrierDismissible: false,
+                builder:
+                    (_) => AttendancePopup(
+                      employees: state.employees,
+                      onComplete: () async {
+                        Navigator.of(context).pop();
+                        setState(() => _isShiftCreating = true);
+
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder:
+                              (_) => const Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                        );
+
+                        final presentIds =
+                            state.employees
+                                .where((e) => e.status == 'Present')
+                                .map(
+                                  (e) => int.tryParse(e.id.replaceAll('#', '')),
+                                )
+                                .whereType<int>()
+                                .toList();
+
+                        final now = DateTime.now();
+                        final shiftDate = DateFormat('yyyy-MM-dd').format(now);
+                        final startTime = DateFormat('HH:mm:ss').format(now);
+
+                        try {
+                          await EmployeeRepository().createShift(
+                            token: widget.token,
+                            shiftDate: shiftDate,
+                            startTime: startTime,
+                            employeeIds: presentIds,
+                          );
+                          await prefs.setBool(
+                            'shiftCreated_${widget.pin}',
+                            true,
+                          );
+                        } catch (e) {
+                          AppLogger.error('Shift creation failed: $e');
+                        }
+
+                        Navigator.of(context).pop();
+                        setState(() => _isShiftCreating = false);
+
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder:
+                              (_) => Checkinpopup(
+                                onCheckIn: () async {
+                                  Navigator.of(context).pop();
+                                  setState(() => _isCheckInDone = true);
+                                  await prefs.setBool(
+                                    'popupsShown_${widget.pin}',
+                                    true,
+                                  );
+                                },
+                                onCancel: () async {
+                                  Navigator.of(context).pop();
+                                  setState(() => _isCheckInDone = false);
+                                  await prefs.setBool(
+                                    'popupsShown_${widget.pin}',
+                                    true,
+                                  );
+                                },
+                              ),
+                        );
+                      },
+                    ),
               );
+            } else if (state is ShiftAlreadyCreated) {
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder:
+                    (_) => Checkinpopup(
+                      onCheckIn: () async {
+                        Navigator.of(context).pop();
+                        setState(() => _isCheckInDone = true);
+                        await prefs.setBool('popupsShown_${widget.pin}', true);
+                      },
+                      onCancel: () async {
+                        Navigator.of(context).pop();
+                        setState(() => _isCheckInDone = false);
+                        await prefs.setBool('popupsShown_${widget.pin}', true);
+                      },
+                    ),
+              );
+            } else if (state is AttendanceErrorState) {
+              AppLogger.error('Attendance Error: ${state.message}');
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(state.message)));
             }
           },
         ),
@@ -1149,26 +1207,68 @@ class _TablesScreenState extends State<TablesScreen> {
                             color: Color(0xFF0A1B4D),
                           ),
                         )
-                        : TablePlacementWidget(
-                          placedTables: placedTables,
-                          scale: _scale,
-                          showPopup: _showPopup,
-                          addTable: (data, position) {
-                            context.read<TableBloc>().add(
-                              AddTableEvent(
-                                tableData: data,
-                                position: position,
-                                token: widget.token,
-                                pin: int.parse(widget.pin),
+                        : Stack(
+                          children: [
+                            TablePlacementWidget(
+                              placedTables: placedTables,
+                              scale: _scale,
+                              showPopup: _showPopup,
+                              addTable: (data, position) {
+                                context.read<TableBloc>().add(
+                                  AddTableEvent(
+                                    tableData: data,
+                                    position: position,
+                                    token: widget.token,
+                                    pin: int.parse(widget.pin),
+                                  ),
+                                );
+                              },
+                              updateTablePosition: _updateTablePosition,
+                              buildAddContentPrompt:
+                                  () => const SizedBox.shrink(),
+                              buildPlacedTable: _buildPlacedTable,
+                              selectedArea: selectedArea ?? '',
+                              onTapOutside: _handleTapOutside,
+                              isLoading: _isLoadingTables,
+                            ),
+
+                            // Message for empty normal view
+                            if (_filteredTables.isEmpty && !_showPopup)
+                              Positioned(
+                                top: MediaQuery.of(context).size.height * 0.32,
+                                left: 20,
+                                right: 20,
+                                child: RichText(
+                                  textAlign: TextAlign.center,
+                                  text: TextSpan(
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Color(0xFF0A1B4D),
+                                      fontWeight: FontWeight.w400,
+                                    ),
+                                    children: [
+                                      const TextSpan(
+                                        text:
+                                            'No tables have been added in this area yet.\n Click the',
+                                        style: TextStyle(height: 1.4),
+                                      ),
+                                      const TextSpan(
+                                        text: ' "Table Setup"',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                      const TextSpan(
+                                        text:
+                                            ' button to create and arrange your tables.',
+                                        style: TextStyle(height: 1.4),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
-                            );
-                          },
-                          updateTablePosition: _updateTablePosition,
-                          buildAddContentPrompt: () => const SizedBox.shrink(),
-                          buildPlacedTable: _buildPlacedTable,
-                          selectedArea: selectedArea ?? '',
-                          onTapOutside: _handleTapOutside,
-                          isLoading: _isLoadingTables,
+                          ],
                         ),
               )
             else
@@ -1184,46 +1284,87 @@ class _TablesScreenState extends State<TablesScreen> {
                     right: 20,
                     bottom: 20,
                   ),
-                  child: Scrollbar(
-                    controller: gridScrollController,
-                    thumbVisibility: true,
-                    thickness: 10,
-                    radius: const Radius.circular(8),
-                    child: Transform.scale(
-                      scale: _scale,
-                      alignment: Alignment.topLeft,
-                      child: GridView.builder(
-                        controller: gridScrollController,
-                        itemCount: _filteredTables.length,
-                        padding: const EdgeInsets.all(10),
-                        gridDelegate:
-                            _currentViewMode == ViewMode.gridShapeBased
-                                ? const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 10,
-                                  crossAxisSpacing: 20,
-                                  mainAxisSpacing: 20,
-                                  childAspectRatio: 0.9,
-                                )
-                                : const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 12,
-                                  crossAxisSpacing: 15,
-                                  mainAxisSpacing: 15,
-                                  childAspectRatio: 1.0,
+                  child:
+                      (_filteredTables.isEmpty && !_showPopup)
+                          ? Stack(
+                            children: [
+                              Positioned(
+                                top: MediaQuery.of(context).size.height * 0.25,
+                                left: 20,
+                                right: 20,
+                                child: RichText(
+                                  textAlign: TextAlign.center,
+                                  text: TextSpan(
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      color: Color(0xFF0A1B4D),
+                                      fontWeight: FontWeight.w400,
+                                    ),
+                                    children: [
+                                      const TextSpan(
+                                        text:
+                                            'No tables have been added in this area yet.\n Click the',
+                                        style: TextStyle(height: 1.4),
+                                      ),
+                                      const TextSpan(
+                                        text: ' "Table Setup"',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                      const TextSpan(
+                                        text:
+                                            ' button to create and arrange your tables.',
+                                        style: TextStyle(height: 1.4),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                        itemBuilder: (context, index) {
-                          return _currentViewMode == ViewMode.gridShapeBased
-                              ? _buildShapeBasedGridItem(
-                                _filteredTables[index],
-                                index,
-                              )
-                              : _buildCommonGridItem(
-                                _filteredTables[index],
-                                index,
-                              );
-                        },
-                      ),
-                    ),
-                  ),
+                              ),
+                            ],
+                          )
+                          : Scrollbar(
+                            controller: gridScrollController,
+                            thumbVisibility: true,
+                            thickness: 10,
+                            radius: const Radius.circular(8),
+                            child: Transform.scale(
+                              scale: _scale,
+                              alignment: Alignment.topLeft,
+                              child: GridView.builder(
+                                controller: gridScrollController,
+                                itemCount: _filteredTables.length,
+                                padding: const EdgeInsets.all(10),
+                                gridDelegate:
+                                    _currentViewMode == ViewMode.gridShapeBased
+                                        ? const SliverGridDelegateWithFixedCrossAxisCount(
+                                          crossAxisCount: 10,
+                                          crossAxisSpacing: 20,
+                                          mainAxisSpacing: 20,
+                                          childAspectRatio: 0.9,
+                                        )
+                                        : const SliverGridDelegateWithFixedCrossAxisCount(
+                                          crossAxisCount: 12,
+                                          crossAxisSpacing: 15,
+                                          mainAxisSpacing: 15,
+                                          childAspectRatio: 1.0,
+                                        ),
+                                itemBuilder: (context, index) {
+                                  return _currentViewMode ==
+                                          ViewMode.gridShapeBased
+                                      ? _buildShapeBasedGridItem(
+                                        _filteredTables[index],
+                                        index,
+                                      )
+                                      : _buildCommonGridItem(
+                                        _filteredTables[index],
+                                        index,
+                                      );
+                                },
+                              ),
+                            ),
+                          ),
                 ),
               ),
 
@@ -1400,7 +1541,10 @@ class _TablesScreenState extends State<TablesScreen> {
                           ),
                         ],
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       child: InkWell(
                         onTap: () {
                           if (_currentViewMode != ViewMode.normal) {
@@ -1415,7 +1559,10 @@ class _TablesScreenState extends State<TablesScreen> {
                           children: [
                             Text(
                               'Table Setup',
-                              style: TextStyle(color: Colors.white, fontSize: 14),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                              ),
                             ),
                             SizedBox(width: 8),
                             Icon(Icons.edit, color: Colors.white, size: 14),
@@ -1543,8 +1690,6 @@ class _TablesScreenState extends State<TablesScreen> {
                   },
                 ),
               ),
-
-            // 7. Right-side CreateTableWidget (Table Setup panel)
             Stack(
               children: [
                 AnimatedPositioned(
@@ -1560,7 +1705,11 @@ class _TablesScreenState extends State<TablesScreen> {
                     usedTableNames: _usedTableNames,
                     usedAreaNames: _usedAreaNames,
                     onAreaSelected:
-                        (areaName) => setState(() => selectedArea = areaName),
+                        (areaName) => setState(() {
+                          selectedArea = areaName;
+                          _usedAreaNames.add(areaName);
+                        }),
+
                     onAreaDeleted: (areaName) {
                       setState(() => _isDeletingArea = true);
                       context.read<ZoneBloc>().add(

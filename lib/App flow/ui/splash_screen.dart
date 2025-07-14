@@ -42,12 +42,12 @@ class _SplashScreenState extends State<SplashScreen> {
         middleRotation = 360;
       });
     });
+
     Timer(const Duration(seconds: 4), _checkLoginStatus);
   }
 
   Future<void> _checkLoginStatus() async {
     final prefs = await SharedPreferences.getInstance();
-
     final pin = prefs.getString('pin');
     final token = prefs.getString('token');
     final restaurantId = prefs.getString('restaurantId');
