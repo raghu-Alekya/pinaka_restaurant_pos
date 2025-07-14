@@ -4,11 +4,27 @@
 class AppConstants {
   static const String baseDomain = 'https://merchantrestaurant.alektasolutions.com';
 
-  // API endpoints
-  static const String authTokenEndpoint = '$baseDomain/wp-json/pinaka-restaurant-pos/v1/token';
-  static const String createZoneEndpoint = '$baseDomain/wp-json/pinaka-pos/v1/zones/create-zone';
-  static const String updateZoneEndpoint = '$baseDomain/wp-json/pinaka-pos/v1/zones/update-zone';
-  static const String getAllZonesEndpoint = '$baseDomain/wp-json/pinaka-pos/v1/zones/get-all-zones';
-  static const String deleteZoneEndpoint = '$baseDomain/wp-json/pinaka-pos/v1/zones/delete-zone';
-  static const String getZoneByIdEndpoint = '$baseDomain/wp-json/pinaka-pos/v1/zones/get-zones-by-id';
+  // Base API path
+  static const String baseApiPath = '$baseDomain/wp-json/pinaka-restaurant-pos/v1';
+
+  // Authentication
+  static const String authTokenEndpoint = '$baseApiPath/token';
+
+  // Zone Management
+  static const String createZoneEndpoint = '$baseApiPath/zones/create-zone';
+  static const String updateZoneEndpoint = '$baseApiPath/zones/update-zone';
+  static const String getAllZonesEndpoint = '$baseApiPath/zones/get-all-zones';
+  static const String deleteZoneEndpoint = '$baseApiPath/zones/delete-zone';
+
+  // Table Management
+  static const String createTableEndpoint = '$baseApiPath/tables/create-table';
+  static const String getAllTablesEndpoint = '$baseApiPath/tables/get-all-tables';
+  static const String updateTableEndpoint = '$baseApiPath/tables/update-table';
+  static const String deleteTableEndpoint = '$baseApiPath/tables/delete-table';
+
+  // Employee Management
+  static const String getAllEmployeesEndpoint = '$baseApiPath/users/get-all-employees';
+
+  // Shift Management
+  static const String createShiftEndpoint = '$baseApiPath/shifts/create-shift';
 }
