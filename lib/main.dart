@@ -2,15 +2,20 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart';
+import 'package:pinaka_restaurant_pos/repositories/checkin_repository.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'App flow/ui/splash_screen.dart';
+
+// Bloc Logic
 import 'blocs/Bloc Logic/auth_bloc.dart';
 import 'blocs/Bloc Logic/table_bloc.dart';
 import 'blocs/Bloc Logic/zone_bloc.dart';
 import 'blocs/Bloc Logic/attendance_bloc.dart';
+import 'blocs/Bloc Logic/checkin_bloc.dart';
 
+// Repositories
 import 'repositories/auth_repository.dart';
 import 'repositories/table_repository.dart';
 import 'repositories/zone_repository.dart';
@@ -23,10 +28,11 @@ void main() async {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
   }
+
   final dbPath = await getDatabasesPath();
   await deleteDatabase(join(dbPath, 'tables.db'));
 
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -71,6 +77,9 @@ class MyApp extends StatelessWidget {
             create: (context) => AttendanceBloc(
               RepositoryProvider.of<EmployeeRepository>(context),
             ),
+          ),
+          BlocProvider<CheckInBloc>(
+            create: (context) => CheckInBloc(CheckInRepository()),
           ),
         ],
         child: MaterialApp(

@@ -48,11 +48,30 @@ class EmployeeRepository {
       body: jsonEncode(payload),
     );
 
-    AppLogger.info('Shift Create Response (${response.statusCode}): ${response.body}');
-
-    if (response.statusCode != 200) {
-      AppLogger.error('Shift creation failed: ${response.body}');
+    if (response.statusCode == 200) {
+      AppLogger.info(' Shift successfully created.');
+      AppLogger.info(' Shift Create Response: ${response.body}');
+    } else {
+      AppLogger.error('Shift creation failed (${response.statusCode}): ${response.body}');
       throw Exception('Shift creation failed: ${response.body}');
+    }
+  }
+
+  Future<List<String>> getAllShifts(String token) async {
+    final response = await http.get(
+      Uri.parse(AppConstants.getAllShiftsEndpoint),
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    AppLogger.info('Shift API Response (${response.statusCode}): ${response.body}');
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((e) => "${e['start_time']} - ${e['end_time']}").toList();
+    } else {
+      throw Exception('Failed to fetch shifts');
     }
   }
 }

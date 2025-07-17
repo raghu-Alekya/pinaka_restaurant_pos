@@ -1,14 +1,12 @@
 // lib/constants/constants.dart
 
-/// App-wide constant URLs
 class AppConstants {
   static const String baseDomain = 'https://merchantrestaurant.alektasolutions.com';
-
-  // Base API path
   static const String baseApiPath = '$baseDomain/wp-json/pinaka-restaurant-pos/v1';
 
   // Authentication
   static const String authTokenEndpoint = '$baseApiPath/token';
+  static const String empOrderPinValidationEndpoint = '$baseApiPath/emp-order-pin-validation';
 
   // Zone Management
   static const String createZoneEndpoint = '$baseApiPath/zones/create-zone';
@@ -27,4 +25,5 @@ class AppConstants {
 
   // Shift Management
   static const String createShiftEndpoint = '$baseApiPath/shifts/create-shift';
+  static const String getAllShiftsEndpoint = '$baseApiPath/users/get-all-shifts';
 }
