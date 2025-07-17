@@ -9,6 +9,7 @@ import '../../blocs/Bloc Event/TableEvent.dart';
 import '../../blocs/Bloc Event/ZoneEvent.dart';
 import '../../blocs/Bloc Event/attendance_event.dart';
 import '../../blocs/Bloc Logic/attendance_bloc.dart';
+import '../../blocs/Bloc Logic/checkin_bloc.dart';
 import '../../blocs/Bloc Logic/table_bloc.dart';
 import '../../blocs/Bloc Logic/zone_bloc.dart';
 import '../../blocs/Bloc State/ZoneState.dart';
@@ -18,6 +19,7 @@ import '../../local database/area_dao.dart';
 import '../../local database/login_dao.dart';
 import '../../local database/table_dao.dart';
 import '../../models/view_mode.dart';
+import '../../repositories/checkin_repository.dart';
 import '../../repositories/employee_repository.dart';
 import '../../repositories/table_repository.dart';
 import '../../repositories/zone_repository.dart';
@@ -1075,9 +1077,7 @@ class _TablesScreenState extends State<TablesScreen> {
           },
         ),
         BlocListener<AttendanceBloc, AttendanceState>(
-          listener: (context, state) async {
-            final prefs = await SharedPreferences.getInstance();
-
+          listener: (context, state) {
             if (state is AttendancePopupReady) {
               showDialog(
                 context: context,
@@ -1085,8 +1085,8 @@ class _TablesScreenState extends State<TablesScreen> {
                 builder:
                     (_) => AttendancePopup(
                       employees: state.employees,
-                      onComplete: () async {
-                        Navigator.of(context).pop();
+                      token: widget.token,
+                      onComplete: (String extractedStartTime) async {
                         setState(() => _isShiftCreating = true);
 
                         showDialog(
@@ -1101,15 +1101,13 @@ class _TablesScreenState extends State<TablesScreen> {
                         final presentIds =
                             state.employees
                                 .where((e) => e.status == 'Present')
-                                .map(
-                                  (e) => int.tryParse(e.id.replaceAll('#', '')),
-                                )
+                                .map((e) => int.tryParse(e.id))
                                 .whereType<int>()
                                 .toList();
 
                         final now = DateTime.now();
                         final shiftDate = DateFormat('yyyy-MM-dd').format(now);
-                        final startTime = DateFormat('HH:mm:ss').format(now);
+                        final startTime = extractedStartTime;
 
                         try {
                           await EmployeeRepository().createShift(
@@ -1118,58 +1116,32 @@ class _TablesScreenState extends State<TablesScreen> {
                             startTime: startTime,
                             employeeIds: presentIds,
                           );
-                          await prefs.setBool(
-                            'shiftCreated_${widget.pin}',
-                            true,
-                          );
                         } catch (e) {
                           AppLogger.error('Shift creation failed: $e');
                         }
 
-                        Navigator.of(context).pop();
+                        Navigator.of(context).pop(); // Close progress dialog
                         setState(() => _isShiftCreating = false);
 
                         showDialog(
                           context: context,
                           barrierDismissible: false,
                           builder:
-                              (_) => Checkinpopup(
-                                onCheckIn: () async {
-                                  Navigator.of(context).pop();
-                                  setState(() => _isCheckInDone = true);
-                                  await prefs.setBool(
-                                    'popupsShown_${widget.pin}',
-                                    true,
-                                  );
-                                },
-                                onCancel: () async {
-                                  Navigator.of(context).pop();
-                                  setState(() => _isCheckInDone = false);
-                                  await prefs.setBool(
-                                    'popupsShown_${widget.pin}',
-                                    true,
-                                  );
-                                },
+                              (_) => BlocProvider(
+                                create: (context) => CheckInBloc(CheckInRepository()),
+                                child: Checkinpopup(
+                                  token: widget.token,
+                                  onCheckIn: () {
+                                    Navigator.of(context).pop();
+                                    setState(() => _isCheckInDone = true);
+                                  },
+                                  onCancel: () {
+                                    Navigator.of(context).pop();
+                                    setState(() => _isCheckInDone = false);
+                                  },
+                                ),
                               ),
                         );
-                      },
-                    ),
-              );
-            } else if (state is ShiftAlreadyCreated) {
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder:
-                    (_) => Checkinpopup(
-                      onCheckIn: () async {
-                        Navigator.of(context).pop();
-                        setState(() => _isCheckInDone = true);
-                        await prefs.setBool('popupsShown_${widget.pin}', true);
-                      },
-                      onCancel: () async {
-                        Navigator.of(context).pop();
-                        setState(() => _isCheckInDone = false);
-                        await prefs.setBool('popupsShown_${widget.pin}', true);
                       },
                     ),
               );
@@ -1182,13 +1154,12 @@ class _TablesScreenState extends State<TablesScreen> {
           },
         ),
       ],
-
       child: Scaffold(
         backgroundColor: const Color(0xFFF0F3FC),
         resizeToAvoidBottomInset: false,
         appBar: PreferredSize(
           preferredSize: const Size.fromHeight(70),
-          child: TopBar(),
+          child: TopBar(token: widget.token, pin: widget.pin),
         ),
         body: Stack(
           children: [
@@ -1233,7 +1204,9 @@ class _TablesScreenState extends State<TablesScreen> {
                             ),
 
                             // Message for empty normal view
-                            if (_filteredTables.isEmpty && !_showPopup)
+                            if (_filteredTables.isEmpty &&
+                                areaNames.isNotEmpty &&
+                                !_showPopup)
                               Positioned(
                                 top: MediaQuery.of(context).size.height * 0.32,
                                 left: 20,
@@ -1285,7 +1258,9 @@ class _TablesScreenState extends State<TablesScreen> {
                     bottom: 20,
                   ),
                   child:
-                      (_filteredTables.isEmpty && !_showPopup)
+                      (_filteredTables.isEmpty &&
+                              areaNames.isNotEmpty &&
+                              !_showPopup)
                           ? Stack(
                             children: [
                               Positioned(
@@ -1494,7 +1469,10 @@ class _TablesScreenState extends State<TablesScreen> {
                 ),
               ),
 
-            if (placedTables.isEmpty && !_showPopup && !_isLoadingTables)
+            if (placedTables.isEmpty &&
+                areaNames.isEmpty &&
+                !_showPopup &&
+                !_isLoadingTables)
               Center(
                 child: TableHelpers.buildAddContentPrompt(
                   scale: _scale,
@@ -1528,7 +1506,7 @@ class _TablesScreenState extends State<TablesScreen> {
                   ),
 
                   if (!_showPopup) const SizedBox(width: 20),
-                  if (placedTables.isNotEmpty && !_showPopup)
+                  if (areaNames.isNotEmpty && !_showPopup)
                     Container(
                       decoration: BoxDecoration(
                         color: const Color(0xFF15315E),

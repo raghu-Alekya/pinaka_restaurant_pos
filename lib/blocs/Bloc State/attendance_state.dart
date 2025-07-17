@@ -18,9 +18,26 @@ class CheckInRequiredState extends AttendanceState {}
 
 class CheckInCompletedState extends AttendanceState {}
 
-class ShiftAlreadyCreated extends AttendanceState {}
-
 class AttendanceErrorState extends AttendanceState {
   final String message;
   AttendanceErrorState(this.message);
 }
+class ShiftsLoaded extends AttendanceState {
+  final List<String> shifts;
+  ShiftsLoaded(this.shifts);
+}
+
+class ShiftsLoadError extends AttendanceState {
+  final String message;
+  ShiftsLoadError(this.message);
+}
+
+class ShiftListLoaded extends AttendanceState {
+  final List<String> shifts;
+
+  ShiftListLoaded(this.shifts);
+}
+
+
+
+

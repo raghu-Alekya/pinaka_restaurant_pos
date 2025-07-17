@@ -1,10 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../blocs/Bloc Event/checkin_event.dart';
+import '../../blocs/Bloc Logic/checkin_bloc.dart';
+import '../../blocs/Bloc State/checkin_state.dart';
 
 class Checkinpopup extends StatefulWidget {
   final VoidCallback? onCheckIn;
   final VoidCallback? onCancel;
+  final String token;
 
-  const Checkinpopup({super.key, this.onCheckIn, this.onCancel});
+  const Checkinpopup({
+    super.key,
+    this.onCheckIn,
+    this.onCancel,
+    required this.token,
+  });
 
   @override
   State<Checkinpopup> createState() => _CheckinpopupState();
@@ -13,6 +23,7 @@ class Checkinpopup extends StatefulWidget {
 class _CheckinpopupState extends State<Checkinpopup> {
   List<String> pinDigits = ['', '', '', ''];
   bool showError = false;
+  bool _isLoading = false;
 
   void _onNumberTap(String number) {
     for (int i = 0; i < pinDigits.length; i++) {
@@ -34,17 +45,36 @@ class _CheckinpopupState extends State<Checkinpopup> {
 
   void _onCheckIn() {
     final pin = pinDigits.join();
-    if (pin != '9999' && pin != '1234') {
-      setState(() {
-        showError = true;
-      });
-    } else {
-      widget.onCheckIn?.call();
+    if (pin.length < 4) {
+      setState(() => showError = true);
+      return;
     }
+    context.read<CheckInBloc>().add(SubmitPinEvent(pin: pin, token: widget.token));
   }
 
   @override
   Widget build(BuildContext context) {
+    return BlocListener<CheckInBloc, CheckInState>(
+      listener: (context, state) {
+        if (state is CheckInLoading) {
+          setState(() {
+            _isLoading = true;
+            showError = false;
+          });
+        } else if (state is CheckInSuccess) {
+          setState(() => _isLoading = false);
+          widget.onCheckIn?.call();
+        } else if (state is CheckInFailure) {
+          setState(() {
+            _isLoading = false;
+            showError = true;
+          });
+        }
+      },
+      child: _buildPopupContent(context),
+    );
+  }
+  Widget _buildPopupContent(BuildContext context) {
     return Center(
       child: Material(
         color: Colors.transparent,
@@ -52,133 +82,153 @@ class _CheckinpopupState extends State<Checkinpopup> {
           width: 700,
           padding: const EdgeInsets.all(32),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: const Color(0xFFFAFFFE),
             borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Captain Check-In',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 5),
-              const Text(
-                'Enter your 4- Digit PIN for Check-In',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF4C5F7D),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 32),
-
-              /// PIN and Keypad Section
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  /// PIN Entry (Left side)
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'PIN:',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF4C5F7D),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: List.generate(
-                            4,
-                                (index) => Container(
-                              margin: const EdgeInsets.only(right: 12),
-                              width: 64,
-                              height: 50,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: showError
-                                      ? Colors.red
-                                      : Colors.grey.shade400,
-                                ),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                pinDigits[index].isNotEmpty ? '*' : '',
-                                style: const TextStyle(
-                                  fontSize: 30,
-                                  color: Color(0xFF4C5F7D),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        if (showError)
-                          const Text(
-                            'Please enter a valid PIN',
-                            style: TextStyle(
-                              color: Colors.red,
-                              fontSize: 12,
-                            ),
-                          ),
-                        const SizedBox(height: 25),
-
-                        /// Check-In Button aligned under 3rd and 4th boxes
-                        Padding(
-                          padding: const EdgeInsets.only(left: 64 + 12 + 64 + 12),
-                          child: SizedBox(
-                            width: 140,
-                            height: 40,
-                            child: ElevatedButton(
-                              onPressed: _onCheckIn,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red.shade400,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                              ),
-                              child: const Text(
-                                'Check-In',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(width: 10),
-
-                  /// Number Pad (Right side)
-                  Column(
-                    children: [
-                      _buildNumRow(['1', '2', '3']),
-                      _buildNumRow(['4', '5', '6']),
-                      _buildNumRow(['7', '8', '9']),
-                      _buildNumRow(['clear', '0']),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                ],
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 12,
+                offset: Offset(0, 6),
               ),
             ],
           ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Captain Check-In',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                const Text(
+                  'Enter your 4-Digit PIN for Check-In',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Color(0xFF4C5F7D),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildPinInputArea(),
+                    const SizedBox(width: 10),
+                    _buildNumberPad(),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildPinInputArea() {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'PIN:',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF4C5F7D),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: List.generate(
+              4,
+                  (index) => Container(
+                margin: const EdgeInsets.only(right: 12),
+                width: 64,
+                height: 50,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(
+                    color: showError ? Colors.red : const Color(0xFF4C5F7D),
+                    width: 1.8,
+                  ),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    pinDigits[index].isNotEmpty ? '*' : '',
+                    style: const TextStyle(
+                      fontSize: 30,
+                      height: 1.0,
+                      color: Color(0xFF4C5F7D),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          if (showError)
+            const Text(
+              'Please enter a valid PIN',
+              style: TextStyle(color: Colors.red, fontSize: 12),
+            ),
+          const SizedBox(height: 25),
+          Padding(
+            padding: const EdgeInsets.only(left: 152),
+            child: SizedBox(
+              width: 140,
+              height: 45,
+              child: ElevatedButton(
+                onPressed: () {
+                  if (_isLoading) return;
+                  _onCheckIn();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF6C6C),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+                child: _isLoading
+                    ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
+                    : const Text(
+                  'Check-In',
+                  style: TextStyle(fontSize: 17, color: Colors.white),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+  Widget _buildNumberPad() {
+    return Column(
+      children: [
+        _buildNumRow(['1', '2', '3']),
+        _buildNumRow(['4', '5', '6']),
+        _buildNumRow(['7', '8', '9']),
+        _buildNumRow(['clear', '0']),
+      ],
     );
   }
 
@@ -187,11 +237,7 @@ class _CheckinpopupState extends State<Checkinpopup> {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: values.map((val) {
-          if (val == 'clear') {
-            return _buildClearButton();
-          } else {
-            return _buildKey(val);
-          }
+          return val == 'clear' ? _buildClearButton() : _buildKey(val);
         }).toList(),
       ),
     );
@@ -206,8 +252,8 @@ class _CheckinpopupState extends State<Checkinpopup> {
         child: ElevatedButton(
           onPressed: () => _onNumberTap(value),
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.grey.shade100,
-            foregroundColor: Color(0xFF4C5F7D),
+            backgroundColor: const Color(0xFF4C5F7D),
+            foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(6),
             ),
@@ -230,10 +276,11 @@ class _CheckinpopupState extends State<Checkinpopup> {
         child: ElevatedButton(
           onPressed: _onClear,
           style: ElevatedButton.styleFrom(
-            backgroundColor:Colors.red.shade400,
-            foregroundColor: Colors.white,
+            backgroundColor: Colors.white,
+            foregroundColor: const Color(0xFFFF6C6C),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(6),
+              side: const BorderSide(color: Color(0xFFFF6C6C)),
             ),
           ),
           child: const Text(

@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../repositories/employee_repository.dart';
 import '../ui/CheckinPopup.dart';
 import '../ui/DailyAttendanceScreen.dart';
 import '../ui/employee_login_page.dart';
 import 'LogoutConfirmationDialog.dart';
 
 class TopBar extends StatefulWidget implements PreferredSizeWidget {
+  final String token;
+  final String pin;
+
+  const TopBar({Key? key, required this.token, required this.pin}) : super(key: key);
+
   @override
-  Size get preferredSize => Size.fromHeight(100);
+  Size get preferredSize => const Size.fromHeight(100);
 
   @override
   _TopBarState createState() => _TopBarState();
@@ -126,12 +132,6 @@ class _TopBarState extends State<TopBar> {
 
                 if (result == true) {
                   final prefs = await SharedPreferences.getInstance();
-                  final pin = prefs.getString('pin');
-                  if (pin != null) {
-                    await prefs.remove('attendanceShown_$pin');
-                    await prefs.remove('shiftCreated_$pin');
-                    await prefs.clear();
-                  }
                   await prefs.clear();
 
                   if (context.mounted) {
@@ -156,25 +156,34 @@ class _TopBarState extends State<TopBar> {
   }
   Widget _buildAttendanceIconButton(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        showDialog(
-          context: context,
-          barrierDismissible: true,
-          builder: (_) => AttendancePopup(
-            employees: [
-              Employee(id: '#30421', name: 'Jagdish'),
-              Employee(id: '#30432', name: 'Arjun Kumar'),
-              Employee(id: '#30356', name: 'Srinath'),
-              Employee(id: '#30421', name: 'Jagdish'),
-              Employee(id: '#30432', name: 'Arjun Kumar'),
-              Employee(id: '#30356', name: 'Srinath'),
-              Employee(id: '#30421', name: 'Jagdish'),
-              Employee(id: '#30432', name: 'Arjun Kumar'),
-              Employee(id: '#30357', name: 'Srinath'),
-            ],
-            isUpdateMode: true,
-          ),
-        );
+      onTap: () async {
+        try {
+          final repository = EmployeeRepository();
+          final response = await repository.getAllEmployees(widget.token);
+          final List<Employee> employees = response.map((e) {
+            return Employee(
+              id: e['ID'].toString(),
+              name: e['name'].toString(),
+            );
+          }).toList();
+          if (context.mounted) {
+            showDialog(
+              context: context,
+              barrierDismissible: true,
+              builder: (_) => AttendancePopup(
+                token: widget.token,
+                employees: employees,
+                isUpdateMode: true,
+              ),
+            );
+          }
+        } catch (e) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to load employees')),
+            );
+          }
+        }
       },
       child: Container(
         width: 34,
@@ -203,7 +212,15 @@ class _TopBarState extends State<TopBar> {
         showDialog(
           context: context,
           barrierDismissible: true,
-          builder: (context) => const Checkinpopup(),
+          builder: (context) => Checkinpopup(
+            token: widget.token,
+            onCheckIn: () {
+              Navigator.of(context).pop();
+            },
+            onCancel: () {
+              Navigator.of(context).pop();
+            },
+          ),
         );
       },
       child: Container(
