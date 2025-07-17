@@ -13,34 +13,40 @@ class AreaMovementNotifier {
     Offset? oldPos,
     Offset? newPos,
     Duration duration = const Duration(seconds: 3),
+    String? customMessage,
   }) {
     _areaPopupEntry?.remove();
+    String message = customMessage ?? '';
 
-    String message;
+    final isShift = tableName.toLowerCase() == 'shift';
     final isArea = tableName.toLowerCase().contains('area');
     final isRename = isArea && fromArea.isNotEmpty && toArea.isNotEmpty && fromArea != toArea;
-    final isRotated = oldRotation != null &&
-        newRotation != null &&
-        oldRotation != newRotation;
+    final isRotated = oldRotation != null && newRotation != null && oldRotation != newRotation;
 
-    if (isRename) {
-      message = 'Area renamed to "$toArea"';
-    } else if (fromArea.isEmpty && toArea.isNotEmpty) {
-      message = isArea
-          ? 'Area "$toArea" created successfully'
-          : 'Table "$tableName" added to "$toArea"';
-    } else if (toArea.isEmpty && fromArea.isNotEmpty) {
-      message = isArea
-          ? 'Area "$fromArea" deleted'
-          : 'Table "$tableName" deleted from "$fromArea"';
-    } else if (isArea && fromArea != toArea) {
-      message = 'Area moved from "$fromArea" to "$toArea"';
-    } else if (!isArea && fromArea != toArea) {
-      message = 'Table "$tableName" moved from "$fromArea" to "$toArea"';
-    } else if (!isArea && isRotated) {
-      message = 'Table "$tableName" rotated to ${newRotation?.toInt()}°';
-    } else {
-      message = 'Updated "$tableName"';
+    if (message.isEmpty) {
+      if (isShift && fromArea.isEmpty && toArea.isEmpty) {
+        message = 'Shift creation failed. Please select a valid shift.';
+      } else if (isShift && fromArea.isNotEmpty) {
+        message = 'Shift "$fromArea" updated successfully.';
+      } else if (isRename) {
+        message = 'Area renamed to "$toArea"';
+      } else if (fromArea.isEmpty && toArea.isNotEmpty) {
+        message = isArea
+            ? 'Area "$toArea" created successfully'
+            : 'Table "$tableName" added to "$toArea"';
+      } else if (toArea.isEmpty && fromArea.isNotEmpty) {
+        message = isArea
+            ? 'Area "$fromArea" deleted'
+            : 'Table "$tableName" deleted from "$fromArea"';
+      } else if (isArea && fromArea != toArea) {
+        message = 'Area moved from "$fromArea" to "$toArea"';
+      } else if (!isArea && fromArea != toArea) {
+        message = 'Table "$tableName" moved from "$fromArea" to "$toArea"';
+      } else if (!isArea && isRotated) {
+        message = 'Table "$tableName" rotated to ${newRotation?.toInt()}°';
+      } else {
+        message = 'Updated "$tableName"';
+      }
     }
 
     _areaPopupEntry = OverlayEntry(
