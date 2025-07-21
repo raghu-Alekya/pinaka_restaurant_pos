@@ -63,12 +63,26 @@ class _CheckinpopupState extends State<Checkinpopup> {
           });
         } else if (state is CheckInSuccess) {
           setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Check-In successful!'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
           widget.onCheckIn?.call();
         } else if (state is CheckInFailure) {
           setState(() {
             _isLoading = false;
             showError = true;
           });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Invalid PIN. Please try again.'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 2),
+            ),
+          );
         }
       },
       child: _buildPopupContent(context),

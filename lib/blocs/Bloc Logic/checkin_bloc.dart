@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../models/UserPermissions.dart';
 import '../../repositories/checkin_repository.dart';
 import '../../utils/logger.dart';
 import '../Bloc Event/checkin_event.dart';
@@ -23,10 +24,13 @@ class CheckInBloc extends Bloc<CheckInEvent, CheckInState> {
         token: event.token,
       );
 
-      if ((data['status']?.toString().toLowerCase() ?? '') == 'success') {
-        AppLogger.debug('Login Successful: ${data}');
-        emit(CheckInSuccess());
-      } else {
+      AppLogger.debug('KOT PIN Validation Response: $data');
+
+      if (data['success'] == true && data['data'] != null) {
+        final permissions = UserPermissions.fromJson(data['data']['permissions']);
+        emit(CheckInSuccess(permissions: permissions));
+      }
+      else {
         AppLogger.debug('Login Failed with message: ${data['message'] ?? 'Unknown error'}');
         emit(CheckInFailure(data['message'] ?? 'Invalid PIN'));
       }
