@@ -3,8 +3,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../blocs/Bloc Event/TableEvent.dart';
 import '../../blocs/Bloc Event/ZoneEvent.dart';
 import '../../blocs/Bloc Event/attendance_event.dart';
@@ -175,12 +173,42 @@ class _TablesScreenState extends State<TablesScreen> {
     super.initState();
     _loadZones();
     context.read<TableBloc>().add(LoadTablesEvent(widget.token));
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!_popupsHandled) {
         _popupsHandled = true;
-        context.read<AttendanceBloc>().add(
-          InitializeAttendanceFlow(token: widget.token, pin: widget.pin),
-        );
+
+        try {
+          final currentShift = await EmployeeRepository().getCurrentShift(
+            widget.token,
+          );
+          final shiftStatus = currentShift?['shift_status']?.toLowerCase();
+          final shiftId = currentShift?['shift_id'];
+
+          AppLogger.info("Shift Status: $shiftStatus, Shift ID: $shiftId");
+          if (shiftStatus == 'closed' && shiftId != null) {
+            setState(() => _isCheckInDone = false);
+            context.read<AttendanceBloc>().add(
+              InitializeAttendanceFlow(token: widget.token, pin: widget.pin),
+            );
+          } else if (shiftStatus == 'open' && shiftId == null) {
+            AppLogger.error(
+              "Shift is open but shift_id is null. Cannot proceed reliably.",
+            );
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Shift data error. Please contact admin."),
+              ),
+            );
+          } else {
+            setState(() => _isCheckInDone = true);
+          }
+        } catch (e) {
+          AppLogger.error("Shift check failed: $e");
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Failed to verify shift status")),
+          );
+        }
       }
     });
   }
@@ -1077,8 +1105,26 @@ class _TablesScreenState extends State<TablesScreen> {
           },
         ),
         BlocListener<AttendanceBloc, AttendanceState>(
-          listener: (context, state) {
+          listener: (context, state) async {
             if (state is AttendancePopupReady) {
+              final currentShift = await EmployeeRepository().getCurrentShift(
+                widget.token,
+              );
+
+              final isValidShift =
+                  currentShift != null &&
+                  currentShift['shift_status']?.toLowerCase() == 'open' &&
+                  currentShift['shift_id'] != null &&
+                  currentShift['user_id'] != 0 &&
+                  currentShift['start_time'] != false;
+
+              if (isValidShift) {
+                setState(() => _isCheckInDone = true);
+                return;
+              }
+
+              if (_isCheckInDone) return;
+
               showDialog(
                 context: context,
                 barrierDismissible: false,
@@ -1087,48 +1133,12 @@ class _TablesScreenState extends State<TablesScreen> {
                       employees: state.employees,
                       token: widget.token,
                       onComplete: (String extractedStartTime) async {
-                        setState(() => _isShiftCreating = true);
-
-                        showDialog(
-                          context: context,
-                          barrierDismissible: false,
-                          builder:
-                              (_) => const Center(
-                                child: CircularProgressIndicator(),
-                              ),
-                        );
-
-                        final presentIds =
-                            state.employees
-                                .where((e) => e.status == 'Present')
-                                .map((e) => int.tryParse(e.id))
-                                .whereType<int>()
-                                .toList();
-
-                        final now = DateTime.now();
-                        final shiftDate = DateFormat('yyyy-MM-dd').format(now);
-                        final startTime = extractedStartTime;
-
-                        try {
-                          await EmployeeRepository().createShift(
-                            token: widget.token,
-                            shiftDate: shiftDate,
-                            startTime: startTime,
-                            employeeIds: presentIds,
-                          );
-                        } catch (e) {
-                          AppLogger.error('Shift creation failed: $e');
-                        }
-
-                        Navigator.of(context).pop(); // Close progress dialog
-                        setState(() => _isShiftCreating = false);
-
                         showDialog(
                           context: context,
                           barrierDismissible: false,
                           builder:
                               (_) => BlocProvider(
-                                create: (context) => CheckInBloc(CheckInRepository()),
+                                create: (_) => CheckInBloc(CheckInRepository()),
                                 child: Checkinpopup(
                                   token: widget.token,
                                   onCheckIn: () {
@@ -1145,11 +1155,6 @@ class _TablesScreenState extends State<TablesScreen> {
                       },
                     ),
               );
-            } else if (state is AttendanceErrorState) {
-              AppLogger.error('Attendance Error: ${state.message}');
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text(state.message)));
             }
           },
         ),
@@ -1506,6 +1511,8 @@ class _TablesScreenState extends State<TablesScreen> {
                   ),
 
                   if (!_showPopup) const SizedBox(width: 20),
+
+                  // Add permission check here
                   if (areaNames.isNotEmpty && !_showPopup)
                     Container(
                       decoration: BoxDecoration(

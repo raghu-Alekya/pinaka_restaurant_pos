@@ -1,6 +1,6 @@
-// lib/repositories/auth_repository.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants/constants.dart';
 import '../local database/login_dao.dart';
@@ -30,6 +30,7 @@ class AuthRepository {
       String token = data['token'];
       String restaurantId = data['restaurant_id'].toString();
       String restaurantName = data['restaurant_name'].toString();
+      Map<String, dynamic> permissions = Map<String, dynamic>.from(data['permissions'] ?? {});
 
       await loginDao.insertLogin(pin, token, restaurantId, restaurantName);
 
@@ -41,7 +42,8 @@ class AuthRepository {
         'success': true,
         'token': token,
         'restaurant_id': restaurantId,
-        'restaurant_name': restaurantName
+        'restaurant_name': restaurantName,
+        'permissions': permissions,
       };
     } else {
       String errorMessage = responseData['message'] ?? "Login failed";
@@ -49,13 +51,37 @@ class AuthRepository {
       return {'success': false, 'message': errorMessage};
     }
   }
+  Future<bool> logout(String token) async {
+    final url = Uri.parse("https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1/logout");
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      AppLogger.debug("Logout API Response: ${response.statusCode} - ${response.body}");
+
+      if (response.statusCode == 200) {
+        await loginDao.clearLogin();
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.clear();
+
+        AppLogger.info('Logout successful. Local data cleared.');
+        return true;
+      } else {
+        AppLogger.warning('Logout failed with status: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      AppLogger.error("Logout exception: $e");
+      return false;
+    }
+  }
+
 
   Future<Map<String, dynamic>?> getSavedLogin() async {
     return await loginDao.getLogin();
-  }
-
-  Future<void> logout() async {
-    await loginDao.clearLogin();
-    AppLogger.info('User logged out. Local login cleared.');
   }
 }

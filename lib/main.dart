@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart';
 import 'package:pinaka_restaurant_pos/repositories/checkin_repository.dart';
+import 'package:pinaka_restaurant_pos/utils/ShiftMonitor.dart';
+import 'package:pinaka_restaurant_pos/utils/global_navigator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -31,6 +34,19 @@ void main() async {
 
   final dbPath = await getDatabasesPath();
   await deleteDatabase(join(dbPath, 'tables.db'));
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('token');
+
+  if (token != null && token.isNotEmpty) {
+    final employeeRepo = EmployeeRepository();
+
+    final shiftMonitor = ShiftMonitor(
+      token: token,
+      employeeRepository: employeeRepo,
+    );
+
+    shiftMonitor.startMonitoring();
+  }
 
   runApp(const MyApp());
 }
@@ -83,6 +99,7 @@ class MyApp extends StatelessWidget {
           ),
         ],
         child: MaterialApp(
+          navigatorKey: navigatorKey,
           debugShowCheckedModeBanner: false,
           title: 'Employee Login',
           theme: ThemeData(

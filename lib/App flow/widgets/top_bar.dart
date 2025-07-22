@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../repositories/auth_repository.dart';
 import '../../repositories/employee_repository.dart';
 import '../ui/CheckinPopup.dart';
 import '../ui/DailyAttendanceScreen.dart';
@@ -27,6 +28,7 @@ class _TopBarState extends State<TopBar> {
       isLightMode = !isLightMode;
     });
   }
+  bool _isAttendanceDialogOpen = false;
 
   @override
   Size get preferredSize => Size.fromHeight(70);
@@ -132,13 +134,20 @@ class _TopBarState extends State<TopBar> {
 
                 if (result == true) {
                   final prefs = await SharedPreferences.getInstance();
-                  await prefs.clear();
+                  final token = prefs.getString('token') ?? "";
 
-                  if (context.mounted) {
+                  final authRepository = AuthRepository();
+                  final success = await authRepository.logout(token);
+
+                  if (success && context.mounted) {
                     Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(builder: (_) => const EmployeeLoginPage()),
                           (route) => false,
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Logout failed. Please try again.')),
                     );
                   }
                 }
@@ -157,6 +166,11 @@ class _TopBarState extends State<TopBar> {
   Widget _buildAttendanceIconButton(BuildContext context) {
     return GestureDetector(
       onTap: () async {
+        if (_isAttendanceDialogOpen) return;
+
+        setState(() {
+          _isAttendanceDialogOpen = true;
+        });
         try {
           final repository = EmployeeRepository();
           final response = await repository.getAllEmployees(widget.token);
@@ -166,14 +180,35 @@ class _TopBarState extends State<TopBar> {
               name: e['name'].toString(),
             );
           }).toList();
+          final currentShift = await repository.getCurrentShift(widget.token);
+
+          if (currentShift != null) {
+            final presentIds = List<int>.from(currentShift['shift_emp'] ?? []);
+            final absentIds = List<int>.from(currentShift['shift_absent_emp'] ?? []);
+
+            for (var emp in employees) {
+              final empId = int.tryParse(emp.id);
+              if (presentIds.contains(empId)) {
+                emp.status = 'Present';
+              } else if (absentIds.contains(empId)) {
+                emp.status = 'Absent';
+              } else {
+                emp.status = '';
+              }
+            }
+          }
+
           if (context.mounted) {
-            showDialog(
+            final shiftData = await EmployeeRepository().getCurrentShift(widget.token);
+
+            await showDialog(
               context: context,
               barrierDismissible: true,
               builder: (_) => AttendancePopup(
                 token: widget.token,
                 employees: employees,
                 isUpdateMode: true,
+                currentShiftData: shiftData,
               ),
             );
           }
@@ -182,6 +217,12 @@ class _TopBarState extends State<TopBar> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Failed to load employees')),
             );
+          }
+        } finally {
+          if (mounted) {
+            setState(() {
+              _isAttendanceDialogOpen = false;
+            });
           }
         }
       },
