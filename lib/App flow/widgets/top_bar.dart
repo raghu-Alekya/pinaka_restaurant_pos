@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../models/UserPermissions.dart';
 import '../../repositories/auth_repository.dart';
 import '../../repositories/employee_repository.dart';
 import '../ui/CheckinPopup.dart';
@@ -10,8 +11,14 @@ import 'LogoutConfirmationDialog.dart';
 class TopBar extends StatefulWidget implements PreferredSizeWidget {
   final String token;
   final String pin;
+  final Function(UserPermissions)? onPermissionsReceived; // 👈 new callback
 
-  const TopBar({Key? key, required this.token, required this.pin}) : super(key: key);
+  const TopBar({
+    Key? key,
+    required this.token,
+    required this.pin,
+    this.onPermissionsReceived,
+  }) : super(key: key);
 
   @override
   Size get preferredSize => const Size.fromHeight(100);
@@ -29,6 +36,11 @@ class _TopBarState extends State<TopBar> {
     });
   }
   bool _isAttendanceDialogOpen = false;
+  void _handlePermissions(UserPermissions permissions) {
+    widget.onPermissionsReceived?.call(permissions); // ✅ Pass to parent
+  }
+
+  bool _isCheckInDone = false;
 
   @override
   Size get preferredSize => Size.fromHeight(70);
@@ -171,6 +183,7 @@ class _TopBarState extends State<TopBar> {
         setState(() {
           _isAttendanceDialogOpen = true;
         });
+
         try {
           final repository = EmployeeRepository();
           final response = await repository.getAllEmployees(widget.token);
@@ -180,6 +193,7 @@ class _TopBarState extends State<TopBar> {
               name: e['name'].toString(),
             );
           }).toList();
+
           final currentShift = await repository.getCurrentShift(widget.token);
 
           if (currentShift != null) {
@@ -257,11 +271,18 @@ class _TopBarState extends State<TopBar> {
             token: widget.token,
             onCheckIn: () {
               Navigator.of(context).pop();
+              setState(() {
+                _isCheckInDone = true;
+              });
             },
             onCancel: () {
               Navigator.of(context).pop();
             },
+            onPermissionsReceived: (permissions) {
+              _handlePermissions(permissions);
+            },
           ),
+
         );
       },
       child: Container(

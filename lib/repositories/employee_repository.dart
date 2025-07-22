@@ -71,6 +71,7 @@ class EmployeeRepository {
     }
   }
 
+
   Future<List<String>> getAllShifts(String token) async {
     final response = await http.get(
       Uri.parse(AppConstants.getAllShiftsEndpoint),
@@ -82,8 +83,18 @@ class EmployeeRepository {
     );
 
     if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.map((e) => "${e['start_time']} - ${e['end_time']}").toList();
+      final body = jsonDecode(response.body);
+
+      if (body is List) {
+        return body
+            .map<String>((e) => "${e['start_time']} - ${e['end_time']}")
+            .toList();
+      }
+      if (body is Map<String, dynamic>) {
+        return ["${body['start_time']} - ${body['end_time']}"];
+      }
+
+      throw Exception("Unexpected shift data format");
     } else {
       throw Exception('Failed to fetch shifts');
     }
@@ -142,9 +153,10 @@ class EmployeeRepository {
   Future<void> closeShift({
     required String token,
     required int shiftId,
+    required String endTime,
   }) async {
     final url = Uri.parse(
-      'https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1/shifts/update-shift',
+      'https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1/shifts/close-shift',
     );
 
     final response = await http.post(
@@ -156,6 +168,7 @@ class EmployeeRepository {
       body: jsonEncode({
         'shift_id': shiftId,
         'status': 'closed',
+        'end_time': endTime,
       }),
     );
 
@@ -165,5 +178,4 @@ class EmployeeRepository {
       throw Exception('Failed to close shift. Response: ${response.body}');
     }
   }
-
 }

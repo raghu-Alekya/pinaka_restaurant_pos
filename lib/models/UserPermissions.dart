@@ -19,6 +19,31 @@ class UserPermissions {
   final bool canUpdateInventory;
   final bool canAccessSettings;
 
+  factory UserPermissions.fullAccess() {
+    return UserPermissions(
+      canAccessDashboard: true,
+      canViewMenu: true,
+      canEditMenu: true,
+      canSetupTables: true,
+      canEditTables: true,
+      canDeleteTables: true,
+      canDoubleTap: true,
+      canViewTables: true,
+      canDefaultLayout: "normal",
+      canViewOrderPanel: true,
+      canEditOrder: true,
+      canDeleteOrder: true,
+      canViewKOTStatus: true,
+      canEditKOTStatus: true,
+      canDeleteKOTStatus: true,
+      canUpdateKOTStatus: true,
+      canViewInventory: true,
+      canUpdateInventory: true,
+      canAccessSettings: true,
+    );
+  }
+
+
   UserPermissions({
     required this.canAccessDashboard,
     required this.canViewMenu,
@@ -51,7 +76,7 @@ class UserPermissions {
       canDeleteTables: json['canDeleteTables'] ?? false,
       canDoubleTap: json['canDoubleTap'] ?? false,
       canViewTables: json['canViewTables'] ?? false,
-      canDefaultLayout: json['canDefaultLayout'] ?? 'normal',
+      canDefaultLayout: json['canDefaultLayout'] ?? "normal",
       canViewOrderPanel: json['canViewOrderPanel'] ?? false,
       canEditOrder: json['canEditOrder'] ?? false,
       canDeleteOrder: json['canDeleteOrder'] ?? false,

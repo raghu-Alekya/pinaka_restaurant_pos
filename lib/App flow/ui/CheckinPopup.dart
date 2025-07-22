@@ -3,18 +3,22 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../blocs/Bloc Event/checkin_event.dart';
 import '../../blocs/Bloc Logic/checkin_bloc.dart';
 import '../../blocs/Bloc State/checkin_state.dart';
+import '../../models/UserPermissions.dart';
 
 class Checkinpopup extends StatefulWidget {
   final VoidCallback? onCheckIn;
   final VoidCallback? onCancel;
   final String token;
+  final void Function(UserPermissions permissions)? onPermissionsReceived;
 
   const Checkinpopup({
     super.key,
     this.onCheckIn,
     this.onCancel,
     required this.token,
+    this.onPermissionsReceived, // new callback
   });
+
 
   @override
   State<Checkinpopup> createState() => _CheckinpopupState();
@@ -63,6 +67,12 @@ class _CheckinpopupState extends State<Checkinpopup> {
           });
         } else if (state is CheckInSuccess) {
           setState(() => _isLoading = false);
+
+          final permissionsJson = state.fullResponse['data']['permissions'];
+          final permissions = UserPermissions.fromJson(permissionsJson);
+
+          widget.onPermissionsReceived?.call(permissions); // ← send permissions to parent
+
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Check-In successful!'),
@@ -70,8 +80,10 @@ class _CheckinpopupState extends State<Checkinpopup> {
               duration: Duration(seconds: 2),
             ),
           );
+
           widget.onCheckIn?.call();
-        } else if (state is CheckInFailure) {
+        }
+        else if (state is CheckInFailure) {
           setState(() {
             _isLoading = false;
             showError = true;

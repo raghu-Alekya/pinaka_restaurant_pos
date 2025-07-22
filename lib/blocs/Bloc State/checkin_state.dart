@@ -8,8 +8,14 @@ class CheckInLoading extends CheckInState {}
 
 class CheckInSuccess extends CheckInState {
   final UserPermissions permissions;
-  CheckInSuccess({required this.permissions});
+  final Map<String, dynamic> fullResponse;
+
+  CheckInSuccess({
+    required this.permissions,
+    required this.fullResponse,
+  });
 }
+
 
 class CheckInFailure extends CheckInState {
   final String message;
