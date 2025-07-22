@@ -28,7 +28,11 @@ class CheckInBloc extends Bloc<CheckInEvent, CheckInState> {
 
       if (data['success'] == true && data['data'] != null) {
         final permissions = UserPermissions.fromJson(data['data']['permissions']);
-        emit(CheckInSuccess(permissions: permissions));
+        emit(CheckInSuccess(
+          permissions: permissions,
+          fullResponse: data,
+        ));
+
       }
       else {
         AppLogger.debug('Login Failed with message: ${data['message'] ?? 'Unknown error'}');

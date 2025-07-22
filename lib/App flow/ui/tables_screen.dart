@@ -16,6 +16,7 @@ import '../../blocs/Bloc State/table_state.dart';
 import '../../local database/area_dao.dart';
 import '../../local database/login_dao.dart';
 import '../../local database/table_dao.dart';
+import '../../models/UserPermissions.dart';
 import '../../models/view_mode.dart';
 import '../../repositories/checkin_repository.dart';
 import '../../repositories/employee_repository.dart';
@@ -112,6 +113,7 @@ class _TablesScreenState extends State<TablesScreen> {
   final loginDao = LoginDao();
   bool _isUpdating = false;
 
+
   /// Set of all used table names (in lowercase) to avoid duplicates.
   Set<String> _usedTableNames = {};
 
@@ -131,6 +133,8 @@ class _TablesScreenState extends State<TablesScreen> {
   bool _showEditPopup = false;
 
   bool _isDeletingArea = false;
+  UserPermissions? _userPermissions;
+
 
   /// Data of the table currently being edited.
   Map<String, dynamic>? _editingTableData;
@@ -171,6 +175,7 @@ class _TablesScreenState extends State<TablesScreen> {
   @override
   void initState() {
     super.initState();
+    _userPermissions = UserPermissions.fullAccess();
     _loadZones();
     context.read<TableBloc>().add(LoadTablesEvent(widget.token));
 
@@ -597,25 +602,23 @@ class _TablesScreenState extends State<TablesScreen> {
 
     Widget gestureTable = GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap:
-          guestCount > 0
-              ? null
-              : () {
-                if (!_showPopup) {
-                  _showGuestDetailsPopup(context, index, tableData);
-                }
-              },
-      onDoubleTap:
-          guestCount > 0
-              ? null
-              : () {
-                if (!_showPopup) {
-                  setState(() {
-                    _selectedTableIndex = index;
-                    _showActionMenu = true;
-                  });
-                }
-              },
+      onTap: guestCount > 0
+          ? null
+          : () {
+        if (!_showPopup) {
+          _showGuestDetailsPopup(context, index, tableData);
+        }
+      },
+      onDoubleTap: guestCount > 0 || _userPermissions == null || !_userPermissions!.canDoubleTap
+          ? null
+          : () {
+        if (!_showPopup) {
+          setState(() {
+            _selectedTableIndex = index;
+            _showActionMenu = true;
+          });
+        }
+      },
       child: RotatedBox(quarterTurns: quarterTurns, child: borderedTable),
     );
 
@@ -1136,21 +1139,30 @@ class _TablesScreenState extends State<TablesScreen> {
                         showDialog(
                           context: context,
                           barrierDismissible: false,
-                          builder:
-                              (_) => BlocProvider(
-                                create: (_) => CheckInBloc(CheckInRepository()),
-                                child: Checkinpopup(
-                                  token: widget.token,
-                                  onCheckIn: () {
-                                    Navigator.of(context).pop();
-                                    setState(() => _isCheckInDone = true);
-                                  },
-                                  onCancel: () {
-                                    Navigator.of(context).pop();
-                                    setState(() => _isCheckInDone = false);
-                                  },
-                                ),
-                              ),
+                          builder: (_) => BlocProvider(
+                            create: (_) => CheckInBloc(CheckInRepository()),
+                            child: Checkinpopup(
+                              token: widget.token,
+                              onCheckIn: () {
+                                Navigator.of(context).pop();
+                                setState(() => _isCheckInDone = true);
+                              },
+                              onCancel: () {
+                                Navigator.of(context).pop();
+                              },
+                              onPermissionsReceived: (permissions) {
+                                setState(() {
+                                  _userPermissions = permissions;
+                                  if (_userPermissions!.canDefaultLayout == 'gridCommonImage') {
+                                    _currentViewMode = ViewMode.gridCommonImage;
+                                  } else {
+                                    _currentViewMode = ViewMode.normal;
+                                  }
+
+                                });
+                              },
+                            ),
+                          ),
                         );
                       },
                     ),
@@ -1162,9 +1174,19 @@ class _TablesScreenState extends State<TablesScreen> {
       child: Scaffold(
         backgroundColor: const Color(0xFFF0F3FC),
         resizeToAvoidBottomInset: false,
-        appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(70),
-          child: TopBar(token: widget.token, pin: widget.pin),
+        appBar: TopBar(
+          token: widget.token,
+          pin: widget.pin,
+          onPermissionsReceived: (permissions) {
+            setState(() {
+              _userPermissions = permissions;
+              if (_userPermissions!.canDefaultLayout == 'gridCommonImage') {
+                _currentViewMode = ViewMode.gridCommonImage;
+              } else {
+                _currentViewMode = ViewMode.normal;
+              }
+            });
+          },
         ),
         body: Stack(
           children: [
@@ -1513,8 +1535,12 @@ class _TablesScreenState extends State<TablesScreen> {
                   if (!_showPopup) const SizedBox(width: 20),
 
                   // Add permission check here
-                  if (areaNames.isNotEmpty && !_showPopup)
-                    Container(
+                  Visibility(
+                    visible: areaNames.isNotEmpty && !_showPopup && _userPermissions != null && _userPermissions!.canSetupTables,
+                    maintainSize: true,
+                    maintainAnimation: true,
+                    maintainState: true,
+                    child: Container(
                       decoration: BoxDecoration(
                         color: const Color(0xFF15315E),
                         borderRadius: BorderRadius.circular(6),
@@ -1555,6 +1581,7 @@ class _TablesScreenState extends State<TablesScreen> {
                         ),
                       ),
                     ),
+                  ),
                 ],
               ),
             ),
