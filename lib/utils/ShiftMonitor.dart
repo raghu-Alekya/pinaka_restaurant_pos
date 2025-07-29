@@ -27,53 +27,59 @@ class ShiftMonitor {
   Future<void> _checkAndCloseShift() async {
     try {
       final currentShift = await employeeRepository.getCurrentShift(token);
-      if (currentShift == null || currentShift['shift_status'] == 'closed') return;
+      AppLogger.info("Fetched current shift: $currentShift");
 
-      final int shiftId = currentShift['shift_id'];
-      final now = DateTime.now();
-      final shiftTimings = currentShift['shift_timings'];
-      final String? shiftEndTimeStr = shiftTimings?['end_time'];
-
-      if (shiftEndTimeStr == null || shiftEndTimeStr.isEmpty) return;
-
-      final DateFormat format = DateFormat("h:mma");
-      final DateTime parsedEndTime = format.parse(shiftEndTimeStr.toUpperCase());
-
-      DateTime manualEndTime = DateTime(
-        now.year,
-        now.month,
-        now.day,
-        parsedEndTime.hour,
-        parsedEndTime.minute,
-      );
-
-      final String startTimeStr = shiftTimings?['start_time'] ?? "12:00AM";
-      final DateTime parsedStartTime = format.parse(startTimeStr.toUpperCase());
-
-      DateTime manualStartTime = DateTime(
-        now.year,
-        now.month,
-        now.day,
-        parsedStartTime.hour,
-        parsedStartTime.minute,
-      );
-
-      if (manualEndTime.isBefore(manualStartTime)) {
-        manualEndTime = manualEndTime.add(Duration(days: 1));
+      if (currentShift == null || currentShift['shift_status'] == 'closed') {
+        AppLogger.info("No active shift or shift already closed.");
+        return;
       }
 
-      AppLogger.info("Current time: $now");
-      AppLogger.info("Shift end time: $manualEndTime");
+      final int shiftId = currentShift['shift_id'];
+      final String shiftStatus = currentShift['shift_status'];
+      final String? shiftEndTimeStr = currentShift['shift_timings']?['end_time'];
+      final String? shiftDateStr = currentShift['shift_date'];
 
-      if (now.isAfter(manualEndTime)) {
+      AppLogger.info("Shift ID: $shiftId, Status: $shiftStatus, Date: $shiftDateStr, End Time: $shiftEndTimeStr");
+
+      if (shiftEndTimeStr == null || shiftDateStr == null || shiftEndTimeStr.isEmpty || shiftDateStr.isEmpty) {
+        AppLogger.error("Shift date or end time is null/empty.");
+        return;
+      }
+
+      DateTime shiftEndDateTime;
+      try {
+        final parsedEndTime = DateFormat('hh:mma').parse(shiftEndTimeStr);
+        final parsedShiftDate = DateFormat('yyyy-MM-dd').parse(shiftDateStr);
+
+        shiftEndDateTime = DateTime(
+          parsedShiftDate.year,
+          parsedShiftDate.month,
+          parsedShiftDate.day,
+          parsedEndTime.hour,
+          parsedEndTime.minute,
+        );
+
+        AppLogger.info("Parsed shift end datetime: $shiftEndDateTime");
+      } catch (e) {
+        AppLogger.error("Error parsing shift_date or end_time: $e");
+        return;
+      }
+
+      final now = DateTime.now();
+      AppLogger.info("Current time: $now");
+
+      if (now.isAfter(shiftEndDateTime) && shiftStatus == 'open') {
         final String formattedEndTime = DateFormat("HH:mm").format(now);
+        AppLogger.info("Auto-closing shift $shiftId at $formattedEndTime");
+
         await employeeRepository.closeShift(
           token: token,
           shiftId: shiftId,
           endTime: formattedEndTime,
         );
 
-        AppLogger.info("Auto-closed shift $shiftId at $now");
+        AppLogger.info("Shift $shiftId successfully auto-closed.");
+
         stopMonitoring();
 
         final context = navigatorKey.currentContext;
@@ -85,17 +91,20 @@ class ShiftMonitor {
               message: "Shift auto-closed at ${DateFormat('hh:mm a').format(now)}",
             ),
           );
+
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(builder: (_) => const EmployeeLoginPage()),
                 (route) => false,
           );
         } else {
-          AppLogger.error("navigatorKey.currentContext is null, cannot show dialogs.");
+          AppLogger.error("navigatorKey.currentContext is null, cannot show dialog.");
         }
+      } else {
+        AppLogger.info("Shift still open; not yet time to auto-close.");
       }
     } catch (e) {
-      AppLogger.error("Error in auto-close shift logic: $e");
+      AppLogger.error("Exception in _checkAndCloseShift(): $e");
     }
   }
 }

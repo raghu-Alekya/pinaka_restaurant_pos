@@ -4,6 +4,7 @@ import '../../blocs/Bloc Event/checkin_event.dart';
 import '../../blocs/Bloc Logic/checkin_bloc.dart';
 import '../../blocs/Bloc State/checkin_state.dart';
 import '../../models/UserPermissions.dart';
+import '../../utils/SessionManager.dart';
 
 class Checkinpopup extends StatefulWidget {
   final VoidCallback? onCheckIn;
@@ -16,9 +17,8 @@ class Checkinpopup extends StatefulWidget {
     this.onCheckIn,
     this.onCancel,
     required this.token,
-    this.onPermissionsReceived, // new callback
+    this.onPermissionsReceived,
   });
-
 
   @override
   State<Checkinpopup> createState() => _CheckinpopupState();
@@ -66,22 +66,7 @@ class _CheckinpopupState extends State<Checkinpopup> {
             showError = false;
           });
         } else if (state is CheckInSuccess) {
-          setState(() => _isLoading = false);
-
-          final permissionsJson = state.fullResponse['data']['permissions'];
-          final permissions = UserPermissions.fromJson(permissionsJson);
-
-          widget.onPermissionsReceived?.call(permissions); // ← send permissions to parent
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Check-In successful!'),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 2),
-            ),
-          );
-
-          widget.onCheckIn?.call();
+          _handleCheckInSuccess(state);
         }
         else if (state is CheckInFailure) {
           setState(() {
@@ -100,6 +85,29 @@ class _CheckinpopupState extends State<Checkinpopup> {
       child: _buildPopupContent(context),
     );
   }
+
+  Future<void> _handleCheckInSuccess(CheckInSuccess state) async {
+    setState(() => _isLoading = false);
+
+    final permissionsJson = state.fullResponse['data']['permissions'];
+    final permissions = UserPermissions.fromJson(permissionsJson);
+
+    // Save to local DB
+    await SessionManager.savePermissions(permissions);
+
+    widget.onPermissionsReceived?.call(permissions);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Check-In successful!'),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 2),
+      ),
+    );
+
+    widget.onCheckIn?.call();
+  }
+
   Widget _buildPopupContent(BuildContext context) {
     return Center(
       child: Material(

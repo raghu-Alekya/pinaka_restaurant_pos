@@ -18,31 +18,7 @@ class UserPermissions {
   final bool canViewInventory;
   final bool canUpdateInventory;
   final bool canAccessSettings;
-
-  factory UserPermissions.fullAccess() {
-    return UserPermissions(
-      canAccessDashboard: true,
-      canViewMenu: true,
-      canEditMenu: true,
-      canSetupTables: true,
-      canEditTables: true,
-      canDeleteTables: true,
-      canDoubleTap: true,
-      canViewTables: true,
-      canDefaultLayout: "normal",
-      canViewOrderPanel: true,
-      canEditOrder: true,
-      canDeleteOrder: true,
-      canViewKOTStatus: true,
-      canEditKOTStatus: true,
-      canDeleteKOTStatus: true,
-      canUpdateKOTStatus: true,
-      canViewInventory: true,
-      canUpdateInventory: true,
-      canAccessSettings: true,
-    );
-  }
-
+  final bool canUpdateShiftAttendance;
 
   UserPermissions({
     required this.canAccessDashboard,
@@ -64,6 +40,7 @@ class UserPermissions {
     required this.canViewInventory,
     required this.canUpdateInventory,
     required this.canAccessSettings,
+    required this.canUpdateShiftAttendance,
   });
 
   factory UserPermissions.fromJson(Map<String, dynamic> json) {
@@ -87,6 +64,33 @@ class UserPermissions {
       canViewInventory: json['canViewInventory'] ?? false,
       canUpdateInventory: json['canUpdateInventory'] ?? false,
       canAccessSettings: json['canAccessSettings'] ?? false,
+      canUpdateShiftAttendance: json['canUpdateShiftAttendance'] ?? false,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'canAccessDashboard': canAccessDashboard,
+      'canViewMenu': canViewMenu,
+      'canEditMenu': canEditMenu,
+      'canSetupTables': canSetupTables,
+      'canEditTables': canEditTables,
+      'canDeleteTables': canDeleteTables,
+      'canDoubleTap': canDoubleTap,
+      'canViewTables': canViewTables,
+      'canDefaultLayout': canDefaultLayout,
+      'canViewOrderPanel': canViewOrderPanel,
+      'canEditOrder': canEditOrder,
+      'canDeleteOrder': canDeleteOrder,
+      'canViewKOTStatus': canViewKOTStatus,
+      'canEditKOTStatus': canEditKOTStatus,
+      'canDeleteKOTStatus': canDeleteKOTStatus,
+      'canUpdateKOTStatus': canUpdateKOTStatus,
+      'canViewInventory': canViewInventory,
+      'canUpdateInventory': canUpdateInventory,
+      'canAccessSettings': canAccessSettings,
+      'canUpdateShiftAttendance': canUpdateShiftAttendance,
+    };
+  }
+
 }

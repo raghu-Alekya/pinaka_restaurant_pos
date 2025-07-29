@@ -52,7 +52,7 @@ class AuthRepository {
     }
   }
   Future<bool> logout(String token) async {
-    final url = Uri.parse("https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1/logout");
+    final url = Uri.parse(AppConstants.logoutEndpoint);
 
     try {
       final response = await http.post(
