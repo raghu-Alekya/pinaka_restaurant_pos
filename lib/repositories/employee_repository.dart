@@ -30,9 +30,7 @@ class EmployeeRepository {
     required List<int> employeeIds,
     required List<int> absentEmployeeIds,
   }) async {
-    final url = Uri.parse(
-      'https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1/shifts/create-shift',
-    );
+    final url = Uri.parse(AppConstants.createShiftEndpoint);
 
     final response = await http.post(
       url,
@@ -106,7 +104,7 @@ class EmployeeRepository {
     required List<int> presentEmployeeIds,
     required List<int> absentEmployeeIds,
   }) async {
-    final url = Uri.parse('https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1/shifts/update-shift');
+    final url = Uri.parse(AppConstants.updateShiftEndpoint);
 
     final response = await http.post(
       url,
@@ -130,9 +128,7 @@ class EmployeeRepository {
 
 
   Future<Map<String, dynamic>?> getCurrentShift(String token) async {
-    final url = Uri.parse(
-      'https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1/shifts/current-shift',
-    );
+    final url = Uri.parse(AppConstants.currentShiftEndpoint);
 
     final response = await http.get(
       url,
@@ -155,9 +151,7 @@ class EmployeeRepository {
     required int shiftId,
     required String endTime,
   }) async {
-    final url = Uri.parse(
-      'https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1/shifts/close-shift',
-    );
+    final url = Uri.parse(AppConstants.closeShiftEndpoint);
 
     final response = await http.post(
       url,

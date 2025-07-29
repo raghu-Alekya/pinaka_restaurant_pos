@@ -1,5 +1,3 @@
-// lib/constants/constants.dart
-
 class AppConstants {
   static const String baseDomain = 'https://merchantrestaurant.alektasolutions.com';
   static const String baseApiPath = '$baseDomain/wp-json/pinaka-restaurant-pos/v1';
@@ -25,5 +23,11 @@ class AppConstants {
 
   // Shift Management
   static const String createShiftEndpoint = '$baseApiPath/shifts/create-shift';
+  static const String updateShiftEndpoint = '$baseApiPath/shifts/update-shift';
+  static const String closeShiftEndpoint = '$baseApiPath/shifts/close-shift';
+  static const String currentShiftEndpoint = '$baseApiPath/shifts/current-shift';
   static const String getAllShiftsEndpoint = '$baseApiPath/users/get-all-shifts';
+
+  // Authentication
+  static const String logoutEndpoint = '$baseApiPath/logout';
 }

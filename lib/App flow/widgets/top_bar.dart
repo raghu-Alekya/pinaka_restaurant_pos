@@ -11,17 +11,19 @@ import 'LogoutConfirmationDialog.dart';
 class TopBar extends StatefulWidget implements PreferredSizeWidget {
   final String token;
   final String pin;
-  final Function(UserPermissions)? onPermissionsReceived; // 👈 new callback
+  final UserPermissions? userPermissions;
+  final Function(UserPermissions)? onPermissionsReceived;
 
   const TopBar({
     Key? key,
     required this.token,
     required this.pin,
+    this.userPermissions,
     this.onPermissionsReceived,
   }) : super(key: key);
 
   @override
-  Size get preferredSize => const Size.fromHeight(100);
+  Size get preferredSize => const Size.fromHeight(75);
 
   @override
   _TopBarState createState() => _TopBarState();
@@ -37,10 +39,14 @@ class _TopBarState extends State<TopBar> {
   }
   bool _isAttendanceDialogOpen = false;
   void _handlePermissions(UserPermissions permissions) {
-    widget.onPermissionsReceived?.call(permissions); // ✅ Pass to parent
+    setState(() {
+      _permissions = permissions;
+    });
+    widget.onPermissionsReceived?.call(permissions);
   }
 
   bool _isCheckInDone = false;
+  UserPermissions? _permissions;
 
   @override
   Size get preferredSize => Size.fromHeight(70);
@@ -128,8 +134,12 @@ class _TopBarState extends State<TopBar> {
               SizedBox(width: 15),
               _buildExitIconButton(),
               SizedBox(width: 15),
-              _buildAttendanceIconButton(context),
-              SizedBox(width: 15),
+
+              if (widget.userPermissions?.canUpdateShiftAttendance ?? false) ...[
+                _buildAttendanceIconButton(context),
+              ],
+
+              SizedBox(width: 10),
               _buildNotificationIconButton(),
               SizedBox(width: 15),
               _buildIconButton(Icons.settings),
@@ -183,6 +193,11 @@ class _TopBarState extends State<TopBar> {
         setState(() {
           _isAttendanceDialogOpen = true;
         });
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => const Center(child: CircularProgressIndicator()),
+        );
 
         try {
           final repository = EmployeeRepository();
@@ -211,13 +226,14 @@ class _TopBarState extends State<TopBar> {
               }
             }
           }
-
           if (context.mounted) {
+            Navigator.pop(context);
+
             final shiftData = await EmployeeRepository().getCurrentShift(widget.token);
 
             await showDialog(
               context: context,
-              barrierDismissible: true,
+              barrierDismissible: false,
               builder: (_) => AttendancePopup(
                 token: widget.token,
                 employees: employees,
@@ -228,6 +244,7 @@ class _TopBarState extends State<TopBar> {
           }
         } catch (e) {
           if (context.mounted) {
+            Navigator.pop(context);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Failed to load employees')),
             );
@@ -425,7 +442,7 @@ class _TopBarState extends State<TopBar> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "A Raghu Kumar",
+                "User Name",
                 style: TextStyle(
                   color: Colors.black,
                   fontSize: 12,
@@ -433,7 +450,7 @@ class _TopBarState extends State<TopBar> {
                 ),
               ),
               Text(
-                "Live Captain",
+                "Role",
                 style: TextStyle(
                   color: Colors.grey,
                   fontSize: 11,

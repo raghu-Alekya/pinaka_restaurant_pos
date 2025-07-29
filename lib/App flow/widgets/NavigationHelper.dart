@@ -3,6 +3,7 @@ import '../ui/ManagerDashboardScreen.dart';
 import '../ui/KitchenStatusScreen.dart';
 import '../../local database/table_dao.dart';
 import '../ui/tables_screen.dart';
+import '../ui/reservation_list_screen.dart'; // ✅ Import
 
 class NavigationHelper {
   static void handleNavigation(
@@ -49,14 +50,26 @@ class NavigationHelper {
         MaterialPageRoute(
           builder: (context) => KitchenStatusScreen(
             pin: pin,
-            associatedManagerPin: pin, // or another relevant value
+            associatedManagerPin: pin,
             token: token,
             restaurantId: restaurantId,
             restaurantName: restaurantName,
           ),
         ),
       );
-    } else {
+    } else if (tappedIndex == 3) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ReservationListScreen(
+            pin: pin,
+            token: token,
+            restaurantId: restaurantId,
+            restaurantName: restaurantName,
+          ),
+        ),
+      );
+  } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Screen not implemented yet')),
       );
