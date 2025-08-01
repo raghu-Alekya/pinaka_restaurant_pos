@@ -141,140 +141,153 @@ class EditAreaPopup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final viewInsets = MediaQuery.of(context).viewInsets;
+
     return GestureDetector(
-      onTap: onCancel,
+      onTap: () => FocusScope.of(context).unfocus(), // dismiss keyboard
       child: Container(
         color: Colors.black.withAlpha(80),
         child: Center(
-          child: Container(
-            width: 300,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 8)],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Edit Area/Zone name',
-                  style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600),
+          child: AnimatedPadding(
+            padding: EdgeInsets.only(bottom: viewInsets.bottom),
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+            child: SingleChildScrollView(
+              child: Container(
+                width: 300,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 8)],
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Make changes to the Area/Zone name below.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      color: Color(0xFF777777),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w400),
-                ),
-                const SizedBox(height: 20),
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Area/Zone name',
-                    style: TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF4C5F7D),
-                        fontWeight: FontWeight.w500),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Container(
-                  height: 45,
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: const Color(0xFFECEBEB)),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Center(
-                    child: TextField(
-                      controller: controller,
-                      style: const TextStyle(fontSize: 14),
-                      textAlignVertical: TextAlignVertical.center,
-                      decoration: const InputDecoration(
-                        hintText: 'Enter Area/Zone name',
-                        border: InputBorder.none,
-                        isDense: true,
-                        contentPadding: EdgeInsets.symmetric(vertical: 12),
-                      ),
-                    ),
-                  ),
-                ),
-                if (errorMessage != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    errorMessage!,
-                    style: const TextStyle(color: Colors.red, fontSize: 12),
-                  ),
-                ],
-                const SizedBox(height: 20),
-                Row(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: onCancel,
-                        child: Container(
-                          height: 40,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF6F6F6),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Text(
-                            'Cancel',
-                            style: TextStyle(
-                              color: Color(0xFF4C5F7D),
-                              fontWeight: FontWeight.w500,
-                            ),
+                    const Text(
+                      'Edit Area/Zone name',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Make changes to the Area/Zone name below.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Color(0xFF777777),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Area/Zone name',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF4C5F7D),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      height: 45,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border.all(color: const Color(0xFFECEBEB)),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Center(
+                        child: TextField(
+                          controller: controller,
+                          autofocus: true,
+                          style: const TextStyle(fontSize: 14),
+                          textAlignVertical: TextAlignVertical.center,
+                          decoration: const InputDecoration(
+                            hintText: 'Enter Area/Zone name',
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(vertical: 12),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () async {
-                          final newName = controller.text.trim();
-                          if (newName.isNotEmpty && newName != oldName) {
-                            await onSubmit(newName);
-                          }
-                        },
-                        child: Container(
-                          height: 40,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFD6464),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: isLoading
-                              ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.white),
+                    if (errorMessage != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        errorMessage!,
+                        style: const TextStyle(color: Colors.red, fontSize: 12),
+                      ),
+                    ],
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: onCancel,
+                            child: Container(
+                              height: 40,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF6F6F6),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Text(
+                                'Cancel',
+                                style: TextStyle(
+                                  color: Color(0xFF4C5F7D),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                             ),
-                          )
-                              : const Text(
-                            'Update',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w500),
                           ),
                         ),
-                      ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () async {
+                              final newName = controller.text.trim();
+                              if (newName.isNotEmpty && newName != oldName) {
+                                await onSubmit(newName);
+                              }
+                            },
+                            child: Container(
+                              height: 40,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFD6464),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: isLoading
+                                  ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
+                                  : const Text(
+                                'Update',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
-                )
-              ],
+                ),
+              ),
             ),
           ),
         ),

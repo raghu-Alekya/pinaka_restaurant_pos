@@ -74,7 +74,6 @@ class TableBloc extends Bloc<TableEvent, TableState> {
           'areaName': data['areaName'],
           'posX': adjustedPos.dx,
           'posY': adjustedPos.dy,
-          'guestCount': data['guestCount'] ?? 0,
           'rotation': rotation,
           'pin': event.pin,
           'table_id': tableIdFromServer,

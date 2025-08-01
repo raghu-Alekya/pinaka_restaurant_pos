@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../models/UserPermissions.dart';
+import '../../repositories/auth_repository.dart';
 import '../../repositories/employee_repository.dart';
 import '../ui/CheckinPopup.dart';
 import '../ui/DailyAttendanceScreen.dart';
@@ -9,11 +11,19 @@ import 'LogoutConfirmationDialog.dart';
 class TopBar extends StatefulWidget implements PreferredSizeWidget {
   final String token;
   final String pin;
+  final UserPermissions? userPermissions;
+  final Function(UserPermissions)? onPermissionsReceived;
 
-  const TopBar({Key? key, required this.token, required this.pin}) : super(key: key);
+  const TopBar({
+    Key? key,
+    required this.token,
+    required this.pin,
+    this.userPermissions,
+    this.onPermissionsReceived,
+  }) : super(key: key);
 
   @override
-  Size get preferredSize => const Size.fromHeight(100);
+  Size get preferredSize => const Size.fromHeight(75);
 
   @override
   _TopBarState createState() => _TopBarState();
@@ -28,12 +38,27 @@ class _TopBarState extends State<TopBar> {
     });
   }
 
+  bool _isAttendanceDialogOpen = false;
+
+  void _handlePermissions(UserPermissions permissions) {
+    setState(() {
+      _permissions = permissions;
+    });
+    widget.onPermissionsReceived?.call(permissions);
+  }
+
+  bool _isCheckInDone = false;
+  UserPermissions? _permissions;
+
   @override
   Size get preferredSize => Size.fromHeight(70);
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
+    final screenWidth = MediaQuery
+        .of(context)
+        .size
+        .width;
 
     return Container(
       decoration: BoxDecoration(
@@ -56,6 +81,7 @@ class _TopBarState extends State<TopBar> {
           padding: const EdgeInsets.symmetric(horizontal: 15),
           child: Row(
             children: [
+
               /// Logo
               Image.asset(
                 'assets/pinaka.png',
@@ -114,8 +140,13 @@ class _TopBarState extends State<TopBar> {
               SizedBox(width: 15),
               _buildExitIconButton(),
               SizedBox(width: 15),
-              _buildAttendanceIconButton(context),
-              SizedBox(width: 15),
+
+              if (widget.userPermissions?.canUpdateShiftAttendance ??
+                  false) ...[
+                _buildAttendanceIconButton(context),
+              ],
+
+              SizedBox(width: 10),
               _buildNotificationIconButton(),
               SizedBox(width: 15),
               _buildIconButton(Icons.settings),
@@ -124,21 +155,31 @@ class _TopBarState extends State<TopBar> {
                 final result = await showDialog<bool>(
                   context: context,
                   barrierDismissible: true,
-                  builder: (_) => LogoutConfirmationDialog(
-                    onCancel: () => Navigator.pop(context, false),
-                    onConfirm: () => Navigator.pop(context, true),
-                  ),
+                  builder: (_) =>
+                      LogoutConfirmationDialog(
+                        onCancel: () => Navigator.pop(context, false),
+                        onConfirm: () => Navigator.pop(context, true),
+                      ),
                 );
 
                 if (result == true) {
                   final prefs = await SharedPreferences.getInstance();
-                  await prefs.clear();
+                  final token = prefs.getString('token') ?? "";
 
-                  if (context.mounted) {
+                  final authRepository = AuthRepository();
+                  final success = await authRepository.logout(token);
+
+                  if (success && context.mounted) {
                     Navigator.pushAndRemoveUntil(
                       context,
-                      MaterialPageRoute(builder: (_) => const EmployeeLoginPage()),
+                      MaterialPageRoute(
+                          builder: (_) => const EmployeeLoginPage()),
                           (route) => false,
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content: Text('Logout failed. Please try again.')),
                     );
                   }
                 }
@@ -154,9 +195,21 @@ class _TopBarState extends State<TopBar> {
       ),
     );
   }
+
   Widget _buildAttendanceIconButton(BuildContext context) {
     return GestureDetector(
       onTap: () async {
+        if (_isAttendanceDialogOpen) return;
+
+        setState(() {
+          _isAttendanceDialogOpen = true;
+        });
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => const Center(child: CircularProgressIndicator()),
+        );
+
         try {
           final repository = EmployeeRepository();
           final response = await repository.getAllEmployees(widget.token);
@@ -166,22 +219,55 @@ class _TopBarState extends State<TopBar> {
               name: e['name'].toString(),
             );
           }).toList();
+
+          final currentShift = await repository.getCurrentShift(widget.token);
+
+          if (currentShift != null) {
+            final presentIds = List<int>.from(currentShift['shift_emp'] ?? []);
+            final absentIds = List<int>.from(
+                currentShift['shift_absent_emp'] ?? []);
+
+            for (var emp in employees) {
+              final empId = int.tryParse(emp.id);
+              if (presentIds.contains(empId)) {
+                emp.status = 'Present';
+              } else if (absentIds.contains(empId)) {
+                emp.status = 'Absent';
+              } else {
+                emp.status = '';
+              }
+            }
+          }
           if (context.mounted) {
-            showDialog(
+            Navigator.pop(context);
+
+            final shiftData = await EmployeeRepository().getCurrentShift(
+                widget.token);
+
+            await showDialog(
               context: context,
-              barrierDismissible: true,
-              builder: (_) => AttendancePopup(
-                token: widget.token,
-                employees: employees,
-                isUpdateMode: true,
-              ),
+              barrierDismissible: false,
+              builder: (_) =>
+                  AttendancePopup(
+                    token: widget.token,
+                    employees: employees,
+                    isUpdateMode: true,
+                    currentShiftData: shiftData,
+                  ),
             );
           }
         } catch (e) {
           if (context.mounted) {
+            Navigator.pop(context);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Failed to load employees')),
             );
+          }
+        } finally {
+          if (mounted) {
+            setState(() {
+              _isAttendanceDialogOpen = false;
+            });
           }
         }
       },
@@ -212,15 +298,23 @@ class _TopBarState extends State<TopBar> {
         showDialog(
           context: context,
           barrierDismissible: true,
-          builder: (context) => Checkinpopup(
-            token: widget.token,
-            onCheckIn: () {
-              Navigator.of(context).pop();
-            },
-            onCancel: () {
-              Navigator.of(context).pop();
-            },
-          ),
+          builder: (context) =>
+              Checkinpopup(
+                token: widget.token,
+                onCheckIn: () {
+                  Navigator.of(context).pop();
+                  setState(() {
+                    _isCheckInDone = true;
+                  });
+                },
+                onCancel: () {
+                  Navigator.of(context).pop();
+                },
+                onPermissionsReceived: (permissions) {
+                  _handlePermissions(permissions);
+                },
+              ),
+
         );
       },
       child: Container(
@@ -363,16 +457,16 @@ class _TopBarState extends State<TopBar> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "A Raghu Kumar",
-                style: TextStyle(
+                widget.userPermissions?.displayName ?? "User Name",
+                style: const TextStyle(
                   color: Colors.black,
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               Text(
-                "Live Captain",
-                style: TextStyle(
+                widget.userPermissions?.role ?? "Role",
+                style: const TextStyle(
                   color: Colors.grey,
                   fontSize: 11,
                 ),
@@ -384,8 +478,7 @@ class _TopBarState extends State<TopBar> {
     );
   }
 }
-
-class TrianglePainter extends CustomPainter {
+  class TrianglePainter extends CustomPainter {
   final bool isLeft;
   final Color fillColor;
   final Color borderColor;

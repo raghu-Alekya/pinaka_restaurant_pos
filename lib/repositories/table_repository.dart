@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:ui';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:pinaka_restaurant_pos/repositories/zone_repository.dart';
 
 import '../constants/constants.dart';
@@ -166,7 +167,6 @@ class TableRepository {
           'posX': position.dx,
           'posY': position.dy,
           'rotation': rotation,
-          'guestCount': tableData['guestCount'] ?? 0,
           'pin': pin,
           'table_id': serverTableId,
           'zone_id': zoneId,
@@ -216,6 +216,23 @@ class TableRepository {
       AppLogger.error('Failed to delete table from server. Status: ${response.statusCode}');
       AppLogger.error('Response body: ${response.body}');
       return false;
+    }
+  }
+  Future<Map<String, dynamic>> getAllSlots(String token, DateTime reservationDate) async {
+    final formattedDate = DateFormat('yyyy-MM-dd').format(reservationDate);
+    final url = Uri.parse(
+      AppConstants.getAllSlotsByDate(formattedDate),
+    );
+
+    final response = await http.get(
+      url,
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load slots');
     }
   }
 }
