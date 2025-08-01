@@ -28,6 +28,10 @@ class AppConstants {
   static const String currentShiftEndpoint = '$baseApiPath/shifts/current-shift';
   static const String getAllShiftsEndpoint = '$baseApiPath/users/get-all-shifts';
 
+  // Slot Management
+  static String getAllSlotsByDate(String formattedDate) =>
+      '$baseApiPath/slots/get-all-slots?reservation_date=$formattedDate';
+
   // Authentication
   static const String logoutEndpoint = '$baseApiPath/logout';
 }

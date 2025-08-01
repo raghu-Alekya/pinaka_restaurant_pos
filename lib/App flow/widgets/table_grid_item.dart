@@ -1,4 +1,6 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../../utils/TableStatusColors.dart';
 
 class ShapeBasedGridItem extends StatelessWidget {
   final Map<String, dynamic> tableData;
@@ -14,27 +16,27 @@ class ShapeBasedGridItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final shape = tableData['shape'];
     final name = tableData['tableName'];
-    final guestCount = tableData['guestCount'] ?? 0;
+    final status = tableData['status'] ?? 'available';
 
     String imagePath;
     if (shape == 'circle') {
-      imagePath = guestCount > 0 ? 'assets/circle2.png' : 'assets/circle1.png';
+      imagePath = 'assets/circle1.png';
     } else if (shape == 'square') {
-      imagePath = guestCount > 0 ? 'assets/square2.png' : 'assets/square1.png';
+      imagePath = 'assets/square1.png';
     } else {
-      imagePath =
-      guestCount > 0 ? 'assets/rectangle2.png' : 'assets/rectangle1.png';
+      imagePath = 'assets/rectangle1.png';
     }
 
+    final tableColor = TableStatusColors.getTableColor(status);
+    final iconColor = TableStatusColors.getChairColor(status);
+
     return GestureDetector(
-      onTap: guestCount > 0 ? null : onTap,
-      child: _buildGridItem(imagePath, name, guestCount),
+      onTap: onTap,
+      child: _buildGridItem(imagePath, name, tableColor, iconColor),
     );
   }
 
-  Widget _buildGridItem(String imagePath, String name, int guestCount) {
-    final bool isOccupied = guestCount > 0;
-
+  Widget _buildGridItem(String imagePath, String name, Color bgColor, Color iconColor) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -53,28 +55,22 @@ class ShapeBasedGridItem extends StatelessWidget {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: isOccupied ? Colors.red : Colors.green,
+              color: iconColor,
             ),
           ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.group,
-                size: 16,
-                color: isOccupied ? Colors.red : Colors.green,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                isOccupied ? '$guestCount' : '-',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isOccupied ? Colors.red : Colors.green,
-                ),
-              ),
-            ],
+          Icon(
+            Icons.group,
+            size: 16,
+            color: iconColor,
           ),
-          Image.asset(imagePath, width: 45, height: 45, fit: BoxFit.contain),
+          Image.asset(
+            imagePath,
+            width: 45,
+            height: 45,
+            fit: BoxFit.contain,
+            color: iconColor,
+            colorBlendMode: BlendMode.srcIn,
+          ),
         ],
       ),
     );
@@ -94,25 +90,21 @@ class CommonGridItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = tableData['tableName'];
-    final guestCount = tableData['guestCount'] ?? 0;
+    final status = tableData['status'] ?? 'available';
+
+    final bgColor = TableStatusColors.getTableColor(status);
+    final iconColor = TableStatusColors.getChairColor(status);
 
     return GestureDetector(
-      onTap: guestCount > 0 ? null : onTap,
-      child: _buildGridItem1(name, guestCount),
+      onTap: onTap,
+      child: _buildGridItem1(name, bgColor, iconColor),
     );
   }
 
-  Widget _buildGridItem1(String name, int guestCount) {
-    final bool isOccupied = guestCount > 0;
-
-    final Color backgroundColor =
-    isOccupied ? Colors.red[100]! : Colors.green[100]!;
-    final Color textColor = isOccupied ? Colors.red : Colors.green[800]!;
-    final Color iconColor = textColor;
-
+  Widget _buildGridItem1(String name, Color bgColor, Color iconColor) {
     return Container(
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: bgColor,
         borderRadius: BorderRadius.circular(10),
         boxShadow: const [
           BoxShadow(color: Colors.black12, blurRadius: 2, offset: Offset(0, 1)),
@@ -129,18 +121,13 @@ class CommonGridItem extends StatelessWidget {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: textColor,
+              color: iconColor,
             ),
           ),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.group, size: 22, color: iconColor),
-              const SizedBox(width: 6),
-              Text(
-                isOccupied ? '$guestCount' : '-',
-                style: TextStyle(fontSize: 15, color: textColor),
-              ),
             ],
           ),
           const SizedBox(height: 8),

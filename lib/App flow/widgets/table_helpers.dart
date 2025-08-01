@@ -39,9 +39,7 @@ class TableHelpers {
     );
   }
 
-  static Widget buildTableContent(String name, String area, int guestCount) {
-    final hasGuests = guestCount > 0;
-
+  static Widget buildTableContent(String name, String area, Color color) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -50,33 +48,16 @@ class TableHelpers {
           textAlign: TextAlign.center,
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: hasGuests ? Colors.red : Colors.green,
+            color: color,
             fontSize: 16,
           ),
         ),
         SizedBox(height: 6),
-        Icon(
-          Icons.group,
-          size: 25,
-          color: hasGuests ? Colors.red : Colors.green,
-        ),
-        if (hasGuests)
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Text(
-              '$guestCount',
-               style: TextStyle(
-                color: Colors.red,
-
-                fontWeight: FontWeight.bold,
-
-                fontSize: 16,
-              ),
-            ),
-          ),
+        Icon(Icons.group, size: 25, color: color),
       ],
     );
   }
+
 
   static Size getPlacedTableSize(int capacity, String shape) {
     switch (shape) {

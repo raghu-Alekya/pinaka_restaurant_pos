@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:pinaka_restaurant_pos/App%20flow/ui/reservation_list_screen.dart';
 import '../../models/UserPermissions.dart';
 import '../../repositories/table_repository.dart';
 import '../../repositories/zone_repository.dart';
+import '../../utils/SessionManager.dart';
 import '../widgets/NavigationHelper.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/top_bar.dart';
@@ -13,7 +15,8 @@ class CreateReservationScreen extends StatefulWidget {
   final String token;
   final String restaurantId;
   final String restaurantName;
-  final UserPermissions? userPermissions;
+  final bool isEditMode;
+  final Map<String, dynamic>? reservationData;
 
   const CreateReservationScreen({
     Key? key,
@@ -21,7 +24,8 @@ class CreateReservationScreen extends StatefulWidget {
     required this.token,
     required this.restaurantId,
     required this.restaurantName,
-    this.userPermissions,
+    this.isEditMode = false,
+    this.reservationData,
   }) : super(key: key);
 
   @override
@@ -34,22 +38,21 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   final _contactController = TextEditingController();
   final _priorityController = TextEditingController();
   final TableRepository _tableRepository = TableRepository();
-
-
-  final List<String> timeSlots = [
-    '09:00 AM', '09:15 AM', '09:30 AM', '09:45 AM', '10:00 AM',
-    '10:15 AM', '10:30 AM', '10:45 AM', '11:00 AM', '11:15 AM',
-    '11:30 AM', '11:45 AM', '12:00 PM', '12:15 PM'
-  ];
+  final ScrollController _areaScrollController = ScrollController();
+  UserPermissions? _userPermissions;
 
   String selectedSlot = '';
-  String selectedMeal = 'Breakfast';
-  String selectedArea = 'Main Dining';
+  String selectedMeal = '';
+  String selectedArea = '';
   Set<String> selectedTables = {};
   DateTime selectedDate = DateTime.now();
   List<Map<String, dynamic>> allTables = [];
   List<Map<String, dynamic>> allZones = [];
   bool _isLoadingTables = true;
+  List<String> availableMeals = [];
+  Map<String, List<Map<String, dynamic>>> mealSlots = {};
+  bool _isLoadingSlots = true;
+
 
   final ZoneRepository _zoneRepository = ZoneRepository();
   List<String> areas = [];
@@ -67,6 +70,19 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   @override
   void initState() {
     super.initState();
+    _loadPermissions();
+
+    if (widget.isEditMode && widget.reservationData != null) {
+      final data = widget.reservationData!;
+      _peopleController.text = data['people'] ?? '';
+      _nameController.text = data['name'] ?? '';
+      _contactController.text = data['phone'] ?? '';
+      _priorityController.text = data['priority'] ?? '';
+      selectedSlot = data['time'] ?? '';
+      selectedDate = DateFormat('dd/MM/yy').parse(data['date'] ?? DateFormat('dd/MM/yy').format(DateTime.now()));
+      selectedTables = {data['table'] ?? ''};
+      selectedArea = data['area'] ?? selectedArea;
+    }
 
     _priorityFocusNode.addListener(() {
       if (_priorityFocusNode.hasFocus) {
@@ -78,17 +94,64 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
 
     _loadZones();
     _fetchTables();
+    _fetchSlotsAndMeals();
   }
+  Future<void> _loadPermissions() async {
+    final savedPermissions = await SessionManager.loadPermissions();
+    if (savedPermissions != null) {
+      setState(() {
+        _userPermissions = savedPermissions;
+      });
+    }
+  }
+  void _fetchSlotsAndMeals() async {
+    try {
+      final data = await _tableRepository.getAllSlots(widget.token, selectedDate);
+      final meals = List<String>.from(data['Meal'] ?? []);
+      final restaurantData = data['data'][widget.restaurantId];
+      final slotsMap = restaurantData['slots'] as Map<String, dynamic>;
+
+      Map<String, List<Map<String, dynamic>>> parsedSlots = {};
+      for (final meal in meals) {
+        final List<dynamic> slotList = slotsMap[meal] ?? [];
+        parsedSlots[meal] = slotList.cast<Map<String, dynamic>>();
+      }
+
+      setState(() {
+        availableMeals = meals;
+        mealSlots = parsedSlots;
+        _isLoadingSlots = false;
+
+        if (meals.isNotEmpty) {
+          selectedMeal = meals.first;
+          selectedSlot = '';
+        }
+      });
+    } catch (e) {
+      debugPrint("Error fetching slots: $e");
+      setState(() => _isLoadingSlots = false);
+    }
+  }
+
 
   void _loadZones() async {
     final zones = await _zoneRepository.getAllZones(widget.token);
     setState(() {
       allZones = zones;
       areas = zones.map((z) => z['zone_name'].toString()).toSet().toList();
+
+      if (widget.isEditMode && widget.reservationData != null) {
+        selectedArea = widget.reservationData!['area'] ?? selectedArea;
+      }
+
       if (!areas.contains(selectedArea) && areas.isNotEmpty) {
         selectedArea = areas.first;
       }
+
       _isLoadingAreas = false;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToSelectedArea();
     });
   }
 
@@ -167,10 +230,66 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   }
 
   void _saveReservation() {
-    print("Reservation confirmed!");
+    final reservationDetails = {
+      'Name': _nameController.text.trim(),
+      'Contact': _contactController.text.trim(),
+      'People': _peopleController.text.trim(),
+      'Priority': _priorityController.text.trim(),
+      'Date': DateFormat('dd/MM/yy').format(selectedDate),
+      'Time Slot': selectedSlot,
+      'Meal': selectedMeal,
+      'Area': selectedArea,
+      'Tables': selectedTables.join(', '),
+    };
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          "Reservation Confirmed!",
+          style: TextStyle(color: Color(0xFF22B573), fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: reservationDetails.entries.map((entry) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Text(
+                "${entry.key}: ${entry.value}",
+                style: const TextStyle(fontSize: 14),
+              ),
+            );
+          }).toList(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pop(context, true);
+            },
+            child: const Text(
+              "OK",
+              style: TextStyle(color: Color(0xFFFF4D20)),
+            ),
+          ),
+        ],
+      ),
+    );
   }
-
-
+  void _scrollToSelectedArea() {
+    final index = areas.indexOf(selectedArea);
+    if (index != -1) {
+      final buttonWidth = 100.0;
+      _areaScrollController.animateTo(
+        index * buttonWidth,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
   void _showOverlay(BuildContext context) {
     _removeOverlay();
 
@@ -236,7 +355,12 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       appBar: TopBar(
         token: widget.token,
         pin: widget.pin,
-        userPermissions: widget.userPermissions,
+        userPermissions: _userPermissions,
+        onPermissionsReceived: (permissions) {
+          setState(() {
+            _userPermissions = permissions;
+          });
+        },
       ),
       body: Padding(
         padding: const EdgeInsets.fromLTRB(10, 8, 10,0),
@@ -312,7 +436,17 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
               borderRadius: BorderRadius.circular(10),
             ),
             child: InkWell(
-              onTap: () => Navigator.pop(context),
+              onTap: () => Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ReservationListScreen(
+                    pin: widget.pin,
+                    token: widget.token,
+                    restaurantId: widget.restaurantId,
+                    restaurantName: widget.restaurantName,
+                  ),
+                ),
+              ),
               borderRadius: BorderRadius.circular(10),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -360,7 +494,10 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                 if (picked != null) {
                   setState(() {
                     selectedDate = picked;
+                    selectedSlot = '';
+                    _isLoadingSlots = true;
                   });
+                  _fetchSlotsAndMeals();
                 }
               },
               child: Row(
@@ -399,6 +536,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                 ? const Center(child: Text("No areas available"))
                 : SingleChildScrollView(
               scrollDirection: Axis.horizontal,
+              controller: _areaScrollController,
               child: Row(
                 children: areas.map((area) {
                   final bool isSelected = selectedArea == area;
@@ -554,21 +692,38 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                 ],
               ),
               padding: const EdgeInsets.all(14),
-              child: Scrollbar(
+              child: _isLoadingSlots
+                  ? const Center(
+                child: CircularProgressIndicator(),
+              )
+                  : Scrollbar(
                 thumbVisibility: true,
                 child: GridView.count(
                   crossAxisCount: 4,
                   mainAxisSpacing: 10,
                   crossAxisSpacing: 10,
                   childAspectRatio: 1.2,
-                  children: timeSlots.map((slot) {
-                    final isSelected = selectedSlot == slot;
-                    final parts = slot.split(' ');
-                    final formattedSlot =
-                    parts.length == 2 ? '${parts[0]}\n${parts[1]}' : slot;
+                  children: mealSlots[selectedMeal] == null
+                      ? []
+                      : mealSlots[selectedMeal]!.map((slot) {
+                    final time = slot['Time Slot'];
+                    final isActive = slot['is_active'] == true;
+                    final isSelected = selectedSlot == time;
+                    final parts = time.split(' ');
+                    final formattedSlot = parts.length == 2
+                        ? '${parts[0]}\n${parts[1]}'
+                        : time;
 
                     return GestureDetector(
-                      onTap: () => setState(() => selectedSlot = slot),
+                      onTap: isActive
+                          ? () {
+                        setState(() {
+                          selectedSlot = (selectedSlot == time)
+                              ? ''
+                              : time;
+                        });
+                      }
+                          : null,
                       child: Stack(
                         children: [
                           Container(
@@ -578,19 +733,25 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                             decoration: BoxDecoration(
                               color: isSelected
                                   ? const Color(0xFFE7FAEF)
-                                  : Colors.white,
+                                  : isActive
+                                  ? Colors.white
+                                  : Colors.grey.shade200,
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
                                 color: isSelected
                                     ? Colors.green
+                                    : isActive
+                                    ? Colors.grey.shade300
                                     : Colors.grey.shade300,
                               ),
                             ),
                             child: Text(
                               formattedSlot,
                               textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: Colors.black,
+                              style: TextStyle(
+                                color: isActive
+                                    ? Colors.black
+                                    : Colors.grey,
                                 fontWeight: FontWeight.w500,
                                 fontSize: 14,
                               ),
@@ -643,7 +804,18 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
             ),
             const SizedBox(height: 12),
             Expanded(
-              child: GridView.builder(
+              child: tablesToShow.isEmpty
+                  ? const Center(
+                child: Text(
+                  "No Tables Available",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF0A1B4D),
+                  ),
+                ),
+              )
+                  : GridView.builder(
                 itemCount: tablesToShow.length,
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 4,
@@ -658,7 +830,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                   final shape = table['shape']?.toLowerCase() ?? '';
                   final isSelected = selectedTables.contains(tableName);
 
-                  // Asset based shape icon
                   String shapeAsset;
                   switch (shape) {
                     case 'circle':
@@ -677,8 +848,12 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                   return GestureDetector(
                     onTap: () {
                       setState(() {
-                        selectedTables.clear();
-                        selectedTables.add(tableName);
+                        if (selectedTables.contains(tableName)) {
+                          selectedTables.remove(tableName);
+                        } else {
+                          selectedTables.clear();
+                          selectedTables.add(tableName);
+                        }
                       });
                     },
                     child: Stack(
@@ -691,7 +866,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                               width: 1.5,
                             ),
                             borderRadius: BorderRadius.circular(14),
-                            boxShadow: [
+                            boxShadow: const [
                               BoxShadow(
                                 color: Colors.black12,
                               )
@@ -707,8 +882,12 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                                     value: isSelected,
                                     onChanged: (_) {
                                       setState(() {
-                                        selectedTables.clear();
-                                        selectedTables.add(tableName);
+                                        if (selectedTables.contains(tableName)) {
+                                          selectedTables.remove(tableName);
+                                        } else {
+                                          selectedTables.clear();
+                                          selectedTables.add(tableName);
+                                        }
                                       });
                                     },
                                     activeColor: Colors.green,
@@ -784,31 +963,33 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
           ElevatedButton(
             onPressed: _validateAndSubmit,
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: const Color(0xFFFF4D20),
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
-            child: const Text("Confirm Reservation"),
+            child: Text(
+              widget.isEditMode ? "Update Reservation" : "Confirm Reservation",
+              style: const TextStyle(fontSize: 14, color: Colors.white),
+            ),
           ),
-
         ],
       ),
     );
   }
 
-  Widget _mealTabs() {
-    final meals = [
-      {'label': 'Breakfast', 'icon': Icons.wb_twilight},
-      {'label': 'Lunch', 'icon': Icons.wb_sunny_outlined},
-      {'label': 'Dinner', 'icon': Icons.nightlight_round},
-    ];
+  final Map<String, IconData> mealIcons = {
+    'breakfast': Icons.wb_twilight,
+    'lunch': Icons.wb_sunny_outlined,
+    'dinner': Icons.nightlight_round,
+  };
 
+  Widget _mealTabs() {
     return Row(
-      children: meals.map((meal) {
-        final isSelected = selectedMeal == meal['label'];
+      children: availableMeals.map((meal) {
+        final isSelected = selectedMeal == meal;
         return Padding(
           padding: const EdgeInsets.only(right: 8),
           child: Container(
@@ -827,19 +1008,22 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
             ),
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
-              onTap: () => setState(() => selectedMeal = meal['label'] as String),
+              onTap: () => setState(() {
+                selectedMeal = meal;
+                selectedSlot = ''; // reset selected slot when meal changes
+              }),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 child: Row(
                   children: [
                     Icon(
-                      meal['icon'] as IconData,
+                      mealIcons[meal.toLowerCase()] ?? Icons.fastfood,
                       size: 14,
                       color: isSelected ? Colors.red : Colors.grey[600],
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      meal['label'] as String,
+                      meal[0].toUpperCase() + meal.substring(1),
                       style: TextStyle(
                         color: isSelected ? Colors.red : Colors.grey[600],
                         fontWeight: FontWeight.w500,

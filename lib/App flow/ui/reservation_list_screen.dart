@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../../models/UserPermissions.dart';
 import '../../repositories/zone_repository.dart';
 import '../../utils/SessionManager.dart';
+import '../widgets/DeleteReservationDialog.dart';
 import '../widgets/NavigationHelper.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/top_bar.dart';
@@ -48,7 +49,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
     ];
 
     return {
-      'orderId': '#2145$index',
+      'reservationId': '#2145$index',
       'date': sampleDates[index % sampleDates.length],
       'time': '06:00PM',
       'name': 'Guest $index',
@@ -199,6 +200,11 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
         token: widget.token,
         pin: widget.pin,
         userPermissions: _userPermissions,
+        onPermissionsReceived: (permissions) {
+          setState(() {
+            _userPermissions = permissions;
+          });
+        },
       ),
       resizeToAvoidBottomInset: false,
       body: Stack(
@@ -333,7 +339,6 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                               token: widget.token,
                               restaurantId: widget.restaurantId,
                               restaurantName: widget.restaurantName,
-                              userPermissions: _userPermissions,
                             ),
                           ),
                         );
@@ -369,7 +374,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                         ),
                         child: Row(
                           children: const [
-                            _TableHeaderCell("Order ID"),
+                            _TableHeaderCell("Reservation ID"),
                             _TableHeaderCell("Date"),
                             _TableHeaderCell("Time"),
                             _TableHeaderCell("Customer Name"),
@@ -381,7 +386,6 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                           ],
                         ),
                       ),
-
                       SizedBox(
                         height: 330,
                         child: ListView.builder(
@@ -397,7 +401,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                               ),
                               child: Row(
                                 children: [
-                                  _TableCell(data['orderId']!),
+                                  _TableCell(data['reservationId']!),
                                   _TableCell(data['date']!),
                                   _TableCell(data['time']!),
                                   _TableCell(data['name']!),
@@ -411,10 +415,39 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                                       alignment: Alignment.center,
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
-                                        children: const [
-                                          Icon(Icons.edit, size: 18, color: Colors.blue),
-                                          SizedBox(width: 20),
-                                          Icon(Icons.delete, size: 18, color: Colors.red),
+                                        children: [
+                                          InkWell(
+                                            onTap: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) => CreateReservationScreen(
+                                                    pin: widget.pin,
+                                                    token: widget.token,
+                                                    restaurantId: widget.restaurantId,
+                                                    restaurantName: widget.restaurantName,
+                                                    isEditMode: true,
+                                                    reservationData: data,
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                            child: const Icon(Icons.edit, size: 18, color: Colors.blue),
+                                          ),
+                                          const SizedBox(width: 20),
+                                          InkWell(
+                                            onTap: () {
+                                              showDialog(
+                                                context: context,
+                                                builder: (_) => DeleteReservationDialog(
+                                                  onDelete: () {
+                                                    print("Reservation deleted");
+                                                  },
+                                                ),
+                                              );
+                                            },
+                                            child: const Icon(Icons.delete, size: 18, color: Colors.red),
+                                          ),
                                         ],
                                       ),
                                     ),

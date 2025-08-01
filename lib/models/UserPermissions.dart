@@ -19,6 +19,8 @@ class UserPermissions {
   final bool canUpdateInventory;
   final bool canAccessSettings;
   final bool canUpdateShiftAttendance;
+  final String displayName;
+  final String role;
 
   UserPermissions({
     required this.canAccessDashboard,
@@ -41,6 +43,8 @@ class UserPermissions {
     required this.canUpdateInventory,
     required this.canAccessSettings,
     required this.canUpdateShiftAttendance,
+    required this.displayName,
+    required this.role,
   });
 
   factory UserPermissions.fromJson(Map<String, dynamic> json) {
@@ -53,7 +57,7 @@ class UserPermissions {
       canDeleteTables: json['canDeleteTables'] ?? false,
       canDoubleTap: json['canDoubleTap'] ?? false,
       canViewTables: json['canViewTables'] ?? false,
-      canDefaultLayout: json['canDefaultLayout'] ?? "normal",
+      canDefaultLayout: json['canDefaultLayout'] ?? "gridCommonImage",
       canViewOrderPanel: json['canViewOrderPanel'] ?? false,
       canEditOrder: json['canEditOrder'] ?? false,
       canDeleteOrder: json['canDeleteOrder'] ?? false,
@@ -65,6 +69,8 @@ class UserPermissions {
       canUpdateInventory: json['canUpdateInventory'] ?? false,
       canAccessSettings: json['canAccessSettings'] ?? false,
       canUpdateShiftAttendance: json['canUpdateShiftAttendance'] ?? false,
+      displayName: json['displayName'] ?? '',
+      role: json['role'] ?? '',
     );
   }
 
@@ -90,7 +96,8 @@ class UserPermissions {
       'canUpdateInventory': canUpdateInventory,
       'canAccessSettings': canAccessSettings,
       'canUpdateShiftAttendance': canUpdateShiftAttendance,
+      'displayName': displayName,
+      'role': role,
     };
   }
-
 }
