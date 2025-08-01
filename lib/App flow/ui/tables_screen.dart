@@ -295,21 +295,6 @@ class _TablesScreenState extends State<TablesScreen> {
   /// Resets the zoom scale back to default 1.0.
   void _scaleToFit() => setState(() => _scale = 1.0);
 
-  bool _showLeftArrow = false;
-  bool _showRightArrow = true;
-
-  void _updateScrollIndicators() {
-    if (!gridScrollController.hasClients) return;
-
-    final maxScroll = gridScrollController.position.maxScrollExtent;
-    final offset = gridScrollController.offset;
-
-    setState(() {
-      _showLeftArrow = offset > 5;
-      _showRightArrow = offset < maxScroll - 5;
-    });
-  }
-
   /// Toggles the visibility of the add table/area popup.
   void _togglePopup() {
     setState(() {
@@ -345,31 +330,6 @@ class _TablesScreenState extends State<TablesScreen> {
       if (selectedArea == oldName) {
         selectedArea = newName;
       }
-    });
-  }
-
-  /// Updates guest-related data for a placed table at [index].
-  ///
-  /// Parameters:
-  /// - [guestCount]: number of guests at the table
-  void updateTableGuestData(int index, {required int guestCount}) async {
-    final tableId = placedTables[index]['id'];
-
-    // Update in-memory table data
-    setState(() {
-      placedTables[index]['guestCount'] = guestCount;
-    });
-
-    // Update in database
-    await tableDao.updateTable(tableId, {
-      'guestCount': guestCount,
-      'posX': placedTables[index]['position'].dx,
-      'posY': placedTables[index]['position'].dy,
-      'tableName': placedTables[index]['tableName'],
-      'capacity': placedTables[index]['capacity'],
-      'shape': placedTables[index]['shape'],
-      'areaName': placedTables[index]['areaName'],
-      'pin': widget.pin,
     });
   }
 
@@ -640,10 +600,11 @@ class _TablesScreenState extends State<TablesScreen> {
     final area = tableData['areaName'];
     final shape = tableData['shape'];
     final Offset position = tableData['position'];
-    final int guestCount = tableData['guestCount'] ?? 0;
     final double rotation = tableData['rotation'] ?? 0.0;
 
     final size = TableHelpers.getPlacedTableSize(capacity, shape);
+
+    final String status = tableData['status'] ?? 'Available';
 
     Widget tableContent = PlacedTableBuilder.buildPlacedTableWidget(
       name: name,
@@ -651,9 +612,10 @@ class _TablesScreenState extends State<TablesScreen> {
       area: area,
       shape: shape,
       size: size,
-      guestCount: guestCount,
       rotation: rotation,
+      status: status, // <-- add this
     );
+
 
     Widget paddedTable = Padding(
       padding: const EdgeInsets.all(8.0),
@@ -664,14 +626,13 @@ class _TablesScreenState extends State<TablesScreen> {
       clipBehavior: Clip.none,
       children: [
         DottedBorder(
-          color:
-          _selectedTableIndex == index && _showActionMenu
+          color: _selectedTableIndex == index && _showActionMenu
               ? Colors.red
               : Colors.transparent,
           strokeWidth: 2,
           dashPattern: [4, 3],
           borderType: BorderType.RRect,
-          radius: Radius.circular(12),
+          radius: const Radius.circular(12),
           child: paddedTable,
         ),
       ],
@@ -681,18 +642,12 @@ class _TablesScreenState extends State<TablesScreen> {
 
     Widget gestureTable = GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap:
-      guestCount > 0
-          ? null
-          : () {
+      onTap: () {
         if (!_showPopup) {
           _showGuestDetailsPopup(context, index, tableData);
         }
       },
-      onDoubleTap:
-      guestCount > 0 ||
-          _userPermissions == null ||
-          !_userPermissions!.canDoubleTap
+      onDoubleTap: (_userPermissions == null || !_userPermissions!.canDoubleTap)
           ? null
           : () {
         if (!_showPopup) {
@@ -706,34 +661,30 @@ class _TablesScreenState extends State<TablesScreen> {
     );
 
     Widget actionButtons =
-    (_showPopup || (_selectedTableIndex == index && _showActionMenu)) &&
-        guestCount == 0
+    (_showPopup || (_selectedTableIndex == index && _showActionMenu))
         ? Positioned(
       top: 0,
       right: 0,
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 8.0,
-          vertical: 4.0,
-        ),
+        padding:
+        const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
         child: Column(
           children: [
             if (!_showPopup)
               _buildActionButton("edit", () {
                 setState(() {
                   _editingTableIndex = index;
-                  _editingTableData = Map<String, dynamic>.from(
-                    tableData,
-                  );
+                  _editingTableData =
+                  Map<String, dynamic>.from(tableData);
                   _showEditPopup = true;
                   _showActionMenu = false;
                 });
               }),
-            if (!_showPopup) SizedBox(height: 6),
+            if (!_showPopup) const SizedBox(height: 6),
             _buildActionButton("delete", () {
               _showDeleteConfirmationDialog(index);
             }),
-            if (!_showPopup) SizedBox(height: 6),
+            if (!_showPopup) const SizedBox(height: 6),
             if (shape == 'rectangle')
               _buildActionButton("rotate", () {
                 _rotateTable(index);
@@ -742,7 +693,7 @@ class _TablesScreenState extends State<TablesScreen> {
         ),
       ),
     )
-        : SizedBox.shrink();
+        : const SizedBox.shrink();
 
     return Positioned(
       left: position.dx,
@@ -757,14 +708,16 @@ class _TablesScreenState extends State<TablesScreen> {
               color: Colors.transparent,
               child: Opacity(opacity: 0.7, child: gestureTable),
             ),
-            childWhenDragging: Opacity(opacity: 0.3, child: gestureTable),
+            childWhenDragging:
+            Opacity(opacity: 0.3, child: gestureTable),
             onDragEnd: (details) {
               if (_canvasKey.currentContext == null) return;
 
               final RenderBox box =
               _canvasKey.currentContext!.findRenderObject()
               as RenderBox;
-              final Offset localOffset = box.globalToLocal(details.offset);
+              final Offset localOffset =
+              box.globalToLocal(details.offset);
               _updateTablePosition(index, localOffset);
             },
             child: gestureTable,
@@ -931,12 +884,6 @@ class _TablesScreenState extends State<TablesScreen> {
             index: index,
             tableData: tableData,
             placedTables: placedTables,
-            updateTableGuestData: ({
-              required int index,
-              required int guestCount,
-            }) {
-              updateTableGuestData(index, guestCount: guestCount);
-            },
           ),
         );
       },
@@ -1475,7 +1422,7 @@ class _TablesScreenState extends State<TablesScreen> {
                         SizedBox(width: 20),
                         TableHelpers.buildLegendDot(Colors.red, "Dine In"),
                         SizedBox(width: 20),
-                        TableHelpers.buildLegendDot(Colors.orange, "Reserve"),
+                        TableHelpers.buildLegendDot(Colors.grey, "Reserve"),
                         SizedBox(width: 20),
                         TableHelpers.buildLegendDot(
                           Colors.blue,
@@ -1516,22 +1463,15 @@ class _TablesScreenState extends State<TablesScreen> {
                         ),
                         child: PlacedTableBuilder.buildPlacedTableWidget(
                           name: placedTables[_selectedTableIndex!]['tableName'],
-                          capacity:
-                          placedTables[_selectedTableIndex!]['capacity'],
+                          capacity: placedTables[_selectedTableIndex!]['capacity'],
                           area: placedTables[_selectedTableIndex!]['areaName'],
                           shape: placedTables[_selectedTableIndex!]['shape'],
-                          size:
-                          TableHelpers.getPlacedTableSize(
+                          size: TableHelpers.getPlacedTableSize(
                             placedTables[_selectedTableIndex!]['capacity'],
                             placedTables[_selectedTableIndex!]['shape'],
-                          ) *
-                              0.8,
-                          guestCount:
-                          placedTables[_selectedTableIndex!]['guestCount'] ??
-                              0,
-                          rotation:
-                          placedTables[_selectedTableIndex!]['rotation'] ??
-                              0.0,
+                          ) * 0.8,
+                          rotation: placedTables[_selectedTableIndex!]['rotation'] ?? 0.0,
+                          status: placedTables[_selectedTableIndex!]['status'] ?? 'Available',
                         ),
                       ),
                     ),

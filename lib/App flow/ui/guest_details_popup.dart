@@ -1,20 +1,14 @@
 import 'package:flutter/material.dart';
-import 'MainScreen.dart';
 
 class GuestDetailsPopup extends StatefulWidget {
   final int index;
   final Map<String, dynamic> tableData;
-  final Function({
-  required int index,
-  required int guestCount,
-  }) updateTableGuestData;
   final List<Map<String, dynamic>> placedTables;
 
   const GuestDetailsPopup({
     super.key,
     required this.index,
     required this.tableData,
-    required this.updateTableGuestData,
     required this.placedTables,
   });
 
@@ -37,15 +31,15 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
             ),
-            constraints: BoxConstraints(
-              maxWidth: 600, // Set a reasonable max width for responsiveness
+            constraints: const BoxConstraints(
+              maxWidth: 600,
               minWidth: 300,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min, // Makes height dynamic
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
+                const Text(
                   "Select Guest Numbers",
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                 ),
@@ -86,8 +80,6 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                     );
                   }),
                 ),
-
-                /// Action buttons
                 const SizedBox(height: 30),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -102,36 +94,16 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      child: Text(
+                      child: const Text(
                         "Back",
-                        style:
-                        TextStyle(color: Color(0xFF4C5F7D), fontSize: 12),
+                        style: TextStyle(
+                            color: Color(0xFF4C5F7D), fontSize: 12),
                       ),
                     ),
                     const SizedBox(width: 14),
                     ElevatedButton(
                       onPressed: () {
-                        final guestCount = selectedGuests.length;
-
-                        if (guestCount > 0) {
-                          widget.updateTableGuestData(
-                            index: widget.index,
-                            guestCount: guestCount,
-                          );
-                          Navigator.pop(context);
-                          Future.delayed(const Duration(milliseconds: 100), () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => Mainscreen(
-                                  tableData: widget.placedTables[widget.index],
-                                ),
-                              ),
-                            );
-                          });
-                        } else {
-                          // Show validation message if needed
-                        }
+                        Navigator.pop(context);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFFF4D20),
@@ -141,7 +113,7 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      child: Text(
+                      child: const Text(
                         "SELECT AND CONTINUE",
                         style: TextStyle(color: Colors.white, fontSize: 12),
                       ),

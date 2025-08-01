@@ -2,6 +2,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/widgets/table_helpers.dart';
 
+import '../../utils/TableStatusColors.dart';
+
 class PlacedTableBuilder {
   static Widget buildPlacedTableWidget({
     required String name,
@@ -9,8 +11,8 @@ class PlacedTableBuilder {
     required String area,
     required String shape,
     required Size size,
-    required int guestCount,
     required double rotation,
+    required String status,
   }) {
     const double chairSize = 20;
     const double offset = 10;
@@ -19,11 +21,9 @@ class PlacedTableBuilder {
     final double stackWidth = size.width + extraSpace * 2;
     final double stackHeight = size.height + extraSpace * 2;
 
-    final hasGuests = guestCount > 0;
-    final tableColor =
-        hasGuests
-            ? const Color(0xFFF44336).withAlpha((0.25 * 255).round())
-            : const Color(0x3F22D629);
+    final Color tableColor = TableStatusColors.getTableColor(status);
+    final Color chairColor = TableStatusColors.getChairColor(status);
+
 
     Widget tableShape;
     if (shape == "circle") {
@@ -38,7 +38,7 @@ class PlacedTableBuilder {
             child: Center(
               child: Transform.rotate(
                 angle: -rotation * (pi / 180),
-                child: TableHelpers.buildTableContent(name, area, guestCount),
+                  child: TableHelpers.buildTableContent(name, area, chairColor),
               ),
             ),
           ),
@@ -58,7 +58,7 @@ class PlacedTableBuilder {
           child: Center(
             child: Transform.rotate(
               angle: -rotation * (pi / 180),
-              child: TableHelpers.buildTableContent(name, area, guestCount),
+              child: TableHelpers.buildTableContent(name, area, chairColor),
             ),
           ),
         ),
@@ -77,7 +77,7 @@ class PlacedTableBuilder {
             size,
             extraSpace,
             shape,
-            hasGuests ? const Color(0xFFF44336) : const Color(0xFF4CAF50),
+            chairColor,
           ),
         ],
       ),

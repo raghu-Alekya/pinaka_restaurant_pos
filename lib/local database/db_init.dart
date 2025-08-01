@@ -18,7 +18,6 @@ class DatabaseInitializer {
             areaName TEXT,
             posX REAL,
             posY REAL,
-            guestCount INTEGER,
             rotation REAL DEFAULT 0.0,
             pin TEXT,
             table_id INTEGER,

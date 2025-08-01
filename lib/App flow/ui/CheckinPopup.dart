@@ -89,10 +89,11 @@ class _CheckinpopupState extends State<Checkinpopup> {
   Future<void> _handleCheckInSuccess(CheckInSuccess state) async {
     setState(() => _isLoading = false);
 
-    final permissionsJson = state.fullResponse['data']['permissions'];
-    final permissions = UserPermissions.fromJson(permissionsJson);
-
-    // Save to local DB
+    final fullData = state.fullResponse['data'];
+    final rawPermissions = Map<String, dynamic>.from(fullData['permissions'] ?? {});
+    rawPermissions['displayName'] = fullData['displayName'] ?? '';
+    rawPermissions['role'] = fullData['role'] ?? '';
+    final permissions = UserPermissions.fromJson(rawPermissions);
     await SessionManager.savePermissions(permissions);
 
     widget.onPermissionsReceived?.call(permissions);
