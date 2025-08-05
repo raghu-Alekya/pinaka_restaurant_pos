@@ -40,14 +40,9 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
 
   final List<Map<String, String>> reservations = List.generate(70, (index) {
     final List<String> sampleDates = [
-      '04/06/23',
-      '05/06/23',
-      '06/06/23',
-      '07/06/23',
-      '08/06/23',
-      '09/06/23'
+      '04/06/23', '05/06/23', '06/06/23', '07/06/23', '08/06/23', '09/06/23'
     ];
-
+    final List<String> statuses = ['Seated', 'Expired', 'Cancelled'];
     return {
       'reservationId': '#2145$index',
       'date': sampleDates[index % sampleDates.length],
@@ -57,6 +52,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
       'people': '${(index % 6) + 1}',
       'table': 'T${index + 1}',
       'area': ['Main dining', 'terrace', 'Outdoor', 'Garden'][index % 4],
+      'status': statuses[index % statuses.length],
     };
   });
 
@@ -382,9 +378,12 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                             _TableHeaderCell("No. of People"),
                             _TableHeaderCell("Table No"),
                             _TableHeaderCell("Area"),
+                            _TableHeaderCell("Status"),
+                            SizedBox(width: 26),
                             _TableHeaderCell("Action"),
                           ],
                         ),
+
                       ),
                       SizedBox(
                         height: 330,
@@ -409,6 +408,10 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                                   _TableCell(data['people']!),
                                   _TableCell(data['table']!),
                                   _TableCell(data['area']!),
+                                  TableCell(
+                                    child: _buildStatusBadge(data['status'] ?? ''),
+                                  ),
+                                  const SizedBox(width: 24),
                                   _TableCell(
                                     '',
                                     child: Align(
@@ -434,7 +437,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                                             },
                                             child: const Icon(Icons.edit, size: 18, color: Colors.blue),
                                           ),
-                                          const SizedBox(width: 20),
+                                          const SizedBox(width: 30),
                                           InkWell(
                                             onTap: () {
                                               showDialog(
@@ -518,8 +521,59 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
     );
   }
 }
+Color? _getStatusColor(String status) {
+  switch (status.toLowerCase()) {
+    case 'seated':
+      return Colors.green;
+    case 'expired':
+      return Colors.grey;
+    case 'cancelled':
+      return Colors.red;
+    default:
+      return null;
+  }
+}
 
-class _TableHeaderCell extends StatelessWidget {
+Widget _buildStatusBadge(String status) {
+  final color = _getStatusColor(status);
+
+  if (color == null) {
+    return const SizedBox(
+      width: 100,
+      child: Center(
+        child: Text(
+          '-',
+          style: TextStyle(
+            color: Colors.black54,
+            fontWeight: FontWeight.w500,
+            fontSize: 12,
+          ),
+        ),
+      ),
+    );
+  }
+
+  return Container(
+    width: 100,
+    padding: const EdgeInsets.symmetric(vertical: 5),
+    alignment: Alignment.center,
+    decoration: BoxDecoration(
+      color: color.withAlpha((0.2 * 255).round()),
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Text(
+      status,
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        color: color,
+        fontWeight: FontWeight.w600,
+        fontSize: 12,
+      ),
+    ),
+  );
+}
+
+  class _TableHeaderCell extends StatelessWidget {
   final String label;
   final int flex;
 
