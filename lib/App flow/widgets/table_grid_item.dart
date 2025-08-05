@@ -36,7 +36,10 @@ class ShapeBasedGridItem extends StatelessWidget {
     );
   }
 
-  Widget _buildGridItem(String imagePath, String name, Color bgColor, Color iconColor) {
+  Widget _buildGridItem(String imagePath, String name, Color bgColor,
+      Color iconColor) {
+    final capacity = tableData['capacity']?.toString() ?? '';
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -58,10 +61,13 @@ class ShapeBasedGridItem extends StatelessWidget {
               color: iconColor,
             ),
           ),
-          Icon(
-            Icons.group,
-            size: 16,
-            color: iconColor,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.group, size: 16, color: iconColor),
+              const SizedBox(width: 5),
+              Text(capacity, style: TextStyle(fontWeight: FontWeight.bold,color: iconColor)),
+            ],
           ),
           Image.asset(
             imagePath,
@@ -76,7 +82,6 @@ class ShapeBasedGridItem extends StatelessWidget {
     );
   }
 }
-
 class CommonGridItem extends StatelessWidget {
   final Map<String, dynamic> tableData;
   final VoidCallback? onTap;
@@ -102,6 +107,8 @@ class CommonGridItem extends StatelessWidget {
   }
 
   Widget _buildGridItem1(String name, Color bgColor, Color iconColor) {
+    final capacity = tableData['capacity']?.toString() ?? '';
+
     return Container(
       decoration: BoxDecoration(
         color: bgColor,
@@ -128,6 +135,8 @@ class CommonGridItem extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.group, size: 22, color: iconColor),
+              const SizedBox(width: 5),
+              Text(capacity, style: TextStyle(fontWeight: FontWeight.bold,color: iconColor)),
             ],
           ),
           const SizedBox(height: 8),

@@ -39,7 +39,7 @@ class TableHelpers {
     );
   }
 
-  static Widget buildTableContent(String name, String area, Color color) {
+  static Widget buildTableContent(String name, String area, int capacity, Color color) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -52,12 +52,25 @@ class TableHelpers {
             fontSize: 16,
           ),
         ),
-        SizedBox(height: 6),
-        Icon(Icons.group, size: 25, color: color),
+        const SizedBox(height: 6),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.group, size: 25, color: color),
+            const SizedBox(width: 5),
+            Text(
+              '$capacity',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: color,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
-
 
   static Size getPlacedTableSize(int capacity, String shape) {
     switch (shape) {

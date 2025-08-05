@@ -438,7 +438,8 @@ class _TopBarState extends State<TopBar> {
 
   Widget _buildProfileSection() {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      width: 140,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(40),
@@ -448,11 +449,11 @@ class _TopBarState extends State<TopBar> {
       ),
       child: Row(
         children: [
-          CircleAvatar(
+          const CircleAvatar(
             backgroundImage: AssetImage('assets/loginname.png'),
             radius: 14,
           ),
-          SizedBox(width: 8),
+          const SizedBox(width: 8),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

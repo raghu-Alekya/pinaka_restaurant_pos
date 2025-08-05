@@ -38,7 +38,7 @@ class PlacedTableBuilder {
             child: Center(
               child: Transform.rotate(
                 angle: -rotation * (pi / 180),
-                  child: TableHelpers.buildTableContent(name, area, chairColor),
+                  child: TableHelpers.buildTableContent(name, area,capacity, chairColor),
               ),
             ),
           ),
@@ -58,7 +58,7 @@ class PlacedTableBuilder {
           child: Center(
             child: Transform.rotate(
               angle: -rotation * (pi / 180),
-              child: TableHelpers.buildTableContent(name, area, chairColor),
+              child: TableHelpers.buildTableContent(name, area,capacity, chairColor),
             ),
           ),
         ),
