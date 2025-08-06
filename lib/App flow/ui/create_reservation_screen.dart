@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/ui/reservation_list_screen.dart';
 import '../../models/UserPermissions.dart';
+import '../../repositories/ReservationRepository.dart';
 import '../../repositories/table_repository.dart';
 import '../../repositories/zone_repository.dart';
 import '../../utils/SessionManager.dart';
@@ -40,6 +41,8 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   final TableRepository _tableRepository = TableRepository();
   final ScrollController _areaScrollController = ScrollController();
   UserPermissions? _userPermissions;
+  final ReservationRepository _reservationRepository = ReservationRepository();
+
 
   String selectedSlot = '';
   String selectedMeal = '';
@@ -52,8 +55,8 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   List<String> availableMeals = [];
   Map<String, List<Map<String, dynamic>>> mealSlots = {};
   bool _isLoadingSlots = true;
-
-
+  bool _isLoading = false;
+  String? _originalSelectedTable;
   final ZoneRepository _zoneRepository = ZoneRepository();
   List<String> areas = [];
   bool _isLoadingAreas = true;
@@ -65,7 +68,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   });
   final FocusNode _priorityFocusNode = FocusNode();
   OverlayEntry? _overlayEntry;
-
+  bool _isCalendarLoading = false;
 
   @override
   void initState() {
@@ -79,8 +82,15 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       _contactController.text = data['phone'] ?? '';
       _priorityController.text = data['priority'] ?? '';
       selectedSlot = data['time'] ?? '';
-      selectedDate = DateFormat('dd/MM/yy').parse(data['date'] ?? DateFormat('dd/MM/yy').format(DateTime.now()));
+
+      try {
+        selectedDate = DateFormat('yyyy-MM-dd').parse(data['date'] ?? '');
+      } catch (_) {
+        selectedDate = DateTime.now();
+      }
+
       selectedTables = {data['table'] ?? ''};
+      _originalSelectedTable = data['table'];
       selectedArea = data['area'] ?? selectedArea;
     }
 
@@ -96,6 +106,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
     _fetchTables();
     _fetchSlotsAndMeals();
   }
+
   Future<void> _loadPermissions() async {
     final savedPermissions = await SessionManager.loadPermissions();
     if (savedPermissions != null) {
@@ -121,10 +132,19 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
         availableMeals = meals;
         mealSlots = parsedSlots;
         _isLoadingSlots = false;
-
         if (meals.isNotEmpty) {
-          selectedMeal = meals.first;
-          selectedSlot = '';
+          if (widget.isEditMode && widget.reservationData != null) {
+            final reservationSlot = widget.reservationData!['time'];
+
+            selectedMeal = meals.firstWhere(
+                  (meal) => mealSlots[meal]?.any((slot) => slot['Time Slot'] == reservationSlot) ?? false,
+              orElse: () => meals.first,
+            );
+            selectedSlot = reservationSlot;
+          } else {
+            selectedMeal = meals.first;
+            selectedSlot = '';
+          }
         }
       });
     } catch (e) {
@@ -216,7 +236,9 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       _showError("Please select at least one table.");
       return;
     }
-    _saveReservation();
+
+    setState(() => _isLoading = true);
+    _saveReservation().whenComplete(() => setState(() => _isLoading = false));
   }
 
   void _showError(String message) {
@@ -229,56 +251,181 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
     );
   }
 
-  void _saveReservation() {
-    final reservationDetails = {
-      'Name': _nameController.text.trim(),
-      'Contact': _contactController.text.trim(),
-      'People': _peopleController.text.trim(),
-      'Priority': _priorityController.text.trim(),
-      'Date': DateFormat('dd/MM/yy').format(selectedDate),
-      'Time Slot': selectedSlot,
-      'Meal': selectedMeal,
-      'Area': selectedArea,
-      'Tables': selectedTables.join(', '),
-    };
+  Future<void> _saveReservation() async {
+    final response = widget.isEditMode
+        ? await _reservationRepository.updateReservation(
+      context: context,
+      token: widget.token,
+      reservationId: widget.reservationData?['reservation_id'] ?? 0,
+      people: int.tryParse(_peopleController.text.trim()) ?? 1,
+      name: _nameController.text.trim(),
+      phone: _contactController.text.trim(),
+      date: selectedDate,
+      time: selectedSlot,
+      tableNo: selectedTables.join(', '),
+      slotType: selectedMeal,
+      zoneName: selectedArea,
+      restaurantName: widget.restaurantName,
+      restaurantId: int.tryParse(widget.restaurantId) ?? 1,
+      priority: _priorityController.text.trim(),
+    )
+        : await _reservationRepository.createReservation(
+      context: context,
+      token: widget.token,
+      people: int.tryParse(_peopleController.text.trim()) ?? 1,
+      name: _nameController.text.trim(),
+      phone: _contactController.text.trim(),
+      date: selectedDate,
+      time: selectedSlot,
+      tableNo: selectedTables.join(', '),
+      slotType: selectedMeal,
+      zoneName: selectedArea,
+      restaurantName: widget.restaurantName,
+      restaurantId: int.tryParse(widget.restaurantId) ?? 1,
+      priority: _priorityController.text.trim(),
+    );
 
+    if (response == null) return;
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          "Reservation Confirmed!",
-          style: TextStyle(color: Color(0xFF22B573), fontWeight: FontWeight.bold),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: reservationDetails.entries.map((entry) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              child: Text(
-                "${entry.key}: ${entry.value}",
-                style: const TextStyle(fontSize: 14),
+      builder: (_) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Colors.white,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            SizedBox(
+              width: 500,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(50, 24, 70, 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Center(
+                      child: Image.asset(
+                        'assets/success_mark.png',
+                        width: 70,
+                        height: 70,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      widget.isEditMode ? "Reservation Updated" : "Reservation Confirmed",
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      widget.isEditMode
+                          ? "Your reservation has been successfully updated."
+                          : "Your reservation has been successfully confirmed.",
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 14, color: Color(0xFFA19A9A)),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text("Reservation ID", style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF4C5F7D))),
+                        const SizedBox(width: 8),
+                        const Text(":", style: TextStyle(fontWeight: FontWeight.bold)),
+                        const SizedBox(width: 8),
+                        Text("${response['reservation_id']}", style: const TextStyle(fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildDetailRow("Name", response['customer_name'] ?? ''),
+                            _buildDetailRow("Mobile Number", response['customer_phone'] ?? ''),
+                            _buildDetailRow("Guest Count", response['people_count'].toString()),
+                            _buildDetailRow("Priority", response['priority_category'] ?? ''),
+                          ],
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildDetailRow("Area", response['zone_name'] ?? ''),
+                            _buildDetailRow("Table Number", response['table_no'] ?? ''),
+                            _buildDetailRow("Date", response['reservation_date'] ?? ''),
+                            _buildDetailRow("Time", response['reservation_time'] ?? ''),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: 150,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        onPressed: () {
+                          // Optional: Handle SMS
+                        },
+                        child: Text(
+                          widget.isEditMode ? "Resend SMS" : "Send via SMS",
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            );
-          }).toList(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context, true);
-            },
-            child: const Text(
-              "OK",
-              style: TextStyle(color: Color(0xFFFF4D20)),
             ),
-          ),
+            Positioned(
+              top: 12,
+              right: 12,
+              child: IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: const CircleAvatar(
+                  radius: 12,
+                  backgroundColor: Colors.redAccent,
+                  child: Icon(Icons.close, color: Colors.white, size: 16),
+                ),
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ReservationListScreen(
+                        pin: widget.pin,
+                        token: widget.token,
+                        restaurantId: widget.restaurantId,
+                        restaurantName: widget.restaurantName,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Text("$label: ", style: const TextStyle(fontWeight: FontWeight.bold,color: Color(0xFF4C5F7D))),
+          Text(value,style: const TextStyle(fontWeight: FontWeight.w400,color: Colors.black)),
         ],
       ),
     );
   }
+
   void _scrollToSelectedArea() {
     final index = areas.indexOf(selectedArea);
     if (index != -1) {
@@ -480,28 +627,47 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
             ),
             child: InkWell(
               onTap: () async {
-                final DateTime today = DateTime.now();
-                final DateTime lastSelectableDate = today.add(const Duration(days: 7));
+                setState(() {
+                  _isCalendarLoading = true;
+                });
 
-                final DateTime? picked = await showDatePicker(
-                  context: context,
-                  initialDate: selectedDate.isBefore(today) || selectedDate.isAfter(lastSelectableDate)
-                      ? today
-                      : selectedDate,
-                  firstDate: today,
-                  lastDate: lastSelectableDate,
-                );
-                if (picked != null) {
-                  setState(() {
-                    selectedDate = picked;
-                    selectedSlot = '';
-                    _isLoadingSlots = true;
-                  });
-                  _fetchSlotsAndMeals();
+                final dateRange = await _reservationRepository.getReservationDateRange(widget.token);
+
+                setState(() {
+                  _isCalendarLoading = false;
+                });
+
+                if (dateRange != null) {
+                  final DateTime? picked = await showDatePicker(
+                    context: context,
+                    initialDate: selectedDate.isBefore(dateRange.start) || selectedDate.isAfter(dateRange.end)
+                        ? dateRange.start
+                        : selectedDate,
+                    firstDate: dateRange.start,
+                    lastDate: dateRange.end,
+                  );
+                  if (picked != null) {
+                    setState(() {
+                      selectedDate = picked;
+                      selectedSlot = '';
+                      _isLoadingSlots = true;
+                    });
+                    _fetchSlotsAndMeals();
+                  }
+                } else {
+                  _showError("Failed to load reservation date range.");
                 }
               },
               child: Row(
-                children: [
+                children: _isCalendarLoading
+                    ? [
+                  const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ]
+                    : [
                   Text(
                     DateFormat('dd/MM/yyyy').format(selectedDate),
                     style: const TextStyle(fontSize: 14),
@@ -512,7 +678,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
               ),
             ),
           ),
-
           const SizedBox(width: 260),
           _isLoadingAreas
               ? const Padding(
@@ -706,9 +871,9 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                   children: mealSlots[selectedMeal] == null
                       ? []
                       : mealSlots[selectedMeal]!.map((slot) {
-                    final time = slot['Time Slot'];
+                    final time = slot['Time Slot']?.trim();
                     final isActive = slot['is_active'] == true;
-                    final isSelected = selectedSlot == time;
+                    final isSelected = selectedSlot.trim() == time;
                     final parts = time.split(' ');
                     final formattedSlot = parts.length == 2
                         ? '${parts[0]}\n${parts[1]}'
@@ -825,11 +990,14 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                 ),
                 itemBuilder: (context, index) {
                   final table = tablesToShow[index];
-                  final tableName = table['table_name']?.toUpperCase() ?? '';
+                  final tableName = table['table_name'] ?? '';
                   final capacity = table['capacity'] ?? '';
                   final shape = table['shape']?.toLowerCase() ?? '';
+                  final status = (table['status'] ?? '').toLowerCase();
                   final isSelected = selectedTables.contains(tableName);
+                  final isOriginalTable = widget.isEditMode && tableName == _originalSelectedTable;
 
+                  // Shape image path
                   String shapeAsset;
                   switch (shape) {
                     case 'circle':
@@ -845,8 +1013,31 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                       shapeAsset = 'assets/square1.png';
                   }
 
+                  // Color scheme
+                  Color cardColor = Colors.white;
+                  Color borderColor = Colors.grey.shade300;
+                  Color textColor = Colors.black;
+                  Color iconColor = Colors.green;
+                  bool isClickable = true;
+
+                  if (status == 'available') {
+                    cardColor = isSelected ? const Color(0xFFE7FAEF) : Colors.white;
+                    borderColor = isSelected ? Colors.green : Colors.grey.shade300;
+                  } else if (status == 'reserve') {
+                    cardColor = const Color(0xFFE0E0E0);
+                    textColor = Colors.grey!;
+                    iconColor = Colors.grey!;
+                    isClickable = false;
+                  } else if (status == 'dine in' || status == 'ready to pay') {
+                    cardColor = const Color(0xFFF7DDDB);
+                    textColor = const Color(0xFFF44336);
+                    iconColor = const Color(0xFFF44336);
+                    isClickable = false;
+                  }
+
                   return GestureDetector(
-                    onTap: () {
+                    onTap: isClickable
+                        ? () {
                       setState(() {
                         if (selectedTables.contains(tableName)) {
                           selectedTables.remove(tableName);
@@ -855,14 +1046,15 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                           selectedTables.add(tableName);
                         }
                       });
-                    },
+                    }
+                        : null,
                     child: Stack(
                       children: [
                         Container(
                           decoration: BoxDecoration(
-                            color: isSelected ? const Color(0xFFE7FAEF) : Colors.white,
+                            color: cardColor,
                             border: Border.all(
-                              color: isSelected ? Colors.green : Colors.grey.shade300,
+                              color: isOriginalTable ? Colors.blue : borderColor,
                               width: 1.5,
                             ),
                             borderRadius: BorderRadius.circular(14),
@@ -880,7 +1072,8 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                                 children: [
                                   Checkbox(
                                     value: isSelected,
-                                    onChanged: (_) {
+                                    onChanged: isClickable
+                                        ? (_) {
                                       setState(() {
                                         if (selectedTables.contains(tableName)) {
                                           selectedTables.remove(tableName);
@@ -889,7 +1082,8 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                                           selectedTables.add(tableName);
                                         }
                                       });
-                                    },
+                                    }
+                                        : null,
                                     activeColor: Colors.green,
                                     checkColor: Colors.white,
                                     visualDensity: VisualDensity.compact,
@@ -900,9 +1094,10 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                                     child: Text(
                                       tableName,
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontWeight: FontWeight.w500,
                                         fontSize: 16,
+                                        color: textColor,
                                       ),
                                     ),
                                   ),
@@ -912,13 +1107,14 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                               Row(
                                 children: [
                                   const SizedBox(width: 4),
-                                  const Icon(Icons.group, size: 22, color: Colors.green),
+                                  Icon(Icons.group, size: 22, color: iconColor),
                                   const SizedBox(width: 8),
                                   Text(
                                     '$capacity',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontWeight: FontWeight.w500,
                                       fontSize: 17,
+                                      color: textColor,
                                     ),
                                   ),
                                   const SizedBox(width: 8),
@@ -927,6 +1123,8 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                                     width: 26,
                                     height: 26,
                                     fit: BoxFit.contain,
+                                    color: iconColor,
+                                    colorBlendMode: BlendMode.srcIn,
                                   ),
                                 ],
                               ),
@@ -961,7 +1159,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           ElevatedButton(
-            onPressed: _validateAndSubmit,
+            onPressed: _isLoading ? null : _validateAndSubmit,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFFF4D20),
               foregroundColor: Colors.white,
@@ -970,9 +1168,28 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
               ),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
-            child: Text(
-              widget.isEditMode ? "Update Reservation" : "Confirm Reservation",
-              style: const TextStyle(fontSize: 14, color: Colors.white),
+            child: SizedBox(
+              height: 20,
+              child: Center(
+                child: _isLoading
+                    ? const SizedBox(
+                  height: 18,
+                  width: 18,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2.2,
+                  ),
+                )
+                    : Text(
+                  widget.isEditMode
+                      ? "Update Reservation"
+                      : "Confirm Reservation",
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -1008,11 +1225,16 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
             ),
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
-              onTap: () => setState(() {
-                selectedMeal = meal;
-                selectedSlot = ''; // reset selected slot when meal changes
-              }),
-              child: Padding(
+                onTap: () async {
+                  setState(() {
+                    selectedMeal = meal;
+                    selectedSlot = '';
+                    _isLoadingTables = true;
+                  });
+
+                  await _fetchTables();
+                },
+                child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 child: Row(
                   children: [

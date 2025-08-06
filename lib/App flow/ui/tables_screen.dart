@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 import '../../blocs/Bloc Event/TableEvent.dart';
 import '../../blocs/Bloc Event/ZoneEvent.dart';
 import '../../blocs/Bloc Event/attendance_event.dart';
@@ -442,11 +443,30 @@ class _TablesScreenState extends State<TablesScreen> {
 
     return ShapeBasedGridItem(
       tableData: tableData,
-      onTap: () {
-        if (!_showPopup) {
-          _showGuestDetailsPopup(context, actualIndex, tableData);
+        onTap: () {
+          final status = tableData['status']?.toLowerCase() ?? 'available';
+          final reservationDateStr = tableData['reservationDate'];
+          final reservationTimeStr = tableData['reservationTime'];
+
+          if (status == 'reserve' &&
+              reservationDateStr != null &&
+              reservationTimeStr != null &&
+              !isReservationTimePassed(reservationDateStr, reservationTimeStr)) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Table is reserved until $reservationDateStr at $reservationTimeStr.',
+                ),
+                duration: Duration(seconds: 2),
+              ),
+            );
+            return;
+          }
+
+          if (!_showPopup) {
+            _showGuestDetailsPopup(context, actualIndex, tableData);
+          }
         }
-      },
     );
   }
 
@@ -458,11 +478,30 @@ class _TablesScreenState extends State<TablesScreen> {
 
     return CommonGridItem(
       tableData: tableData,
-      onTap: () {
-        if (!_showPopup) {
-          _showGuestDetailsPopup(context, actualIndex, tableData);
+        onTap: () {
+          final status = tableData['status']?.toLowerCase() ?? 'available';
+          final reservationDateStr = tableData['reservationDate'];
+          final reservationTimeStr = tableData['reservationTime'];
+
+          if (status == 'reserve' &&
+              reservationDateStr != null &&
+              reservationTimeStr != null &&
+              !isReservationTimePassed(reservationDateStr, reservationTimeStr)) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Table is reserved until $reservationDateStr at $reservationTimeStr.',
+                ),
+                duration: Duration(seconds: 2),
+              ),
+            );
+            return;
+          }
+
+          if (!_showPopup) {
+            _showGuestDetailsPopup(context, actualIndex, tableData);
+          }
         }
-      },
     );
   }
 
@@ -613,7 +652,7 @@ class _TablesScreenState extends State<TablesScreen> {
       shape: shape,
       size: size,
       rotation: rotation,
-      status: status, // <-- add this
+      status: status,
     );
 
 
@@ -643,11 +682,29 @@ class _TablesScreenState extends State<TablesScreen> {
     Widget gestureTable = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {
+        final status = tableData['status']?.toLowerCase() ?? 'available';
+        final reservationDateStr = tableData['reservationDate'];
+        final reservationTimeStr = tableData['reservationTime'];
+
+        if (status == 'reserve' &&
+            reservationDateStr != null &&
+            reservationTimeStr != null &&
+            !isReservationTimePassed(reservationDateStr, reservationTimeStr)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Table is reserved until $reservationDateStr at $reservationTimeStr.',
+              ),
+              duration: Duration(seconds: 2),
+            ),
+          );
+          return;
+        }
         if (!_showPopup) {
           _showGuestDetailsPopup(context, index, tableData);
         }
       },
-      onDoubleTap: (_userPermissions == null || !_userPermissions!.canDoubleTap)
+      onDoubleTap: (_userPermissions == null || !_userPermissions!.canDoubleTap || status.toLowerCase() != 'available')
           ? null
           : () {
         if (!_showPopup) {
@@ -680,12 +737,12 @@ class _TablesScreenState extends State<TablesScreen> {
                   _showActionMenu = false;
                 });
               }),
+            if (status.toLowerCase() == 'available')
+              _buildActionButton("delete", () {
+                _showDeleteConfirmationDialog(index);
+              }),
             if (!_showPopup) const SizedBox(height: 6),
-            _buildActionButton("delete", () {
-              _showDeleteConfirmationDialog(index);
-            }),
-            if (!_showPopup) const SizedBox(height: 6),
-            if (shape == 'rectangle')
+            if (shape == 'rectangle' && status.toLowerCase() == 'available')
               _buildActionButton("rotate", () {
                 _rotateTable(index);
               }),
@@ -814,6 +871,19 @@ class _TablesScreenState extends State<TablesScreen> {
       _showActionMenu = false;
     });
   }
+  bool isReservationTimePassed(String dateStr, String timeStr) {
+    try {
+      final now = DateTime.now();
+      final combinedStr = '$dateStr $timeStr';
+      final format = DateFormat('yyyy-MM-dd hh:mm a');
+      final reservationDateTime = format.parse(combinedStr);
+
+      return now.isAfter(reservationDateTime);
+    } catch (e) {
+      return false;
+    }
+  }
+
 
   /// Builds a small icon button (edit/delete) used in the table overlay.
   ///
@@ -833,7 +903,7 @@ class _TablesScreenState extends State<TablesScreen> {
       borderColor = Colors.transparent;
       iconColor = Colors.white;
     } else if (type == "rotate") {
-      icon = Icons.rotate_right; // Rotate icon
+      icon = Icons.rotate_right;
       backgroundColor = Colors.blue.shade50;
       borderColor = Colors.blue;
       iconColor = Colors.blue;

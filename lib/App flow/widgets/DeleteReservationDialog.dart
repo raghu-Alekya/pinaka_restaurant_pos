@@ -28,12 +28,12 @@ class DeleteReservationDialog extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             const Text(
-              'Delete Reservation',
+              'Cancel Reservation',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             const Text(
-              'Are you sure you want to delete this reservation?\nThis action cannot be undone.',
+              'Are you sure you want to Cancel this reservation?\nThis action cannot be undone.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.black87),
             ),
@@ -73,7 +73,7 @@ class DeleteReservationDialog extends StatelessWidget {
                     });
                   },
                   child: const Text(
-                    'Yes, Delete!',
+                    'Yes, Cancel!',
                     style: TextStyle(color: Colors.white),
                   ),
                 ),

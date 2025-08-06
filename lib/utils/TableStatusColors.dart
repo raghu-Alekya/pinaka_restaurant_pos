@@ -18,7 +18,7 @@ class TableStatusColors {
 
   static Color getTableColor(String status) {
     final key = status.trim().toLowerCase();
-    return tableColors[key] ?? Colors.black;
+    return tableColors[key] ?? Color(0xFFE0E0E0);
   }
 
   static Color getChairColor(String status) {
