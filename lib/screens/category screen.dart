@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 // import '../bloc/category_bloc.dart';
+import '../App flow/widgets/category_tab.dart';
+import '../App flow/widgets/subcategories_widget.dart';
 import '../blocs/category_bloc.dart';
 import '../models/category/subcategory_model.dart';
 import '../models/category/subcategory_model.dart';
-import '../widgets/category_tab.dart';
-import '../widgets/subcategories_widget.dart';
+// import '../widgets/category_tab.dart';
+// import '../widgets/subcategories_widget.dart';
 
 class CategoryScreen extends StatefulWidget {
   const CategoryScreen({super.key});
