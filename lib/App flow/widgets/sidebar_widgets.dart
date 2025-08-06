@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../blocs/category_bloc.dart';
-import '../blocs/menu_bloc.dart';
+import '../../blocs/category_bloc.dart';
+import '../../blocs/menu_bloc.dart';
+
+// import '../../bloc/category_bloc.dart';
+// import '../../bloc/menu_bloc.dart';
 // import '../bloc/category_bloc.dart';
 // import '../bloc/menu_bloc.dart';
 

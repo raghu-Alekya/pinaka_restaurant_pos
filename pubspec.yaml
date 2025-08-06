@@ -71,10 +71,33 @@ flutter:
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
   assets:
-    #   - images/a_dot_burr.jpeg
-    #   - images/a_dot_ham.jpeg
-    - assets/
-
+    - assets/icon/fav_icon.png
+    - assets/icon/soup.png
+    - assets/icon/starter.png
+    - assets/icon/maincourse.png
+    - assets/icon/Tandoori.png
+    - assets/icon/chinese.png
+    - assets/icon/alcohol.png
+    - assets/icon/beverges.png
+    - assets/icon/deserts.png
+    - assets/icon/logo.png
+    - assets/icon/calculator-02.png
+    - assets/icon/loginname.png
+    - assets/icon/mode2.png
+    - assets/icon/light.png
+    - assets/icon/notification.png
+    - assets/icon/settings.png
+    - assets/icon/logout-02.png
+    - assets/icon/table.png
+    - assets/icon/arrow.png
+    - assets/icon/clock.png
+    - assets/icon/calender.png
+    - assets/icon/person.png
+    - assets/icon/delete.png
+    - assets/icon/veg_icon.png
+    - assets/icon/nonveg_icon.png
+    - assets/icon/paneer_tikka.png
+    - assets/icon/add_icon.png
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

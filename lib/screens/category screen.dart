@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../bloc/category_bloc.dart';
+// import '../bloc/category_bloc.dart';
+import '../blocs/category_bloc.dart';
 import '../models/category/subcategory_model.dart';
 import '../models/category/subcategory_model.dart';
 import '../widgets/category_tab.dart';

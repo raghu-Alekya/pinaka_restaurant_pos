@@ -7,8 +7,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pinaka_restaurant_pos/main.dart';
 
-import 'package:pinkapos_restar/main.dart';
+// import 'package:pinkapos_restar/main.dart';
 
 void main() {
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {

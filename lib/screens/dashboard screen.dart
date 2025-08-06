@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../bloc/category_bloc.dart';
+// import '../bloc/category_bloc.dart';
+import '../blocs/category_bloc.dart';
 import '../models/category/subcategory_model.dart';
 import '../widgets/category_tab.dart';
 import '../widgets/sidebar_widgets.dart';
 import '../widgets/subcategories_widget.dart';
 import '../widgets/topbar_widgets.dart';
-import 'package:pinkapos_restar/screens/orders_screen.dart ';
+import '../screens/orders_screen.dart ';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});

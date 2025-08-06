@@ -1,0 +1,145 @@
+*   [33m61eadce[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature/branch-5[m[33m, [m[1;31morigin/feature/branch-5[m[33m)[m Merge branch 'origin/branch2' into feature/branch-5
+[31m|[m[32m\[m  
+[31m|[m * [33md088e74[m[33m ([m[1;31morigin/branch2[m[33m)[m i add  file
+[31m|[m * [33mf028abf[m Pushed full project to branch2
+[31m|[m * [33m32ec12e[m[33m ([m[1;31morigin/your_branch_name[m[33m)[m Your commit message
+[31m|[m * [33m864bbb1[m[33m ([m[1;35mrefs/stash[m[33m)[m WIP on feature/branch-5: e889e9a Merge pull request #38 from raghu-Alekya/feature/branch-1
+[31m|[m[31m/[m[34m|[m 
+[31m|[m * [33m1433e68[m index on feature/branch-5: e889e9a Merge pull request #38 from raghu-Alekya/feature/branch-1
+[31m|[m[31m/[m  
+*   [33me889e9a[m[33m ([m[1;31morigin/DevTeam[m[33m, [m[1;32mDevTeam[m[33m)[m Merge pull request #38 from raghu-Alekya/feature/branch-1
+[35m|[m[36m\[m  
+[35m|[m * [33m9381509[m[33m ([m[1;31morigin/feature/branch-1[m[33m)[m reservation code
+[35m|[m [36m|[m *   [33m433edef[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m Merge pull request #37 from raghu-Alekya/DevTeam
+[35m|[m [36m|[m [1;31m|[m[35m\[m  
+[35m|[m [36m|[m[35m_[m[1;31m|[m[35m/[m  
+[35m|[m[35m/[m[36m|[m [1;31m|[m   
+* [36m|[m [1;31m|[m [33m08eca4a[m[33m ([m[1;31morigin/feature/branch-4[m[33m, [m[1;32mfeature/branch-4[m[33m)[m Merge pull request #36 from raghu-Alekya/feature/branch-1
+[1;33m|[m[36m\[m[36m|[m [1;31m|[m 
+[1;33m|[m * [1;31m|[m [33m153fe03[m reservation
+* [1;34m|[m [1;31m|[m [33m02bc1ff[m Merge pull request #35 from raghu-Alekya/feature/branch-1
+[1;35m|[m[1;34m\[m[1;34m|[m [1;31m|[m 
+[1;35m|[m * [1;31m|[m [33m0319efd[m check-in issue and reservation flow.
+* [1;36m|[m [1;31m|[m [33m2dbfbd6[m Merge pull request #34 from raghu-Alekya/feature/branch-1
+[31m|[m[1;36m\[m[1;36m|[m [1;31m|[m 
+[31m|[m * [1;31m|[m [33m5e11ac6[m user permisssions
+* [32m|[m [1;31m|[m [33ma0e3d84[m Merge pull request #33 from raghu-Alekya/feature/branch-1
+[33m|[m[32m\[m[32m|[m [1;31m|[m 
+[33m|[m * [1;31m|[m [33m1c523c4[m shift
+[33m|[m [34m|[m *   [33md1f7b45[m Merge pull request #32 from raghu-Alekya/DevTeam
+[33m|[m [34m|[m [35m|[m[33m\[m  
+[33m|[m [34m|[m[33m_[m[35m|[m[33m/[m  
+[33m|[m[33m/[m[34m|[m [35m|[m   
+* [34m|[m [35m|[m [33me0fd020[m Merge pull request #31 from raghu-Alekya/feature/branch-1
+[1;31m|[m[34m\[m[34m|[m [35m|[m 
+[1;31m|[m * [35m|[m [33m31fa9df[m shift attendence  and checkin
+[1;31m|[m [1;32m|[m *   [33m6b66e1e[m Merge pull request #30 from raghu-Alekya/DevTeam
+[1;31m|[m [1;32m|[m [1;33m|[m[1;31m\[m  
+[1;31m|[m [1;32m|[m[1;31m_[m[1;33m|[m[1;31m/[m  
+[1;31m|[m[1;31m/[m[1;32m|[m [1;33m|[m   
+* [1;32m|[m [1;33m|[m [33mb255356[m Merge pull request #29 from raghu-Alekya/feature/branch-1
+[1;35m|[m[1;32m\[m[1;32m|[m [1;33m|[m 
+[1;35m|[m * [1;33m|[m [33m6b4b38a[m info popups
+* [1;36m|[m [1;33m|[m [33mfc1d63c[m Merge pull request #28 from raghu-Alekya/feature/branch-1
+[31m|[m[1;36m\[m[1;36m|[m [1;33m|[m 
+[31m|[m * [1;33m|[m [33m8c8252a[m feedback popup
+* [32m|[m [1;33m|[m [33me5819d8[m Merge pull request #27 from raghu-Alekya/feature/branch-1
+[33m|[m[32m\[m[32m|[m [1;33m|[m 
+[33m|[m * [1;33m|[m [33m35cc990[m integrations
+* [34m|[m [1;33m|[m [33md94be30[m Merge pull request #26 from raghu-Alekya/feature/branch-1
+[35m|[m[34m\[m[34m|[m [1;33m|[m 
+[35m|[m * [1;33m|[m [33mea170e5[m api integrations
+* [36m|[m [1;33m|[m [33mde1e287[m Merge pull request #25 from raghu-Alekya/feature/branch-1
+[1;31m|[m[36m\[m[36m|[m [1;33m|[m 
+[1;31m|[m * [1;33m|[m [33m574d53a[m chnages
+[1;31m|[m[1;31m/[m [1;33m/[m  
+[1;31m|[m *   [33md1f88ad[m Merge pull request #24 from raghu-Alekya/DevTeam
+[1;31m|[m [1;33m|[m[1;31m\[m  
+[1;31m|[m [1;33m|[m[1;31m/[m  
+[1;31m|[m[1;31m/[m[1;33m|[m   
+* [1;33m|[m   [33m5c64fa6[m Merge pull request #23 from raghu-Alekya/feature/branch-2
+[1;35m|[m[1;36m\[m [1;33m\[m  
+[1;35m|[m * [1;33m|[m [33m4eec530[m api integrations
+[1;35m|[m [1;36m|[m *   [33m83245ca[m Merge pull request #22 from raghu-Alekya/DevTeam
+[1;35m|[m [1;36m|[m [31m|[m[1;35m\[m  
+[1;35m|[m [1;36m|[m[1;35m_[m[31m|[m[1;35m/[m  
+[1;35m|[m[1;35m/[m[1;36m|[m [31m|[m   
+* [1;36m|[m [31m|[m [33m701ed6f[m Merge pull request #21 from raghu-Alekya/feature/branch-2
+[33m|[m[1;36m\[m[1;36m|[m [31m|[m 
+[33m|[m * [31m|[m [33m089417f[m merge
+[33m|[m[33m/[m [31m/[m  
+[33m|[m *   [33m6455ae1[m Merge pull request #20 from raghu-Alekya/DevTeam
+[33m|[m [35m|[m[33m\[m  
+[33m|[m [35m|[m[33m/[m  
+[33m|[m[33m/[m[35m|[m   
+* [35m|[m   [33m9b2352a[m Merge pull request #19 from raghu-Alekya/feature/branch-1
+[1;31m|[m[1;32m\[m [35m\[m  
+[1;31m|[m * [35m|[m [33m57c3150[m pin variation
+[1;31m|[m * [35m|[m [33m4395c96[m some ui changes
+[1;31m|[m[1;31m/[m [35m/[m  
+[1;31m|[m *   [33mc685257[m Merge pull request #18 from raghu-Alekya/DevTeam
+[1;31m|[m [1;33m|[m[1;31m\[m  
+[1;31m|[m [1;33m|[m[1;31m/[m  
+[1;31m|[m[1;31m/[m[1;33m|[m   
+* [1;33m|[m   [33me2a707d[m Merge pull request #17 from raghu-Alekya/feature/branch-1
+[1;35m|[m[1;36m\[m [1;33m\[m  
+[1;35m|[m * [1;33m|[m [33m1a65674[m no message
+[1;35m|[m[1;35m/[m [1;33m/[m  
+[1;35m|[m *   [33m35e4f7a[m Merge pull request #16 from raghu-Alekya/DevTeam
+[1;35m|[m [31m|[m[1;35m\[m  
+[1;35m|[m [31m|[m[1;35m/[m  
+[1;35m|[m[1;35m/[m[31m|[m   
+* [31m|[m   [33m61ba056[m Merge pull request #15 from raghu-Alekya/feature/branch-3
+[33m|[m[34m\[m [31m\[m  
+[33m|[m * [31m|[m [33mdfaf889[m some modifications
+[33m|[m[33m/[m [31m/[m  
+[33m|[m *   [33mfc58628[m Merge pull request #14 from raghu-Alekya/DevTeam
+[33m|[m [35m|[m[33m\[m  
+[33m|[m [35m|[m[33m/[m  
+[33m|[m[33m/[m[35m|[m   
+* [35m|[m   [33ma083ede[m Merge pull request #13 from raghu-Alekya/feature/branch-2
+[1;31m|[m[1;32m\[m [35m\[m  
+[1;31m|[m * [35m|[m [33me554736[m flow updates
+[1;31m|[m [1;32m|[m *   [33m457bdb3[m Merge pull request #12 from raghu-Alekya/DevTeam
+[1;31m|[m [1;32m|[m [1;33m|[m[1;31m\[m  
+[1;31m|[m [1;32m|[m[1;31m_[m[1;33m|[m[1;31m/[m  
+[1;31m|[m[1;31m/[m[1;32m|[m [1;33m|[m   
+* [1;32m|[m [1;33m|[m [33me006b74[m Merge pull request #11 from raghu-Alekya/feature/branch-2
+[1;35m|[m[1;32m\[m[1;32m|[m [1;33m|[m 
+[1;35m|[m * [1;33m|[m [33m2793f40[m ui changes
+[1;35m|[m [1;36m|[m *   [33m6691355[m Merge pull request #10 from raghu-Alekya/DevTeam
+[1;35m|[m [1;36m|[m [31m|[m[1;35m\[m  
+[1;35m|[m [1;36m|[m[1;35m_[m[31m|[m[1;35m/[m  
+[1;35m|[m[1;35m/[m[1;36m|[m [31m|[m   
+* [1;36m|[m [31m|[m [33mdebad03[m Merge pull request #9 from raghu-Alekya/feature/branch-2
+[33m|[m[1;36m\[m[1;36m|[m [31m|[m 
+[33m|[m * [31m|[m [33m5123ce9[m documentation and some ui changes.
+[33m|[m[33m/[m [31m/[m  
+[33m|[m *   [33md56a308[m Merge pull request #8 from raghu-Alekya/DevTeam
+[33m|[m [35m|[m[33m\[m  
+[33m|[m [35m|[m[33m/[m  
+[33m|[m[33m/[m[35m|[m   
+* [35m|[m   [33m48226ea[m Merge pull request #7 from raghu-Alekya/feature/branch-1
+[1;31m|[m[1;32m\[m [35m\[m  
+[1;31m|[m * [35m|[m [33m4997a82[m code clean 1
+[1;31m|[m [1;32m|[m *   [33m6f91ca1[m Merge pull request #3 from raghu-Alekya/DevTeam
+[1;31m|[m [1;32m|[m [1;33m|[m[1;31m\[m  
+[1;31m|[m [1;32m|[m[1;31m_[m[1;33m|[m[1;31m/[m  
+[1;31m|[m[1;31m/[m[1;32m|[m [1;33m|[m   
+* [1;32m|[m [1;33m|[m [33m5ab89dc[m Merge pull request #6 from raghu-Alekya/feature/branch-1
+[1;35m|[m[1;32m\[m[1;32m|[m [1;33m|[m 
+[1;35m|[m * [1;33m|[m [33mbac6438[m edit and delete
+* [1;36m|[m [1;33m|[m [33m16275f2[m Merge pull request #5 from raghu-Alekya/feature/branch-1
+[31m|[m[1;36m\[m[1;36m|[m [1;33m|[m 
+[31m|[m * [1;33m|[m [33m13ec5e3[m commit
+* [32m|[m [1;33m|[m [33m3437711[m Merge pull request #4 from raghu-Alekya/feature/branch-1
+[33m|[m[32m\[m[32m|[m [1;33m|[m 
+[33m|[m * [1;33m|[m [33m1ce7c64[m second commit
+* [34m|[m [1;33m|[m [33m9113ac9[m Merge pull request #2 from raghu-Alekya/feature/branch-1
+[35m|[m[34m\[m[34m|[m [1;33m|[m 
+[35m|[m [34m|[m * [33m831414a[m Merge pull request #1 from raghu-Alekya/feature/branch-1
+[35m|[m [34m|[m[35m/[m[34m|[m 
+[35m|[m[35m/[m[34m|[m[34m/[m  
+[35m|[m * [33m804d296[m first commit
+[35m|[m[35m/[m  
+* [33mb72bee9[m First commit to Restaurent -pos
