@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/UserPermissions.dart';
+import '../../repositories/ReservationRepository.dart';
 import '../../repositories/zone_repository.dart';
 import '../../utils/SessionManager.dart';
 import '../widgets/DeleteReservationDialog.dart';
@@ -34,27 +37,14 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
   String searchQuery = '';
   String? selectedArea = 'All';
   DateTime? selectedDate;
+  final ReservationRepository _reservationRepository = ReservationRepository();
+  List<Map<String, dynamic>> _reservations = [];
+  late Timer _refreshTimer;
+  bool _isLoading = true;
 
   final TextEditingController _dateController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
 
-  final List<Map<String, String>> reservations = List.generate(70, (index) {
-    final List<String> sampleDates = [
-      '04/06/23', '05/06/23', '06/06/23', '07/06/23', '08/06/23', '09/06/23'
-    ];
-    final List<String> statuses = ['Seated', 'Expired', 'Cancelled'];
-    return {
-      'reservationId': '#2145$index',
-      'date': sampleDates[index % sampleDates.length],
-      'time': '06:00PM',
-      'name': 'Guest $index',
-      'phone': '+91123456789$index',
-      'people': '${(index % 6) + 1}',
-      'table': 'T${index + 1}',
-      'area': ['Main dining', 'terrace', 'Outdoor', 'Garden'][index % 4],
-      'status': statuses[index % statuses.length],
-    };
-  });
 
   UserPermissions? _userPermissions;
   final ZoneRepository _zoneRepository = ZoneRepository();
@@ -66,6 +56,19 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
     super.initState();
     _loadPermissions();
     _loadZones();
+    _fetchReservations();
+
+    _refreshTimer = Timer.periodic(Duration(seconds: 5), (timer) {
+      _fetchReservations();
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer.cancel();
+    _dateController.dispose();
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadZones() async {
@@ -81,6 +84,28 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
       setState(() {
         _areaNames = ['All'];
       });
+    }
+  }
+  Future<void> _fetchReservations() async {
+    final data = await _reservationRepository.fetchAllReservations(widget.token);
+    print("Fetched Reservations at ${DateTime.now()}:");
+    for (var reservation in data) {
+      print(reservation);
+    }
+
+    setState(() {
+      _reservations = data;
+      _isLoading = false;
+    });
+  }
+  bool _isBeforeCutoff(String reservationDate, String cutoffTime) {
+    try {
+      final fullCutoffDateTimeString = '$reservationDate $cutoffTime';
+      final cutoff = DateFormat('yyyy-MM-dd hh:mm a').parse(fullCutoffDateTimeString);
+      return DateTime.now().isBefore(cutoff);
+    } catch (e) {
+      print("Date parsing error: $e");
+      return false;
     }
   }
 
@@ -176,13 +201,19 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredReservations = reservations.where((data) {
+    final filteredReservations = _reservations.where((data) {
       final query = searchQuery.toLowerCase();
-      final nameMatch = data['name']!.toLowerCase().contains(query) ||
-          data['phone']!.contains(query) ||
-          data['table']!.toLowerCase().contains(query);
-      final areaMatch = selectedArea == 'All' || data['area'] == selectedArea;
-      final dateMatch = selectedDate == null || data['date'] == DateFormat('dd/MM/yy').format(selectedDate!);
+      final name = data['customer_name']?.toLowerCase() ?? '';
+      final phone = data['customer_phone'] ?? '';
+      final table = data['table_no']?.toLowerCase() ?? '';
+      final zone = data['zone_name'] ?? '';
+      final date = data['reservation_date'] ?? '';
+
+      final nameMatch = name.contains(query) || phone.contains(query) || table.contains(query);
+      final areaMatch = selectedArea == 'All' || zone == selectedArea;
+      final dateMatch = selectedDate == null ||
+          date == DateFormat('yyyy-MM-dd').format(selectedDate!);
+
       return nameMatch && areaMatch && dateMatch;
     }).toList();
 
@@ -372,9 +403,12 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                           children: const [
                             _TableHeaderCell("Reservation ID"),
                             _TableHeaderCell("Date"),
+                            SizedBox(width: 10),
                             _TableHeaderCell("Time"),
                             _TableHeaderCell("Customer Name"),
-                            _TableHeaderCell("Customer Phone", flex: 2),
+                            SizedBox(width: 25),
+                            _TableHeaderCell("Customer Phone"),
+                            SizedBox(width: 10),
                             _TableHeaderCell("No. of People"),
                             _TableHeaderCell("Table No"),
                             _TableHeaderCell("Area"),
@@ -392,24 +426,30 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                           itemCount: currentData.length,
                           itemBuilder: (context, index) {
                             final data = currentData[index];
+                            final canEdit = _isBeforeCutoff(data['reservation_date'], data['cutoff_time']);
+                            final status = data['reservation_status']?.toLowerCase() ?? '';
+                            final isRowDisabled = status == 'expired' || status == 'cancelled';
+
                             return Container(
                               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
                               decoration: BoxDecoration(
-                                color: Color(0xFFFAFDFF),
+                                color:const Color(0xFFFAFDFF),
                                 border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
                               ),
                               child: Row(
                                 children: [
-                                  _TableCell(data['reservationId']!),
-                                  _TableCell(data['date']!),
-                                  _TableCell(data['time']!),
-                                  _TableCell(data['name']!),
-                                  _TableCell(data['phone']!, flex: 2),
-                                  _TableCell(data['people']!),
-                                  _TableCell(data['table']!),
-                                  _TableCell(data['area']!),
+                                  _TableCell('${data['reservation_id']}'),
+                                  _TableCell(DateFormat('dd/MM/yy').format(DateTime.parse(data['reservation_date']))),
+                                  _TableCell(data['reservation_time'] ?? ''),
+                                  _TableCell(data['customer_name'] ?? ''),
+                                  const SizedBox(width: 20),
+                                  _TableCell(data['customer_phone'] ?? ''),
+                                  const SizedBox(width: 10),
+                                  _TableCell('${data['people_count']}'),
+                                  _TableCell(data['table_no'] ?? ''),
+                                  _TableCell(data['zone_name'] ?? ''),
                                   TableCell(
-                                    child: _buildStatusBadge(data['status'] ?? ''),
+                                    child: _buildStatusBadge(data['reservation_status'] ?? ''),
                                   ),
                                   const SizedBox(width: 24),
                                   _TableCell(
@@ -419,38 +459,55 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          InkWell(
-                                            onTap: () {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (_) => CreateReservationScreen(
-                                                    pin: widget.pin,
-                                                    token: widget.token,
-                                                    restaurantId: widget.restaurantId,
-                                                    restaurantName: widget.restaurantName,
-                                                    isEditMode: true,
-                                                    reservationData: data,
+                                          if (!isRowDisabled && canEdit)
+                                            InkWell(
+                                              onTap: () {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (_) => CreateReservationScreen(
+                                                      pin: widget.pin,
+                                                      token: widget.token,
+                                                      restaurantId: widget.restaurantId,
+                                                      restaurantName: widget.restaurantName,
+                                                      isEditMode: true,
+                                                      reservationData: {
+                                                        'reservation_id': data['reservation_id'],
+                                                        'people': data['people_count']?.toString(),
+                                                        'name': data['customer_name'],
+                                                        'phone': data['customer_phone'],
+                                                        'date': data['reservation_date'],
+                                                        'time': data['reservation_time'],
+                                                        'table': data['table_no'],
+                                                        'priority': data['priority_category'],
+                                                        'area': data['zone_name'],
+                                                      },
+                                                    ),
                                                   ),
-                                                ),
-                                              );
-                                            },
-                                            child: const Icon(Icons.edit, size: 18, color: Colors.blue),
-                                          ),
+                                                );
+                                              },
+                                              child: const Icon(Icons.edit, size: 18, color: Colors.blue),
+                                            )
+                                          else
+                                            Icon(Icons.edit, size: 18, color: Colors.grey.shade400),
                                           const SizedBox(width: 30),
-                                          InkWell(
-                                            onTap: () {
-                                              showDialog(
-                                                context: context,
-                                                builder: (_) => DeleteReservationDialog(
-                                                  onDelete: () {
-                                                    print("Reservation deleted");
-                                                  },
-                                                ),
-                                              );
-                                            },
-                                            child: const Icon(Icons.delete, size: 18, color: Colors.red),
-                                          ),
+                                          if (!isRowDisabled)
+                                            InkWell(
+                                              onTap: () {
+                                                showDialog(
+                                                  context: context,
+                                                  builder: (_) => DeleteReservationDialog(
+                                                    onDelete: () {
+                                                      print("Reservation deleted");
+                                                      // TODO: Call delete API and refresh
+                                                    },
+                                                  ),
+                                                );
+                                              },
+                                              child: const Icon(Icons.delete, size: 18, color: Colors.red),
+                                            )
+                                          else
+                                            Icon(Icons.delete, size: 18, color: Colors.grey.shade400),
                                         ],
                                       ),
                                     ),
@@ -555,14 +612,14 @@ Widget _buildStatusBadge(String status) {
 
   return Container(
     width: 100,
-    padding: const EdgeInsets.symmetric(vertical: 5),
+    padding: const EdgeInsets.symmetric(vertical: 3),
     alignment: Alignment.center,
     decoration: BoxDecoration(
-      color: color.withAlpha((0.2 * 255).round()),
-      borderRadius: BorderRadius.circular(20),
+      color: color.withOpacity(0.2),
+      borderRadius: BorderRadius.circular(15),
     ),
     child: Text(
-      status,
+      _capitalize(status),
       textAlign: TextAlign.center,
       style: TextStyle(
         color: color,
@@ -571,6 +628,11 @@ Widget _buildStatusBadge(String status) {
       ),
     ),
   );
+}
+
+String _capitalize(String input) {
+  if (input.isEmpty) return input;
+  return input[0].toUpperCase() + input.substring(1).toLowerCase();
 }
 
   class _TableHeaderCell extends StatelessWidget {

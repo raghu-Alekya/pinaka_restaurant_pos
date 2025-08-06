@@ -29,8 +29,13 @@ class AppConstants {
   static const String getAllShiftsEndpoint = '$baseApiPath/users/get-all-shifts';
 
   // Reservation Management
-  static String getAllSlotsByDate(String formattedDate) => '$baseApiPath/slots/get-all-slots?reservation_date=$formattedDate';
+  static const String createReservationEndpoint = '$baseApiPath/reservation/create-reservation';
+  static const String getAllReservationsEndpoint = '$baseApiPath/reservation/get-all-reservations';
+  static const String updateReservationEndpoint = '$baseApiPath/reservation/update-reservation';
   static const String reservationDateRangeEndpoint = '$baseApiPath/reservation/reservation-date-range';
+  static String getAllSlotsByDate(String formattedDate) =>
+      '$baseApiPath/slots/get-all-slots?reservation_date=$formattedDate';
+
 
   // Authentication
   static const String logoutEndpoint = '$baseApiPath/logout';
