@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -30,6 +31,7 @@ import '../widgets/DeleteConfirmationDialog.dart';
 import '../widgets/EditTablePopup.dart';
 import '../widgets/ModeChangeDialog.dart';
 import '../widgets/NavigationHelper.dart';
+import '../widgets/ReservationInfoDialog.dart';
 import '../widgets/TablePlacementWidget.dart';
 import '../widgets/ViewLayout.dart';
 import '../widgets/ZoomControlsWidget.dart';
@@ -86,6 +88,7 @@ class _TablesScreenState extends State<TablesScreen> {
   final tableRepository = TableRepository();
   bool _isDeletingTable = false;
   bool _showModeChangeDialog = false;
+  bool _hasLoadedOnce = false;
 
   void _onNavItemTapped(int index) {
     NavigationHelper.handleNavigation(
@@ -146,6 +149,7 @@ class _TablesScreenState extends State<TablesScreen> {
   /// Index of the table currently being edited.
   int? _editingTableIndex;
   bool _isRotating = false;
+  Timer? _pollingTimer;
 
   /// List of all tables placed on the floor plan.
   ///
@@ -192,6 +196,7 @@ class _TablesScreenState extends State<TablesScreen> {
     super.initState();
     _loadZones();
     context.read<TableBloc>().add(LoadTablesEvent(widget.token));
+    _startTablePolling();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (_popupsHandled) return;
@@ -255,6 +260,19 @@ class _TablesScreenState extends State<TablesScreen> {
     } catch (e) {
       AppLogger.error('Failed to load zones: $e');
     }
+  }
+
+  void _startTablePolling() {
+    _pollingTimer?.cancel();
+    _pollingTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      context.read<TableBloc>().add(LoadTablesEvent(widget.token));
+    });
+  }
+
+  @override
+  void dispose() {
+    _pollingTimer?.cancel();
+    super.dispose();
   }
 
   void _showCheckInPopupDirectly() {
@@ -443,30 +461,36 @@ class _TablesScreenState extends State<TablesScreen> {
 
     return ShapeBasedGridItem(
       tableData: tableData,
-        onTap: () {
-          final status = tableData['status']?.toLowerCase() ?? 'available';
-          final reservationDateStr = tableData['reservationDate'];
-          final reservationTimeStr = tableData['reservationTime'];
+      onTap: () {
+        final status = tableData['status']?.toLowerCase() ?? 'available';
+        final reservationDateStr = tableData['reservationDate'];
+        final reservationTimeStr = tableData['reservationTime'];
 
-          if (status == 'reserve' &&
-              reservationDateStr != null &&
-              reservationTimeStr != null &&
-              !isReservationTimePassed(reservationDateStr, reservationTimeStr)) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Table is reserved until $reservationDateStr at $reservationTimeStr.',
-                ),
-                duration: Duration(seconds: 2),
-              ),
-            );
-            return;
-          }
-
-          if (!_showPopup) {
-            _showGuestDetailsPopup(context, actualIndex, tableData);
-          }
+        if (status == 'reserve' &&
+            reservationDateStr != null &&
+            reservationTimeStr != null &&
+            !isReservationTimePassed(reservationDateStr, reservationTimeStr)) {
+          showDialog(
+            context: context,
+            barrierDismissible: true,
+            builder: (_) => ReservationInfoDialog(
+              reservationDate: reservationDateStr,
+              reservationTime: reservationTimeStr,
+              onOk: () {
+                Navigator.of(context).pop();
+                if (!_showPopup) {
+                  _showGuestDetailsPopup(context, actualIndex, tableData);
+                }
+              },
+            ),
+          );
+          return;
         }
+
+        if (!_showPopup) {
+          _showGuestDetailsPopup(context, actualIndex, tableData);
+        }
+      },
     );
   }
 
@@ -478,33 +502,38 @@ class _TablesScreenState extends State<TablesScreen> {
 
     return CommonGridItem(
       tableData: tableData,
-        onTap: () {
-          final status = tableData['status']?.toLowerCase() ?? 'available';
-          final reservationDateStr = tableData['reservationDate'];
-          final reservationTimeStr = tableData['reservationTime'];
+      onTap: () {
+        final status = tableData['status']?.toLowerCase() ?? 'available';
+        final reservationDateStr = tableData['reservationDate'];
+        final reservationTimeStr = tableData['reservationTime'];
 
-          if (status == 'reserve' &&
-              reservationDateStr != null &&
-              reservationTimeStr != null &&
-              !isReservationTimePassed(reservationDateStr, reservationTimeStr)) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Table is reserved until $reservationDateStr at $reservationTimeStr.',
-                ),
-                duration: Duration(seconds: 2),
-              ),
-            );
-            return;
-          }
-
-          if (!_showPopup) {
-            _showGuestDetailsPopup(context, actualIndex, tableData);
-          }
+        if (status == 'reserve' &&
+            reservationDateStr != null &&
+            reservationTimeStr != null &&
+            !isReservationTimePassed(reservationDateStr, reservationTimeStr)) {
+          showDialog(
+            context: context,
+            barrierDismissible: true,
+            builder: (_) => ReservationInfoDialog(
+              reservationDate: reservationDateStr,
+              reservationTime: reservationTimeStr,
+              onOk: () {
+                Navigator.of(context).pop();
+                if (!_showPopup) {
+                  _showGuestDetailsPopup(context, actualIndex, tableData);
+                }
+              },
+            ),
+          );
+          return;
         }
+
+        if (!_showPopup) {
+          _showGuestDetailsPopup(context, actualIndex, tableData);
+        }
+      },
     );
   }
-
   /// Clamps a given [position] of a table so it stays within the canvas bounds.
   ///
   /// Uses fixed large canvas size to allow free placement.
@@ -690,16 +719,23 @@ class _TablesScreenState extends State<TablesScreen> {
             reservationDateStr != null &&
             reservationTimeStr != null &&
             !isReservationTimePassed(reservationDateStr, reservationTimeStr)) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Table is reserved until $reservationDateStr at $reservationTimeStr.',
-              ),
-              duration: Duration(seconds: 2),
+          showDialog(
+            context: context,
+            barrierDismissible: true,
+            builder: (_) => ReservationInfoDialog(
+              reservationDate: reservationDateStr,
+              reservationTime: reservationTimeStr,
+              onOk: () {
+                Navigator.of(context).pop();
+                if (!_showPopup) {
+                  _showGuestDetailsPopup(context, index, tableData);
+                }
+              },
             ),
           );
           return;
         }
+
         if (!_showPopup) {
           _showGuestDetailsPopup(context, index, tableData);
         }
@@ -1068,58 +1104,32 @@ class _TablesScreenState extends State<TablesScreen> {
         /// Listener for TableBloc
         BlocListener<TableBloc, TableState>(
           listener: (context, state) {
-            setState(() {
-              _isLoadingTables = false;
-              _isAddingTable = false;
-            });
-
             if (state is TableLoadingState) {
-              setState(() => _isLoadingTables = true);
-            } else if (state is TableAddingState) {
-              setState(() => _isAddingTable = true);
-            } else if (state is TableDeletingState) {
-              setState(() => _isDeletingTable = true);
-            } else if (state is TableDeletedState) {
-              final deletedName = state.tableName.toLowerCase();
-
-              final index = placedTables.indexWhere(
-                    (table) =>
-                table['tableName'].toString().toLowerCase() == deletedName,
-              );
-
-              if (index != -1) {
-                final removed = placedTables[index];
-
-                AreaMovementNotifier.showPopup(
-                  context: context,
-                  fromArea: removed['areaName'],
-                  toArea: '',
-                  tableName: removed['tableName'],
-                );
-
-                setState(() {
-                  placedTables.removeAt(index);
-                  _usedTableNames.remove(
-                    removed['tableName'].toString().toLowerCase(),
-                  );
-                  _selectedTableIndex = null;
-                  _showActionMenu = false;
-                  _isDeletingTable = false;
-                });
+              if (!_hasLoadedOnce) {
+                setState(() => _isLoadingTables = true);
               }
-            } else if (state is TableDeleteErrorState) {
-              setState(() => _isDeletingTable = false);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Failed to delete table: ${state.message}'),
-                ),
-              );
-            } else if (state is TableLoadedState) {
+            }
+            else if (state is TableLoadedState) {
               setState(() {
                 placedTables = state.tables;
                 _usedTableNames = state.usedTableNames;
+                _isLoadingTables = false;
+                _hasLoadedOnce = true;
               });
-            } else if (state is TableAddedState) {
+            }
+            else if (state is TableLoadErrorState) {
+              setState(() {
+                _isLoadingTables = false;
+                _hasLoadedOnce = true;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Failed to load tables: ${state.error}')),
+              );
+            }
+            else if (state is TableAddingState) {
+              setState(() => _isAddingTable = true);
+            }
+            else if (state is TableAddedState) {
               setState(() {
                 placedTables.add(state.tableData);
                 _usedTableNames.add(
@@ -1127,39 +1137,27 @@ class _TablesScreenState extends State<TablesScreen> {
                 );
                 _usedAreaNames.add(state.tableData['areaName']);
                 selectedArea = state.tableData['areaName'];
-                selectedArea = state.tableData['areaName'];
+                _isAddingTable = false;
               });
-
-              AreaMovementNotifier.showPopup(
-                context: context,
-                fromArea: '',
-                toArea: state.tableData['areaName'],
-                tableName: state.tableData['tableName'],
+            }
+            else if (state is TableDeletingState) {
+              setState(() => _isDeletingTable = true);
+            }
+            else if (state is TableDeletedState) {
+              final deletedName = state.tableName.toLowerCase();
+              final index = placedTables.indexWhere(
+                    (table) => table['tableName'].toString().toLowerCase() == deletedName,
               );
-            } else if (state is TableAddErrorState) {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text(state.message)));
-
-              AreaMovementNotifier.showPopup(
-                context: context,
-                fromArea: '',
-                toArea: '',
-                tableName: 'Failed to add table',
-              );
-            } else if (state is TableLoadErrorState) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Failed to load tables: ${state.error}'),
-                ),
-              );
-
-              AreaMovementNotifier.showPopup(
-                context: context,
-                fromArea: '',
-                toArea: '',
-                tableName: 'Failed to load tables',
-              );
+              if (index != -1) {
+                final removed = placedTables[index];
+                setState(() {
+                  placedTables.removeAt(index);
+                  _usedTableNames.remove(removed['tableName'].toString().toLowerCase());
+                  _selectedTableIndex = null;
+                  _showActionMenu = false;
+                  _isDeletingTable = false;
+                });
+              }
             }
           },
         ),

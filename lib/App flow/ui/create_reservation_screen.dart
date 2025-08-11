@@ -103,7 +103,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
     });
 
     _loadZones();
-    _fetchTables();
     _fetchSlotsAndMeals();
   }
 
@@ -115,7 +114,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       });
     }
   }
-  void _fetchSlotsAndMeals() async {
+  Future<void> _fetchSlotsAndMeals() async {
     try {
       final data = await _tableRepository.getAllSlots(widget.token, selectedDate);
       final meals = List<String>.from(data['Meal'] ?? []);
@@ -127,32 +126,39 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
         final List<dynamic> slotList = slotsMap[meal] ?? [];
         parsedSlots[meal] = slotList.cast<Map<String, dynamic>>();
       }
+      String selectedMealTemp = '';
+      String selectedSlotTemp = '';
+
+      if (meals.isNotEmpty) {
+        if (widget.isEditMode && widget.reservationData != null) {
+          final reservationSlot = widget.reservationData!['time'];
+          selectedMealTemp = meals.firstWhere(
+                (meal) => parsedSlots[meal]?.any((slot) => slot['Time Slot'] == reservationSlot) ?? false,
+            orElse: () => meals.first,
+          );
+          selectedSlotTemp = reservationSlot;
+        } else {
+          selectedMealTemp = meals.first;
+          selectedSlotTemp = '';
+        }
+      }
 
       setState(() {
         availableMeals = meals;
         mealSlots = parsedSlots;
         _isLoadingSlots = false;
-        if (meals.isNotEmpty) {
-          if (widget.isEditMode && widget.reservationData != null) {
-            final reservationSlot = widget.reservationData!['time'];
-
-            selectedMeal = meals.firstWhere(
-                  (meal) => mealSlots[meal]?.any((slot) => slot['Time Slot'] == reservationSlot) ?? false,
-              orElse: () => meals.first,
-            );
-            selectedSlot = reservationSlot;
-          } else {
-            selectedMeal = meals.first;
-            selectedSlot = '';
-          }
-        }
+        selectedMeal = selectedMealTemp;
+        selectedSlot = selectedSlotTemp;
       });
+      if (selectedMealTemp.isNotEmpty && selectedDate != null) {
+        await _fetchTables();
+      }
+
     } catch (e) {
       debugPrint("Error fetching slots: $e");
       setState(() => _isLoadingSlots = false);
     }
   }
-
 
   void _loadZones() async {
     final zones = await _zoneRepository.getAllZones(widget.token);
@@ -176,8 +182,16 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   }
 
   Future<void> _fetchTables() async {
+    if (selectedMeal.isEmpty || selectedDate == null) return;
+
+    setState(() => _isLoadingTables = true);
+
     try {
-      final fetched = await _tableRepository.getAllTables(widget.token);
+      final fetched = await _tableRepository.getTablesBySlot(
+        token: widget.token,
+        meal: selectedMeal,
+        date: DateFormat('yyyy-MM-dd').format(selectedDate),
+      );
 
       setState(() {
         allTables = fetched;
@@ -188,6 +202,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       debugPrint("Failed to load tables: $e");
     }
   }
+
   List<Map<String, dynamic>> get _filteredTablesByArea {
     final selectedZone = allZones.firstWhere(
           (zone) => zone['zone_name'] == selectedArea,
@@ -528,11 +543,11 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(flex: 2, child: _buildBookingDetailsCard()),
-                            const SizedBox(width: 15),
-                            Expanded(flex: 2, child: _buildSlotAvailabilityCard()),
-                            const SizedBox(width: 15),
-                            Expanded(flex: 3, child: _buildTableSelectionCard()),
+                            Expanded(flex: 3, child: _buildBookingDetailsCard()),
+                            const SizedBox(width: 10),
+                            Expanded(flex: 4, child: _buildSlotAvailabilityCard()),
+                            const SizedBox(width: 10),
+                            Expanded(flex: 6, child: _buildTableSelectionCard()),
                           ],
                         ),
                       ),
@@ -545,26 +560,35 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: BottomNavBar(
-            selectedIndex: 3,
-            onItemTapped: (index) {
-              NavigationHelper.handleNavigation(
-                context,
-                3,
-                index,
-                widget.pin,
-                widget.token,
-                widget.restaurantId,
-                widget.restaurantName,
-              );
-            },
+        bottomNavigationBar: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: SizedBox(
+              height: kBottomNavigationBarHeight,
+              width: double.infinity,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  BottomNavBar(
+                    selectedIndex: 3,
+                    onItemTapped: (index) {
+                      NavigationHelper.handleNavigation(
+                        context,
+                        3,
+                        index,
+                        widget.pin,
+                        widget.token,
+                        widget.restaurantId,
+                        widget.restaurantName,
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
-      ),
     );
   }
 
@@ -652,7 +676,9 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                       selectedSlot = '';
                       _isLoadingSlots = true;
                     });
-                    _fetchSlotsAndMeals();
+
+                    await _fetchSlotsAndMeals();
+                    await _fetchTables();
                   }
                 } else {
                   _showError("Failed to load reservation date range.");
@@ -984,8 +1010,8 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                 itemCount: tablesToShow.length,
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 4,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
                   childAspectRatio: 1.4,
                 ),
                 itemBuilder: (context, index) {
@@ -1013,7 +1039,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                       shapeAsset = 'assets/square1.png';
                   }
 
-                  // Color scheme
+                  // Colors
                   Color cardColor = Colors.white;
                   Color borderColor = Colors.grey.shade300;
                   Color textColor = Colors.black;
@@ -1025,110 +1051,112 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                     borderColor = isSelected ? Colors.green : Colors.grey.shade300;
                   } else if (status == 'reserve') {
                     cardColor = const Color(0xFFE0E0E0);
-                    textColor = Colors.grey!;
-                    iconColor = Colors.grey!;
-                    isClickable = false;
+                    textColor = Colors.grey;
+                    iconColor = Colors.grey;
+                    if (!isOriginalTable) isClickable = false;
                   } else if (status == 'dine in' || status == 'ready to pay') {
                     cardColor = const Color(0xFFF7DDDB);
                     textColor = const Color(0xFFF44336);
                     iconColor = const Color(0xFFF44336);
-                    isClickable = false;
+                    if (!isOriginalTable) isClickable = false;
                   }
 
                   return GestureDetector(
                     onTap: isClickable
                         ? () {
                       setState(() {
-                        if (selectedTables.contains(tableName)) {
-                          selectedTables.remove(tableName);
-                        } else {
-                          selectedTables.clear();
-                          selectedTables.add(tableName);
-                        }
+                        selectedTables.clear();
+                        selectedTables.add(tableName);
                       });
                     }
                         : null,
                     child: Stack(
                       children: [
                         Container(
-                          decoration: BoxDecoration(
+                          decoration: isOriginalTable
+                              ? BoxDecoration(
+                            gradient: SweepGradient(
+                              colors: [
+                                Colors.blue,
+                                Colors.green,
+                                Colors.pink,
+                                Colors.blue,
+                              ],
+                              stops: const [0.0, 0.33, 0.66, 1.0],
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.white.withOpacity(0.6),
+                                blurRadius: 4,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          )
+                              : BoxDecoration(
                             color: cardColor,
                             border: Border.all(
-                              color: isOriginalTable ? Colors.blue : borderColor,
+                              color: isSelected ? Colors.green : borderColor,
                               width: 1.5,
                             ),
                             borderRadius: BorderRadius.circular(14),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black12,
-                              )
-                            ],
+                            boxShadow: const [BoxShadow(color: Colors.black12)],
                           ),
-                          padding: const EdgeInsets.all(10),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
+                          child: Padding(
+                            padding: const EdgeInsets.all(1.5),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: cardColor,
+                                borderRadius: BorderRadius.circular(12.5),
+                              ),
+                              padding: const EdgeInsets.all(10),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Checkbox(
-                                    value: isSelected,
-                                    onChanged: isClickable
-                                        ? (_) {
-                                      setState(() {
-                                        if (selectedTables.contains(tableName)) {
-                                          selectedTables.remove(tableName);
-                                        } else {
-                                          selectedTables.clear();
-                                          selectedTables.add(tableName);
-                                        }
-                                      });
-                                    }
-                                        : null,
-                                    activeColor: Colors.green,
-                                    checkColor: Colors.white,
-                                    visualDensity: VisualDensity.compact,
-                                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      tableName,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w500,
-                                        fontSize: 16,
-                                        color: textColor,
+                                  Row(
+                                    children: [
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          tableName,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w500,
+                                            fontSize: 16,
+                                            color: textColor,
+                                          ),
+                                        ),
                                       ),
-                                    ),
+                                    ],
+                                  ),
+                                  const Spacer(),
+                                  Row(
+                                    children: [
+                                      const SizedBox(width: 4),
+                                      Icon(Icons.group, size: 22, color: iconColor),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        '$capacity',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w500,
+                                          fontSize: 17,
+                                          color: textColor,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Image.asset(
+                                        shapeAsset,
+                                        width: 26,
+                                        height: 26,
+                                        fit: BoxFit.contain,
+                                        color: iconColor,
+                                        colorBlendMode: BlendMode.srcIn,
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
-                              const Spacer(),
-                              Row(
-                                children: [
-                                  const SizedBox(width: 4),
-                                  Icon(Icons.group, size: 22, color: iconColor),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '$capacity',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w500,
-                                      fontSize: 17,
-                                      color: textColor,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Image.asset(
-                                    shapeAsset,
-                                    width: 26,
-                                    height: 26,
-                                    fit: BoxFit.contain,
-                                    color: iconColor,
-                                    colorBlendMode: BlendMode.srcIn,
-                                  ),
-                                ],
-                              ),
-                            ],
+                            ),
                           ),
                         ),
                         if (isSelected)

@@ -213,5 +213,58 @@ class ReservationRepository {
 
     return null;
   }
+  Future<bool> cancelReservation({
+    required BuildContext context,
+    required String token,
+    required int reservationId,
+    required int restaurantId,
+  }) async {
+    final uri = Uri.parse('${AppConstants.baseApiPath}/reservation/cancel-reservation');
 
+    final body = {
+      "restaurant_id": restaurantId,
+      "reservation_id": reservationId,
+    };
+
+    try {
+      final response = await http.post(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(body),
+      );
+
+      final result = jsonDecode(response.body);
+      final String message = result['message'] ?? 'Unknown response';
+
+      AreaMovementNotifier.showPopup(
+        context: context,
+        fromArea: '',
+        toArea: '',
+        tableName: '',
+        customMessage: message,
+      );
+
+      if (response.statusCode == 200 && result['success'] == true) {
+        AppLogger.info("Reservation cancelled: $message");
+        return true;
+      } else {
+        AppLogger.warning("Cancellation failed: $message");
+      }
+    } catch (e, stack) {
+      AppLogger.error("Exception in cancelReservation: $e\n$stack");
+
+      AreaMovementNotifier.showPopup(
+        context: context,
+        fromArea: '',
+        toArea: '',
+        tableName: '',
+        customMessage: 'Reservation cancellation failed. Please try again.',
+      );
+    }
+
+    return false;
+  }
 }

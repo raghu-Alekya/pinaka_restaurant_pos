@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../models/UserPermissions.dart';
 import '../../repositories/ReservationRepository.dart';
 import '../../repositories/zone_repository.dart';
+import '../../utils/GlobalReservationMonitor.dart';
 import '../../utils/SessionManager.dart';
 import '../widgets/DeleteReservationDialog.dart';
 import '../widgets/NavigationHelper.dart';
@@ -39,7 +40,6 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
   DateTime? selectedDate;
   final ReservationRepository _reservationRepository = ReservationRepository();
   List<Map<String, dynamic>> _reservations = [];
-  late Timer _refreshTimer;
   bool _isLoading = true;
 
   final TextEditingController _dateController = TextEditingController();
@@ -51,27 +51,39 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
 
   List<String> _areaNames = ['All'];
 
+  late VoidCallback _reservationListener;
+
   @override
   void initState() {
     super.initState();
+
+    _reservationListener = () {
+      if (!mounted) return;
+      setState(() {
+        _reservations = GlobalReservationMonitor().reservationsNotifier.value;
+        _isLoading = false;
+      });
+    };
+
+    GlobalReservationMonitor().reservationsNotifier.addListener(_reservationListener);
+
     _loadPermissions();
     _loadZones();
-    _fetchReservations();
-
-    _refreshTimer = Timer.periodic(Duration(seconds: 5), (timer) {
-      _fetchReservations();
-    });
   }
 
   @override
   void dispose() {
-    _refreshTimer.cancel();
+    GlobalReservationMonitor().reservationsNotifier.removeListener(_reservationListener);
     _dateController.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
+  bool _isZonesLoading = true;
   Future<void> _loadZones() async {
+    setState(() {
+      _isZonesLoading = true;
+    });
     try {
       final zones = await _zoneRepository.getAllZones(widget.token);
       final names = zones.map((zone) => zone['zone_name'] as String).toList();
@@ -80,9 +92,12 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
         _areaNames = ['All', ...names];
       });
     } catch (e) {
-      // Handle error or keep default 'All'
       setState(() {
         _areaNames = ['All'];
+      });
+    } finally {
+      setState(() {
+        _isZonesLoading = false;
       });
     }
   }
@@ -305,13 +320,27 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                     ),
                     const SizedBox(width: 12),
                     Container(
+                      height: 48,
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: Colors.grey.shade300),
                       ),
-                      child: DropdownButtonHideUnderline(
+                      child: _isZonesLoading
+                          ? Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          SizedBox(width: 8),
+                          Text("Loading areas...", style: TextStyle(fontSize: 14)),
+                        ],
+                      )
+                          : DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
                           value: selectedArea,
                           icon: const Icon(Icons.arrow_drop_down, color: Colors.black, size: 18),
@@ -420,7 +449,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
 
                       ),
                       SizedBox(
-                        height: 330,
+                        height: 325,
                         child: ListView.builder(
                           physics: NeverScrollableScrollPhysics(),
                           itemCount: currentData.length,
@@ -433,7 +462,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                             return Container(
                               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
                               decoration: BoxDecoration(
-                                color:const Color(0xFFFAFDFF),
+                                color: isRowDisabled ? Colors.grey.shade200 : const Color(0xFFFAFDFF),
                                 border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
                               ),
                               child: Row(
@@ -448,7 +477,8 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                                   _TableCell('${data['people_count']}'),
                                   _TableCell(data['table_no'] ?? ''),
                                   _TableCell(data['zone_name'] ?? ''),
-                                  TableCell(
+                                  Container(
+                                    alignment: Alignment.center,
                                     child: _buildStatusBadge(data['reservation_status'] ?? ''),
                                   ),
                                   const SizedBox(width: 24),
@@ -497,9 +527,21 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                                                 showDialog(
                                                   context: context,
                                                   builder: (_) => DeleteReservationDialog(
-                                                    onDelete: () {
-                                                      print("Reservation deleted");
-                                                      // TODO: Call delete API and refresh
+                                                    onDelete: () async {
+                                                      final success = await _reservationRepository.cancelReservation(
+                                                        context: context,
+                                                        token: widget.token,
+                                                        reservationId: data['reservation_id'],
+                                                        restaurantId: int.parse(widget.restaurantId),
+                                                      );
+
+                                                      if (success) {
+                                                        _fetchReservations();
+                                                      } else {
+                                                        ScaffoldMessenger.of(context).showSnackBar(
+                                                          const SnackBar(content: Text('Failed to cancel reservation.')),
+                                                        );
+                                                      }
                                                     },
                                                   ),
                                                 );
@@ -583,7 +625,7 @@ Color? _getStatusColor(String status) {
     case 'seated':
       return Colors.green;
     case 'expired':
-      return Colors.grey;
+      return Colors.orange;
     case 'cancelled':
       return Colors.red;
     default:
@@ -612,7 +654,7 @@ Widget _buildStatusBadge(String status) {
 
   return Container(
     width: 100,
-    padding: const EdgeInsets.symmetric(vertical: 3),
+    padding: const EdgeInsets.symmetric(vertical: 2),
     alignment: Alignment.center,
     decoration: BoxDecoration(
       color: color.withOpacity(0.2),
@@ -635,7 +677,7 @@ String _capitalize(String input) {
   return input[0].toUpperCase() + input.substring(1).toLowerCase();
 }
 
-  class _TableHeaderCell extends StatelessWidget {
+class _TableHeaderCell extends StatelessWidget {
   final String label;
   final int flex;
 
