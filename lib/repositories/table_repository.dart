@@ -58,6 +58,26 @@ class TableRepository {
       throw Exception("Failed to fetch tables: ${response.body}");
     }
   }
+  Future<List<Map<String, dynamic>>> getTablesBySlot({
+    required String token,
+    required String meal,
+    required String date,
+  }) async {
+    final response = await http.get(
+      Uri.parse('https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1/tables/get-all-tables-by-slot?slot_type=$meal&reservation_date=$date'),
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final json = jsonDecode(response.body);
+      return List<Map<String, dynamic>>.from(json['table_details']);
+    } else {
+      throw Exception("Failed to load tables");
+    }
+  }
+
 
   /// Sync tables from server to local database
   Future<void> syncTablesFromServerToLocal(String token) async {

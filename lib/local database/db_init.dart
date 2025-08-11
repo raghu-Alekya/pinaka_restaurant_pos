@@ -7,7 +7,7 @@ class DatabaseInitializer {
 
     return await openDatabase(
       path,
-      version: 9, // 🔼 bump version to 9
+      version: 9,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE tables(
