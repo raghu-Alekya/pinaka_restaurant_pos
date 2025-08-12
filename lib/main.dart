@@ -19,6 +19,9 @@ import 'blocs/Bloc Logic/attendance_bloc.dart';
 import 'blocs/Bloc Logic/checkin_bloc.dart';
 
 // Repositories
+import 'blocs/category_bloc.dart';
+import 'blocs/menu_bloc.dart';
+import 'blocs/order_bloc.dart';
 import 'repositories/auth_repository.dart';
 import 'repositories/table_repository.dart';
 import 'repositories/zone_repository.dart';
@@ -96,6 +99,15 @@ class MyApp extends StatelessWidget {
           ),
           BlocProvider<CheckInBloc>(
             create: (context) => CheckInBloc(CheckInRepository()),
+          ),
+          BlocProvider<MenuBloc>(
+            create: (_) => MenuBloc(),
+          ),
+          BlocProvider<OrderBloc>(
+            create: (_) => OrderBloc(),
+          ),
+          BlocProvider<CategoryBloc>(
+            create: (_) => CategoryBloc(),
           ),
         ],
         child: MaterialApp(

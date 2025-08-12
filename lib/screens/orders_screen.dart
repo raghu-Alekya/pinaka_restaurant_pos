@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../App flow/ui/guest_details_popup.dart';
 import '../App flow/widgets/orderlist_widget.dart';
 import '../App flow/widgets/view_all_kots.dart';
 import '../blocs/order_bloc.dart';
 import '../models/order/KOT_model.dart';
+import '../models/order/guest_details.dart';
 import '../models/order/order_model.dart';
 // import '../bloc/order_bloc.dart';
 // import '../widgets/view_all_kots.dart';
@@ -11,8 +13,15 @@ import '../models/order/order_model.dart';
 
 
 class OrderPanel extends StatelessWidget {
-  const OrderPanel({super.key});
-
+   final Guestcount? guestcount;
+  // final Guestcount guestDetails;
+    final Function(int) onGuestSaved;
+   const OrderPanel({
+     Key? key,
+     required this.guestcount,
+     required this.onGuestSaved,
+     // required this.guestDetails,
+   }) : super(key: key);
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<OrderBloc, OrderState>(
@@ -47,24 +56,23 @@ class OrderPanel extends StatelessWidget {
               /// Date & staff info
               Row(
                 children: [
-                  iconText('assets/icon/calender.png', 'Sunday, 16 March 2025'),
-                  const SizedBox(width: 10),
-                  iconText('assets/icon/clock.png', '11.41 A.M'),
-                  const Spacer(),
-                  avatarName('assets/icon/person.png', 'Guest'),
+                  iconText('assets/icon/person.png', 'Guest: ${guestcount?.guestCount ?? 0}'),
                   IconButton(
                     onPressed: () {
-                      // TODO: Add guest logic
+                      showDialog(
+                        context: context,
+                        builder: (_) => GuestDetailsPopup(
+                          index: 0,
+                          tableData: {'capacity': 6},
+                          placedTables: [], onGuestSaved: (Guestcount ) {  },
+                        ),
+                      );
                     },
-                    icon: Image.asset(
-                      'assets/icon/add_icon.png',
-                      width: 18,
-                      height: 18,
-                    ),
-                    tooltip: 'Add Guest',
+                    icon: Image.asset('assets/icon/add_icon.png', width: 18, height: 18),
                   ),
                 ],
               ),
+
 
 
               const SizedBox(height: 6),
@@ -132,7 +140,7 @@ class OrderPanel extends StatelessWidget {
                         index,
                         modifiers,
                       ));
-                    },
+                    }, guestDetails: state.guest,
                   ),
                 ),
               ),

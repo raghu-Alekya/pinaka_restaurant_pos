@@ -23,6 +23,7 @@ import '../../repositories/checkin_repository.dart';
 import '../../repositories/employee_repository.dart';
 import '../../repositories/table_repository.dart';
 import '../../repositories/zone_repository.dart';
+import '../../screens/dashboard screen.dart';
 import '../../utils/SessionManager.dart';
 import '../../utils/logger.dart';
 import '../widgets/CreateTableWidget.dart';
@@ -954,11 +955,23 @@ class _TablesScreenState extends State<TablesScreen> {
             index: index,
             tableData: tableData,
             placedTables: placedTables,
+            onGuestSaved: (guestDetails) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DashboardScreen(
+                    guestDetails: guestDetails, // Pass it here
+                  ),
+                ),
+              );
+            },
           ),
         );
       },
     );
   }
+
+
 
   Widget _buildSharedAreaFilter() {
     if (areaNames.isEmpty) return SizedBox.shrink();

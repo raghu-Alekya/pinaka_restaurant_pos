@@ -6,7 +6,9 @@ import '../App flow/widgets/sidebar_widgets.dart';
 import '../App flow/widgets/subcategories_widget.dart';
 import '../App flow/widgets/topbar_widgets.dart';
 import '../blocs/category_bloc.dart';
+import '../blocs/order_bloc.dart';
 import '../models/category/subcategory_model.dart';
+import '../models/order/guest_details.dart';
 import 'orders_screen.dart ';
 // import '../widgets/category_tab.dart';
 // import '../widgets/sidebar_widgets.dart';
@@ -15,7 +17,11 @@ import 'orders_screen.dart ';
 // import '../screens/orders_screen.dart ';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+  final Guestcount guestDetails;
+  // final GuestDetails guestDetails;
+  const DashboardScreen({super.key, required this.guestDetails});
+
+  get guestcount => null;
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -24,6 +30,11 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   List<minisubcategory> currentSubCategories = [];
   String? selectedFolderName;
+
+  @override
+  void initState() {
+    super.initState();
+  }
 
   void openFolder(minisubcategory folder) {
     setState(() {
@@ -35,7 +46,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void loadRootSubCategories(List<minisubcategory> root) {
     setState(() {
       currentSubCategories = root;
-      selectedFolderName = null; // clear folder when switching category
+      selectedFolderName = null;
     });
   }
 
@@ -85,15 +96,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             child: Row(
                               children: [
-                                // const Icon(Icons.chevron_right, size: 16, color: Colors.black54),
                                 Text(
                                   state.sectionName,
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
                                     color: (state.selectedCategoryName.isEmpty && selectedFolderName == null)
-                                        ? Colors.red // section active
-                                        : const Color(0xFF4C5F7D), // section inactive
+                                        ? Colors.red
+                                        : const Color(0xFF4C5F7D),
                                   ),
                                 ),
                                 if (state.selectedCategoryName.isNotEmpty) ...[
@@ -106,8 +116,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
                                       color: (selectedFolderName == null)
-                                          ? Colors.red // category active
-                                          : const Color(0xFF4C5F7D), // category inactive
+                                          ? Colors.red
+                                          : const Color(0xFF4C5F7D),
                                     ),
                                   ),
                                 ],
@@ -120,14 +130,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     style: const TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
-                                      color: Colors.red, // folder always active when selected
+                                      color: Colors.red,
                                     ),
                                   ),
                                 ],
                               ],
                             ),
                           ),
-
 
                           const SizedBox(height: 1),
 
@@ -144,12 +153,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 subCategories: currentSubCategories,
                                 onFolderSelected: (folder) {
                                   setState(() {
-                                    // Update the breadcrumb text when a folder is clicked
                                     selectedFolderName = folder.name;
                                   });
-                                },  section: state.section,
+                                },
+                                section: state.section,
                               ),
-
                             ),
                           ),
                         ],
@@ -162,11 +170,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
 
+            // 🟢 ✅ FIX: Use widget.guestDetails
             Expanded(
               flex: 38,
               child: Padding(
                 padding: const EdgeInsets.all(12),
-                child: OrderPanel(),
+                child: OrderPanel(
+                  guestcount: widget.guestcount, onGuestSaved: (int ) {  }, // ← THIS IS THE CORRECT WAY
+                ),
               ),
             ),
           ],
@@ -175,3 +186,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 }
+
+  // @override
+  // Widget build(BuildContext context) {
+  //   // TODO: implement build
+  //   throw UnimplementedError();
+  // }
