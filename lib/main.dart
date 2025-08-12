@@ -100,8 +100,8 @@ class MyApp extends StatelessWidget {
           BlocProvider<CheckInBloc>(
             create: (context) => CheckInBloc(CheckInRepository()),
           ),
-          BlocProvider<MenuBloc>(
-            create: (_) => MenuBloc(),
+          BlocProvider<subcategoryBloc>(
+            create: (_) => subcategoryBloc(),
           ),
           BlocProvider<OrderBloc>(
             create: (_) => OrderBloc(),
