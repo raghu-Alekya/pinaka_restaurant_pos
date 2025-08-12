@@ -17,15 +17,16 @@ class OrderPanelList extends StatelessWidget {
   }) : super(key: key);
 
   void _showModifierPopup(BuildContext context, int index) async {
-    final result = await showDialog<List<String>>(
+    final result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (_) => const ModifierPopup(),
+      builder: (_) => const ModifierAddOnPopup(),
     );
 
-    if (result != null) {
-      onModifiersChanged(index, result);
+    if (result != null && result.containsKey('modifiers')) {
+      onModifiersChanged(index, List<String>.from(result['modifiers']));
     }
   }
+
 
   @override
   Widget build(BuildContext context) {

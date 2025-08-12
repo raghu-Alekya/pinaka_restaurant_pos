@@ -1,28 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pinkapos_restar/widgets/variant_popup.dart';
+import '../models/category/minisubcategory_model.dart';
 import '../models/category/subcategory_model.dart';
 import '../models/order/order_model.dart';
 import '../bloc/order_bloc.dart';
-import '../models/sidebar/menu_selection.dart';
+import '../models/sidebar/category_model_.dart';
 
-class SubCategoryWidget extends StatefulWidget {
-  final List<minisubcategory> subCategories;
-  final category section;
-  final void Function(minisubcategory folder)? onFolderSelected;
+class miniSubCategoryWidget extends StatefulWidget {
+  final List<MiniSubCategory> subCategories;
+  final Category section;
 
-  const SubCategoryWidget({
+  final void Function(MiniSubCategory folder)? onFolderSelected;
+  final void Function(MiniSubCategory item)? onItemSelected;
+
+  const miniSubCategoryWidget({
     super.key,
     required this.subCategories,
     required this.section,
     this.onFolderSelected,
+    this.onItemSelected,
   });
 
   @override
-  State<SubCategoryWidget> createState() => _SubCategoryWidgetState();
+  State<miniSubCategoryWidget> createState() => _miniSubCategoryWidgetState();
 }
 
-class _SubCategoryWidgetState extends State<SubCategoryWidget> {
-  minisubcategory? selectedFolder;
+class _miniSubCategoryWidgetState extends State<miniSubCategoryWidget> {
+  MiniSubCategory? selectedFolder;
+  List<MiniSubCategory> selectedItems = [];
 
   final List<Color> tileColors = [
     const Color(0xFFF0FBFF),
@@ -30,7 +36,7 @@ class _SubCategoryWidgetState extends State<SubCategoryWidget> {
     const Color(0xFFFFFFFF),
   ];
 
-  void _onFolderTap(minisubcategory folder) {
+  void _onFolderTap(MiniSubCategory folder) {
     widget.onFolderSelected?.call(folder);
     setState(() {
       selectedFolder = selectedFolder == folder ? null : folder;
@@ -41,7 +47,7 @@ class _SubCategoryWidgetState extends State<SubCategoryWidget> {
   Widget build(BuildContext context) {
     final folders = widget.subCategories.where((e) => e.isFolder).toList();
     final directItems = widget.subCategories.where((e) => !e.isFolder).toList();
-    final selectedItems = selectedFolder?.subItems ?? [];
+    final selectedItems = selectedFolder?.items ?? [];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -49,14 +55,14 @@ class _SubCategoryWidgetState extends State<SubCategoryWidget> {
         if (folders.isNotEmpty) ...[
           _buildFolderGrid(folders),
           const SizedBox(height: 4), // 🔻 Reduced spacing between folder and items
-          if (selectedItems.isNotEmpty) _buildItemsGrid(context, selectedItems),
+          if (selectedItems.isNotEmpty) _buildItemsGrid(context, selectedItems.cast<MiniSubCategory>()),
         ] else
           _buildItemsGrid(context, directItems),
       ],
     );
   }
 
-  Widget _buildFolderGrid(List<minisubcategory> folders) {
+  Widget _buildFolderGrid(List<MiniSubCategory> folders) {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -102,7 +108,7 @@ class _SubCategoryWidgetState extends State<SubCategoryWidget> {
     );
   }
 
-  Widget _buildItemsGrid(BuildContext context, List<minisubcategory> items) {
+  Widget _buildItemsGrid(BuildContext context, List<MiniSubCategory> items) {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -120,16 +126,43 @@ class _SubCategoryWidgetState extends State<SubCategoryWidget> {
 
         return GestureDetector(
           onTap: () {
-            context.read<OrderBloc>().add(
-              AddOrderItem(OrderItems(
-                name: item.name,
-                price: item.price,
-                quantity: 1,
-                modifiers: [],
-                section: widget.section,
-              )),
-            );
+            if (item.variants != null && item.variants!.isNotEmpty) {
+              showDialog(
+                context: context,
+                builder: (context) => VariantPopupContent(
+                  itemName: item.name,
+                  variants: item.variants!,
+                  onSelected: (variantName, price, quantity) {
+                    final orderItem = OrderItems(
+                      name: '${item.name} - $variantName',
+                      price: price,
+                      quantity: quantity,
+                      modifiers: [],
+                      section: widget.section,
+                    );
+
+                    context.read<OrderBloc>().add(AddOrderItem(orderItem));
+                  },
+                  // item: item,
+                ),
+              );
+            } else {
+              // No variants → add directly
+              context.read<OrderBloc>().add(
+                AddOrderItem(OrderItems(
+                  name: item.name,
+                  price: item.price ?? 0.0,
+                  quantity: 1,
+                  modifiers: [],
+                  section: widget.section,
+                )),
+              );
+            }
+            // Notify parent widget if needed:
+            widget.onItemSelected?.call(item);
           },
+
+
           child: Stack(
             children: [
               Container(
@@ -152,7 +185,7 @@ class _SubCategoryWidgetState extends State<SubCategoryWidget> {
                         children: [
                           Text(item.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                           const SizedBox(height: 4),
-                          Text('₹${item.price.toStringAsFixed(0)}',
+                          Text('₹${item.price?.toStringAsFixed(0)}',
                               style: const TextStyle(fontSize: 13, color: Colors.black54, fontWeight: FontWeight.w600)),
                         ],
                       ),

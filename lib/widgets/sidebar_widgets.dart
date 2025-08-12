@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/category_bloc.dart';
-import '../bloc/menu_bloc.dart';
+import '../events/category_event.dart';
+import '../models/sidebar/category_model_.dart';
+import '../states/category_states.dart';
 
 class SideBarWidgets extends StatefulWidget {
-
-const SideBarWidgets({super.key});
+  const SideBarWidgets({super.key});
 
   @override
   State<SideBarWidgets> createState() => _SideBarWidgetsState();
@@ -14,28 +15,7 @@ const SideBarWidgets({super.key});
 class _SideBarWidgetsState extends State<SideBarWidgets> {
   final ScrollController _scrollController = ScrollController();
 
-  final List<Map<String, String>> sidebarItems = [
-    {'label': 'Favourites', 'icon': 'assets/icon/fav_icon.png'},
-    {'label': "Soup's", 'icon': 'assets/icon/soup.png'},
-    {'label': 'Starters', 'icon': 'assets/icon/starter.png'},
-    {'label': 'Main Course', 'icon': 'assets/icon/maincourse.png'},
-    {'label': 'Tandoori', 'icon': 'assets/icon/Tandoori.png'},
-    {'label': 'Chinese', 'icon': 'assets/icon/chinese.png'},
-    {'label': 'Alcohol', 'icon': 'assets/icon/alcohol.png'},
-    {'label': 'Beverages', 'icon': 'assets/icon/beverges.png'},
-    {'label': 'Desserts', 'icon': 'assets/icon/deserts.png'},
-  ];
-  final Map<int, int> sectionIdMap = {
-    0: 0, // Favourites
-    1: 1,   // Soup
-    2: 2,   // Starters
-    3: 3,   // Main Course
-    4: 4,   // Tandoori
-    5: 5,   // Chinese
-    6: 6,   // Alcohol
-    7: 7,   // Beverages
-    8: 8,   // Desserts
-  };
+  get string => null;
 
   @override
   void dispose() {
@@ -44,26 +24,19 @@ class _SideBarWidgetsState extends State<SideBarWidgets> {
   }
 
   Widget _buildSidebarItem({
-    required String label,
-    required String iconPath,
-    required int index,
+    required Category category,
     required bool isSelected,
-    required double itemWidth,
   }) {
     return Semantics(
-      label: label,
+      label: category.name,
       button: true,
       selected: isSelected,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
-            context.read<MenuBloc>().add(SelectMenuSection(index));
-            final sectionId = sectionIdMap[index] ?? 1;
-            final sectionName = label;
-            context.read<CategoryBloc>().add(FetchCategoriesBySection(sectionId, sectionName));
+            context.read<CategoryBloc>().add(SelectCategory(string.parse(category.id)));
           },
-
           borderRadius: BorderRadius.circular(4),
           child: Container(
             width: 68,
@@ -84,10 +57,18 @@ class _SideBarWidgetsState extends State<SideBarWidgets> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Image.asset(iconPath, width: 22, height: 22),
+                category.imagePath.isNotEmpty
+                    ? Image.network(
+                  category.imagePath,
+                  width: 22,
+                  height: 22,
+                  errorBuilder: (_, __, ___) =>
+                  const Icon(Icons.image_not_supported, size: 22),
+                )
+                    : const Icon(Icons.fastfood, size: 22, color: Colors.white),
                 const SizedBox(height: 6),
                 Text(
-                  label,
+                  category.name,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: isSelected ? const Color(0xFF493F9C) : const Color(0xFFF3FCFF),
@@ -107,38 +88,45 @@ class _SideBarWidgetsState extends State<SideBarWidgets> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final sidebarWidth = screenWidth * 0.15;
-    final itemWidth = sidebarWidth - 32;
 
-    return BlocBuilder<MenuBloc, MenuState>(
+    return BlocBuilder<CategoryBloc, CategoryState>(
       builder: (context, state) {
-        return Container(// reduced width
-          // height: 65, //
-          margin: const EdgeInsets.only(left: 12, top: 12, bottom: 16),
-          width: sidebarWidth,
-          decoration: BoxDecoration(
-            color: const Color(0xFF493F9C),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: SingleChildScrollView(
-              controller: _scrollController,
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                children: List.generate(
-                  sidebarItems.length,
-                      (index) => _buildSidebarItem(
-                    label: sidebarItems[index]['label']!,
-                    iconPath: sidebarItems[index]['icon']!,
-                    index: index,
-                    isSelected: index == state.selectedIndex,
-                    itemWidth: itemWidth,
+        if (state is CategoryLoading) {
+          return const Center(child: CircularProgressIndicator());
+        } else if (state is CategoryLoaded) {
+          return Container(
+            margin: const EdgeInsets.only(left: 12, top: 12, bottom: 16),
+            width: sidebarWidth,
+            decoration: BoxDecoration(
+              color: const Color(0xFF493F9C),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  children: List.generate(
+                    state.categories.length,
+                        (index) {
+                      final category = state.categories[index];
+                      final isSelected = state.selectedCategory?.id == category.id;
+                      return _buildSidebarItem(
+                        category: category,
+                        isSelected: isSelected,
+                      );
+                    },
                   ),
                 ),
               ),
             ),
-          ),
-        );
+          );
+        } else if (state is CategoryError) {
+          return Center(child: Text(state.message));
+        } else {
+          return const SizedBox.shrink();
+        }
       },
     );
   }

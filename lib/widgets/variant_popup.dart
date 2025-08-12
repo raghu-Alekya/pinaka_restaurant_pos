@@ -1,12 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:pinkapos_restar/models/category/items_model.dart';
 
-class Variant {
-  final String name;
-  final String imageUrl;
-  final double price;
-
-  Variant({required this.name, required this.imageUrl, required this.price});
-}
+import '../models/category/minisubcategory_model.dart';
 
 void showVariantPopup(
     BuildContext context,
@@ -78,16 +73,15 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
                 Container(
                   width: 34,
                   height: 34,
-                  decoration: BoxDecoration(
-                    color: Colors.red,         // Light red background
-                    shape: BoxShape.circle,             // Circular background
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
                   ),
                   child: IconButton(
                     icon: const Icon(Icons.close, color: Colors.white),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                 ),
-
               ],
             ),
 
@@ -119,7 +113,7 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: Colors.grey.shade300),
                           color: Colors.white,
-                          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
@@ -156,12 +150,11 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
                             )
                                 : Container(
                               height: 40,
-                              padding:
-                              const EdgeInsets.symmetric(horizontal: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                    color: const Color(0xFF386EDA), width: 2),
+                                border:
+                                Border.all(color: const Color(0xFF386EDA), width: 2),
                                 color: const Color(0xFF386EDA),
                               ),
                               child: Row(
@@ -177,8 +170,7 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
                                     ),
                                     child: IconButton(
                                       icon: const Icon(Icons.remove,
-                                          size: 16,
-                                          color: Color(0xFF386EDA)),
+                                          size: 16, color: Color(0xFF386EDA)),
                                       onPressed: () => _decrement(index),
                                       padding: EdgeInsets.zero,
                                     ),
@@ -206,8 +198,7 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
                                     ),
                                     child: IconButton(
                                       icon: const Icon(Icons.add,
-                                          size: 16,
-                                          color: Color(0xFF386EDA)),
+                                          size: 16, color: Color(0xFF386EDA)),
                                       onPressed: () => _increment(index),
                                       padding: EdgeInsets.zero,
                                     ),
@@ -231,7 +222,8 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
               width: double.infinity,
               height: 45,
               child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF386EDA)),
+                style:
+                ElevatedButton.styleFrom(backgroundColor: const Color(0xFF386EDA)),
                 onPressed: () {
                   for (var entry in _quantityMap.entries) {
                     if (entry.value > 0) {

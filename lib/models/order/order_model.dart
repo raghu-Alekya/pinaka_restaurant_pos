@@ -1,9 +1,9 @@
-import '../sidebar/menu_selection.dart';
+import '../sidebar/category_model_.dart';
 
 class OrderItems {
   final String name;
   final double price;
-  final category section;
+  final Category section;
   int quantity;
   List<String> modifiers;
 
@@ -21,7 +21,7 @@ class OrderItems {
       quantity: json['quantity'],
       price: (json['price'] as num).toDouble(),
       modifiers: List<String>.from(json['modifiers'] ?? []),
-      section: category.fromJson(json['section']),
+      section: Category.fromJson(json['section']),
     );
   }
 
@@ -41,7 +41,7 @@ class OrderItems {
     int? quantity,
     double? price,
     List<String>? modifiers,
-    category? section,
+    Category? section,
   }) {
     return OrderItems(
       name: name ?? this.name,

@@ -1,41 +1,58 @@
-class minisubcategory {
-  final String name;
-  final String imagePath;
-  final double price;
-  final bool isVeg;
-  final bool isFolder;
-  final List<minisubcategory> subItems;
+import 'items_model.dart';
+import 'minisubcategory_model.dart';
 
-  minisubcategory({
+class SubCategory {
+  final String id;
+  final String name;
+  final String categoryId;
+  final String imagePath;
+  final bool isFolder; // true if it contains folders instead of items
+  final bool? isVeg; // null if it's a folder
+  final List<Item>? items; // if not folder
+  final List<MiniSubCategory>? folders; // if folder
+
+  SubCategory({
+    required this.id,
     required this.name,
+    required this.categoryId,
     required this.imagePath,
-    this.price = 0,
-    this.isVeg = true,
-    this.isFolder = false,
-    this.subItems = const [],
+    required this.isFolder,
+    this.isVeg,
+    this.items,
+    this.folders,
   });
 
-  factory minisubcategory.fromJson(Map<String, dynamic> json) {
-    return minisubcategory(
-      name: json['name'],
-      imagePath: json['imagePath'],
-      price: (json['price'] ?? 0).toDouble(),
-      isVeg: json['isVeg'] ?? true,
+  factory SubCategory.fromJson(Map<String, dynamic> json) {
+    return SubCategory(
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      imagePath: json['imagePath'] ?? '',
+      categoryId: json['categoryId'] ?? '',
       isFolder: json['isFolder'] ?? false,
-      subItems: json['subItems'] != null
-          ? (json['subItems'] as List)
-          .map((e) => minisubcategory.fromJson(e))
+      isVeg: json['isVeg'],
+      items: json['isFolder'] == true
+          ? null
+          : (json['items'] as List?)
+          ?.map((e) => Item.fromJson(e))
+          .toList(),
+      folders: json['isFolder'] == true
+          ? (json['folders'] as List?)
+          ?.map((e) => MiniSubCategory.fromJson(e))
           .toList()
-          : [],
+          : null,
     );
   }
 
-  Map<String, dynamic> toJson() => {
-    'name': name,
-    'imagePath': imagePath,
-    'price': price,
-    'isVeg': isVeg,
-    'isFolder': isFolder,
-    'subItems': subItems.map((e) => e.toJson()).toList(),
-  };
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'categoryId': categoryId,
+      'imagePath': imagePath,
+      'isFolder': isFolder,
+      'isVeg': isVeg,
+      'items': items?.map((e) => e.toJson()).toList(),
+      'folders': folders?.map((e) => e.toJson()).toList(),
+    };
+  }
 }
