@@ -1,52 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-// import '../bloc/category_bloc.dart';
-import '../App flow/widgets/category_tab.dart';
-import '../App flow/widgets/sidebar_widgets.dart';
-import '../App flow/widgets/subcategories_widget.dart';
-import '../App flow/widgets/topbar_widgets.dart';
-import '../blocs/category_bloc.dart';
-import '../blocs/order_bloc.dart';
-import '../models/category/subcategory_model.dart';
-import '../models/order/guest_details.dart';
-import 'orders_screen.dart ';
-// import '../widgets/category_tab.dart';
-// import '../widgets/sidebar_widgets.dart';
-// import '../widgets/subcategories_widget.dart';
-// import '../widgets/topbar_widgets.dart';
-// import '../screens/orders_screen.dart ';
+
+import '../bloc/category_bloc.dart';
+import '../events/category_event.dart';
+import '../models/category/minisubcategory_model.dart';
+import '../models/sidebar/category_model_.dart';
+import '../states/category_states.dart';
+import '../widgets/subcategory_tab.dart';
+import '../widgets/sidebar_widgets.dart';
+import '../widgets/minisubcategory_widget.dart';
+import '../widgets/topbar_widgets.dart';
+import 'package:pinkapos_restar/screens/orders_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
-  final Guestcount guestDetails;
-  // final GuestDetails guestDetails;
-  const DashboardScreen({super.key, required this.guestDetails});
-
-  get guestcount => null;
+  const DashboardScreen({super.key});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  List<minisubcategory> currentSubCategories = [];
+  List<MiniSubCategory> currentSubCategories = [];
   String? selectedFolderName;
 
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  void openFolder(minisubcategory folder) {
+  void openFolder(MiniSubCategory folder) {
     setState(() {
-      currentSubCategories = folder.subItems;
+      currentSubCategories = folder.items ?? [];
       selectedFolderName = folder.name;
     });
   }
 
-  void loadRootSubCategories(List<minisubcategory> root) {
+  void loadRootSubCategories(List<MiniSubCategory> root) {
     setState(() {
       currentSubCategories = root;
-      selectedFolderName = null;
+      selectedFolderName = null; // Clear folder when switching category
     });
   }
 
@@ -62,9 +49,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Row(
           children: [
             Expanded(flex: 8, child: SideBarWidgets()),
-
-            const SizedBox(height: 20),
-
+            const SizedBox(width: 20),
             Expanded(
               flex: 55,
               child: Padding(
@@ -74,48 +59,54 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     if (state is CategoryLoaded) {
                       if (currentSubCategories.isEmpty) {
                         WidgetsBinding.instance.addPostFrameCallback((_) {
-                          loadRootSubCategories(state.subCategories);
+                          // Load subcategories from selectedCategory or empty list
+                          final subCats = state.selectedCategory?.subCategories
+                              .cast<MiniSubCategory>() ??
+                              <MiniSubCategory>[];
+                          loadRootSubCategories(subCats);
                         });
                       }
 
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          CategoryTabWidget(
+                          subCategoryTabWidget(
                             categories: state.categories,
-                            selectedIndex: state.selectedIndex,
+                            selectedIndex: state.selectedCategory != null
+                                ? state.categories.indexOf(state.selectedCategory!)
+                                : 0,
                             onTap: (index) {
-                              context.read<CategoryBloc>().add(SelectCategoryTab(index));
-                              loadRootSubCategories(state.categories[index].subCategories);
+                              final category = state.categories[index];
+                              context.read<CategoryBloc>().add(SelectCategory(category.id));
+                              // Update subcategories on tab select
+                              loadRootSubCategories(category.subCategories.cast<MiniSubCategory>());
                             },
                           ),
-
                           const SizedBox(height: 8),
-
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             child: Row(
                               children: [
                                 Text(
-                                  state.sectionName,
+                                  state.selectedCategory?.name ?? "No Category Selected",
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
-                                    color: (state.selectedCategoryName.isEmpty && selectedFolderName == null)
+                                    color: (state.selectedCategory == null && selectedFolderName == null)
                                         ? Colors.red
                                         : const Color(0xFF4C5F7D),
                                   ),
                                 ),
-                                if (state.selectedCategoryName.isNotEmpty) ...[
+                                if (state.selectedCategory != null) ...[
                                   const SizedBox(width: 4),
                                   const Text('>', style: TextStyle(color: Colors.grey)),
                                   const SizedBox(width: 4),
                                   Text(
-                                    state.selectedCategoryName,
+                                    selectedFolderName ?? '',
                                     style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
-                                      color: (selectedFolderName == null)
+                                      color: selectedFolderName == null
                                           ? Colors.red
                                           : const Color(0xFF4C5F7D),
                                     ),
@@ -137,9 +128,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ],
                             ),
                           ),
-
                           const SizedBox(height: 1),
-
                           Expanded(
                             child: Container(
                               decoration: BoxDecoration(
@@ -149,35 +138,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                               padding: const EdgeInsets.all(6),
                               margin: const EdgeInsets.all(6),
-                              child: SubCategoryWidget(
+                              child: miniSubCategoryWidget(
                                 subCategories: currentSubCategories,
-                                onFolderSelected: (folder) {
-                                  setState(() {
-                                    selectedFolderName = folder.name;
-                                  });
-                                },
-                                section: state.section,
+                                onFolderSelected: openFolder,
+                                section: state.selectedCategory ?? Category(id: '0', name: 'Default', imagePath: '', subCategories: []),
                               ),
                             ),
                           ),
                         ],
                       );
                     }
-
+                    if (state is CategoryLoading) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (state is CategoryError) {
+                      return Center(child: Text(state.message));
+                    }
                     return const Center(child: Text("Select a section from sidebar"));
                   },
                 ),
               ),
             ),
-
-            // 🟢 ✅ FIX: Use widget.guestDetails
             Expanded(
               flex: 38,
               child: Padding(
                 padding: const EdgeInsets.all(12),
-                child: OrderPanel(
-                  guestcount: widget.guestcount, onGuestSaved: (int ) {  }, // ← THIS IS THE CORRECT WAY
-                ),
+                child: OrderPanel(),
               ),
             ),
           ],
@@ -186,9 +172,3 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 }
-
-  // @override
-  // Widget build(BuildContext context) {
-  //   // TODO: implement build
-  //   throw UnimplementedError();
-  // }

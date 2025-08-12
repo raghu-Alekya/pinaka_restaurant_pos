@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
+<<<<<<<< HEAD:lib/App flow/widgets/category_tab.dart
 import '../../models/category/category_model.dart';
 // import '../models/category/category_model.dart';
+========
+import '../models/category/subcategory_model.dart';
+import '../models/sidebar/category_model_.dart';
+>>>>>>>> origin/branch2:lib/App flow/widgets/subcategory_tab.dart
 // import '../models/category/subcategory_model.dart';
 
-class CategoryTabWidget extends StatefulWidget {
-  final List<subcategory> categories;
+class subCategoryTabWidget extends StatefulWidget {
+  final List<Category> categories;
   final int selectedIndex;
   final Function(int) onTap;
 
-  const CategoryTabWidget({
+  const subCategoryTabWidget({
     super.key,
     required this.categories,
     required this.selectedIndex,
@@ -16,10 +21,12 @@ class CategoryTabWidget extends StatefulWidget {
   });
 
   @override
-  State<CategoryTabWidget> createState() => _CategoryTabWidgetState();
+  State<subCategoryTabWidget> createState() => _subCategoryTabWidgetState();
 }
 
-class _CategoryTabWidgetState extends State<CategoryTabWidget> {
+
+
+class _subCategoryTabWidgetState extends State<subCategoryTabWidget> {
   final ScrollController _scrollController = ScrollController();
 
   void _scrollLeft() {
@@ -70,7 +77,7 @@ class _CategoryTabWidgetState extends State<CategoryTabWidget> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Image.asset(category.imagepath, height: 30,width:30),
+                        Image.asset(category.imagePath, height: 30,width:30),
                         const SizedBox(height: 4),
                         Text(
                           category.name,
