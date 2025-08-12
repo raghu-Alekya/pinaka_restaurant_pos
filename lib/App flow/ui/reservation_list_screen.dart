@@ -57,6 +57,9 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
   void initState() {
     super.initState();
 
+    _loadPermissions();
+    _loadZones();
+    _fetchReservations();
     _reservationListener = () {
       if (!mounted) return;
       setState(() {
@@ -64,11 +67,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
         _isLoading = false;
       });
     };
-
     GlobalReservationMonitor().reservationsNotifier.addListener(_reservationListener);
-
-    _loadPermissions();
-    _loadZones();
   }
 
   @override
@@ -450,7 +449,18 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                       ),
                       SizedBox(
                         height: 325,
-                        child: ListView.builder(
+                        child: filteredReservations.isEmpty
+                            ? Center(
+                          child: Text(
+                            "There are no reservations",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey[800],
+                            ),
+                          ),
+                        )
+                            : ListView.builder(
                           physics: NeverScrollableScrollPhysics(),
                           itemCount: currentData.length,
                           itemBuilder: (context, index) {
@@ -657,7 +667,7 @@ Widget _buildStatusBadge(String status) {
     padding: const EdgeInsets.symmetric(vertical: 2),
     alignment: Alignment.center,
     decoration: BoxDecoration(
-      color: color.withOpacity(0.2),
+      color: color.withAlpha(51),
       borderRadius: BorderRadius.circular(15),
     ),
     child: Text(

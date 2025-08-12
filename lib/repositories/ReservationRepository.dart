@@ -8,13 +8,11 @@ import '../utils/logger.dart';
 
 class ReservationRepository {
   Future<DateTimeRange?> getReservationDateRange(String token) async {
-    final url = Uri.parse(
-      '${AppConstants.baseApiPath}/reservation/reservation-date-range',
-    );
+    final dateRangeUri = Uri.parse(AppConstants.reservationDateRangeEndpoint);
 
     try {
       final response = await http.get(
-        url,
+        dateRangeUri,
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -219,7 +217,7 @@ class ReservationRepository {
     required int reservationId,
     required int restaurantId,
   }) async {
-    final uri = Uri.parse('${AppConstants.baseApiPath}/reservation/cancel-reservation');
+    final cancelReservationUri = Uri.parse(AppConstants.cancelReservationEndpoint);
 
     final body = {
       "restaurant_id": restaurantId,
@@ -228,7 +226,7 @@ class ReservationRepository {
 
     try {
       final response = await http.post(
-        uri,
+        cancelReservationUri,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

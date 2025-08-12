@@ -5,6 +5,7 @@ class AppConstants {
   // Authentication
   static const String authTokenEndpoint = '$baseApiPath/token';
   static const String empOrderPinValidationEndpoint = '$baseApiPath/emp-order-pin-validation';
+  static const String logoutEndpoint = '$baseApiPath/logout';
 
   // Zone Management
   static const String createZoneEndpoint = '$baseApiPath/zones/create-zone';
@@ -17,6 +18,8 @@ class AppConstants {
   static const String getAllTablesEndpoint = '$baseApiPath/tables/get-all-tables';
   static const String updateTableEndpoint = '$baseApiPath/tables/update-table';
   static const String deleteTableEndpoint = '$baseApiPath/tables/delete-table';
+  static String getAllTablesBySlot(String meal, String date) =>
+      '$baseApiPath/tables/get-all-tables-by-slot?slot_type=$meal&reservation_date=$date';
 
   // Employee Management
   static const String getAllEmployeesEndpoint = '$baseApiPath/users/get-all-employees';
@@ -32,11 +35,10 @@ class AppConstants {
   static const String createReservationEndpoint = '$baseApiPath/reservation/create-reservation';
   static const String getAllReservationsEndpoint = '$baseApiPath/reservation/get-all-reservations';
   static const String updateReservationEndpoint = '$baseApiPath/reservation/update-reservation';
+  static const String cancelReservationEndpoint = '$baseApiPath/reservation/cancel-reservation';
   static const String reservationDateRangeEndpoint = '$baseApiPath/reservation/reservation-date-range';
+
+  // Slots
   static String getAllSlotsByDate(String formattedDate) =>
       '$baseApiPath/slots/get-all-slots?reservation_date=$formattedDate';
-
-
-  // Authentication
-  static const String logoutEndpoint = '$baseApiPath/logout';
 }

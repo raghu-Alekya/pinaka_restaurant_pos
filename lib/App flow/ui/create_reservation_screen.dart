@@ -6,8 +6,6 @@ import '../../repositories/ReservationRepository.dart';
 import '../../repositories/table_repository.dart';
 import '../../repositories/zone_repository.dart';
 import '../../utils/SessionManager.dart';
-import '../widgets/NavigationHelper.dart';
-import '../widgets/bottom_nav_bar.dart';
 import '../widgets/top_bar.dart';
 import 'package:flutter/services.dart';
 
@@ -30,7 +28,8 @@ class CreateReservationScreen extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<CreateReservationScreen> createState() => _CreateReservationScreenState();
+  State<CreateReservationScreen> createState() =>
+      _CreateReservationScreenState();
 }
 
 class _CreateReservationScreenState extends State<CreateReservationScreen> {
@@ -42,7 +41,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   final ScrollController _areaScrollController = ScrollController();
   UserPermissions? _userPermissions;
   final ReservationRepository _reservationRepository = ReservationRepository();
-
 
   String selectedSlot = '';
   String selectedMeal = '';
@@ -56,19 +54,16 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   Map<String, List<Map<String, dynamic>>> mealSlots = {};
   bool _isLoadingSlots = true;
   bool _isLoading = false;
-  String? _originalSelectedTable;
   final ZoneRepository _zoneRepository = ZoneRepository();
   List<String> areas = [];
   bool _isLoadingAreas = true;
   final List<Map<String, dynamic>> tables = List.generate(15, (index) {
-    return {
-      'name': 'T${index + 2}',
-      'capacity': index % 3 == 0 ? 8 : 4,
-    };
+    return {'name': 'T${index + 2}', 'capacity': index % 3 == 0 ? 8 : 4};
   });
   final FocusNode _priorityFocusNode = FocusNode();
   OverlayEntry? _overlayEntry;
   bool _isCalendarLoading = false;
+  late String _originalSelectedSlot;
 
   @override
   void initState() {
@@ -82,6 +77,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       _contactController.text = data['phone'] ?? '';
       _priorityController.text = data['priority'] ?? '';
       selectedSlot = data['time'] ?? '';
+      _originalSelectedSlot = selectedSlot;
 
       try {
         selectedDate = DateFormat('yyyy-MM-dd').parse(data['date'] ?? '');
@@ -90,8 +86,9 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       }
 
       selectedTables = {data['table'] ?? ''};
-      _originalSelectedTable = data['table'];
       selectedArea = data['area'] ?? selectedArea;
+    } else {
+      _originalSelectedSlot = '';
     }
 
     _priorityFocusNode.addListener(() {
@@ -114,9 +111,13 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       });
     }
   }
+
   Future<void> _fetchSlotsAndMeals() async {
     try {
-      final data = await _tableRepository.getAllSlots(widget.token, selectedDate);
+      final data = await _tableRepository.getAllSlots(
+        widget.token,
+        selectedDate,
+      );
       final meals = List<String>.from(data['Meal'] ?? []);
       final restaurantData = data['data'][widget.restaurantId];
       final slotsMap = restaurantData['slots'] as Map<String, dynamic>;
@@ -133,7 +134,11 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
         if (widget.isEditMode && widget.reservationData != null) {
           final reservationSlot = widget.reservationData!['time'];
           selectedMealTemp = meals.firstWhere(
-                (meal) => parsedSlots[meal]?.any((slot) => slot['Time Slot'] == reservationSlot) ?? false,
+            (meal) =>
+                parsedSlots[meal]?.any(
+                  (slot) => slot['Time Slot'] == reservationSlot,
+                ) ??
+                false,
             orElse: () => meals.first,
           );
           selectedSlotTemp = reservationSlot;
@@ -153,7 +158,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       if (selectedMealTemp.isNotEmpty && selectedDate != null) {
         await _fetchTables();
       }
-
     } catch (e) {
       debugPrint("Error fetching slots: $e");
       setState(() => _isLoadingSlots = false);
@@ -205,7 +209,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
 
   List<Map<String, dynamic>> get _filteredTablesByArea {
     final selectedZone = allZones.firstWhere(
-          (zone) => zone['zone_name'] == selectedArea,
+      (zone) => zone['zone_name'] == selectedArea,
       orElse: () => <String, dynamic>{},
     );
 
@@ -222,6 +226,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       return table['zone_id'].toString() == selectedZoneId.toString();
     }).toList();
   }
+
   void _validateAndSubmit() {
     final people = _peopleController.text.trim();
     final name = _nameController.text.trim();
@@ -267,165 +272,218 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   }
 
   Future<void> _saveReservation() async {
-    final response = widget.isEditMode
-        ? await _reservationRepository.updateReservation(
-      context: context,
-      token: widget.token,
-      reservationId: widget.reservationData?['reservation_id'] ?? 0,
-      people: int.tryParse(_peopleController.text.trim()) ?? 1,
-      name: _nameController.text.trim(),
-      phone: _contactController.text.trim(),
-      date: selectedDate,
-      time: selectedSlot,
-      tableNo: selectedTables.join(', '),
-      slotType: selectedMeal,
-      zoneName: selectedArea,
-      restaurantName: widget.restaurantName,
-      restaurantId: int.tryParse(widget.restaurantId) ?? 1,
-      priority: _priorityController.text.trim(),
-    )
-        : await _reservationRepository.createReservation(
-      context: context,
-      token: widget.token,
-      people: int.tryParse(_peopleController.text.trim()) ?? 1,
-      name: _nameController.text.trim(),
-      phone: _contactController.text.trim(),
-      date: selectedDate,
-      time: selectedSlot,
-      tableNo: selectedTables.join(', '),
-      slotType: selectedMeal,
-      zoneName: selectedArea,
-      restaurantName: widget.restaurantName,
-      restaurantId: int.tryParse(widget.restaurantId) ?? 1,
-      priority: _priorityController.text.trim(),
-    );
+    final response =
+        widget.isEditMode
+            ? await _reservationRepository.updateReservation(
+              context: context,
+              token: widget.token,
+              reservationId: widget.reservationData?['reservation_id'] ?? 0,
+              people: int.tryParse(_peopleController.text.trim()) ?? 1,
+              name: _nameController.text.trim(),
+              phone: _contactController.text.trim(),
+              date: selectedDate,
+              time: selectedSlot,
+              tableNo: selectedTables.join(', '),
+              slotType: selectedMeal,
+              zoneName: selectedArea,
+              restaurantName: widget.restaurantName,
+              restaurantId: int.tryParse(widget.restaurantId) ?? 1,
+              priority: _priorityController.text.trim(),
+            )
+            : await _reservationRepository.createReservation(
+              context: context,
+              token: widget.token,
+              people: int.tryParse(_peopleController.text.trim()) ?? 1,
+              name: _nameController.text.trim(),
+              phone: _contactController.text.trim(),
+              date: selectedDate,
+              time: selectedSlot,
+              tableNo: selectedTables.join(', '),
+              slotType: selectedMeal,
+              zoneName: selectedArea,
+              restaurantName: widget.restaurantName,
+              restaurantId: int.tryParse(widget.restaurantId) ?? 1,
+              priority: _priorityController.text.trim(),
+            );
 
     if (response == null) return;
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: Colors.white,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            SizedBox(
-              width: 500,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(50, 24, 70, 16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Center(
-                      child: Image.asset(
-                        'assets/success_mark.png',
-                        width: 70,
-                        height: 70,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      widget.isEditMode ? "Reservation Updated" : "Reservation Confirmed",
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      widget.isEditMode
-                          ? "Your reservation has been successfully updated."
-                          : "Your reservation has been successfully confirmed.",
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 14, color: Color(0xFFA19A9A)),
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+      builder:
+          (_) => Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            backgroundColor: Colors.white,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                SizedBox(
+                  width: 500,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(50, 24, 70, 16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text("Reservation ID", style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF4C5F7D))),
-                        const SizedBox(width: 8),
-                        const Text(":", style: TextStyle(fontWeight: FontWeight.bold)),
-                        const SizedBox(width: 8),
-                        Text("${response['reservation_id']}", style: const TextStyle(fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        Center(
+                          child: Image.asset(
+                            'assets/success_mark.png',
+                            width: 70,
+                            height: 70,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          widget.isEditMode
+                              ? "Reservation Updated"
+                              : "Reservation Confirmed",
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          widget.isEditMode
+                              ? "Your reservation has been successfully updated."
+                              : "Your reservation has been successfully confirmed.",
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFFA19A9A),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            _buildDetailRow("Name", response['customer_name'] ?? ''),
-                            _buildDetailRow("Mobile Number", response['customer_phone'] ?? ''),
-                            _buildDetailRow("Guest Count", response['people_count'].toString()),
-                            _buildDetailRow("Priority", response['priority_category'] ?? ''),
+                            const Text(
+                              "Reservation ID",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF4C5F7D),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              ":",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              "${response['reservation_id']}",
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ],
                         ),
-                        Column(
+                        const SizedBox(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildDetailRow("Area", response['zone_name'] ?? ''),
-                            _buildDetailRow("Table Number", response['table_no'] ?? ''),
-                            _buildDetailRow("Date", response['reservation_date'] ?? ''),
-                            _buildDetailRow("Time", response['reservation_time'] ?? ''),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildDetailRow(
+                                  "Name",
+                                  response['customer_name'] ?? '',
+                                ),
+                                _buildDetailRow(
+                                  "Mobile Number",
+                                  response['customer_phone'] ?? '',
+                                ),
+                                _buildDetailRow(
+                                  "Guest Count",
+                                  response['people_count'].toString(),
+                                ),
+                                _buildDetailRow(
+                                  "Priority",
+                                  response['priority_category'] ?? '',
+                                ),
+                              ],
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildDetailRow(
+                                  "Area",
+                                  response['zone_name'] ?? '',
+                                ),
+                                _buildDetailRow(
+                                  "Table Number",
+                                  response['table_no'] ?? '',
+                                ),
+                                _buildDetailRow(
+                                  "Date",
+                                  response['reservation_date'] ?? '',
+                                ),
+                                _buildDetailRow(
+                                  "Time",
+                                  response['reservation_time'] ?? '',
+                                ),
+                              ],
+                            ),
                           ],
+                        ),
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          width: 150,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.redAccent,
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            onPressed: () {
+                              // Optional: Handle SMS
+                            },
+                            child: Text(
+                              widget.isEditMode ? "Resend SMS" : "Send via SMS",
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: 150,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.redAccent,
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                        onPressed: () {
-                          // Optional: Handle SMS
-                        },
-                        child: Text(
-                          widget.isEditMode ? "Resend SMS" : "Send via SMS",
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-            Positioned(
-              top: 12,
-              right: 12,
-              child: IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                icon: const CircleAvatar(
-                  radius: 12,
-                  backgroundColor: Colors.redAccent,
-                  child: Icon(Icons.close, color: Colors.white, size: 16),
-                ),
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ReservationListScreen(
-                        pin: widget.pin,
-                        token: widget.token,
-                        restaurantId: widget.restaurantId,
-                        restaurantName: widget.restaurantName,
-                      ),
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: const CircleAvatar(
+                      radius: 12,
+                      backgroundColor: Colors.redAccent,
+                      child: Icon(Icons.close, color: Colors.white, size: 16),
                     ),
-                  );
-                },
-              ),
+                    onPressed: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => ReservationListScreen(
+                                pin: widget.pin,
+                                token: widget.token,
+                                restaurantId: widget.restaurantId,
+                                restaurantName: widget.restaurantName,
+                              ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 
@@ -434,8 +492,20 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Text("$label: ", style: const TextStyle(fontWeight: FontWeight.bold,color: Color(0xFF4C5F7D))),
-          Text(value,style: const TextStyle(fontWeight: FontWeight.w400,color: Colors.black)),
+          Text(
+            "$label: ",
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF4C5F7D),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontWeight: FontWeight.w400,
+              color: Colors.black,
+            ),
+          ),
         ],
       ),
     );
@@ -452,45 +522,52 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       );
     }
   }
+
   void _showOverlay(BuildContext context) {
     _removeOverlay();
 
     final overlay = Overlay.of(context);
     _overlayEntry = OverlayEntry(
-      builder: (context) => Center(
-        child: Material(
-          color: Colors.transparent,
-          child: Container(
-            width: 300,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.grey.shade300),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 8,
-                  offset: Offset(0, 4),
+      builder:
+          (context) => Center(
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                width: 300,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 14,
                 ),
-              ],
-            ),
-            child: ValueListenableBuilder<TextEditingValue>(
-              valueListenable: _priorityController,
-              builder: (_, value, __) => Text(
-                value.text.isEmpty
-                    ? "Specify your reservation (VIP, Birthday, Dinner)"
-                    : value.text,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: value.text.isEmpty ? Colors.grey : Colors.black,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.grey.shade300),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 8,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
                 ),
-                textAlign: TextAlign.center,
+                child: ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: _priorityController,
+                  builder:
+                      (_, value, __) => Text(
+                        value.text.isEmpty
+                            ? "Specify your reservation (VIP, Birthday, Dinner)"
+                            : value.text,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color:
+                              value.text.isEmpty ? Colors.grey : Colors.black,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                ),
               ),
             ),
           ),
-        ),
-      ),
     );
 
     overlay.insert(_overlayEntry!);
@@ -508,7 +585,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
     super.dispose();
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -525,9 +601,11 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
         },
       ),
       body: Padding(
-        padding: const EdgeInsets.fromLTRB(10, 8, 10,0),
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 45),
         child: Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           color: Colors.white,
           child: Padding(
             padding: const EdgeInsets.all(14),
@@ -543,11 +621,20 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(flex: 3, child: _buildBookingDetailsCard()),
+                            Expanded(
+                              flex: 3,
+                              child: _buildBookingDetailsCard(),
+                            ),
                             const SizedBox(width: 10),
-                            Expanded(flex: 4, child: _buildSlotAvailabilityCard()),
+                            Expanded(
+                              flex: 4,
+                              child: _buildSlotAvailabilityCard(),
+                            ),
                             const SizedBox(width: 10),
-                            Expanded(flex: 6, child: _buildTableSelectionCard()),
+                            Expanded(
+                              flex: 6,
+                              child: _buildTableSelectionCard(),
+                            ),
                           ],
                         ),
                       ),
@@ -560,35 +647,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
           ),
         ),
       ),
-        bottomNavigationBar: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: SizedBox(
-              height: kBottomNavigationBarHeight,
-              width: double.infinity,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  BottomNavBar(
-                    selectedIndex: 3,
-                    onItemTapped: (index) {
-                      NavigationHelper.handleNavigation(
-                        context,
-                        3,
-                        index,
-                        widget.pin,
-                        widget.token,
-                        widget.restaurantId,
-                        widget.restaurantName,
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
     );
   }
 
@@ -607,17 +665,19 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
               borderRadius: BorderRadius.circular(10),
             ),
             child: InkWell(
-              onTap: () => Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ReservationListScreen(
-                    pin: widget.pin,
-                    token: widget.token,
-                    restaurantId: widget.restaurantId,
-                    restaurantName: widget.restaurantName,
+              onTap:
+                  () => Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) => ReservationListScreen(
+                            pin: widget.pin,
+                            token: widget.token,
+                            restaurantId: widget.restaurantId,
+                            restaurantName: widget.restaurantName,
+                          ),
+                    ),
                   ),
-                ),
-              ),
               borderRadius: BorderRadius.circular(10),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -633,14 +693,14 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
             ),
           ),
 
-          const SizedBox(width: 20),
+          const SizedBox(width: 15),
 
           const Text(
             "Table Reservation",
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
           ),
 
-          const SizedBox(width: 140),
+          const SizedBox(width: 120),
           Container(
             height: 40,
             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -655,7 +715,8 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                   _isCalendarLoading = true;
                 });
 
-                final dateRange = await _reservationRepository.getReservationDateRange(widget.token);
+                final dateRange = await _reservationRepository
+                    .getReservationDateRange(widget.token);
 
                 setState(() {
                   _isCalendarLoading = false;
@@ -664,9 +725,11 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                 if (dateRange != null) {
                   final DateTime? picked = await showDatePicker(
                     context: context,
-                    initialDate: selectedDate.isBefore(dateRange.start) || selectedDate.isAfter(dateRange.end)
-                        ? dateRange.start
-                        : selectedDate,
+                    initialDate:
+                        selectedDate.isBefore(dateRange.start) ||
+                                selectedDate.isAfter(dateRange.end)
+                            ? dateRange.start
+                            : selectedDate,
                     firstDate: dateRange.start,
                     lastDate: dateRange.end,
                   );
@@ -685,80 +748,98 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                 }
               },
               child: Row(
-                children: _isCalendarLoading
-                    ? [
-                  const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                ]
-                    : [
-                  Text(
-                    DateFormat('dd/MM/yyyy').format(selectedDate),
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(width: 10),
-                  const Icon(Icons.calendar_today, size: 18),
-                ],
+                children:
+                    _isCalendarLoading
+                        ? [
+                          const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ]
+                        : [
+                          Text(
+                            DateFormat('dd/MM/yyyy').format(selectedDate),
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                          const SizedBox(width: 10),
+                          const Icon(Icons.calendar_today, size: 18),
+                        ],
               ),
             ),
           ),
-          const SizedBox(width: 260),
+          const SizedBox(width: 240),
           _isLoadingAreas
               ? const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 12),
-            child: SizedBox(
-              height: 20,
-              width: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          )
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              )
               : Container(
-            height: 40,
-            constraints: const BoxConstraints(maxWidth: 340),
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: areas.isEmpty
-                ? const Center(child: Text("No areas available"))
-                : SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              controller: _areaScrollController,
-              child: Row(
-                children: areas.map((area) {
-                  final bool isSelected = selectedArea == area;
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                    child: TextButton(
-                      onPressed: () => setState(() => selectedArea = area),
-                      style: TextButton.styleFrom(
-                        backgroundColor: isSelected
-                            ? const Color(0xFFFD6464)
-                            : Colors.transparent,
-                        foregroundColor:
-                        isSelected ? Colors.white : Colors.black87,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 15.0, vertical: 13.0),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5),
+                height: 40,
+                constraints: const BoxConstraints(maxWidth: 340),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child:
+                    areas.isEmpty
+                        ? const Center(child: Text("No areas available"))
+                        : SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          controller: _areaScrollController,
+                          child: Row(
+                            children:
+                                areas.map((area) {
+                                  final bool isSelected = selectedArea == area;
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 2.0,
+                                    ),
+                                    child: TextButton(
+                                      onPressed:
+                                          () => setState(
+                                            () => selectedArea = area,
+                                          ),
+                                      style: TextButton.styleFrom(
+                                        backgroundColor:
+                                            isSelected
+                                                ? const Color(0xFFFD6464)
+                                                : Colors.transparent,
+                                        foregroundColor:
+                                            isSelected
+                                                ? Colors.white
+                                                : Colors.black87,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 15.0,
+                                          vertical: 13.0,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            5,
+                                          ),
+                                        ),
+                                        textStyle: const TextStyle(
+                                          fontWeight: FontWeight.w500,
+                                          fontSize: 12.5,
+                                        ),
+                                        minimumSize: Size.zero,
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                        visualDensity: VisualDensity.compact,
+                                      ),
+                                      child: Text(area),
+                                    ),
+                                  );
+                                }).toList(),
+                          ),
                         ),
-                        textStyle: const TextStyle(
-                            fontWeight: FontWeight.w500, fontSize: 12.5),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        visualDensity: VisualDensity.compact,
-                      ),
-                      child: Text(area),
-                    ),
-                  );
-                }).toList(),
               ),
-            ),
-          ),
 
           const SizedBox(width: 140),
         ],
@@ -773,10 +854,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
         children: [
           const Text(
             "Booking Details",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 10),
 
@@ -811,13 +889,13 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   }
 
   Widget _buildLabeledField(
-      String label,
-      TextEditingController controller, {
-        String? hint,
-        FocusNode? focusNode,
-        TextInputType? keyboardType,
-        List<TextInputFormatter>? inputFormatters,
-      }) {
+    String label,
+    TextEditingController controller, {
+    String? hint,
+    FocusNode? focusNode,
+    TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -837,8 +915,10 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
             hintStyle: const TextStyle(fontSize: 12, color: Colors.grey),
             filled: true,
             fillColor: Colors.white,
-            contentPadding:
-            const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 12,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(color: Colors.grey.shade300),
@@ -861,10 +941,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
         children: [
           const Text(
             "Slot Availability",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 10),
           _mealTabs(),
@@ -883,86 +960,133 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                 ],
               ),
               padding: const EdgeInsets.all(14),
-              child: _isLoadingSlots
-                  ? const Center(
-                child: CircularProgressIndicator(),
-              )
-                  : Scrollbar(
-                thumbVisibility: true,
-                child: GridView.count(
-                  crossAxisCount: 4,
-                  mainAxisSpacing: 10,
-                  crossAxisSpacing: 10,
-                  childAspectRatio: 1.2,
-                  children: mealSlots[selectedMeal] == null
-                      ? []
-                      : mealSlots[selectedMeal]!.map((slot) {
-                    final time = slot['Time Slot']?.trim();
-                    final isActive = slot['is_active'] == true;
-                    final isSelected = selectedSlot.trim() == time;
-                    final parts = time.split(' ');
-                    final formattedSlot = parts.length == 2
-                        ? '${parts[0]}\n${parts[1]}'
-                        : time;
+              child:
+                  _isLoadingSlots
+                      ? const Center(child: CircularProgressIndicator())
+                      : Scrollbar(
+                        thumbVisibility: true,
+                        child: GridView.count(
+                          crossAxisCount: 4,
+                          mainAxisSpacing: 10,
+                          crossAxisSpacing: 10,
+                          childAspectRatio: 1.2,
+                          children:
+                              mealSlots[selectedMeal] == null
+                                  ? []
+                                  : mealSlots[selectedMeal]!.map((slot) {
+                                    final time = slot['Time Slot']?.trim();
+                                    final isActive = slot['is_active'] == true;
+                                    final isSelected =
+                                        selectedSlot.trim() == time;
+                                    final parts = time.split(' ');
+                                    final formattedSlot =
+                                        parts.length == 2
+                                            ? '${parts[0]}\n${parts[1]}'
+                                            : time;
 
-                    return GestureDetector(
-                      onTap: isActive
-                          ? () {
-                        setState(() {
-                          selectedSlot = (selectedSlot == time)
-                              ? ''
-                              : time;
-                        });
-                      }
-                          : null,
-                      child: Stack(
-                        children: [
-                          Container(
-                            alignment: Alignment.center,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? const Color(0xFFE7FAEF)
-                                  : isActive
-                                  ? Colors.white
-                                  : Colors.grey.shade200,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: isSelected
-                                    ? Colors.green
-                                    : isActive
-                                    ? Colors.grey.shade300
-                                    : Colors.grey.shade300,
-                              ),
-                            ),
-                            child: Text(
-                              formattedSlot,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: isActive
-                                    ? Colors.black
-                                    : Colors.grey,
-                                fontWeight: FontWeight.w500,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                          if (isSelected)
-                            const Positioned(
-                              top: 6,
-                              right: 6,
-                              child: CircleAvatar(
-                                radius: 3,
-                                backgroundColor: Colors.green,
-                              ),
-                            ),
-                        ],
+                                    final isOriginalSlot =
+                                        widget.isEditMode &&
+                                        time == _originalSelectedSlot;
+                                    return GestureDetector(
+                                      onTap:
+                                          isActive
+                                              ? () {
+                                                setState(() {
+                                                  selectedSlot =
+                                                      (selectedSlot == time)
+                                                          ? ''
+                                                          : time;
+                                                });
+                                              }
+                                              : null,
+                                      child: Stack(
+                                        children: [
+                                          Container(
+                                            decoration:
+                                                isOriginalSlot
+                                                    ? BoxDecoration(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            10,
+                                                          ),
+                                                      gradient: SweepGradient(
+                                                        colors: [
+                                                          Colors.blue,
+                                                          Colors.green,
+                                                          Colors.pink,
+                                                          Colors.blue,
+                                                        ],
+                                                        stops: [
+                                                          0.0,
+                                                          0.33,
+                                                          0.66,
+                                                          1.0,
+                                                        ],
+                                                      ),
+                                                    )
+                                                    : null,
+                                            padding:
+                                                isOriginalSlot
+                                                    ? const EdgeInsets.all(1.5)
+                                                    : EdgeInsets.zero,
+                                            child: Container(
+                                              alignment: Alignment.center,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 6,
+                                                    vertical: 8,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color:
+                                                    isSelected
+                                                        ? const Color(
+                                                          0xFFE7FAEF,
+                                                        )
+                                                        : isActive
+                                                        ? Colors.white
+                                                        : Colors.grey.shade200,
+                                                borderRadius:
+                                                    BorderRadius.circular(7),
+                                                border: Border.all(
+                                                  color:
+                                                      isSelected
+                                                          ? Colors.green
+                                                          : isActive
+                                                          ? Colors.grey.shade300
+                                                          : Colors
+                                                              .grey
+                                                              .shade300,
+                                                ),
+                                              ),
+                                              child: Text(
+                                                formattedSlot,
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                  color:
+                                                      isActive
+                                                          ? Colors.black
+                                                          : Colors.grey,
+                                                  fontWeight: FontWeight.w500,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          if (isSelected)
+                                            const Positioned(
+                                              top: 6,
+                                              right: 6,
+                                              child: CircleAvatar(
+                                                radius: 3,
+                                                backgroundColor: Colors.green,
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    );
+                                  }).toList(),
+                        ),
                       ),
-                    );
-                  }).toList(),
-                ),
-              ),
             ),
           ),
         ],
@@ -988,10 +1112,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
           children: [
             const Text(
               "Table Selection Area",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             Expanded(
@@ -1008,7 +1129,8 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
               )
                   : GridView.builder(
                 itemCount: tablesToShow.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate:
+                const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 4,
                   crossAxisSpacing: 10,
                   mainAxisSpacing: 10,
@@ -1021,7 +1143,10 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                   final shape = table['shape']?.toLowerCase() ?? '';
                   final status = (table['status'] ?? '').toLowerCase();
                   final isSelected = selectedTables.contains(tableName);
-                  final isOriginalTable = widget.isEditMode && tableName == _originalSelectedTable;
+                  final tableSlotType =
+                  (table['slot_type'] ?? '').toString().toLowerCase();
+                  final isTableInSelectedSlot =
+                      tableSlotType == selectedMeal.toLowerCase();
 
                   // Shape image path
                   String shapeAsset;
@@ -1044,50 +1169,55 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                   Color borderColor = Colors.grey.shade300;
                   Color textColor = Colors.black;
                   Color iconColor = Colors.green;
-                  bool isClickable = true;
 
                   if (status == 'available') {
-                    cardColor = isSelected ? const Color(0xFFE7FAEF) : Colors.white;
-                    borderColor = isSelected ? Colors.green : Colors.grey.shade300;
+                    cardColor = isSelected
+                        ? const Color(0xFFE7FAEF)
+                        : Colors.white;
+                    borderColor =
+                    isSelected ? Colors.green : Colors.grey.shade300;
                   } else if (status == 'reserve') {
                     cardColor = const Color(0xFFE0E0E0);
                     textColor = Colors.grey;
                     iconColor = Colors.grey;
-                    if (!isOriginalTable) isClickable = false;
-                  } else if (status == 'dine in' || status == 'ready to pay') {
+                  } else if (status == 'dine in' ||
+                      status == 'ready to pay') {
                     cardColor = const Color(0xFFF7DDDB);
                     textColor = const Color(0xFFF44336);
                     iconColor = const Color(0xFFF44336);
-                    if (!isOriginalTable) isClickable = false;
                   }
 
                   return GestureDetector(
-                    onTap: isClickable
-                        ? () {
+                    onTap: () {
                       setState(() {
-                        selectedTables.clear();
-                        selectedTables.add(tableName);
+                        if (isSelected) {
+                          selectedTables.remove(tableName);
+                        } else {
+                          selectedTables.clear();
+                          selectedTables.add(tableName);
+                        }
                       });
-                    }
-                        : null,
+                    },
                     child: Stack(
                       children: [
                         Container(
-                          decoration: isOriginalTable
+                          decoration: (widget.isEditMode &&
+                              selectedTables.contains(tableName) &&
+                              isTableInSelectedSlot)
                               ? BoxDecoration(
-                            gradient: SweepGradient(
+                            gradient: const SweepGradient(
                               colors: [
                                 Colors.blue,
                                 Colors.green,
                                 Colors.pink,
                                 Colors.blue,
                               ],
-                              stops: const [0.0, 0.33, 0.66, 1.0],
+                              stops: [0.0, 0.33, 0.66, 1.0],
                             ),
                             borderRadius: BorderRadius.circular(14),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.white.withOpacity(0.6),
+                                color: Colors.white.withAlpha(153),
                                 blurRadius: 4,
                                 spreadRadius: 1,
                               ),
@@ -1096,11 +1226,14 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                               : BoxDecoration(
                             color: cardColor,
                             border: Border.all(
-                              color: isSelected ? Colors.green : borderColor,
+                              color:
+                              isSelected ? Colors.green : borderColor,
                               width: 1.5,
                             ),
                             borderRadius: BorderRadius.circular(14),
-                            boxShadow: const [BoxShadow(color: Colors.black12)],
+                            boxShadow: const [
+                              BoxShadow(color: Colors.black12),
+                            ],
                           ),
                           child: Padding(
                             padding: const EdgeInsets.all(1.5),
@@ -1133,7 +1266,11 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                                   Row(
                                     children: [
                                       const SizedBox(width: 4),
-                                      Icon(Icons.group, size: 22, color: iconColor),
+                                      Icon(
+                                        Icons.group,
+                                        size: 22,
+                                        color: iconColor,
+                                      ),
                                       const SizedBox(width: 8),
                                       Text(
                                         '$capacity',
@@ -1199,24 +1336,25 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
             child: SizedBox(
               height: 20,
               child: Center(
-                child: _isLoading
-                    ? const SizedBox(
-                  height: 18,
-                  width: 18,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2.2,
-                  ),
-                )
-                    : Text(
-                  widget.isEditMode
-                      ? "Update Reservation"
-                      : "Confirm Reservation",
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.white,
-                  ),
-                ),
+                child:
+                    _isLoading
+                        ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.2,
+                          ),
+                        )
+                        : Text(
+                          widget.isEditMode
+                              ? "Update Reservation"
+                              : "Confirm Reservation",
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.white,
+                          ),
+                        ),
               ),
             ),
           ),
@@ -1233,60 +1371,66 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
 
   Widget _mealTabs() {
     return Row(
-      children: availableMeals.map((meal) {
-        final isSelected = selectedMeal == meal;
-        return Padding(
-          padding: const EdgeInsets.only(right: 8),
-          child: Container(
-            decoration: BoxDecoration(
-              color: isSelected ? Colors.white : const Color(0xFFF5F7FF),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: isSelected
-                  ? [
-                const BoxShadow(
-                  color: Color.fromRGBO(0, 0, 0, 0.1),
-                  blurRadius: 4,
-                  offset: Offset(0, 2),
+      children:
+          availableMeals.map((meal) {
+            final isSelected = selectedMeal == meal;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.white : const Color(0xFFF5F7FF),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow:
+                      isSelected
+                          ? [
+                            const BoxShadow(
+                              color: Color.fromRGBO(0, 0, 0, 0.1),
+                              blurRadius: 4,
+                              offset: Offset(0, 2),
+                            ),
+                          ]
+                          : [],
                 ),
-              ]
-                  : [],
-            ),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(12),
-                onTap: () async {
-                  setState(() {
-                    selectedMeal = meal;
-                    selectedSlot = '';
-                    _isLoadingTables = true;
-                  });
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () async {
+                    setState(() {
+                      selectedMeal = meal;
+                      selectedSlot = '';
+                      _isLoadingTables = true;
+                      selectedTables.clear();
+                    });
 
-                  await _fetchTables();
-                },
-                child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                child: Row(
-                  children: [
-                    Icon(
-                      mealIcons[meal.toLowerCase()] ?? Icons.fastfood,
-                      size: 14,
-                      color: isSelected ? Colors.red : Colors.grey[600],
+                    await _fetchTables();
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      meal[0].toUpperCase() + meal.substring(1),
-                      style: TextStyle(
-                        color: isSelected ? Colors.red : Colors.grey[600],
-                        fontWeight: FontWeight.w500,
-                        fontSize: 14,
-                      ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          mealIcons[meal.toLowerCase()] ?? Icons.fastfood,
+                          size: 14,
+                          color: isSelected ? Colors.red : Colors.grey[600],
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          meal[0].toUpperCase() + meal.substring(1),
+                          style: TextStyle(
+                            color: isSelected ? Colors.red : Colors.grey[600],
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
-        );
-      }).toList(),
+            );
+          }).toList(),
     );
   }
 

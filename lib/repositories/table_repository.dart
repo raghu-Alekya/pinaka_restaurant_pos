@@ -63,8 +63,10 @@ class TableRepository {
     required String meal,
     required String date,
   }) async {
+    final uri = Uri.parse(AppConstants.getAllTablesBySlot(meal, date));
+
     final response = await http.get(
-      Uri.parse('https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1/tables/get-all-tables-by-slot?slot_type=$meal&reservation_date=$date'),
+      uri,
       headers: {
         'Authorization': 'Bearer $token',
       },
@@ -74,10 +76,9 @@ class TableRepository {
       final json = jsonDecode(response.body);
       return List<Map<String, dynamic>>.from(json['table_details']);
     } else {
-      throw Exception("Failed to load tables");
+      throw Exception("Failed to load tables: ${response.statusCode}");
     }
   }
-
 
   /// Sync tables from server to local database
   Future<void> syncTablesFromServerToLocal(String token) async {

@@ -69,7 +69,7 @@ class ReservationInfoDialog extends StatelessWidget {
                   style: TextButton.styleFrom(
                     backgroundColor: const Color(0xFFF1F4F8),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 12),
+                        horizontal: 20, vertical: 9),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -87,7 +87,7 @@ class ReservationInfoDialog extends StatelessWidget {
                   style: TextButton.styleFrom(
                     backgroundColor: const Color(0xFFF86157),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 12),
+                        horizontal: 35, vertical: 9),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
