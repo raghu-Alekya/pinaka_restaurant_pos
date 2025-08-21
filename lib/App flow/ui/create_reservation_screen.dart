@@ -63,6 +63,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   final FocusNode _priorityFocusNode = FocusNode();
   OverlayEntry? _overlayEntry;
   bool _isCalendarLoading = false;
+  late String _originalSelectedTable;
   late String _originalSelectedSlot;
 
   @override
@@ -76,8 +77,10 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       _nameController.text = data['name'] ?? '';
       _contactController.text = data['phone'] ?? '';
       _priorityController.text = data['priority'] ?? '';
+
       selectedSlot = data['time'] ?? '';
       _originalSelectedSlot = selectedSlot;
+      _originalSelectedTable = data['table'] ?? '';
 
       try {
         selectedDate = DateFormat('yyyy-MM-dd').parse(data['date'] ?? '');
@@ -85,10 +88,11 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
         selectedDate = DateTime.now();
       }
 
-      selectedTables = {data['table'] ?? ''};
+      selectedTables = {_originalSelectedTable};
       selectedArea = data['area'] ?? selectedArea;
     } else {
       _originalSelectedSlot = '';
+      _originalSelectedTable = '';
     }
 
     _priorityFocusNode.addListener(() {
@@ -1189,6 +1193,10 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
 
                   return GestureDetector(
                     onTap: () {
+                      if (status == 'reserve' && tableName != _originalSelectedTable) {
+                        return;
+                      }
+
                       setState(() {
                         if (isSelected) {
                           selectedTables.remove(tableName);
@@ -1202,8 +1210,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                       children: [
                         Container(
                           decoration: (widget.isEditMode &&
-                              selectedTables.contains(tableName) &&
-                              isTableInSelectedSlot)
+                              tableName == _originalSelectedTable)
                               ? BoxDecoration(
                             gradient: const SweepGradient(
                               colors: [
