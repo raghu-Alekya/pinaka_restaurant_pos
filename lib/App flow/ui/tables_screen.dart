@@ -43,6 +43,7 @@ import '../widgets/bottom_nav_bar.dart';
 import '../widgets/table_helpers.dart';
 import 'CheckinPopup.dart';
 import 'DailyAttendanceScreen.dart';
+import 'dashboard screen.dart';
 import 'guest_details_popup.dart';
 
 /// Screen widget that manages the floor plan of tables in a restaurant POS system.
@@ -990,6 +991,16 @@ class _TablesScreenState extends State<TablesScreen> {
             index: index,
             tableData: tableData,
             placedTables: placedTables,
+            onGuestSaved: (guestDetails) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DashboardScreen(
+                    guestDetails: guestDetails, token: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvbWVyY2hhbnRyZXN0YXVyYW50LmFsZWt0YXNvbHV0aW9ucy5jb20iLCJpYXQiOjE3NTQ5Nzk4NTAsIm5iZiI6MTc1NDk3OTg1MCwiZXhwIjoxNzU3NTcxODUwLCJkYXRhIjp7InVzZXIiOnsiaWQiOjUsImRldmljZSI6IiIsInBhc3MiOiIyYjhlMjJlOTM2ZTY0N2JhNDRmOWJhMmY3Y2Q1ZmFjNiJ9fX0.l7uGF5K_SOChmA50VcKbQ21VBJp9dRM-uZUBEwNvWh8", restaurantId: '1', // Pass it here
+                  ),
+                ),
+              );
+            },
           ),
         );
       },

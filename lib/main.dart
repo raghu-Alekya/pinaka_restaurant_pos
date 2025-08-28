@@ -2,7 +2,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart';
+import 'package:pinaka_restaurant_pos/repositories/category_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/checkin_repository.dart';
+import 'package:pinaka_restaurant_pos/repositories/minisubcategory_repository.dart';
+import 'package:pinaka_restaurant_pos/repositories/product_repository.dart';
+import 'package:pinaka_restaurant_pos/repositories/subcategory_repository.dart';
 import 'package:pinaka_restaurant_pos/utils/GlobalReservationMonitor.dart';
 import 'package:pinaka_restaurant_pos/utils/ShiftMonitor.dart';
 import 'package:pinaka_restaurant_pos/utils/global_navigator.dart';
@@ -14,6 +18,11 @@ import 'App flow/ui/splash_screen.dart';
 
 // Bloc Logic
 import 'blocs/Bloc Logic/auth_bloc.dart';
+import 'blocs/Bloc Logic/category_bloc.dart';
+import 'blocs/Bloc Logic/minisubcategory_bloc.dart';
+import 'blocs/Bloc Logic/order_bloc.dart';
+import 'blocs/Bloc Logic/product_bloc.dart';
+import 'blocs/Bloc Logic/subcategory_bloc.dart';
 import 'blocs/Bloc Logic/table_bloc.dart';
 import 'blocs/Bloc Logic/zone_bloc.dart';
 import 'blocs/Bloc Logic/attendance_bloc.dart';
@@ -95,6 +104,36 @@ class MyApp extends StatelessWidget {
           BlocProvider<CheckInBloc>(
             create: (context) => CheckInBloc(CheckInRepository()),
           ),
+          BlocProvider<SubCategoryBloc>(
+            create: (_) => SubCategoryBloc(
+              subCategoryRepository: SubCategoryRepository(
+                baseUrl: "https://merchantrestaurant.alektasolutions.com",
+              ),
+            ),
+          ),
+          BlocProvider<OrderBloc>(
+            create: (_) => OrderBloc(),
+          ),
+          BlocProvider<CategoryBloc>(
+            create: (_) => CategoryBloc(
+              repository: CategoryRepository(
+                baseUrl: "https://merchantrestaurant.alektasolutions.com",
+              ),
+
+            ),
+          ),
+          BlocProvider<MiniSubCategoryBloc>(
+            create: (_) => MiniSubCategoryBloc(
+              repository: MiniSubCategoryRepository(
+                baseUrl: "https://merchantrestaurant.alektasolutions.com",
+                token: "token",
+              ),
+            ),
+          ),
+          BlocProvider<ProductBloc>(
+            create: (_) => ProductBloc(ProductRepository as ProductRepository),
+          ),
+
         ],
         child: MaterialApp(
           navigatorKey: navigatorKey,

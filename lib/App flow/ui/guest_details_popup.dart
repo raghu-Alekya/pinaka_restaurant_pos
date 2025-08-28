@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
+import '../../models/order/guest_details.dart';
+// import '../../screens/dashboard screen.dart';
+import 'dashboard screen.dart';
 
 class GuestDetailsPopup extends StatefulWidget {
   final int index;
   final Map<String, dynamic> tableData;
   final List<Map<String, dynamic>> placedTables;
-
+  // final Function(int) onGuestSaved;
+  final void Function(Guestcount) onGuestSaved;
   const GuestDetailsPopup({
-    super.key,
+    Key? key,
     required this.index,
     required this.tableData,
     required this.placedTables,
-  });
+    required this.onGuestSaved
+  }) : super(key: key);
 
   @override
   State<GuestDetailsPopup> createState() => _GuestDetailsPopupState();
@@ -89,7 +94,9 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.grey.shade200,
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 10),
+                          horizontal: 20,
+                          vertical: 10,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -97,25 +104,53 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                       child: const Text(
                         "Back",
                         style: TextStyle(
-                            color: Color(0xFF4C5F7D), fontSize: 12),
+                          color: Color(0xFF4C5F7D),
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 14),
                     ElevatedButton(
                       onPressed: () {
-                        Navigator.pop(context);
+                        if (selectedGuests.isNotEmpty) {
+                          final guestDetails = Guestcount(
+                            guestCount: selectedGuests.length,
+                          );
+
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => DashboardScreen(
+                                // guestDetails: guestDetails,
+                                guestDetails: Guestcount(guestCount: selectedGuests.length), token: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvbWVyY2hhbnRyZXN0YXVyYW50LmFsZWt0YXNvbHV0aW9ucy5jb20iLCJpYXQiOjE3NTQ5Nzk4NTAsIm5iZiI6MTc1NDk3OTg1MCwiZXhwIjoxNzU3NTcxODUwLCJkYXRhIjp7InVzZXIiOnsiaWQiOjUsImRldmljZSI6IiIsInBhc3MiOiIyYjhlMjJlOTM2ZTY0N2JhNDRmOWJhMmY3Y2Q1ZmFjNiJ9fX0.l7uGF5K_SOChmA50VcKbQ21VBJp9dRM-uZUBEwNvWh8", restaurantId: '1',
+                              ),
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Please select number of guests'),
+                            ),
+                          );
+                        }
                       },
+
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFFF4D20),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 26, vertical: 10),
+                          horizontal: 26,
+                          vertical: 10,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
                       child: const Text(
                         "SELECT AND CONTINUE",
-                        style: TextStyle(color: Colors.white, fontSize: 12),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                   ],
