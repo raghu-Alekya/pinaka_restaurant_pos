@@ -23,10 +23,24 @@ class GlobalReservationMonitor {
     _token = token;
     AppLogger.info("Starting GlobalReservationMonitor with token.");
     _fetchReservations();
+    final now = DateTime.now();
+    final int nextQuarterMinute = ((now.minute ~/ 15) + 1) * 15;
+    final DateTime nextQuarter = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      now.hour,
+      nextQuarterMinute >= 60 ? 0 : nextQuarterMinute,
+    ).add(Duration(hours: nextQuarterMinute >= 60 ? 1 : 0));
 
-    _timer = Timer.periodic(const Duration(seconds: 5), (_) {
-      AppLogger.info("GlobalReservationMonitor: Triggering periodic fetch...");
+    final Duration initialDelay = nextQuarter.difference(now);
+    AppLogger.info("Next reservation check aligned at: $nextQuarter");
+    Future.delayed(initialDelay, () {
       _fetchReservations();
+      _timer = Timer.periodic(const Duration(minutes: 15), (_) {
+        AppLogger.info("GlobalReservationMonitor: 15-min slot triggered.");
+        _fetchReservations();
+      });
     });
   }
 

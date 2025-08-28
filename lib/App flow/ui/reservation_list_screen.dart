@@ -9,6 +9,7 @@ import '../../utils/GlobalReservationMonitor.dart';
 import '../../utils/SessionManager.dart';
 import '../widgets/DeleteReservationDialog.dart';
 import '../widgets/NavigationHelper.dart';
+import '../widgets/area_movement_notifier.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/top_bar.dart';
 import 'create_reservation_screen.dart';
@@ -251,7 +252,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
       body: Stack(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(35, 15, 35, 90),
+            padding: const EdgeInsets.fromLTRB(35, 18, 35, 90),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -381,33 +382,47 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                     const SizedBox(width: 12),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF1877F2),
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        backgroundColor: _userPermissions?.canCreateReservation ?? false
+                            ? const Color(0xFF1877F2)
+                            : Colors.grey.shade400,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
                       onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => CreateReservationScreen(
-                              pin: widget.pin,
-                              token: widget.token,
-                              restaurantId: widget.restaurantId,
-                              restaurantName: widget.restaurantName,
+                        if (_userPermissions?.canCreateReservation ?? false) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => CreateReservationScreen(
+                                pin: widget.pin,
+                                token: widget.token,
+                                restaurantId: widget.restaurantId,
+                                restaurantName: widget.restaurantName,
+                              ),
                             ),
-                          ),
-                        );
+                          );
+                        } else {
+                          AreaMovementNotifier.showPopup(
+                            context: context,
+                            fromArea: '',
+                            toArea: '',
+                            tableName: 'Reservation',
+                            customMessage: "No permission to create reservation",
+                          );
+                        }
                       },
-                      icon: Icon(Icons.add, size: 16, color: Colors.white),
-                      label: Text("Create Reservation", style: TextStyle(color: Colors.white, fontSize: 14)),
+                      icon: const Icon(Icons.add, size: 16, color: Colors.white),
+                      label: const Text(
+                        "Create Reservation",
+                        style: TextStyle(color: Colors.white, fontSize: 14),
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 10),
-
                 // Table Container
                 Container(
-                  height: 470,
+                  height: 480,
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: const BorderRadius.only(
@@ -448,7 +463,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
 
                       ),
                       SizedBox(
-                        height: 325,
+                        height: 330,
                         child: filteredReservations.isEmpty
                             ? Center(
                           child: Text(
@@ -587,9 +602,9 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                               child: const Text("Previous", style: TextStyle(color: Colors.black)),
                             ),
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 5),
                           ..._buildPaginationButtons(totalPages),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 5),
                           SizedBox(
                             width: 80,
                             height: 40,
@@ -612,11 +627,11 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
           ),
 
           BottomNavBar(
-            selectedIndex: 3,
+            selectedIndex: 2,
             onItemTapped: (index) {
               NavigationHelper.handleNavigation(
                 context,
-                3,
+                2,
                 index,
                 widget.pin,
                 widget.token,

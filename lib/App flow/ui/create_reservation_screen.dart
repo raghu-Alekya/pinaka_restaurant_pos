@@ -605,7 +605,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
         },
       ),
       body: Padding(
-        padding: const EdgeInsets.fromLTRB(10, 8, 10, 45),
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 25),
         child: Card(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
