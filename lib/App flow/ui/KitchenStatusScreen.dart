@@ -3,6 +3,7 @@ import '../../models/UserPermissions.dart';
 import '../../repositories/zone_repository.dart';
 import '../../utils/SessionManager.dart';
 import '../widgets/NavigationHelper.dart';
+import '../widgets/area_movement_notifier.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/top_bar.dart';
 
@@ -307,25 +308,19 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: BottomNavBar(
-            selectedIndex: 2,
-            onItemTapped: (index) {
-              NavigationHelper.handleNavigation(
-                context,
-                2,
-                index,
-                widget.pin,
-                widget.token,
-                widget.restaurantId,
-                widget.restaurantName,
-              );
-            },
-          ),
-        ),
+      bottomNavigationBar: BottomNavBar(
+        selectedIndex: 1,
+        onItemTapped: (index) {
+          NavigationHelper.handleNavigation(
+            context,
+            1,
+            index,
+            widget.pin,
+            widget.token,
+            widget.restaurantId,
+            widget.restaurantName,
+          );
+        },
       ),
     );
   }
@@ -369,12 +364,31 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   }
 
   Widget _buildOrderTypeButton(String title) {
+    // Permission checks
+    bool isEnabled = true;
+    if (title == "Takeaways") {
+      isEnabled = _userPermissions?.canViewOrderTypes ?? false;
+    } else if (title == "Online Orders") {
+      isEnabled = _userPermissions?.canViewOrderTypes  ?? false;
+    }
+
     bool isSelected = title == selectedOrderType;
+
     return GestureDetector(
       onTap: () {
-        setState(() {
-          selectedOrderType = title;
-        });
+        if (isEnabled) {
+          setState(() {
+            selectedOrderType = title;
+          });
+        } else {
+          AreaMovementNotifier.showPopup(
+            context: context,
+            fromArea: '',
+            toArea: '',
+            tableName: title,
+            customMessage: "No permission to view $title",
+          );
+        }
       },
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -382,18 +396,19 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
           Text(
             title,
             style: TextStyle(
-              color: isSelected ? Colors.red : Colors.black,
+              color: isEnabled
+                  ? (isSelected ? Colors.red : Colors.black)
+                  : Colors.grey,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),
           ),
           const SizedBox(height: 4),
-          // Underline
           AnimatedContainer(
             duration: Duration(milliseconds: 200),
             height: 3,
-            width: isSelected ? 40 : 0,
+            width: isSelected && isEnabled ? 40 : 0,
             decoration: BoxDecoration(
-              color: Colors.red,
+              color: isEnabled ? Colors.red : Colors.grey.shade400,
               borderRadius: BorderRadius.circular(2),
             ),
           ),

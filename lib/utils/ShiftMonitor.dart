@@ -14,10 +14,49 @@ class ShiftMonitor {
   Timer? _timer;
 
   ShiftMonitor({required this.employeeRepository, required this.token});
+  void startMonitoring() async {
+    try {
+      final currentShift = await employeeRepository.getCurrentShift(token);
+      AppLogger.info("Fetched current shift: $currentShift");
 
-  void startMonitoring() {
-    _checkAndCloseShift();
-    _timer = Timer.periodic(Duration(minutes: 1), (_) => _checkAndCloseShift());
+      if (currentShift == null || currentShift['shift_status'] == 'closed') {
+        AppLogger.info("No active shift or shift already closed.");
+        return;
+      }
+
+      final String? shiftEndTimeStr = currentShift['shift_timings']?['end_time'];
+      final String? shiftDateStr = currentShift['shift_date'];
+
+      if (shiftEndTimeStr == null || shiftDateStr == null ||
+          shiftEndTimeStr.isEmpty || shiftDateStr.isEmpty) {
+        AppLogger.error("Shift date or end time is null/empty.");
+        return;
+      }
+      final parsedEndTime = DateFormat('hh:mma').parse(shiftEndTimeStr);
+      final parsedShiftDate = DateFormat('yyyy-MM-dd').parse(shiftDateStr);
+
+      final shiftEndDateTime = DateTime(
+        parsedShiftDate.year,
+        parsedShiftDate.month,
+        parsedShiftDate.day,
+        parsedEndTime.hour,
+        parsedEndTime.minute,
+      );
+
+      final now = DateTime.now();
+
+      if (now.isAfter(shiftEndDateTime)) {
+        _checkAndCloseShift();
+        return;
+      }
+      final duration = shiftEndDateTime.difference(now);
+      AppLogger.info("Scheduling auto-close after $duration");
+
+      _timer = Timer(duration, _checkAndCloseShift);
+
+    } catch (e) {
+      AppLogger.error("Exception in startMonitoring(): $e");
+    }
   }
 
   void stopMonitoring() {

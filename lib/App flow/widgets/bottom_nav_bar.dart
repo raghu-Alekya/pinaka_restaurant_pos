@@ -1,79 +1,71 @@
 import 'package:flutter/material.dart';
 
-/// A customizable bottom navigation bar widget with animated item selection.
-///
-/// This widget displays a row of text labels representing different navigation items.
-/// The selected item is highlighted with a background color and larger horizontal padding.
-/// The widget triggers a callback when an item is tapped to notify the parent about the selection.
-///
 class BottomNavBar extends StatelessWidget {
-  /// The index of the currently selected navigation item.
   final int selectedIndex;
-
-  /// Callback fired when a navigation item is tapped.
-  /// Provides the index of the tapped item.
   final Function(int) onItemTapped;
 
-  /// Creates a [BottomNavBar] widget.
-  ///
-  /// Requires [selectedIndex] to indicate the active item,
-  /// and [onItemTapped] callback to handle taps.
   BottomNavBar({required this.selectedIndex, required this.onItemTapped});
 
-  /// List of labels shown on the navigation bar.
-  final List<String> labels = [
-    "Dashboard",
-    "Tables",
-    "Kitchen Status",
-    "Reservation List",
-    "Orders List",
-    "Customers",
+  final List<Map<String, dynamic>> items = [
+    {"label": "Tables", "icon": Icons.table_bar},
+    {"label": "KOT Status", "icon": Icons.receipt_long},
+    {"label": "Reservation", "icon": Icons.calendar_month},
+    {"label": "Orders", "icon": Icons.list_alt},
+    {"label": "Customers", "icon": Icons.people},
+    {"label": "Take Aways", "icon": Icons.inventory_2},
+    {"label": "Online Orders", "icon": Icons.delivery_dining},
   ];
 
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      bottom: 15,
-      left: 15,
-      right: 15,
+      bottom: 0,
+      left: 0,
+      right: 0,
       child: Container(
-        padding: EdgeInsets.symmetric(vertical: 14, horizontal: 6),
-        decoration: BoxDecoration(
-          color: Color(0xFF0A1B4D),
-          borderRadius: BorderRadius.circular(23),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black26,
-              blurRadius: 10,
-              offset: Offset(0, 4),
-            ),
-          ],
-        ),
+        height: 55,
+        color: const Color(0xFF0A1B4D),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: List.generate(labels.length, (index) {
-            final bool isSelected = selectedIndex == index;
-
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: List.generate(items.length * 2 - 1, (i) {
+            if (i.isOdd) {
+              return Container(
+                width: 1,
+                height: 15,
+                color: Colors.white,
+              );
+            }
+            final index = i ~/ 2;
+            final isSelected = selectedIndex == index;
             return InkWell(
               onTap: () => onItemTapped(index),
-              borderRadius: BorderRadius.circular(12),
-              child: AnimatedContainer(
-                duration: Duration(milliseconds: 200),
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 5),
-                decoration: isSelected
-                    ? BoxDecoration(
-                  color: Colors.redAccent,
-                  borderRadius: BorderRadius.circular(15),
-                )
-                    : null,
-                child: Text(
-                  labels[index],
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontFamily: 'Inter',
-                    color: isSelected ? Colors.white : Colors.grey[300],
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                  ),
+              child: Container(
+                height: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 30),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? Color(0xFFDA4A38)
+                      : const Color(0xFF2A3558),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      items[index]["icon"],
+                      size: 20,
+                      color: isSelected ? Colors.white : const Color(0xFFC4C7D1),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      items[index]["label"],
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: isSelected ? Colors.white : const Color(0xFFC4C7D1),
+                        fontWeight:
+                        isSelected ? FontWeight.w600 : FontWeight.normal,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             );
