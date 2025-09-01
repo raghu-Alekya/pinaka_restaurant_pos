@@ -422,7 +422,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                 const SizedBox(height: 10),
                 // Table Container
                 Container(
-                  height: 480,
+                  height: 470,
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: const BorderRadius.only(

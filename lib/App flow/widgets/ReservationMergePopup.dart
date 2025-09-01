@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-class MergeEditTablePopup extends StatefulWidget {
+class ReservationMergePopup extends StatefulWidget {
   final int index;
   final Map<String, dynamic> tableData;
   final Function(int, Map<String, dynamic>) onMergeEdit;
 
-  const MergeEditTablePopup({
+  const ReservationMergePopup({
     super.key,
     required this.index,
     required this.tableData,
@@ -13,10 +13,10 @@ class MergeEditTablePopup extends StatefulWidget {
   });
 
   @override
-  State<MergeEditTablePopup> createState() => _MergeEditTablePopupState();
+  State<ReservationMergePopup> createState() => _ReservationMergePopupState();
 }
 
-class _MergeEditTablePopupState extends State<MergeEditTablePopup> {
+class _ReservationMergePopupState extends State<ReservationMergePopup> {
   String? selectedParent;
   Set<String> selectedChildren = {};
 
@@ -29,12 +29,7 @@ class _MergeEditTablePopupState extends State<MergeEditTablePopup> {
     "Table 6",
     "Table 7",
   ];
-  final List<String> runningParent = [
-    "Table 8",
-    "Table 9",
-    "Table 10",
-    "Table 11",
-  ];
+
   final List<String> childTables = [
     "Table 1",
     "Table 2",
@@ -55,10 +50,9 @@ class _MergeEditTablePopupState extends State<MergeEditTablePopup> {
       contentPadding: const EdgeInsets.all(20),
       content: SizedBox(
         width: 800,
-        height: 480,
+        height: 450,
         child: Column(
           children: [
-
             /// Title + Close
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -84,13 +78,14 @@ class _MergeEditTablePopupState extends State<MergeEditTablePopup> {
                       color: Color(0xFFFF5A5A),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
-                        Icons.close, size: 18, color: Colors.white),
+                    child:
+                    const Icon(Icons.close, size: 18, color: Colors.white),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
+
             Text.rich(
               TextSpan(
                 children: [
@@ -123,11 +118,10 @@ class _MergeEditTablePopupState extends State<MergeEditTablePopup> {
             ),
             const SizedBox(height: 15),
 
-            /// Two panels side by side
+            /// Panels
             Expanded(
               child: Row(
                 children: [
-                  // Left Panel (Parent)
                   Expanded(
                     child: _buildPanel(
                       title: "Choose Table to merge (Parent) Available :",
@@ -143,32 +137,10 @@ class _MergeEditTablePopupState extends State<MergeEditTablePopup> {
                             );
                           }).toList(),
                         ),
-                        const SizedBox(height: 18),
-                        const Text(
-                          "Choose Table to merge (Parent) Running :",
-                          style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.black),
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
-                          children: runningParent.map((t) {
-                            return _buildTableButton(
-                              tableName: t,
-                              baseColor: const Color(0xFFF3C0C3),
-                              isParent: true,
-                            );
-                          }).toList(),
-                        ),
                       ],
                     ),
                   ),
                   const SizedBox(width: 14),
-
-                  // Right Panel (Child)
                   Expanded(
                     child: _buildPanel(
                       title: "Choose Table to merge With (Child) Available :",

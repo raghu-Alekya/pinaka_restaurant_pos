@@ -855,6 +855,17 @@ class _TablesScreenState extends State<TablesScreen> {
                 }
               },
       onLongPress: () {
+        final status = tableData['status']?.toLowerCase() ?? 'available';
+        if (status == 'reserve') {
+          AreaMovementNotifier.showPopup(
+            context: context,
+            fromArea: tableData['areaName'] ?? '',
+            toArea: '',
+            tableName: tableData['tableName'] ?? '',
+            customMessage: 'You cannot merge a reserved table',
+          );
+          return;
+        }
         _showTableActionPopup(context, index, tableData);
       },
       child: RotatedBox(quarterTurns: quarterTurns, child: borderedTable),
@@ -971,6 +982,17 @@ class _TablesScreenState extends State<TablesScreen> {
         }
       },
       onLongPress: () {
+        final status = tableData['status']?.toLowerCase() ?? 'available';
+        if (status == 'reserve') {
+          AreaMovementNotifier.showPopup(
+            context: context,
+            fromArea: tableData['areaName'] ?? '',
+            toArea: '',
+            tableName: tableData['tableName'] ?? '',
+            customMessage: 'You cannot merge a reserved table',
+          );
+          return;
+        }
         _showTableActionPopup(context, actualIndex, tableData);
       },
     );
@@ -1016,6 +1038,17 @@ class _TablesScreenState extends State<TablesScreen> {
         }
       },
       onLongPress: () {
+        final status = tableData['status']?.toLowerCase() ?? 'available';
+        if (status == 'reserve') {
+          AreaMovementNotifier.showPopup(
+            context: context,
+            fromArea: tableData['areaName'] ?? '',
+            toArea: '',
+            tableName: tableData['tableName'] ?? '',
+            customMessage: 'You cannot merge a reserved table',
+          );
+          return;
+        }
         _showTableActionPopup(context, actualIndex, tableData);
       },
     );

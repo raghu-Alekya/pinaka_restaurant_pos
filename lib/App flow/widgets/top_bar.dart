@@ -438,7 +438,7 @@ class _TopBarState extends State<TopBar> {
 
   Widget _buildProfileSection() {
     return Container(
-      width: 140,
+      width: 170,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.white,
