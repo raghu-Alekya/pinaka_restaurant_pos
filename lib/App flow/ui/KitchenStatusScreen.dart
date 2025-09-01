@@ -799,7 +799,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
             child:
             hasTable
                 ? SizedBox(
-              height: 345,
+              height: 357,
               child: SingleChildScrollView(
                 child: Column(
                   children:

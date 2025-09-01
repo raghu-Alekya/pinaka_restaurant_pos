@@ -6,6 +6,9 @@ import '../../repositories/ReservationRepository.dart';
 import '../../repositories/table_repository.dart';
 import '../../repositories/zone_repository.dart';
 import '../../utils/SessionManager.dart';
+import '../widgets/ReservationMergePopup.dart';
+import '../widgets/ReservationUnmergePopup.dart';
+import '../widgets/area_movement_notifier.dart';
 import '../widgets/top_bar.dart';
 import 'package:flutter/services.dart';
 
@@ -104,7 +107,9 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
     });
 
     _loadZones();
-    _fetchSlotsAndMeals();
+    _fetchSlotsAndMeals().then((_) {
+      _fetchTables();
+    });
   }
 
   Future<void> _loadPermissions() async {
@@ -159,9 +164,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
         selectedMeal = selectedMealTemp;
         selectedSlot = selectedSlotTemp;
       });
-      if (selectedMealTemp.isNotEmpty && selectedDate != null) {
-        await _fetchTables();
-      }
     } catch (e) {
       debugPrint("Error fetching slots: $e");
       setState(() => _isLoadingSlots = false);
@@ -745,7 +747,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                     });
 
                     await _fetchSlotsAndMeals();
-                    await _fetchTables();
                   }
                 } else {
                   _showError("Failed to load reservation date range.");
@@ -992,15 +993,21 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                         widget.isEditMode &&
                             time == _originalSelectedSlot;
                     return GestureDetector(
-                      onTap:
-                      isActive
-                          ? () {
+                      onTap: isActive
+                          ? () async {
                         setState(() {
-                          selectedSlot =
-                          (selectedSlot == time)
-                              ? ''
-                              : time;
+                          selectedSlot = (selectedSlot == time) ? '' : time;
+                          _isLoadingTables = true;
+                          selectedTables.clear();
                         });
+
+                        if (selectedSlot.isNotEmpty) {
+                          await _fetchTables();
+                        } else {
+                          setState(() {
+                            _isLoadingTables = false;
+                          });
+                        }
                       }
                           : null,
                       child: Stack(
@@ -1147,10 +1154,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                   final shape = table['shape']?.toLowerCase() ?? '';
                   final status = (table['status'] ?? '').toLowerCase();
                   final isSelected = selectedTables.contains(tableName);
-                  final tableSlotType =
-                  (table['slot_type'] ?? '').toString().toLowerCase();
-                  final isTableInSelectedSlot =
-                      tableSlotType == selectedMeal.toLowerCase();
 
                   // Shape image path
                   String shapeAsset;
@@ -1205,6 +1208,13 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                           selectedTables.add(tableName);
                         }
                       });
+                    },
+                    onLongPress: () {
+                      final enrichedTable = {
+                        ...table,
+                        'areaName': selectedArea,
+                      };
+                      _showTableActionPopup(context, index, enrichedTable);
                     },
                     child: Stack(
                       children: [
@@ -1324,6 +1334,217 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
     );
   }
 
+  Future<void> _showTableActionPopup(
+      BuildContext context,
+      int index,
+      Map<String, dynamic> tableData,
+      ) async {
+    final bool isMerged = tableData['isMerged'] ?? false;
+    final String status = (tableData['status'] ?? '').toLowerCase();
+
+    if (status == "reserve") {
+      AreaMovementNotifier.showPopup(
+        context: context,
+        fromArea: tableData['areaName'] ?? '',
+        toArea: '',
+        tableName: tableData['table_name'] ?? '',
+        customMessage: 'You cannot merge a reserved table',
+      );
+      return;
+    }
+
+    await showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          backgroundColor: const Color(0xFFF9F6F6),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          contentPadding: const EdgeInsets.all(25),
+          content: IntrinsicHeight(
+            child: SizedBox(
+              width: 450,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const SizedBox(width: 28),
+                      const Expanded(
+                        child: Text(
+                          "Merge/Modify Tables",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.of(ctx).pop(),
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFFF5A5A),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.close,
+                            size: 18,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        const TextSpan(
+                          text: "Select the tables you want to merge in this ",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.black54,
+                          ),
+                        ),
+                        TextSpan(
+                          text: "${tableData['areaName'] ?? ''}",
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const TextSpan(
+                          text:
+                          " area. Merging will combine them into a single reservation under the same guest.",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.black54,
+                          ),
+                        ),
+                      ],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 28),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 170,
+                        height: 150,
+                        child: TextButton(
+                          style: TextButton.styleFrom(
+                            backgroundColor:
+                            isMerged ? const Color(0xFFFFE6E6) : Colors.black12,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: isMerged
+                              ? () {
+                            Navigator.of(ctx).pop();
+                            showDialog(
+                              context: context,
+                              barrierDismissible: true,
+                              builder: (_) => ReservationUnmergePopup(
+                                index: index,
+                                tableData: tableData,
+                                onUnmerge: (i, updatedTable) {
+                                  setState(() {
+                                    _filteredTablesByArea[i]['isMerged'] = false;
+                                  });
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Table ${updatedTable['table_name']} unmerged',
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            );
+                          }
+                              : null,
+                          child: Text(
+                            "Unmerge Table",
+                            style: TextStyle(
+                              color: isMerged ? Colors.red : Colors.black26,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 30),
+                      SizedBox(
+                        width: 170,
+                        height: 150,
+                        child: TextButton(
+                          style: TextButton.styleFrom(
+                            backgroundColor: const Color(0xFFFF5A5A),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () {
+                            Navigator.of(ctx).pop();
+                            showDialog(
+                              context: context,
+                              barrierDismissible: true,
+                              builder: (_) => ReservationMergePopup(
+                                index: index,
+                                tableData: tableData,
+                                onMergeEdit: (i, updatedTable) {
+                                  setState(() {
+                                    _filteredTablesByArea[i]['isMerged'] = true;
+                                  });
+                                  print("Merged Table Data: ${_filteredTablesByArea[i]}");
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Table ${updatedTable['table_name']} merged',
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            );
+                          },
+                          child: const Text(
+                            "Merge/Edit\nTable",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildActionButtons() {
     return Padding(
       padding: const EdgeInsets.only(top: 16),
@@ -1400,15 +1621,13 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
             ),
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
-              onTap: () async {
+              onTap: () {
                 setState(() {
                   selectedMeal = meal;
                   selectedSlot = '';
-                  _isLoadingTables = true;
+                  _isLoadingTables = false;
                   selectedTables.clear();
                 });
-
-                await _fetchTables();
               },
               child: Padding(
                 padding: const EdgeInsets.symmetric(
