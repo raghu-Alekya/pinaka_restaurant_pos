@@ -1,4 +1,4 @@
-import 'order_model.dart';
+import 'order_items.dart';
 
 class KotModel {
   final String kotId;

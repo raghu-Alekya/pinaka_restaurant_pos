@@ -1,20 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../blocs/Bloc Logic/order_bloc.dart';
+import '../../blocs/Bloc Event/order_event.dart';
 import '../../models/order/guest_details.dart';
-// import '../../screens/dashboard screen.dart';
+import '../../models/order/order_model.dart';
+import '../../repositories/order_repository.dart';
 import 'dashboard screen.dart';
 
 class GuestDetailsPopup extends StatefulWidget {
   final int index;
   final Map<String, dynamic> tableData;
   final List<Map<String, dynamic>> placedTables;
-  // final Function(int) onGuestSaved;
   final void Function(Guestcount) onGuestSaved;
+  final String token;
+  final String restaurantId;
+
   const GuestDetailsPopup({
     Key? key,
     required this.index,
     required this.tableData,
     required this.placedTables,
-    required this.onGuestSaved
+    required this.onGuestSaved,
+    required this.token,
+    required this.restaurantId,
   }) : super(key: key);
 
   @override
@@ -26,6 +34,28 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
 
   @override
   Widget build(BuildContext context) {
+    final tableCapacity = widget.tableData['capacity'] ?? 6;
+
+    final int tableId =
+        widget.tableData['table_id'] ??
+            widget.tableData['id'] ??
+            0;
+
+    final int zoneId =
+        widget.tableData['zone_id'] ??
+            widget.tableData['zoneId'] ??
+            0;
+
+    final String tableName =
+        widget.tableData['table_name'] ??
+            widget.tableData['name'] ??
+            'Unknown Table';
+
+    final String zoneName =
+        widget.tableData['zone_name'] ??
+            widget.tableData['zoneName'] ??
+            widget.tableData['areaName'] ??
+            'Unknown Zone';
     return Material(
       type: MaterialType.transparency,
       child: Center(
@@ -36,10 +66,7 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
             ),
-            constraints: const BoxConstraints(
-              maxWidth: 600,
-              minWidth: 300,
-            ),
+            constraints: const BoxConstraints(maxWidth: 600, minWidth: 300),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
@@ -49,10 +76,12 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                 ),
                 const SizedBox(height: 12),
+
+                /// Guest selection buttons
                 Wrap(
                   spacing: 16,
                   runSpacing: 16,
-                  children: List.generate(widget.tableData['capacity'], (index) {
+                  children: List.generate(tableCapacity, (index) {
                     int guest = index + 1;
                     bool isSelected = selectedGuests.contains(guest);
                     return GestureDetector(
@@ -86,73 +115,112 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                   }),
                 ),
                 const SizedBox(height: 30),
+
+                /// Action button
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey.shade200,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 10,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      child: const Text(
-                        "Back",
-                        style: TextStyle(
-                          color: Color(0xFF4C5F7D),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    ElevatedButton(
-                      onPressed: () {
-                        if (selectedGuests.isNotEmpty) {
-                          final guestDetails = Guestcount(
+                      onPressed: () async {
+                        if (selectedGuests.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content:
+                              Text('Please select number of guests'),
+                            ),
+                          );
+                          return;
+                        }
+
+                        final guestDetails =
+                        Guestcount(guestCount: selectedGuests.length);
+
+                        if (tableId == 0 || zoneId == 0) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                  'Cannot create order: Table/Zone ID missing'),
+                            ),
+                          );
+                          return;
+                        }
+                        context.read<OrderBloc>().add(
+                          SelectTable(
+                            tableId: tableId,
+                            zoneId: zoneId,
+                            tableName: tableName,
+                            zoneName: zoneName,
+                          ),
+                        );
+
+                        final orderRepository = OrderRepository(
+                          baseUrl:
+                          'https://merchantrestaurant.alektasolutions.com',
+                        );
+
+                        try {
+                          final OrderModel orderData =
+                          await orderRepository.createOrder(
+                            tableId: tableId,
+                            zoneId: zoneId,
+                            tableName: tableName,
+                            zoneName: zoneName,
+                            restaurantId: widget.restaurantId,
+                            restaurantName: 'My Restaurant',
+                            guests: [guestDetails],
+                            token: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvbWVyY2hhbnRyZXN0YXVyYW50LmFsZWt0YXNvbHV0aW9ucy5jb20iLCJpYXQiOjE3NTU0OTgxNzQsIm5iZiI6MTc1NTQ5ODE3NCwiZXhwIjoxNzU4MDkwMTc0LCJkYXRhIjp7InVzZXIiOnsiaWQiOjUsImRldmljZSI6IiIsInBhc3MiOiIyYjhlMjJlOTM2ZTY0N2JhNDRmOWJhMmY3Y2Q1ZmFjNiJ9fX0.mWJtMMcaI7zY3ORBTpbQtQeQk53-3sX9GCX1F_dNw3Y",
                             guestCount: selectedGuests.length,
                           );
 
+                          // Dispatch CreateOrder event to Bloc
+                          context.read<OrderBloc>().add(
+                            CreateOrder(
+                              orderId: orderData.orderId,
+                              tableId: tableId,
+                              zoneId: zoneId,
+                              tableName: tableName,
+                              zoneName: zoneName,
+                              restaurantId: widget.restaurantId,
+                              guests: [guestDetails],
+                            ),
+                          );
+
+
+                          // Navigate to DashboardScreen
                           Navigator.pushReplacement(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => DashboardScreen(
-                                // guestDetails: guestDetails,
-                                guestDetails: Guestcount(guestCount: selectedGuests.length), token: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvbWVyY2hhbnRyZXN0YXVyYW50LmFsZWt0YXNvbHV0aW9ucy5jb20iLCJpYXQiOjE3NTQ5Nzk4NTAsIm5iZiI6MTc1NDk3OTg1MCwiZXhwIjoxNzU3NTcxODUwLCJkYXRhIjp7InVzZXIiOnsiaWQiOjUsImRldmljZSI6IiIsInBhc3MiOiIyYjhlMjJlOTM2ZTY0N2JhNDRmOWJhMmY3Y2Q1ZmFjNiJ9fX0.l7uGF5K_SOChmA50VcKbQ21VBJp9dRM-uZUBEwNvWh8", restaurantId: '1',
+                              builder: (_) => DashboardScreen(
+                                guestDetails: guestDetails,
+                                token: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvbWVyY2hhbnRyZXN0YXVyYW50LmFsZWt0YXNvbHV0aW9ucy5jb20iLCJpYXQiOjE3NTU0OTgxNzQsIm5iZiI6MTc1NTQ5ODE3NCwiZXhwIjoxNzU4MDkwMTc0LCJkYXRhIjp7InVzZXIiOnsiaWQiOjUsImRldmljZSI6IiIsInBhc3MiOiIyYjhlMjJlOTM2ZTY0N2JhNDRmOWJhMmY3Y2Q1ZmFjNiJ9fX0.mWJtMMcaI7zY3ORBTpbQtQeQk53-3sX9GCX1F_dNw3Y",
+                                restaurantId: widget.restaurantId,
+                                orderId: orderData.orderId,
+                                tableId: tableId,
+                                tableName: tableName,
+                                zoneId: zoneId,
+                                zoneName: zoneName,
                               ),
                             ),
                           );
-                        } else {
+                        } catch (e) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Please select number of guests'),
-                            ),
+                            SnackBar(
+                                content: Text('Failed to create order: $e')),
                           );
                         }
                       },
-
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFFF4D20),
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 26,
-                          vertical: 10,
-                        ),
+                            horizontal: 26, vertical: 10),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                            borderRadius: BorderRadius.circular(10)),
                       ),
                       child: const Text(
                         "SELECT AND CONTINUE",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                        ),
+                        style: TextStyle(color: Colors.white, fontSize: 12),
                       ),
-                    ),
+                    )
                   ],
                 ),
               ],

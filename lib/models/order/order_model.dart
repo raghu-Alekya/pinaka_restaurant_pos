@@ -1,54 +1,39 @@
-import '../sidebar/category_model_.dart';
+class OrderModel {
+  final int orderId;
+  final int tableId; // int instead of String
+  final String tableName;
+  final int zone_Id;  // int instead of String
+  final String zoneName;
+  final String status;
 
-class OrderItems {
-  final String name;
-  final double price;
-  final Category section;
-  int quantity;
-  List<String> modifiers;
-
-  OrderItems({
-    required this.name,
-    required this.quantity,
-    required this.price,
-    this.modifiers = const [],
-    required this.section, String? image,
+  OrderModel({
+    required this.orderId,
+    required this.tableId,
+    required this.tableName,
+    required this.zone_Id,
+    required this.zoneName,
+    required this.status,
   });
 
-  factory OrderItems.fromJson(Map<String, dynamic> json) {
-    return OrderItems(
-      name: json['name'],
-      quantity: json['quantity'],
-      price: (json['price'] as num).toDouble(),
-      modifiers: List<String>.from(json['modifiers'] ?? []),
-      section: Category.fromJson(json['section']),
+  factory OrderModel.fromJson(Map<String, dynamic> json) {
+    return OrderModel(
+      orderId: json['order_id'] ?? 0,
+      tableId: json['table_id'] ?? 0,
+      tableName: json['table_name'] ?? '',
+      zone_Id: json['zone_id'] ?? 0,
+      zoneName: json['zone_name'] ?? '',
+      status: json['status'] ?? '',
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'name': name,
-      'quantity': quantity,
-      'price': price,
-      'modifiers': modifiers,
-      'section': section.toJson(),
+      "order_id": orderId,
+      "table_id": tableId,
+      "table_name": tableName,
+      "zone_id": zone_Id,
+      "zone_name": zoneName,
+      "status": status,
     };
-  }
-
-  /// ✅ Add this copyWith method:
-  OrderItems copyWith({
-    String? name,
-    int? quantity,
-    double? price,
-    List<String>? modifiers,
-    Category? section,
-  }) {
-    return OrderItems(
-      name: name ?? this.name,
-      quantity: quantity ?? this.quantity,
-      price: price ?? this.price,
-      modifiers: modifiers ?? this.modifiers,
-      section: section ?? this.section,
-    );
   }
 }

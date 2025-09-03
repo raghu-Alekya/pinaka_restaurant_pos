@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:pinaka_restaurant_pos/models/order/order_items.dart';
 
 class ModifierAddOnPopup extends StatefulWidget {
-  const ModifierAddOnPopup({super.key});
+  const ModifierAddOnPopup({super.key, required OrderItems item});
 
   @override
   State<ModifierAddOnPopup> createState() => _ModifierAddOnPopupState();
@@ -21,10 +22,8 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
     'Paneer': 12.0,
     'Papad': 10.0,
     'Chilli Flakes': 6.0,
-
   };
   final Map<String, int> selectedAddOns = {};
-  final Map<String, double> selectedAddOnPrices = {};
 
   final TextEditingController noteController = TextEditingController();
 
@@ -78,45 +77,36 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              /// Close icon
-              Stack(
+              /// Close button
+              Align(
                 alignment: Alignment.topRight,
-                children: [
-                  // Your main content below...
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6, right: 2),
-                    child: Container(
-                      width: 34,
-                      height: 34,
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: IconButton(
-                          icon: const Icon(Icons.close, size: 18, color: Colors.white),
-                          padding: EdgeInsets.zero,
-                          onPressed: () => Navigator.of(context).pop(),
-                        ),
-                      ),
-                    ),
+                child: Container(
+                  width: 34,
+                  height: 34,
+                  margin: const EdgeInsets.only(top: 6, right: 2),
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
                   ),
-                ],
+                  child: IconButton(
+                    icon: const Icon(Icons.close, size: 18, color: Colors.white),
+                    padding: EdgeInsets.zero,
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ),
               ),
 
-
+              const SizedBox(height: 6),
               const Text(
                 'Select Modifiers',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
               ),
               const SizedBox(height: 8),
 
-              /// Modifier Section with red border and background
-              /// Modifier Section with red border and background
-              // Scrollable Modifiers Section
+              /// Modifiers Section
               Container(
                 height: 100,
-                width:800,// set scrollable height
+                width: 800,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFFFFF),
@@ -138,7 +128,7 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFFF8F8),
+                              color: selected ? const Color(0xFFFFE0E0) : const Color(0xFFFFF8F8),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Row(
@@ -167,7 +157,6 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
                 ),
               ),
 
-
               const SizedBox(height: 24),
               const Text(
                 'Add Ons',
@@ -175,9 +164,9 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
               ),
               const SizedBox(height: 10),
 
-              /// Addons Section with blue border and background
+              /// Add-ons Section
               Container(
-                height: 130, // set scrollable height
+                height: 130,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFFFFF),
@@ -192,7 +181,7 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
                     child: GridView.count(
                       crossAxisCount: 4,
                       shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(), // Disable GridView's own scrolling
+                      physics: const NeverScrollableScrollPhysics(),
                       crossAxisSpacing: 4,
                       mainAxisSpacing: 4,
                       childAspectRatio: 2.0,
@@ -200,7 +189,7 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
                         final selected = selectedAddOns.containsKey(entry.key);
                         return Container(
                           decoration: BoxDecoration(
-                            color: selected ? const Color(0xFFF2F6FF) : const Color(0xFFF2F6FF),
+                            color: selected ? const Color(0xFFDCE9FF) : const Color(0xFFF2F6FF),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -285,25 +274,24 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
                 children: [
                   Text(
                     'Total : ₹${total.toStringAsFixed(2)}',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, decoration: TextDecoration.none,),
-
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      decoration: TextDecoration.none,
+                    ),
                   ),
                   const Spacer(),
                   ElevatedButton(
                     onPressed: () {
-                      Future.delayed(Duration.zero, () {
-                        Navigator.pop(context, {
-                          'modifiers': selectedModifiers.toList(),
-                          'addons': selectedAddOns,
-                          'addonPrices': Map.fromEntries(
-                            selectedAddOns.keys.map((key) => MapEntry(key, addOns[key]!)),
-                          ),
-                          'note': noteController.text,
-                        });
+                      Navigator.pop(context, {
+                        'modifiers': selectedModifiers.toList(),
+                        'addons': selectedAddOns,
+                        'addonPrices': Map.fromEntries(
+                          selectedAddOns.keys.map((key) => MapEntry(key, addOns[key]!)),
+                        ),
+                        'note': noteController.text,
                       });
                     },
-
-
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.orange,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),

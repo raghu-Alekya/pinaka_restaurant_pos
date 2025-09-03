@@ -1,45 +1,44 @@
 import 'package:flutter/material.dart';
-import '../../models/category/items_model.dart'; // Your Product & Variant models
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../models/category/items_model.dart';
+import '../../blocs/Bloc Logic/order_bloc.dart';
+import '../../blocs/Bloc Event/order_event.dart';
+import '../../models/sidebar/category_model_.dart';
+import '../../models/order/order_items.dart';
 
-void showVariantPopup(
+/// Function to show the variant popup
+void _showVariantPopup(
     BuildContext context,
-    Product product, {
-      required void Function(Variant variant) onSelected,
-    }) {
+    Product product,
+    OrderBloc orderBloc,
+    Category section,
+    ) {
   showDialog(
     context: context,
-    builder: (context) => Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: VariantPopupContent(
-        product: product,
-        itemName: product.name,
-        variants: product.variants,
-        onSelected: onSelected,
-      ),
+    builder: (context) => VariantPopupContent(
+      product: product,
+      section: section,
+      orderBloc: orderBloc, itemName: '', variants: [], onVariantSelected: (variant) {  }, onSelected: (variant) {  },
     ),
   );
 }
 
+/// The popup widget itself
 class VariantPopupContent extends StatefulWidget {
-  final Product product; // ✅ add this
-  final String itemName;
-  final List<Variant> variants;
-  final void Function(Variant variant) onSelected;
-  final void Function(Variant variant)? onVariantSelected;
+  final Product product;
+  final Category section;
+  final OrderBloc orderBloc;
 
   const VariantPopupContent({
     super.key,
-    required this.product,  // ✅ now required
-    required this.itemName,
-    required this.variants,
-    required this.onSelected,
-    this.onVariantSelected,
+    required this.product,
+    required this.section,
+    required this.orderBloc, required String itemName, required List<Variant> variants, required Null Function(dynamic variant) onVariantSelected, required Null Function(dynamic variant) onSelected,
   });
 
   @override
   State<VariantPopupContent> createState() => _VariantPopupContentState();
 }
-
 
 class _VariantPopupContentState extends State<VariantPopupContent> {
   final Map<int, int> _quantityMap = {};
@@ -56,6 +55,24 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
         _quantityMap[index] = _quantityMap[index]! - 1;
       }
     });
+  }
+
+  void _addVariantsToOrder() {
+    for (var entry in _quantityMap.entries) {
+      if (entry.value > 0) {
+        final variant = widget.product.variants[entry.key];
+        final orderItem = OrderItems(
+          name: '${widget.product.name} - ${variant.name}',
+          price: variant.price,
+          quantity: entry.value,
+          modifiers: [],
+          section: widget.section,
+        );
+        widget.orderBloc.add(AddOrderItem(orderItem));
+        print("[VariantPopup] Added: ${orderItem.name} x${orderItem.quantity}");
+      }
+    }
+    Navigator.pop(context);
   }
 
   @override
@@ -76,163 +93,79 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
                   'Choose Variants',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                // Header Close Button
                 IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white),
-                  onPressed: () => Navigator.of(context).pop(),
-                  splashRadius: 20,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  color: Colors.white,
-                  // Wrap with Container for red background
-                  style: ButtonStyle(
-                    backgroundColor: MaterialStateProperty.all(Color(0XFFFE6464)),
-                    shape: MaterialStateProperty.all(
-                      RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                  ),
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
                 ),
-
               ],
             ),
             const SizedBox(height: 18),
 
-            // Horizontal Scrollable Cards
-            // Horizontal Scrollable Cards
-            // Outer container wrapping all cards
+            // Horizontal scrollable variants
             Container(
-              width: 780,  // <-- increase outer container width
-              height: 280, // <-- increase outer container height
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: const [
-                  BoxShadow(color: Colors.black12, blurRadius: 4)
-                ],
-              ),
-              child: Scrollbar(
-                thumbVisibility: true,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: widget.variants.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 12),
-                  itemBuilder: (context, index) {
-                    final variant = widget.variants[index];
-                    final quantity = _quantityMap[index] ?? 0;
+              height: 280,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: widget.product.variants.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (context, index) {
+                  final variant = widget.product.variants[index];
+                  final quantity = _quantityMap[index] ?? 0;
 
-                    // Individual card with fixed size
-                    return Container(
-                      width: 180, // <-- fixed width
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade300),
-                        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              variant.image.isNotEmpty
-                                  ? variant.image
-                                  : 'https://via.placeholder.com/100',
-                              width: 140,
-                              height: 90, // <-- fixed height
-                              fit: BoxFit.cover,
-                            ),
+                  return Container(
+                    width: 180,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            variant.image.isNotEmpty
+                                ? variant.image
+                                : 'https://via.placeholder.com/100',
+                            width: 140,
+                            height: 90,
+                            fit: BoxFit.cover,
                           ),
-                          const SizedBox(height: 8),
-                          Text(widget.product.name,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w500, fontSize: 14),
-                              textAlign: TextAlign.center),
-                          const SizedBox(height: 4),
-                          Text(variant.name,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 14)),
-                          const SizedBox(height: 4),
-                          Text("Rs.${variant.price.toStringAsFixed(0)}/-",
-                              style: const TextStyle(fontSize: 14, color: Colors.grey)),
-                          const SizedBox(height: 8),
-                          quantity == 0
-                              ? ElevatedButton(
-                            onPressed: () => _increment(index),
-                            style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0XFFFE6464),
-                                foregroundColor: Colors.white,
-                                minimumSize: const Size(140, 36),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8))),
-                            child: const Text("+ ADD"),
-                          )
-                              : Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: const Color(0XFFFE6464),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: IconButton(
-                                  icon: const Icon(Icons.remove, color: Colors.white),
-                                  onPressed: () => _decrement(index),
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                ),
-                              ),
-                              Text('$quantity',
-                                  style: const TextStyle(fontWeight: FontWeight.bold)),
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: const Color(0XFFFE6464),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: IconButton(
-                                  icon: const Icon(Icons.add, color: Colors.white),
-                                  onPressed: () => _increment(index),
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(widget.product.name, textAlign: TextAlign.center),
+                        Text(variant.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        Text("Rs.${variant.price.toStringAsFixed(0)}/-", style: const TextStyle(color: Colors.grey)),
+                        const SizedBox(height: 8),
+                        quantity == 0
+                            ? ElevatedButton(
+                          onPressed: () => _increment(index),
+                          child: const Text("+ ADD"),
+                        )
+                            : Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            IconButton(icon: const Icon(Icons.remove), onPressed: () => _decrement(index)),
+                            Text('$quantity'),
+                            IconButton(icon: const Icon(Icons.add), onPressed: () => _increment(index)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
             ),
-
             const SizedBox(height: 25),
 
-            // Done Button
+            // Done button
             SizedBox(
               width: double.infinity,
               height: 45,
               child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Color(0XFF4C81F1)),
-                onPressed: () {
-                  for (var entry in _quantityMap.entries) {
-                    if (entry.value > 0) {
-                      final variant = widget.variants[entry.key];
-                      final selectedVariant = Variant(
-                        productId: variant.productId,
-                        variationId: variant.variationId,
-                        name: variant.name,
-                        image: variant.image,
-                        quantity: entry.value,
-                        price: variant.price,
-                      );
-                      widget.onSelected(selectedVariant);
-                    }
-                  }
-                  Navigator.pop(context);
-                },
+                onPressed: _addVariantsToOrder,
                 child: const Text('Done'),
               ),
             ),

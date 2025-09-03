@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../blocs/Bloc Event/order_event.dart';
 import '../../blocs/Bloc Logic/order_bloc.dart';
 import '../../models/category/items_model.dart';
 import '../../models/category/minisubcategory_model.dart';
-import '../../models/order/order_model.dart';
+import '../../models/order/order_items.dart';
 import '../../models/sidebar/category_model_.dart';
 import '../../repositories/minisubcategory_repository.dart';
 import '../../repositories/variant_repository.dart';
@@ -101,76 +102,48 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
   Future<void> _onItemTap(BuildContext context, Product item) async {
     final orderBloc = context.read<OrderBloc>();
 
-    try {
-      if (item.variants.isNotEmpty) {
-        // ✅ Variants already exist → show popup
-        _showVariantPopup(context, item, orderBloc, widget.section);
-      } else {
-        // ✅ Fetch variants dynamically
-        final variants = await widget.variantRepository.fetchVariantsByProduct(item.id);
-
-        if (variants.isNotEmpty) {
-          // ✅ Variants found → update product and show popup
-          final updatedProduct = item.copyWith(variants: variants);
-          _showVariantPopup(context, updatedProduct, orderBloc, widget.section);
-        } else {
-          // ❌ No variants → add directly
-          final orderItem = OrderItems(
-            name: item.name,
-            price: item.price,
-            quantity: 1,
-            modifiers: [],
-            section: widget.section,
-            image: item.image,
-          );
-          orderBloc.add(AddOrderItem(orderItem));
-          print("[Dashboard] Added directly (no variants): ${orderItem.name}");
-        }
-      }
-    } catch (e) {
-      print("[Dashboard] Error fetching variants: $e");
-      // ⚠️ Fallback → add directly
+    void addDirectly(Product product) {
       final orderItem = OrderItems(
-        name: item.name,
-        price: item.price,
+        name: product.name,
+        price: product.price,
         quantity: 1,
         modifiers: [],
         section: widget.section,
-        image: item.image,
+        // image: product.image,
       );
       orderBloc.add(AddOrderItem(orderItem));
+      print("[Dashboard] ✅ Added directly (no variants): ${orderItem.name}");
     }
 
-    // ✅ Always trigger callback
+    try {
+      if (item.variants.isNotEmpty) {
+        // ✅ Variants already present → ONLY open popup, don’t add to cart yet
+        _showVariantPopup(context, item, orderBloc, widget.section);
+        return;
+      }
+
+      // 🔄 Try fetching variants dynamically
+      final variants =
+      await widget.variantRepository.fetchVariantsByProduct(item.id);
+
+      if (variants.isNotEmpty) {
+        // ✅ Variants found → ONLY open popup
+        final updatedProduct = item.copyWith(variants: variants);
+        _showVariantPopup(context, updatedProduct, orderBloc, widget.section);
+      } else {
+        // ❌ No variants → add directly
+        addDirectly(item);
+      }
+    } catch (e) {
+      print("[Dashboard] ⚠️ Error fetching variants: $e");
+      // Fallback → add directly
+      addDirectly(item);
+    }
+
+    // 🔔 Always trigger callback
     widget.onItemSelected?.call(item);
   }
 
-
-
-  // void _onProductSelected(
-  //     BuildContext context,
-  //     Product product,
-  //     OrderBloc orderBloc,
-  //     Category section,
-  //     ) {
-  //   if (product.variants.isNotEmpty) {
-  //     // ✅ Product has variants → Show popup
-  //     _showVariantPopup(context, product, orderBloc, section);
-  //   } else {
-  //     // ✅ Product has NO variants → Add directly to order
-  //     final orderItem = OrderItems(
-  //       name: product.name,
-  //       price: product.price,
-  //       quantity: 1, // default quantity
-  //       modifiers: [],
-  //       section: section,
-  //       image: product.image,
-  //     );
-  //
-  //     orderBloc.add(AddOrderItem(orderItem));
-  //     print("[Dashboard] Added to order directly: ${orderItem.name} x${orderItem.quantity}");
-  //   }
-  // }
 
   void _showVariantPopup(
       BuildContext context,
@@ -184,25 +157,27 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
         product: product,
         itemName: product.name,
         variants: product.variants,
+        onVariantSelected: (variant) {
+          // Optional: just highlight variant when tapped
+          print("[VariantPopup] Variant selected: ${variant.name}");
+        },
         onSelected: (variant) {
+          // Add variant to order when user clicks "Done" in popup
           final orderItem = OrderItems(
             name: '${product.name} - ${variant.name}',
             price: variant.price,
-            quantity: variant.quantity, // ✅ use variant quantity
-            modifiers: [],
+            quantity: variant.quantity, // picked quantity
+            modifiers: [],              // empty initially
             section: section,
-            image: variant.image.isNotEmpty ? variant.image : product.image,
           );
 
           orderBloc.add(AddOrderItem(orderItem));
-          print("[Dashboard] Added to order: ${orderItem.name} x${orderItem.quantity}");
-        },
-        onVariantSelected: (variant) {
-          print("[Dashboard] Variant selected: ${variant.name} for ${product.name}");
-        },
+          print("[VariantPopup] Added to order: ${orderItem.name} x${orderItem.quantity}");
+        }, section: section, orderBloc: orderBloc,
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
