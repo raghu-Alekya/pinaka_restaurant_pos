@@ -16,8 +16,8 @@ class TableDao {
 
     final updateData = {
       ...table,
-      'zone_id': table['zone_id'],           // ✅ important
-      'restaurant_id': table['restaurant_id'] // ✅ important
+      'zone_id': table['zone_id'],
+      'restaurant_id': table['restaurant_id']
     };
 
     await db.update(
