@@ -58,12 +58,14 @@ class TableRepository {
       throw Exception("Failed to fetch tables: ${response.body}");
     }
   }
-  Future<List<Map<String, dynamic>>> getTablesBySlot({
+  Future<List<Map<String, dynamic>>> getTablesByTime({
     required String token,
-    required String meal,
-    required String date,
+    required String reservationTime,
+    required String reservationDate,
   }) async {
-    final uri = Uri.parse(AppConstants.getAllTablesBySlot(meal, date));
+    final uri = Uri.parse(
+      AppConstants.getAllTablesByTime(reservationTime, reservationDate),
+    );
 
     final response = await http.get(
       uri,

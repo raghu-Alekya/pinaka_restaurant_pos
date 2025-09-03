@@ -18,8 +18,8 @@ class AppConstants {
   static const String getAllTablesEndpoint = '$baseApiPath/tables/get-all-tables';
   static const String updateTableEndpoint = '$baseApiPath/tables/update-table';
   static const String deleteTableEndpoint = '$baseApiPath/tables/delete-table';
-  static String getAllTablesBySlot(String meal, String date) =>
-      '$baseApiPath/tables/get-all-tables-by-slot?slot_type=$meal&reservation_date=$date';
+  static String getAllTablesByTime(String reservationTime, String reservationDate) =>
+      '$baseApiPath/tables/get-all-tables-by-time?reservation_time=${Uri.encodeComponent(reservationTime)}&reservation_date=${Uri.encodeComponent(reservationDate)}';
 
   // Employee Management
   static const String getAllEmployeesEndpoint = '$baseApiPath/users/get-all-employees';

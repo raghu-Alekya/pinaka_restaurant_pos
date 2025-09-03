@@ -655,6 +655,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     );
   }
 
+
   Widget _buildOrderDetails() {
     final bool hasTable = _selectedTable != null;
 
@@ -691,8 +692,6 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 const Spacer(),
-
-                // Void Items
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     elevation: 0,
@@ -721,9 +720,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                   label: const Text('Print KOT', style: TextStyle(fontSize: 12)),
                   onPressed: _selectedKot != null ? () {} : null,
                 ),
-
                 const SizedBox(width: 8),
-
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     elevation: 0,
@@ -752,9 +749,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                   label: const Text('Void Items', style: TextStyle(fontSize: 12)),
                   onPressed: _selectedKot != null ? () {} : null,
                 ),
-
                 const SizedBox(width: 8),
-
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     elevation: 0,
@@ -788,149 +783,89 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
           ),
 
           const SizedBox(height: 10),
-
-          // KOT List Container
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFD8E4FF),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child:
-            hasTable
-                ? SizedBox(
-              height: 357,
-              child: SingleChildScrollView(
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFD8E4FF),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: hasTable && (_selectedTable!['kots'] as List).isNotEmpty
+                  ? SingleChildScrollView(
                 child: Column(
-                  children:
-                  (_selectedTable!['kots'] as List<String>)
+                  children: (_selectedTable!['kots'] as List<String>)
                       .asMap()
                       .entries
                       .map((entry) {
                     final index = entry.key;
                     final kot = entry.value;
-                    final bool isSelectedKot =
-                        kot == _selectedKot;
+                    final bool isSelectedKot = kot == _selectedKot;
 
                     return Column(
                       children: [
                         GestureDetector(
-                          onTap:
-                              () => _onKotSelected(kot, index),
+                          onTap: () => _onKotSelected(kot, index),
                           child: Container(
-                            margin: const EdgeInsets.only(
-                              bottom: 4,
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 10,
-                            ),
+                            margin: const EdgeInsets.only(bottom: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                             decoration: BoxDecoration(
-                              color:
-                              isSelectedKot
-                                  ? const Color(0xFFEAF1FF)
-                                  : const Color(0xFFF5F6FA),
-                              borderRadius:
-                              BorderRadius.circular(8),
+                              color: isSelectedKot ? const Color(0xFFEAF1FF) : const Color(0xFFF5F6FA),
+                              borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color:
-                                isSelectedKot
-                                    ? const Color(
-                                  0xFF0C6FDB,
-                                )
-                                    : Colors.transparent,
+                                color: isSelectedKot ? const Color(0xFF0C6FDB) : Colors.transparent,
                                 width: 1.5,
                               ),
                             ),
                             child: Row(
                               children: [
                                 Container(
-                                  padding:
-                                  const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
-                                    borderRadius:
-                                    BorderRadius.circular(
-                                      4,
-                                    ),
+                                    borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
                                     kot,
-                                    style: const TextStyle(
-                                      fontWeight:
-                                      FontWeight.bold,
-                                    ),
+                                    style: const TextStyle(fontWeight: FontWeight.bold),
                                   ),
                                 ),
                                 const SizedBox(width: 10),
                                 Container(
-                                  padding:
-                                  const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
-                                    borderRadius:
-                                    BorderRadius.circular(
-                                      4,
-                                    ),
+                                    borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: const Text("12:30 PM"),
                                 ),
                                 const SizedBox(width: 10),
                                 Container(
-                                  padding:
-                                  const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: const Color(
-                                      0xFFFFF3CD,
-                                    ),
-                                    borderRadius:
-                                    BorderRadius.circular(
-                                      4,
-                                    ),
+                                    color: const Color(0xFFFFF3CD),
+                                    borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: const Text(
                                     "Anil Kumar",
-                                    style: TextStyle(
-                                      fontWeight:
-                                      FontWeight.w500,
-                                    ),
+                                    style: TextStyle(fontWeight: FontWeight.w500),
                                   ),
                                 ),
                                 const Spacer(),
-                                Icon(
-                                  isSelectedKot
-                                      ? Icons.keyboard_arrow_up
-                                      : Icons
-                                      .keyboard_arrow_down,
-                                ),
+                                Icon(isSelectedKot ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down),
                               ],
                             ),
                           ),
                         ),
-                        if (isSelectedKot)
-                          _buildKotItemsOverlay(),
+                        if (isSelectedKot) _buildKotItemsOverlay(),
                       ],
                     );
-                  })
-                      .toList(),
+                  }).toList(),
                 ),
-              ),
-            )
-                : const Center(
-              child: Padding(
-                padding: EdgeInsets.all(20.0),
+              )
+                  : Center(
                 child: Text(
                   'Order details will appear here',
-                  style: TextStyle(color: Colors.grey),
+                  style: TextStyle(color: Colors.grey, fontSize: 16),
                 ),
               ),
             ),
