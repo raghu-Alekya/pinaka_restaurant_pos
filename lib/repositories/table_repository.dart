@@ -58,6 +58,29 @@ class TableRepository {
       throw Exception("Failed to fetch tables: ${response.body}");
     }
   }
+  Future<List<Map<String, dynamic>>> getTablesByTime({
+    required String token,
+    required String reservationTime,
+    required String reservationDate,
+  }) async {
+    final uri = Uri.parse(
+      AppConstants.getAllTablesByTime(reservationTime, reservationDate),
+    );
+
+    final response = await http.get(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final json = jsonDecode(response.body);
+      return List<Map<String, dynamic>>.from(json['table_details']);
+    } else {
+      throw Exception("Failed to load tables: ${response.statusCode}");
+    }
+  }
 
   /// Sync tables from server to local database
   Future<void> syncTablesFromServerToLocal(String token) async {

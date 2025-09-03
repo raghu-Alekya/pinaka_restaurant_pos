@@ -5,9 +5,11 @@ import 'package:intl/intl.dart';
 import '../../models/UserPermissions.dart';
 import '../../repositories/ReservationRepository.dart';
 import '../../repositories/zone_repository.dart';
+import '../../utils/GlobalReservationMonitor.dart';
 import '../../utils/SessionManager.dart';
 import '../widgets/DeleteReservationDialog.dart';
 import '../widgets/NavigationHelper.dart';
+import '../widgets/area_movement_notifier.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/top_bar.dart';
 import 'create_reservation_screen.dart';
@@ -39,7 +41,6 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
   DateTime? selectedDate;
   final ReservationRepository _reservationRepository = ReservationRepository();
   List<Map<String, dynamic>> _reservations = [];
-  late Timer _refreshTimer;
   bool _isLoading = true;
 
   final TextEditingController _dateController = TextEditingController();
@@ -51,27 +52,38 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
 
   List<String> _areaNames = ['All'];
 
+  late VoidCallback _reservationListener;
+
   @override
   void initState() {
     super.initState();
+
     _loadPermissions();
     _loadZones();
     _fetchReservations();
-
-    _refreshTimer = Timer.periodic(Duration(seconds: 5), (timer) {
-      _fetchReservations();
-    });
+    _reservationListener = () {
+      if (!mounted) return;
+      setState(() {
+        _reservations = GlobalReservationMonitor().reservationsNotifier.value;
+        _isLoading = false;
+      });
+    };
+    GlobalReservationMonitor().reservationsNotifier.addListener(_reservationListener);
   }
 
   @override
   void dispose() {
-    _refreshTimer.cancel();
+    GlobalReservationMonitor().reservationsNotifier.removeListener(_reservationListener);
     _dateController.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
+  bool _isZonesLoading = true;
   Future<void> _loadZones() async {
+    setState(() {
+      _isZonesLoading = true;
+    });
     try {
       final zones = await _zoneRepository.getAllZones(widget.token);
       final names = zones.map((zone) => zone['zone_name'] as String).toList();
@@ -80,9 +92,12 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
         _areaNames = ['All', ...names];
       });
     } catch (e) {
-      // Handle error or keep default 'All'
       setState(() {
         _areaNames = ['All'];
+      });
+    } finally {
+      setState(() {
+        _isZonesLoading = false;
       });
     }
   }
@@ -237,7 +252,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
       body: Stack(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(35, 15, 35, 90),
+            padding: const EdgeInsets.fromLTRB(35, 18, 35, 90),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -305,13 +320,27 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                     ),
                     const SizedBox(width: 12),
                     Container(
+                      height: 48,
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: Colors.grey.shade300),
                       ),
-                      child: DropdownButtonHideUnderline(
+                      child: _isZonesLoading
+                          ? Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          SizedBox(width: 8),
+                          Text("Loading areas...", style: TextStyle(fontSize: 14)),
+                        ],
+                      )
+                          : DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
                           value: selectedArea,
                           icon: const Icon(Icons.arrow_drop_down, color: Colors.black, size: 18),
@@ -353,30 +382,44 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                     const SizedBox(width: 12),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF1877F2),
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        backgroundColor: _userPermissions?.canCreateReservation ?? false
+                            ? const Color(0xFF1877F2)
+                            : Colors.grey.shade400,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
                       onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => CreateReservationScreen(
-                              pin: widget.pin,
-                              token: widget.token,
-                              restaurantId: widget.restaurantId,
-                              restaurantName: widget.restaurantName,
+                        if (_userPermissions?.canCreateReservation ?? false) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => CreateReservationScreen(
+                                pin: widget.pin,
+                                token: widget.token,
+                                restaurantId: widget.restaurantId,
+                                restaurantName: widget.restaurantName,
+                              ),
                             ),
-                          ),
-                        );
+                          );
+                        } else {
+                          AreaMovementNotifier.showPopup(
+                            context: context,
+                            fromArea: '',
+                            toArea: '',
+                            tableName: 'Reservation',
+                            customMessage: "No permission to create reservation",
+                          );
+                        }
                       },
-                      icon: Icon(Icons.add, size: 16, color: Colors.white),
-                      label: Text("Create Reservation", style: TextStyle(color: Colors.white, fontSize: 14)),
+                      icon: const Icon(Icons.add, size: 16, color: Colors.white),
+                      label: const Text(
+                        "Create Reservation",
+                        style: TextStyle(color: Colors.white, fontSize: 14),
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 10),
-
                 // Table Container
                 Container(
                   height: 470,
@@ -421,7 +464,18 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                       ),
                       SizedBox(
                         height: 330,
-                        child: ListView.builder(
+                        child: filteredReservations.isEmpty
+                            ? Center(
+                          child: Text(
+                            "There are no reservations",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey[800],
+                            ),
+                          ),
+                        )
+                            : ListView.builder(
                           physics: NeverScrollableScrollPhysics(),
                           itemCount: currentData.length,
                           itemBuilder: (context, index) {
@@ -433,7 +487,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                             return Container(
                               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
                               decoration: BoxDecoration(
-                                color:const Color(0xFFFAFDFF),
+                                color: isRowDisabled ? Colors.grey.shade200 : const Color(0xFFFAFDFF),
                                 border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
                               ),
                               child: Row(
@@ -448,7 +502,8 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                                   _TableCell('${data['people_count']}'),
                                   _TableCell(data['table_no'] ?? ''),
                                   _TableCell(data['zone_name'] ?? ''),
-                                  TableCell(
+                                  Container(
+                                    alignment: Alignment.center,
                                     child: _buildStatusBadge(data['reservation_status'] ?? ''),
                                   ),
                                   const SizedBox(width: 24),
@@ -497,9 +552,21 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                                                 showDialog(
                                                   context: context,
                                                   builder: (_) => DeleteReservationDialog(
-                                                    onDelete: () {
-                                                      print("Reservation deleted");
-                                                      // TODO: Call delete API and refresh
+                                                    onDelete: () async {
+                                                      final success = await _reservationRepository.cancelReservation(
+                                                        context: context,
+                                                        token: widget.token,
+                                                        reservationId: data['reservation_id'],
+                                                        restaurantId: int.parse(widget.restaurantId),
+                                                      );
+
+                                                      if (success) {
+                                                        _fetchReservations();
+                                                      } else {
+                                                        ScaffoldMessenger.of(context).showSnackBar(
+                                                          const SnackBar(content: Text('Failed to cancel reservation.')),
+                                                        );
+                                                      }
                                                     },
                                                   ),
                                                 );
@@ -535,9 +602,9 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                               child: const Text("Previous", style: TextStyle(color: Colors.black)),
                             ),
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 5),
                           ..._buildPaginationButtons(totalPages),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 5),
                           SizedBox(
                             width: 80,
                             height: 40,
@@ -560,11 +627,11 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
           ),
 
           BottomNavBar(
-            selectedIndex: 3,
+            selectedIndex: 2,
             onItemTapped: (index) {
               NavigationHelper.handleNavigation(
                 context,
-                3,
+                2,
                 index,
                 widget.pin,
                 widget.token,
@@ -583,7 +650,7 @@ Color? _getStatusColor(String status) {
     case 'seated':
       return Colors.green;
     case 'expired':
-      return Colors.grey;
+      return Colors.orange;
     case 'cancelled':
       return Colors.red;
     default:
@@ -612,10 +679,10 @@ Widget _buildStatusBadge(String status) {
 
   return Container(
     width: 100,
-    padding: const EdgeInsets.symmetric(vertical: 3),
+    padding: const EdgeInsets.symmetric(vertical: 2),
     alignment: Alignment.center,
     decoration: BoxDecoration(
-      color: color.withOpacity(0.2),
+      color: color.withAlpha(51),
       borderRadius: BorderRadius.circular(15),
     ),
     child: Text(
@@ -635,7 +702,7 @@ String _capitalize(String input) {
   return input[0].toUpperCase() + input.substring(1).toLowerCase();
 }
 
-  class _TableHeaderCell extends StatelessWidget {
+class _TableHeaderCell extends StatelessWidget {
   final String label;
   final int flex;
 

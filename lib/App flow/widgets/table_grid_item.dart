@@ -5,11 +5,13 @@ import '../../utils/TableStatusColors.dart';
 class ShapeBasedGridItem extends StatelessWidget {
   final Map<String, dynamic> tableData;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
   const ShapeBasedGridItem({
     super.key,
     required this.tableData,
     this.onTap,
+    this.onLongPress,
   });
 
   @override
@@ -31,7 +33,9 @@ class ShapeBasedGridItem extends StatelessWidget {
     final iconColor = TableStatusColors.getChairColor(status);
 
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
+      onLongPress: onLongPress,
       child: _buildGridItem(imagePath, name, tableColor, iconColor),
     );
   }
@@ -85,11 +89,13 @@ class ShapeBasedGridItem extends StatelessWidget {
 class CommonGridItem extends StatelessWidget {
   final Map<String, dynamic> tableData;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
   const CommonGridItem({
     super.key,
     required this.tableData,
     this.onTap,
+    this.onLongPress,
   });
 
   @override
@@ -101,7 +107,9 @@ class CommonGridItem extends StatelessWidget {
     final iconColor = TableStatusColors.getChairColor(status);
 
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
+      onLongPress: onLongPress,
       child: _buildGridItem1(name, bgColor, iconColor),
     );
   }

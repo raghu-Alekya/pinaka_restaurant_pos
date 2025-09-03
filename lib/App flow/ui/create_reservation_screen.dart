@@ -5,9 +5,11 @@ import '../../models/UserPermissions.dart';
 import '../../repositories/ReservationRepository.dart';
 import '../../repositories/table_repository.dart';
 import '../../repositories/zone_repository.dart';
+import '../../utils/PermissionHandler.dart';
 import '../../utils/SessionManager.dart';
-import '../widgets/NavigationHelper.dart';
-import '../widgets/bottom_nav_bar.dart';
+import '../widgets/ReservationMergePopup.dart';
+import '../widgets/ReservationUnmergePopup.dart';
+import '../widgets/area_movement_notifier.dart';
 import '../widgets/top_bar.dart';
 import 'package:flutter/services.dart';
 
@@ -30,7 +32,8 @@ class CreateReservationScreen extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<CreateReservationScreen> createState() => _CreateReservationScreenState();
+  State<CreateReservationScreen> createState() =>
+      _CreateReservationScreenState();
 }
 
 class _CreateReservationScreenState extends State<CreateReservationScreen> {
@@ -42,7 +45,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   final ScrollController _areaScrollController = ScrollController();
   UserPermissions? _userPermissions;
   final ReservationRepository _reservationRepository = ReservationRepository();
-
 
   String selectedSlot = '';
   String selectedMeal = '';
@@ -56,19 +58,18 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   Map<String, List<Map<String, dynamic>>> mealSlots = {};
   bool _isLoadingSlots = true;
   bool _isLoading = false;
-  String? _originalSelectedTable;
   final ZoneRepository _zoneRepository = ZoneRepository();
+  Map<String, String> selectedSlotPerMeal = {};
   List<String> areas = [];
   bool _isLoadingAreas = true;
   final List<Map<String, dynamic>> tables = List.generate(15, (index) {
-    return {
-      'name': 'T${index + 2}',
-      'capacity': index % 3 == 0 ? 8 : 4,
-    };
+    return {'name': 'T${index + 2}', 'capacity': index % 3 == 0 ? 8 : 4};
   });
   final FocusNode _priorityFocusNode = FocusNode();
   OverlayEntry? _overlayEntry;
   bool _isCalendarLoading = false;
+  late String _originalSelectedTable;
+  late String _originalSelectedSlot;
 
   @override
   void initState() {
@@ -81,7 +82,10 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       _nameController.text = data['name'] ?? '';
       _contactController.text = data['phone'] ?? '';
       _priorityController.text = data['priority'] ?? '';
+
       selectedSlot = data['time'] ?? '';
+      _originalSelectedSlot = selectedSlot;
+      _originalSelectedTable = data['table'] ?? '';
 
       try {
         selectedDate = DateFormat('yyyy-MM-dd').parse(data['date'] ?? '');
@@ -89,9 +93,11 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
         selectedDate = DateTime.now();
       }
 
-      selectedTables = {data['table'] ?? ''};
-      _originalSelectedTable = data['table'];
+      selectedTables = {_originalSelectedTable};
       selectedArea = data['area'] ?? selectedArea;
+    } else {
+      _originalSelectedSlot = '';
+      _originalSelectedTable = '';
     }
 
     _priorityFocusNode.addListener(() {
@@ -103,8 +109,9 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
     });
 
     _loadZones();
-    _fetchTables();
-    _fetchSlotsAndMeals();
+    _fetchSlotsAndMeals().then((_) {
+      _fetchTables();
+    });
   }
 
   Future<void> _loadPermissions() async {
@@ -115,9 +122,12 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       });
     }
   }
-  void _fetchSlotsAndMeals() async {
+  Future<void> _fetchSlotsAndMeals() async {
     try {
-      final data = await _tableRepository.getAllSlots(widget.token, selectedDate);
+      final data = await _tableRepository.getAllSlots(
+        widget.token,
+        selectedDate,
+      );
       final meals = List<String>.from(data['Meal'] ?? []);
       final restaurantData = data['data'][widget.restaurantId];
       final slotsMap = restaurantData['slots'] as Map<String, dynamic>;
@@ -127,33 +137,56 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
         final List<dynamic> slotList = slotsMap[meal] ?? [];
         parsedSlots[meal] = slotList.cast<Map<String, dynamic>>();
       }
+      String selectedMealTemp = '';
+      String selectedSlotTemp = '';
 
+      if (widget.isEditMode && widget.reservationData != null) {
+        final reservationSlot = widget.reservationData!['time'];
+        selectedMealTemp = meals.firstWhere(
+              (meal) => parsedSlots[meal]?.any(
+                (slot) => slot['Time Slot'] == reservationSlot,
+          ) ?? false,
+          orElse: () => meals.first,
+        );
+        selectedSlotTemp = reservationSlot;
+      } else if (meals.isNotEmpty) {
+        outerLoop:
+        for (var meal in meals) {
+          final slots = parsedSlots[meal] ?? [];
+          for (var slot in slots) {
+            if (slot['is_active'] == true) {
+              selectedMealTemp = meal;
+              selectedSlotTemp = slot['Time Slot']?.trim() ?? '';
+              break outerLoop;
+            }
+          }
+        }
+        if (selectedSlotTemp.isEmpty && meals.isNotEmpty) {
+          final firstMealSlots = parsedSlots[meals.first] ?? [];
+          if (firstMealSlots.isNotEmpty) {
+            selectedMealTemp = meals.first;
+            selectedSlotTemp = firstMealSlots.first['Time Slot']?.trim() ?? '';
+          }
+        }
+
+        if (selectedSlotTemp.isNotEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _fetchTables();
+          });
+        }
+      }
       setState(() {
         availableMeals = meals;
         mealSlots = parsedSlots;
         _isLoadingSlots = false;
-        if (meals.isNotEmpty) {
-          if (widget.isEditMode && widget.reservationData != null) {
-            final reservationSlot = widget.reservationData!['time'];
-
-            selectedMeal = meals.firstWhere(
-                  (meal) => mealSlots[meal]?.any((slot) => slot['Time Slot'] == reservationSlot) ?? false,
-              orElse: () => meals.first,
-            );
-            selectedSlot = reservationSlot;
-          } else {
-            selectedMeal = meals.first;
-            selectedSlot = '';
-          }
-        }
+        selectedMeal = selectedMealTemp;
+        selectedSlot = selectedSlotTemp;
       });
     } catch (e) {
       debugPrint("Error fetching slots: $e");
       setState(() => _isLoadingSlots = false);
     }
   }
-
-
   void _loadZones() async {
     final zones = await _zoneRepository.getAllZones(widget.token);
     setState(() {
@@ -176,8 +209,16 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   }
 
   Future<void> _fetchTables() async {
+    if (selectedSlot.isEmpty || selectedDate == null) return;
+
+    setState(() => _isLoadingTables = true);
+
     try {
-      final fetched = await _tableRepository.getAllTables(widget.token);
+      final fetched = await _tableRepository.getTablesByTime(
+        token: widget.token,
+        reservationTime: selectedSlot,
+        reservationDate: DateFormat('yyyy-MM-dd').format(selectedDate),
+      );
 
       setState(() {
         allTables = fetched;
@@ -188,6 +229,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       debugPrint("Failed to load tables: $e");
     }
   }
+
   List<Map<String, dynamic>> get _filteredTablesByArea {
     final selectedZone = allZones.firstWhere(
           (zone) => zone['zone_name'] == selectedArea,
@@ -207,6 +249,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       return table['zone_id'].toString() == selectedZoneId.toString();
     }).toList();
   }
+
   void _validateAndSubmit() {
     final people = _peopleController.text.trim();
     final name = _nameController.text.trim();
@@ -252,7 +295,8 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   }
 
   Future<void> _saveReservation() async {
-    final response = widget.isEditMode
+    final response =
+    widget.isEditMode
         ? await _reservationRepository.updateReservation(
       context: context,
       token: widget.token,
@@ -289,8 +333,11 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      builder:
+          (_) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
         backgroundColor: Colors.white,
         child: Stack(
           clipBehavior: Clip.none,
@@ -312,8 +359,13 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      widget.isEditMode ? "Reservation Updated" : "Reservation Confirmed",
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      widget.isEditMode
+                          ? "Reservation Updated"
+                          : "Reservation Confirmed",
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 6),
@@ -322,17 +374,34 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                           ? "Your reservation has been successfully updated."
                           : "Your reservation has been successfully confirmed.",
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 14, color: Color(0xFFA19A9A)),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFFA19A9A),
+                      ),
                     ),
                     const SizedBox(height: 20),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text("Reservation ID", style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF4C5F7D))),
+                        const Text(
+                          "Reservation ID",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF4C5F7D),
+                          ),
+                        ),
                         const SizedBox(width: 8),
-                        const Text(":", style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text(
+                          ":",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         const SizedBox(width: 8),
-                        Text("${response['reservation_id']}", style: const TextStyle(fontWeight: FontWeight.bold)),
+                        Text(
+                          "${response['reservation_id']}",
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 20),
@@ -343,19 +412,43 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildDetailRow("Name", response['customer_name'] ?? ''),
-                            _buildDetailRow("Mobile Number", response['customer_phone'] ?? ''),
-                            _buildDetailRow("Guest Count", response['people_count'].toString()),
-                            _buildDetailRow("Priority", response['priority_category'] ?? ''),
+                            _buildDetailRow(
+                              "Name",
+                              response['customer_name'] ?? '',
+                            ),
+                            _buildDetailRow(
+                              "Mobile Number",
+                              response['customer_phone'] ?? '',
+                            ),
+                            _buildDetailRow(
+                              "Guest Count",
+                              response['people_count'].toString(),
+                            ),
+                            _buildDetailRow(
+                              "Priority",
+                              response['priority_category'] ?? '',
+                            ),
                           ],
                         ),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildDetailRow("Area", response['zone_name'] ?? ''),
-                            _buildDetailRow("Table Number", response['table_no'] ?? ''),
-                            _buildDetailRow("Date", response['reservation_date'] ?? ''),
-                            _buildDetailRow("Time", response['reservation_time'] ?? ''),
+                            _buildDetailRow(
+                              "Area",
+                              response['zone_name'] ?? '',
+                            ),
+                            _buildDetailRow(
+                              "Table Number",
+                              response['table_no'] ?? '',
+                            ),
+                            _buildDetailRow(
+                              "Date",
+                              response['reservation_date'] ?? '',
+                            ),
+                            _buildDetailRow(
+                              "Time",
+                              response['reservation_time'] ?? '',
+                            ),
                           ],
                         ),
                       ],
@@ -367,7 +460,9 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.redAccent,
                           padding: const EdgeInsets.symmetric(vertical: 10),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                         onPressed: () {
                           // Optional: Handle SMS
@@ -397,7 +492,8 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => ReservationListScreen(
+                      builder:
+                          (context) => ReservationListScreen(
                         pin: widget.pin,
                         token: widget.token,
                         restaurantId: widget.restaurantId,
@@ -419,8 +515,20 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Text("$label: ", style: const TextStyle(fontWeight: FontWeight.bold,color: Color(0xFF4C5F7D))),
-          Text(value,style: const TextStyle(fontWeight: FontWeight.w400,color: Colors.black)),
+          Text(
+            "$label: ",
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF4C5F7D),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontWeight: FontWeight.w400,
+              color: Colors.black,
+            ),
+          ),
         ],
       ),
     );
@@ -437,17 +545,22 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       );
     }
   }
+
   void _showOverlay(BuildContext context) {
     _removeOverlay();
 
     final overlay = Overlay.of(context);
     _overlayEntry = OverlayEntry(
-      builder: (context) => Center(
+      builder:
+          (context) => Center(
         child: Material(
           color: Colors.transparent,
           child: Container(
             width: 300,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 14,
+            ),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(10),
@@ -462,13 +575,15 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
             ),
             child: ValueListenableBuilder<TextEditingValue>(
               valueListenable: _priorityController,
-              builder: (_, value, __) => Text(
+              builder:
+                  (_, value, __) => Text(
                 value.text.isEmpty
                     ? "Specify your reservation (VIP, Birthday, Dinner)"
                     : value.text,
                 style: TextStyle(
                   fontSize: 13,
-                  color: value.text.isEmpty ? Colors.grey : Colors.black,
+                  color:
+                  value.text.isEmpty ? Colors.grey : Colors.black,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -493,7 +608,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
     super.dispose();
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -507,12 +621,27 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
           setState(() {
             _userPermissions = permissions;
           });
+
+          if (!(permissions.canCreateReservation)) {
+            PermissionHandler.handleNoPermission(
+              context,
+              fallbackScreen: ReservationListScreen(
+                pin: widget.pin,
+                token: widget.token,
+                restaurantId: widget.restaurantId,
+                restaurantName: widget.restaurantName,
+              ),
+              customMessage: "You don't have permission to create reservations.",
+            );
+          }
         },
       ),
       body: Padding(
-        padding: const EdgeInsets.fromLTRB(10, 8, 10,0),
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 25),
         child: Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           color: Colors.white,
           child: Padding(
             padding: const EdgeInsets.all(14),
@@ -528,11 +657,20 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(flex: 2, child: _buildBookingDetailsCard()),
-                            const SizedBox(width: 15),
-                            Expanded(flex: 2, child: _buildSlotAvailabilityCard()),
-                            const SizedBox(width: 15),
-                            Expanded(flex: 3, child: _buildTableSelectionCard()),
+                            Expanded(
+                              flex: 3,
+                              child: _buildBookingDetailsCard(),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              flex: 4,
+                              child: _buildSlotAvailabilityCard(),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              flex: 6,
+                              child: _buildTableSelectionCard(),
+                            ),
                           ],
                         ),
                       ),
@@ -542,26 +680,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                 ),
               ],
             ),
-          ),
-        ),
-      ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: BottomNavBar(
-            selectedIndex: 3,
-            onItemTapped: (index) {
-              NavigationHelper.handleNavigation(
-                context,
-                3,
-                index,
-                widget.pin,
-                widget.token,
-                widget.restaurantId,
-                widget.restaurantName,
-              );
-            },
           ),
         ),
       ),
@@ -583,10 +701,12 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
               borderRadius: BorderRadius.circular(10),
             ),
             child: InkWell(
-              onTap: () => Navigator.pushReplacement(
+              onTap:
+                  () => Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => ReservationListScreen(
+                  builder:
+                      (context) => ReservationListScreen(
                     pin: widget.pin,
                     token: widget.token,
                     restaurantId: widget.restaurantId,
@@ -609,14 +729,14 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
             ),
           ),
 
-          const SizedBox(width: 20),
+          const SizedBox(width: 15),
 
           const Text(
             "Table Reservation",
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
           ),
 
-          const SizedBox(width: 140),
+          const SizedBox(width: 120),
           Container(
             height: 40,
             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -631,7 +751,8 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                   _isCalendarLoading = true;
                 });
 
-                final dateRange = await _reservationRepository.getReservationDateRange(widget.token);
+                final dateRange = await _reservationRepository
+                    .getReservationDateRange(widget.token);
 
                 setState(() {
                   _isCalendarLoading = false;
@@ -640,7 +761,9 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                 if (dateRange != null) {
                   final DateTime? picked = await showDatePicker(
                     context: context,
-                    initialDate: selectedDate.isBefore(dateRange.start) || selectedDate.isAfter(dateRange.end)
+                    initialDate:
+                    selectedDate.isBefore(dateRange.start) ||
+                        selectedDate.isAfter(dateRange.end)
                         ? dateRange.start
                         : selectedDate,
                     firstDate: dateRange.start,
@@ -652,14 +775,17 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                       selectedSlot = '';
                       _isLoadingSlots = true;
                     });
-                    _fetchSlotsAndMeals();
+
+                    await _fetchSlotsAndMeals();
+                    await _fetchTables();
                   }
                 } else {
                   _showError("Failed to load reservation date range.");
                 }
               },
               child: Row(
-                children: _isCalendarLoading
+                children:
+                _isCalendarLoading
                     ? [
                   const SizedBox(
                     height: 20,
@@ -678,7 +804,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 260),
+          const SizedBox(width: 240),
           _isLoadingAreas
               ? const Padding(
             padding: EdgeInsets.symmetric(horizontal: 12),
@@ -697,33 +823,50 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
               border: Border.all(color: Colors.grey.shade300),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: areas.isEmpty
+            child:
+            areas.isEmpty
                 ? const Center(child: Text("No areas available"))
                 : SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               controller: _areaScrollController,
               child: Row(
-                children: areas.map((area) {
+                children:
+                areas.map((area) {
                   final bool isSelected = selectedArea == area;
                   return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 2.0,
+                    ),
                     child: TextButton(
-                      onPressed: () => setState(() => selectedArea = area),
+                      onPressed:
+                          () => setState(
+                            () => selectedArea = area,
+                      ),
                       style: TextButton.styleFrom(
-                        backgroundColor: isSelected
+                        backgroundColor:
+                        isSelected
                             ? const Color(0xFFFD6464)
                             : Colors.transparent,
                         foregroundColor:
-                        isSelected ? Colors.white : Colors.black87,
+                        isSelected
+                            ? Colors.white
+                            : Colors.black87,
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 15.0, vertical: 13.0),
+                          horizontal: 15.0,
+                          vertical: 13.0,
+                        ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5),
+                          borderRadius: BorderRadius.circular(
+                            5,
+                          ),
                         ),
                         textStyle: const TextStyle(
-                            fontWeight: FontWeight.w500, fontSize: 12.5),
+                          fontWeight: FontWeight.w500,
+                          fontSize: 12.5,
+                        ),
                         minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        tapTargetSize:
+                        MaterialTapTargetSize.shrinkWrap,
                         visualDensity: VisualDensity.compact,
                       ),
                       child: Text(area),
@@ -747,10 +890,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
         children: [
           const Text(
             "Booking Details",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 10),
 
@@ -811,8 +951,10 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
             hintStyle: const TextStyle(fontSize: 12, color: Colors.grey),
             filled: true,
             fillColor: Colors.white,
-            contentPadding:
-            const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 12,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(color: Colors.grey.shade300),
@@ -835,10 +977,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
         children: [
           const Text(
             "Slot Availability",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 10),
           _mealTabs(),
@@ -858,9 +997,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
               ),
               padding: const EdgeInsets.all(14),
               child: _isLoadingSlots
-                  ? const Center(
-                child: CircularProgressIndicator(),
-              )
+                  ? const Center(child: CircularProgressIndicator())
                   : Scrollbar(
                 thumbVisibility: true,
                 child: GridView.count(
@@ -871,54 +1008,88 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                   children: mealSlots[selectedMeal] == null
                       ? []
                       : mealSlots[selectedMeal]!.map((slot) {
-                    final time = slot['Time Slot']?.trim();
+                    final time = slot['Time Slot']?.trim() ?? '';
                     final isActive = slot['is_active'] == true;
-                    final isSelected = selectedSlot.trim() == time;
+                    final isSelected =
+                        selectedSlot.trim() == time;
                     final parts = time.split(' ');
-                    final formattedSlot = parts.length == 2
-                        ? '${parts[0]}\n${parts[1]}'
-                        : time;
+                    final formattedSlot =
+                    parts.length == 2 ? '${parts[0]}\n${parts[1]}' : time;
+
+                    final isOriginalSlot = widget.isEditMode &&
+                        time == _originalSelectedSlot;
 
                     return GestureDetector(
                       onTap: isActive
-                          ? () {
+                          ? () async {
                         setState(() {
-                          selectedSlot = (selectedSlot == time)
-                              ? ''
-                              : time;
+                          selectedSlot =
+                          (selectedSlot == time) ? '' : time;
+                          _isLoadingTables = true;
+                          selectedTables.clear();
                         });
+
+                        if (selectedSlot.isNotEmpty) {
+                          await _fetchTables();
+                        } else {
+                          setState(() {
+                            _isLoadingTables = false;
+                          });
+                        }
                       }
                           : null,
                       child: Stack(
                         children: [
                           Container(
-                            alignment: Alignment.center,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? const Color(0xFFE7FAEF)
-                                  : isActive
-                                  ? Colors.white
-                                  : Colors.grey.shade200,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: isSelected
-                                    ? Colors.green
-                                    : isActive
-                                    ? Colors.grey.shade300
-                                    : Colors.grey.shade300,
+                            decoration: isOriginalSlot
+                                ? BoxDecoration(
+                              borderRadius:
+                              BorderRadius.circular(10),
+                              gradient: SweepGradient(
+                                colors: [
+                                  Colors.blue,
+                                  Colors.green,
+                                  Colors.pink,
+                                  Colors.blue,
+                                ],
+                                stops: [0.0, 0.33, 0.66, 1.0],
                               ),
-                            ),
-                            child: Text(
-                              formattedSlot,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: isActive
-                                    ? Colors.black
-                                    : Colors.grey,
-                                fontWeight: FontWeight.w500,
-                                fontSize: 14,
+                            )
+                                : null,
+                            padding: isOriginalSlot
+                                ? const EdgeInsets.all(1.5)
+                                : EdgeInsets.zero,
+                            child: Container(
+                              alignment: Alignment.center,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? const Color(0xFFE7FAEF)
+                                    : isActive
+                                    ? Colors.white
+                                    : Colors.grey.shade200,
+                                borderRadius: BorderRadius.circular(7),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? Colors.green
+                                      : isActive
+                                      ? Colors.grey.shade300
+                                      : Colors.grey.shade300,
+                                ),
+                              ),
+                              child: Text(
+                                formattedSlot,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: isActive
+                                      ? Colors.black
+                                      : Colors.grey,
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 14,
+                                ),
                               ),
                             ),
                           ),
@@ -962,10 +1133,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
           children: [
             const Text(
               "Table Selection Area",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             Expanded(
@@ -982,10 +1150,11 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
               )
                   : GridView.builder(
                 itemCount: tablesToShow.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate:
+                const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 4,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
                   childAspectRatio: 1.4,
                 ),
                 itemBuilder: (context, index) {
@@ -995,7 +1164,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                   final shape = table['shape']?.toLowerCase() ?? '';
                   final status = (table['status'] ?? '').toLowerCase();
                   final isSelected = selectedTables.contains(tableName);
-                  final isOriginalTable = widget.isEditMode && tableName == _originalSelectedTable;
 
                   // Shape image path
                   String shapeAsset;
@@ -1013,122 +1181,146 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                       shapeAsset = 'assets/square1.png';
                   }
 
-                  // Color scheme
+                  // Colors
                   Color cardColor = Colors.white;
                   Color borderColor = Colors.grey.shade300;
                   Color textColor = Colors.black;
                   Color iconColor = Colors.green;
-                  bool isClickable = true;
 
                   if (status == 'available') {
-                    cardColor = isSelected ? const Color(0xFFE7FAEF) : Colors.white;
-                    borderColor = isSelected ? Colors.green : Colors.grey.shade300;
+                    cardColor = isSelected
+                        ? const Color(0xFFE7FAEF)
+                        : Colors.white;
+                    borderColor =
+                    isSelected ? Colors.green : Colors.grey.shade300;
                   } else if (status == 'reserve') {
                     cardColor = const Color(0xFFE0E0E0);
-                    textColor = Colors.grey!;
-                    iconColor = Colors.grey!;
-                    isClickable = false;
-                  } else if (status == 'dine in' || status == 'ready to pay') {
+                    textColor = Colors.grey;
+                    iconColor = Colors.grey;
+                  } else if (status == 'dine in' ||
+                      status == 'ready to pay') {
                     cardColor = const Color(0xFFF7DDDB);
                     textColor = const Color(0xFFF44336);
                     iconColor = const Color(0xFFF44336);
-                    isClickable = false;
                   }
 
                   return GestureDetector(
-                    onTap: isClickable
-                        ? () {
+                    onTap: () {
+                      if (status == 'reserve' && tableName != _originalSelectedTable) {
+                        return;
+                      }
+
                       setState(() {
-                        if (selectedTables.contains(tableName)) {
+                        if (isSelected) {
                           selectedTables.remove(tableName);
                         } else {
                           selectedTables.clear();
                           selectedTables.add(tableName);
                         }
                       });
-                    }
-                        : null,
+                    },
+                    onLongPress: () {
+                      final enrichedTable = {
+                        ...table,
+                        'areaName': selectedArea,
+                      };
+                      _showTableActionPopup(context, index, enrichedTable);
+                    },
                     child: Stack(
                       children: [
                         Container(
-                          decoration: BoxDecoration(
+                          decoration: (widget.isEditMode &&
+                              tableName == _originalSelectedTable)
+                              ? BoxDecoration(
+                            gradient: const SweepGradient(
+                              colors: [
+                                Colors.blue,
+                                Colors.green,
+                                Colors.pink,
+                                Colors.blue,
+                              ],
+                              stops: [0.0, 0.33, 0.66, 1.0],
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.white.withAlpha(153),
+                                blurRadius: 4,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          )
+                              : BoxDecoration(
                             color: cardColor,
                             border: Border.all(
-                              color: isOriginalTable ? Colors.blue : borderColor,
+                              color:
+                              isSelected ? Colors.green : borderColor,
                               width: 1.5,
                             ),
                             borderRadius: BorderRadius.circular(14),
                             boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black12,
-                              )
+                              BoxShadow(color: Colors.black12),
                             ],
                           ),
-                          padding: const EdgeInsets.all(10),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
+                          child: Padding(
+                            padding: const EdgeInsets.all(1.5),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: cardColor,
+                                borderRadius: BorderRadius.circular(12.5),
+                              ),
+                              padding: const EdgeInsets.all(10),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Checkbox(
-                                    value: isSelected,
-                                    onChanged: isClickable
-                                        ? (_) {
-                                      setState(() {
-                                        if (selectedTables.contains(tableName)) {
-                                          selectedTables.remove(tableName);
-                                        } else {
-                                          selectedTables.clear();
-                                          selectedTables.add(tableName);
-                                        }
-                                      });
-                                    }
-                                        : null,
-                                    activeColor: Colors.green,
-                                    checkColor: Colors.white,
-                                    visualDensity: VisualDensity.compact,
-                                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      tableName,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w500,
-                                        fontSize: 16,
-                                        color: textColor,
+                                  Row(
+                                    children: [
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          tableName,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w500,
+                                            fontSize: 16,
+                                            color: textColor,
+                                          ),
+                                        ),
                                       ),
-                                    ),
+                                    ],
+                                  ),
+                                  const Spacer(),
+                                  Row(
+                                    children: [
+                                      const SizedBox(width: 4),
+                                      Icon(
+                                        Icons.group,
+                                        size: 22,
+                                        color: iconColor,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        '$capacity',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w500,
+                                          fontSize: 17,
+                                          color: textColor,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Image.asset(
+                                        shapeAsset,
+                                        width: 26,
+                                        height: 26,
+                                        fit: BoxFit.contain,
+                                        color: iconColor,
+                                        colorBlendMode: BlendMode.srcIn,
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
-                              const Spacer(),
-                              Row(
-                                children: [
-                                  const SizedBox(width: 4),
-                                  Icon(Icons.group, size: 22, color: iconColor),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '$capacity',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w500,
-                                      fontSize: 17,
-                                      color: textColor,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Image.asset(
-                                    shapeAsset,
-                                    width: 26,
-                                    height: 26,
-                                    fit: BoxFit.contain,
-                                    color: iconColor,
-                                    colorBlendMode: BlendMode.srcIn,
-                                  ),
-                                ],
-                              ),
-                            ],
+                            ),
                           ),
                         ),
                         if (isSelected)
@@ -1152,6 +1344,217 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
     );
   }
 
+  Future<void> _showTableActionPopup(
+      BuildContext context,
+      int index,
+      Map<String, dynamic> tableData,
+      ) async {
+    final bool isMerged = tableData['isMerged'] ?? false;
+    final String status = (tableData['status'] ?? '').toLowerCase();
+
+    if (status == "reserve") {
+      AreaMovementNotifier.showPopup(
+        context: context,
+        fromArea: tableData['areaName'] ?? '',
+        toArea: '',
+        tableName: tableData['table_name'] ?? '',
+        customMessage: 'You cannot merge a reserved table',
+      );
+      return;
+    }
+
+    await showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          backgroundColor: const Color(0xFFF9F6F6),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          contentPadding: const EdgeInsets.all(25),
+          content: IntrinsicHeight(
+            child: SizedBox(
+              width: 450,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const SizedBox(width: 28),
+                      const Expanded(
+                        child: Text(
+                          "Merge/Modify Tables",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.of(ctx).pop(),
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFFF5A5A),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.close,
+                            size: 18,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        const TextSpan(
+                          text: "Select the tables you want to merge in this ",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.black54,
+                          ),
+                        ),
+                        TextSpan(
+                          text: "${tableData['areaName'] ?? ''}",
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const TextSpan(
+                          text:
+                          " area. Merging will combine them into a single reservation under the same guest.",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.black54,
+                          ),
+                        ),
+                      ],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 28),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 170,
+                        height: 150,
+                        child: TextButton(
+                          style: TextButton.styleFrom(
+                            backgroundColor:
+                            isMerged ? const Color(0xFFFFE6E6) : Colors.black12,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: isMerged
+                              ? () {
+                            Navigator.of(ctx).pop();
+                            showDialog(
+                              context: context,
+                              barrierDismissible: true,
+                              builder: (_) => ReservationUnmergePopup(
+                                index: index,
+                                tableData: tableData,
+                                onUnmerge: (i, updatedTable) {
+                                  setState(() {
+                                    _filteredTablesByArea[i]['isMerged'] = false;
+                                  });
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Table ${updatedTable['table_name']} unmerged',
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            );
+                          }
+                              : null,
+                          child: Text(
+                            "Unmerge Table",
+                            style: TextStyle(
+                              color: isMerged ? Colors.red : Colors.black26,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 30),
+                      SizedBox(
+                        width: 170,
+                        height: 150,
+                        child: TextButton(
+                          style: TextButton.styleFrom(
+                            backgroundColor: const Color(0xFFFF5A5A),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () {
+                            Navigator.of(ctx).pop();
+                            showDialog(
+                              context: context,
+                              barrierDismissible: true,
+                              builder: (_) => ReservationMergePopup(
+                                index: index,
+                                tableData: tableData,
+                                onMergeEdit: (i, updatedTable) {
+                                  setState(() {
+                                    _filteredTablesByArea[i]['isMerged'] = true;
+                                  });
+                                  print("Merged Table Data: ${_filteredTablesByArea[i]}");
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Table ${updatedTable['table_name']} merged',
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            );
+                          },
+                          child: const Text(
+                            "Merge/Edit\nTable",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildActionButtons() {
     return Padding(
       padding: const EdgeInsets.only(top: 16),
@@ -1171,7 +1574,8 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
             child: SizedBox(
               height: 20,
               child: Center(
-                child: _isLoading
+                child:
+                _isLoading
                     ? const SizedBox(
                   height: 18,
                   width: 18,
@@ -1225,16 +1629,39 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
             ),
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
-                onTap: () async {
-                  setState(() {
-                    selectedMeal = meal;
-                    selectedSlot = '';
-                    _isLoadingTables = true;
-                  });
+              onTap: () {
+                final slots = mealSlots[meal] ?? [];
+                final hasActiveSlot =
+                slots.any((slot) => slot['is_active'] == true);
 
-                  await _fetchTables();
-                },
-                child: Padding(
+                if (!hasActiveSlot) {
+                  AreaMovementNotifier.showPopup(
+                    context: context,
+                    fromArea: '',
+                    toArea: '',
+                    tableName: meal,
+                    customMessage:
+                    'There are no active slots available for ${meal[0].toUpperCase()}${meal.substring(1)}.',
+                  );
+                  return;
+                }
+
+                setState(() {
+                  selectedMeal = meal;
+                  selectedTables.clear();
+                  _isLoadingTables = false;
+                  final firstActiveSlot = slots.firstWhere(
+                        (slot) => slot['is_active'] == true,
+                    orElse: () => slots.isNotEmpty ? slots.first : {},
+                  );
+
+                  selectedSlot = firstActiveSlot['Time Slot']?.trim() ?? '';
+                  if (selectedSlot.isNotEmpty) {
+                    _fetchTables();
+                  }
+                });
+              },
+              child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 child: Row(
                   children: [

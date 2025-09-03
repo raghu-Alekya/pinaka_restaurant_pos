@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart';
 import 'package:pinaka_restaurant_pos/repositories/checkin_repository.dart';
+import 'package:pinaka_restaurant_pos/utils/GlobalReservationMonitor.dart';
 import 'package:pinaka_restaurant_pos/utils/ShiftMonitor.dart';
 import 'package:pinaka_restaurant_pos/utils/global_navigator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -26,12 +27,10 @@ import 'repositories/employee_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
   }
-
   final dbPath = await getDatabasesPath();
   await deleteDatabase(join(dbPath, 'tables.db'));
   final prefs = await SharedPreferences.getInstance();
@@ -39,13 +38,12 @@ void main() async {
 
   if (token != null && token.isNotEmpty) {
     final employeeRepo = EmployeeRepository();
-
     final shiftMonitor = ShiftMonitor(
       token: token,
       employeeRepository: employeeRepo,
     );
-
     shiftMonitor.startMonitoring();
+    GlobalReservationMonitor().start(token);
   }
 
   runApp(const MyApp());

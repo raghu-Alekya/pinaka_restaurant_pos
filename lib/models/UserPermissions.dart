@@ -19,6 +19,8 @@ class UserPermissions {
   final bool canUpdateInventory;
   final bool canAccessSettings;
   final bool canUpdateShiftAttendance;
+  final bool canCreateReservation;
+  final bool canViewOrderTypes;
   final String displayName;
   final String role;
 
@@ -43,6 +45,8 @@ class UserPermissions {
     required this.canUpdateInventory,
     required this.canAccessSettings,
     required this.canUpdateShiftAttendance,
+    required this.canCreateReservation,
+    required this.canViewOrderTypes,
     required this.displayName,
     required this.role,
   });
@@ -69,6 +73,8 @@ class UserPermissions {
       canUpdateInventory: json['canUpdateInventory'] ?? false,
       canAccessSettings: json['canAccessSettings'] ?? false,
       canUpdateShiftAttendance: json['canUpdateShiftAttendance'] ?? false,
+      canCreateReservation: json['canCreateReservation'] ?? false,
+      canViewOrderTypes: json['canViewOrderTypes'] ?? false,
       displayName: json['displayName'] ?? '',
       role: json['role'] ?? '',
     );
@@ -96,6 +102,8 @@ class UserPermissions {
       'canUpdateInventory': canUpdateInventory,
       'canAccessSettings': canAccessSettings,
       'canUpdateShiftAttendance': canUpdateShiftAttendance,
+      'canCreateReservation': canCreateReservation,
+      'canViewOrderTypes': canViewOrderTypes,
       'displayName': displayName,
       'role': role,
     };

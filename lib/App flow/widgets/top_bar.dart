@@ -55,10 +55,7 @@ class _TopBarState extends State<TopBar> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery
-        .of(context)
-        .size
-        .width;
+    final screenWidth = MediaQuery.of(context).size.width;
 
     return Container(
       decoration: BoxDecoration(
@@ -76,12 +73,12 @@ class _TopBarState extends State<TopBar> {
         toolbarHeight: 70,
         automaticallyImplyLeading: false,
         elevation: 0,
+        scrolledUnderElevation: 0.0,
         titleSpacing: 0,
         title: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 15),
           child: Row(
             children: [
-
               /// Logo
               Image.asset(
                 'assets/pinaka.png',
@@ -438,7 +435,7 @@ class _TopBarState extends State<TopBar> {
 
   Widget _buildProfileSection() {
     return Container(
-      width: 140,
+      width: 170,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.white,
