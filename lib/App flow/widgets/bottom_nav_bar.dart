@@ -1,12 +1,21 @@
 import 'package:flutter/material.dart';
 
+import '../../models/UserPermissions.dart';
+import 'area_movement_notifier.dart';
+
 class BottomNavBar extends StatelessWidget {
   final int selectedIndex;
   final Function(int) onItemTapped;
+  final UserPermissions? userPermissions;
 
-  BottomNavBar({required this.selectedIndex, required this.onItemTapped});
+  BottomNavBar({
+    required this.selectedIndex,
+    required this.onItemTapped,
+    required this.userPermissions,
+  });
 
   final List<Map<String, dynamic>> items = [
+    {"label": "Dashboard", "icon": Icons.dashboard},
     {"label": "Tables", "icon": Icons.table_bar},
     {"label": "KOT Status", "icon": Icons.receipt_long},
     {"label": "Reservation", "icon": Icons.calendar_month},
@@ -38,14 +47,27 @@ class BottomNavBar extends StatelessWidget {
             final index = i ~/ 2;
             final isSelected = selectedIndex == index;
             return InkWell(
-              onTap: () => onItemTapped(index),
+              onTap: () {
+                if (items[index]["label"] == "Dashboard" &&
+                    (userPermissions?.canAccessDashboard ?? false) == false) {
+                  AreaMovementNotifier.showPopup(
+                    context: context,
+                    fromArea: '',
+                    toArea: '',
+                    tableName: 'Dashboard',
+                    customMessage: 'You don’t have permissions to access Dashboard',
+                  );
+                  return;
+                }
+                onItemTapped(index);
+              },
               child: Container(
                 height: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 30),
+                padding: const EdgeInsets.symmetric(horizontal: 24),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? Color(0xFFDA4A38)
+                      ? const Color(0xFFDA4A38)
                       : const Color(0xFF2A3558),
                 ),
                 child: Row(
@@ -53,16 +75,21 @@ class BottomNavBar extends StatelessWidget {
                     Icon(
                       items[index]["icon"],
                       size: 20,
-                      color: isSelected ? Colors.white : const Color(0xFFC4C7D1),
+                      color: isSelected
+                          ? Colors.white
+                          : const Color(0xFFC4C7D1),
                     ),
                     const SizedBox(width: 6),
                     Text(
                       items[index]["label"],
                       style: TextStyle(
-                        fontSize: 18,
-                        color: isSelected ? Colors.white : const Color(0xFFC4C7D1),
-                        fontWeight:
-                        isSelected ? FontWeight.w600 : FontWeight.normal,
+                        fontSize: 16,
+                        color: isSelected
+                            ? Colors.white
+                            : const Color(0xFFC4C7D1),
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                       ),
                     ),
                   ],

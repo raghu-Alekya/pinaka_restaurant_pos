@@ -1,19 +1,64 @@
 import 'package:flutter/material.dart';
+import '../../repositories/table_merge_repository.dart';
 
 class UnmergeTablePopup extends StatelessWidget {
   final int index;
   final Map<String, dynamic> tableData;
   final Function(int, Map<String, dynamic>) onUnmerge;
+  final String token;
+  final TableMergeRepository repository;
 
   const UnmergeTablePopup({
     super.key,
     required this.index,
     required this.tableData,
     required this.onUnmerge,
+    required this.token,
+    required this.repository,
   });
+
+  Future<void> _unmergeTable(BuildContext context) async {
+    final parentTableId = tableData['table_id'] ?? 0;
+    final zoneId = tableData['zone_id'] ?? 0;
+    final restaurantId = tableData['restaurant_id'] ?? 0;
+
+    try {
+      final resData = await repository.deleteMergeTable(
+        token: token,
+        parentTableId: parentTableId,
+        zoneId: zoneId,
+        restaurantId: restaurantId,
+      );
+
+      if (resData['success'] == true) {
+        Navigator.of(context).pop();
+        onUnmerge(index, tableData);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Table ${tableData['tableName']} unmerged successfully.'),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(resData['message'] ?? 'Unmerge failed'),
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error unmerging table: $e'),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final mergedTables = tableData['merged_tables'] ?? tableData['tableName'] ?? '';
+
     return AlertDialog(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
@@ -45,14 +90,9 @@ class UnmergeTablePopup extends StatelessWidget {
               text: TextSpan(
                 style: const TextStyle(color: Colors.black87, fontSize: 15),
                 children: [
-                  const TextSpan(text: 'Do you want to really unmerge the '),
+                  const TextSpan(text: 'Do you want to really unmerge the table(s): '),
                   TextSpan(
-                    text: tableData['tableName'] ?? '',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const TextSpan(text: ' with '),
-                  TextSpan(
-                    text: tableData['mergedWith'] ?? '',
+                    text: mergedTables,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const TextSpan(text: '?'),
@@ -66,7 +106,8 @@ class UnmergeTablePopup extends StatelessWidget {
                 TextButton(
                   style: TextButton.styleFrom(
                     backgroundColor: const Color(0xFFF1F4F8),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -83,17 +124,13 @@ class UnmergeTablePopup extends StatelessWidget {
                 TextButton(
                   style: TextButton.styleFrom(
                     backgroundColor: const Color(0xFFFE6464),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      onUnmerge(index, tableData);
-                    });
-                  },
+                  onPressed: () => _unmergeTable(context),
                   child: const Text(
                     'Yes, Unmerge!',
                     style: TextStyle(color: Colors.white),
