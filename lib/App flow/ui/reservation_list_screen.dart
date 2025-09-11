@@ -252,7 +252,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
       body: Stack(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(35, 18, 35, 90),
+            padding: const EdgeInsets.fromLTRB(15, 18, 15,3),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -422,15 +422,14 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                 const SizedBox(height: 10),
                 // Table Container
                 Container(
-                  height: 470,
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: const BorderRadius.only(
+                    borderRadius: BorderRadius.only(
                       topLeft: Radius.circular(16),
                       topRight: Radius.circular(16),
                     ),
                   ),
-                  padding: const EdgeInsets.fromLTRB(35, 20, 35, 20),
+                  padding: const EdgeInsets.fromLTRB(10, 20, 10, 40),
                   child: Column(
                     children: [
                       Container(
@@ -445,14 +444,16 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                         child: Row(
                           children: const [
                             _TableHeaderCell("Reservation ID"),
+                            SizedBox(width: 15),
                             _TableHeaderCell("Date"),
                             SizedBox(width: 10),
                             _TableHeaderCell("Time"),
                             _TableHeaderCell("Customer Name"),
-                            SizedBox(width: 25),
+                            SizedBox(width: 35),
                             _TableHeaderCell("Customer Phone"),
-                            SizedBox(width: 10),
+                            SizedBox(width: 18),
                             _TableHeaderCell("No. of People"),
+                            SizedBox(width: 15),
                             _TableHeaderCell("Table No"),
                             _TableHeaderCell("Area"),
                             _TableHeaderCell("Status"),
@@ -482,12 +483,11 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                             final data = currentData[index];
                             final canEdit = _isBeforeCutoff(data['reservation_date'], data['cutoff_time']);
                             final status = data['reservation_status']?.toLowerCase() ?? '';
-                            final isRowDisabled = status == 'expired' || status == 'cancelled';
-
+                            final isRowDisabled = status.toLowerCase() == 'expired' || status.toLowerCase() == 'cancelled' || status.toLowerCase() == 'seated';
                             return Container(
                               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
                               decoration: BoxDecoration(
-                                color: isRowDisabled ? Colors.grey.shade200 : const Color(0xFFFAFDFF),
+                                color: const Color(0xFFFAFDFF),
                                 border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
                               ),
                               child: Row(
@@ -627,18 +627,20 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
           ),
 
           BottomNavBar(
-            selectedIndex: 2,
+            selectedIndex: 3,
             onItemTapped: (index) {
               NavigationHelper.handleNavigation(
                 context,
-                2,
+                3,
                 index,
                 widget.pin,
                 widget.token,
                 widget.restaurantId,
                 widget.restaurantName,
+                _userPermissions,
               );
             },
+            userPermissions: _userPermissions,
           ),
         ],
       ),

@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import '../../repositories/merge_reserve_repository.dart';
 
 class ReservationMergePopup extends StatefulWidget {
   final int index;
   final Map<String, dynamic> tableData;
+  final String token;
   final Function(int, Map<String, dynamic>) onMergeEdit;
 
   const ReservationMergePopup({
     super.key,
     required this.index,
     required this.tableData,
+    required this.token,
     required this.onMergeEdit,
   });
 
@@ -19,39 +22,120 @@ class ReservationMergePopup extends StatefulWidget {
 class _ReservationMergePopupState extends State<ReservationMergePopup> {
   String? selectedParent;
   Set<String> selectedChildren = {};
+  Set<String> originallyMergedTables = {};
 
-  final List<String> availableParent = [
-    "Table 1",
-    "Table 2",
-    "Table 3",
-    "Table 4",
-    "Table 5",
-    "Table 6",
-    "Table 7",
-  ];
+  List<Map<String, dynamic>> parentTables = [];
+  List<Map<String, dynamic>> childTables = [];
 
-  final List<String> childTables = [
-    "Table 1",
-    "Table 2",
-    "Table 3",
-    "Table 4",
-    "Table 5",
-    "Table 6",
-  ];
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMergeTables();
+  }
+
+  Future<void> _loadMergeTables() async {
+    try {
+      final repository = MergeReserveRepository(token: widget.token);
+      final data = await repository.fetchMergeTables();
+      final int currentZoneId = widget.tableData['zone_id'];
+
+      final filteredParents = (data['parent_tables'] as List<dynamic>? ?? [])
+          .where((table) => table['zone_id'] == currentZoneId)
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+
+      final filteredChildren = (data['child_tables'] as List<dynamic>? ?? [])
+          .where((table) => table['zone_id'] == currentZoneId)
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+
+      setState(() {
+        parentTables = _sortTables(filteredParents);
+        childTables = _sortTables(filteredChildren);
+        isLoading = false;
+      });
+
+      _prefillMergedData();
+    } catch (e) {
+      setState(() => isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load tables: $e')),
+      );
+    }
+  }
+
+  void _prefillMergedData() {
+    if (widget.tableData['is_merged'] == true) {
+      final mergedTablesString =
+          widget.tableData['merged_tables'] ?? widget.tableData['tableName'] ?? '';
+      final mergedList = mergedTablesString.split('-');
+
+      if (mergedList.isNotEmpty) {
+        setState(() {
+          selectedParent = mergedList.first;
+          selectedChildren = mergedList.skip(1).toSet();
+          originallyMergedTables = mergedList.toSet();
+          if (selectedParent != null &&
+              !parentTables.any((t) => t['table_name'] == selectedParent)) {
+            parentTables.add({
+              'table_id': widget.tableData['table_id'],
+              'table_name': selectedParent,
+              'status': widget.tableData['status'] ?? 'Unknown',
+              'zone_id': widget.tableData['zone_id'],
+              'capacity': widget.tableData['capacity'],
+              'shape': widget.tableData['shape'],
+            });
+          }
+
+          for (final child in selectedChildren) {
+            if (!childTables.any((t) => t['table_name'] == child)) {
+              childTables.add({
+                'table_id': widget.tableData['table_id'],
+                'table_name': child,
+                'status': widget.tableData['status'] ?? 'Unknown',
+                'zone_id': widget.tableData['zone_id'],
+                'capacity': widget.tableData['capacity'],
+                'shape': widget.tableData['shape'],
+              });
+            }
+          }
+
+          parentTables = _sortTables(parentTables);
+          childTables = _sortTables(childTables);
+        });
+      }
+    }
+  }
+
+  List<Map<String, dynamic>> _sortTables(List<Map<String, dynamic>> tables) {
+    tables.sort((a, b) {
+      final nameA = a['table_name']?.toString() ?? '';
+      final nameB = b['table_name']?.toString() ?? '';
+      final numA = int.tryParse(RegExp(r'\d+').stringMatch(nameA) ?? '') ?? 0;
+      final numB = int.tryParse(RegExp(r'\d+').stringMatch(nameB) ?? '') ?? 0;
+      if (numA != numB) return numA.compareTo(numB);
+      return nameA.compareTo(nameB);
+    });
+    return tables;
+  }
 
   @override
   Widget build(BuildContext context) {
+    final bool isUpdateMode = widget.tableData['is_merged'] == true;
+
     return AlertDialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       backgroundColor: Colors.white,
       insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
       contentPadding: const EdgeInsets.all(20),
       content: SizedBox(
         width: 800,
-        height: 450,
-        child: Column(
+        height: 480,
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
           children: [
             /// Title + Close
             Row(
@@ -86,6 +170,7 @@ class _ReservationMergePopupState extends State<ReservationMergePopup> {
             ),
             const SizedBox(height: 12),
 
+            /// Instruction
             Text.rich(
               TextSpan(
                 children: [
@@ -124,18 +209,20 @@ class _ReservationMergePopupState extends State<ReservationMergePopup> {
                 children: [
                   Expanded(
                     child: _buildPanel(
-                      title: "Choose Table to merge (Parent) Available :",
+                      title: "Choose Parent Table:",
                       children: [
                         Wrap(
                           spacing: 10,
                           runSpacing: 10,
-                          children: availableParent.map((t) {
-                            return _buildTableButton(
-                              tableName: t,
-                              baseColor: const Color(0xFFBDECC7),
-                              isParent: true,
-                            );
-                          }).toList(),
+                          children: parentTables
+                              .map((t) => _buildTableButton(
+                            tableName: t['table_name'],
+                            status: t['status'] ?? "Available",
+                            isParent: true,
+                            isMerged: t['is_merged'] == true,
+                            isUpdateMode: isUpdateMode,
+                          ))
+                              .toList(),
                         ),
                       ],
                     ),
@@ -143,18 +230,20 @@ class _ReservationMergePopupState extends State<ReservationMergePopup> {
                   const SizedBox(width: 14),
                   Expanded(
                     child: _buildPanel(
-                      title: "Choose Table to merge With (Child) Available :",
+                      title: "Choose Child Tables:",
                       children: [
                         Wrap(
                           spacing: 10,
                           runSpacing: 10,
-                          children: childTables.map((t) {
-                            return _buildTableButton(
-                              tableName: t,
-                              baseColor: const Color(0xFFBDECC7),
-                              isParent: false,
-                            );
-                          }).toList(),
+                          children: childTables
+                              .map((t) => _buildTableButton(
+                            tableName: t['table_name'],
+                            status: t['status'] ?? "Available",
+                            isParent: false,
+                            isMerged: t['is_merged'] == true,
+                            isUpdateMode: isUpdateMode,
+                          ))
+                              .toList(),
                         ),
                       ],
                     ),
@@ -173,16 +262,28 @@ class _ReservationMergePopupState extends State<ReservationMergePopup> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFF5A5A),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 onPressed: () {
+                  if (selectedParent == null || selectedChildren.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text(
+                              "Please select parent and child tables.")),
+                    );
+                    return;
+                  }
+
+                  widget.tableData['selectedParent'] = selectedParent;
+                  widget.tableData['selectedChildren'] =
+                      selectedChildren.toList();
+
                   Navigator.of(context).pop();
                   widget.onMergeEdit(widget.index, widget.tableData);
                 },
-                child: const Text(
-                  "Merge & Proceed",
-                  style: TextStyle(
+                child: Text(
+                  isUpdateMode ? "Update & Proceed" : "Merge & Proceed",
+                  style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
@@ -219,34 +320,57 @@ class _ReservationMergePopupState extends State<ReservationMergePopup> {
 
   Widget _buildTableButton({
     required String tableName,
-    required Color baseColor,
+    required String status,
     required bool isParent,
+    bool isMerged = false,
+    bool isUpdateMode = false,
   }) {
     bool isSelectedParent = selectedParent == tableName;
     bool isSelectedChild = selectedChildren.contains(tableName);
 
-    bool isBlockedFromParent = !isParent && selectedParent == tableName;
-    bool isBlockedFromChild = isParent && selectedChildren.contains(tableName);
+    if (originallyMergedTables.contains(tableName)) {
+      isMerged = true;
+    }
 
+    bool isBlocked = false;
+    if (isUpdateMode) {
+      if (isMerged && !originallyMergedTables.contains(tableName)) {
+        isBlocked = true;
+      }
+    } else {
+      if (isMerged) {
+        isBlocked = true;
+      }
+    }
+
+    if (!isBlocked) {
+      if ((isParent && selectedChildren.contains(tableName)) ||
+          (!isParent && selectedParent == tableName)) {
+        isBlocked = true;
+      }
+    }
+
+    Color baseColor =
+    status == "Available" ? const Color(0xFFBDECC7) : const Color(0xFFF3C0C3);
     Color bgColor = baseColor;
 
     if (isParent) {
       if (isSelectedParent) {
         bgColor = const Color(0xFFEAC989);
-      } else if (isBlockedFromChild) {
+      } else if (isBlocked) {
         bgColor = const Color(0xFFD9D9D9);
       }
     } else {
       if (isSelectedChild) {
         bgColor = const Color(0xFFFFF2B1);
-      } else if (isBlockedFromParent) {
+      } else if (isBlocked) {
         bgColor = const Color(0xFFD9D9D9);
       }
     }
 
     return GestureDetector(
       onTap: () {
-        if (isBlockedFromParent || isBlockedFromChild) return;
+        if (isBlocked) return;
 
         setState(() {
           if (isParent) {
