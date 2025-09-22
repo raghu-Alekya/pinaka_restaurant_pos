@@ -8,8 +8,10 @@ import 'package:intl/intl.dart';
 import '../../blocs/Bloc Event/TableEvent.dart';
 import '../../blocs/Bloc Event/ZoneEvent.dart';
 import '../../blocs/Bloc Event/attendance_event.dart';
+import '../../blocs/Bloc Event/order_event.dart';
 import '../../blocs/Bloc Logic/attendance_bloc.dart';
 import '../../blocs/Bloc Logic/checkin_bloc.dart';
+import '../../blocs/Bloc Logic/order_bloc.dart';
 import '../../blocs/Bloc Logic/table_bloc.dart';
 import '../../blocs/Bloc Logic/zone_bloc.dart';
 import '../../blocs/Bloc State/ZoneState.dart';
@@ -22,6 +24,7 @@ import '../../models/UserPermissions.dart';
 import '../../models/view_mode.dart';
 import '../../repositories/checkin_repository.dart';
 import '../../repositories/employee_repository.dart';
+import '../../repositories/order_repository.dart';
 import '../../repositories/table_merge_repository.dart';
 import '../../repositories/table_repository.dart';
 import '../../repositories/zone_repository.dart';
@@ -47,6 +50,7 @@ import '../widgets/bottom_nav_bar.dart';
 import '../widgets/table_helpers.dart';
 import 'CheckinPopup.dart';
 import 'DailyAttendanceScreen.dart';
+import 'dashboard screen.dart';
 import 'guest_details_popup.dart';
 
 /// Screen widget that manages the floor plan of tables in a restaurant POS system.
@@ -1363,10 +1367,10 @@ class _TablesScreenState extends State<TablesScreen> {
   /// - `index`: The index of the table being modified.
   /// - `tableData`: The table data for the selected table.
   void _showGuestDetailsPopup(
-    BuildContext context,
-    int index,
-    Map<String, dynamic> tableData,
-  ) {
+      BuildContext context,
+      int index,
+      Map<String, dynamic> tableData,
+      ) {
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -1379,11 +1383,74 @@ class _TablesScreenState extends State<TablesScreen> {
             index: index,
             tableData: tableData,
             placedTables: placedTables,
+            onGuestSaved: (guestDetails) async {
+              final tableId = tableData['id'];
+              final zoneId = tableData['zone_id'];
+              final tableName = tableData['name'] ?? 'Table';
+              final zoneName = tableData['zone_name'] ?? 'Main Zone';
+
+
+              AppLogger.info("Guest details saved");
+              AppLogger.info("Guest Count: ${guestDetails.guestCount}");
+              AppLogger.info("Table ID: $tableId, Zone ID: $zoneId");
+
+              try {
+                final orderRepo = OrderRepository(
+                    baseUrl: 'https://merchantrestaurant.alektasolutions.com');
+
+                final orderModel = await orderRepo.createOrder(
+                  restaurantId: '1',
+                  tableId: tableId,
+                  zoneId: zoneId,
+                  guests: [guestDetails],
+                  guestCount: guestDetails.guestCount,
+                  token: 'YOUR_VALID_TOKEN_HERE',
+                  zoneName: zoneName,
+                  restaurantName: 'My Restaurant',
+                  tableName: tableName, // ✅ pass correct table name
+                );
+
+                AppLogger.info("✅ Order created via API with Order ID: ${orderModel.orderId}");
+
+                context.read<OrderBloc>().add(CreateOrderSuccess(orderId: orderModel.orderId));
+
+
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => BlocProvider.value(
+                      value: context.read<OrderBloc>(),
+                      child: DashboardScreen(
+                        guestDetails: guestDetails,
+                        token: "YOUR_VALID_TOKEN_HERE",
+                        restaurantId: '1',
+                        orderId: orderModel.orderId,
+                        tableId: tableId,
+                        zoneId: zoneId,
+                        zoneName: tableData['zone_name'] ?? 'Main Zone',
+                        tableName: tableData['name'] ?? 'Table',
+                      ),
+                    ),
+                  ),
+                );
+
+                AppLogger.info("Navigated to DashboardScreen with Order ID: ${orderModel.orderId}");
+              } catch (e) {
+                AppLogger.error(" Failed to create order: $e");
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("Failed to create order, please try again.")),
+                );
+              }
+            },
+            token: '',
+            restaurantId: '1',
           ),
         );
       },
     );
   }
+
 
   Widget _buildSharedAreaFilter() {
     if (areaNames.isEmpty) return SizedBox.shrink();
@@ -1657,7 +1724,7 @@ class _TablesScreenState extends State<TablesScreen> {
                 _currentViewMode = ViewMode.normal;
               }
             });
-          },
+          }, restaurantId: 'widget.restaurantId',
         ),
         body: Stack(
           children: [

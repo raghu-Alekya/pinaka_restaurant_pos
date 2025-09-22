@@ -32,7 +32,7 @@ class AuthRepository {
       String restaurantName = data['restaurant_name'].toString();
       Map<String, dynamic> permissions = Map<String, dynamic>.from(data['permissions'] ?? {});
 
-      await loginDao.insertLogin(pin, token, restaurantId, restaurantName);
+      await loginDao.insertLogin(pin, token, restaurantId, restaurantName, userId: 'userid');
 
       AppLogger.info('Login successful. Token and restaurant data saved.');
       AppLogger.info('Restaurant ID: $restaurantId');

@@ -7,7 +7,7 @@ class DatabaseInitializer {
 
     return await openDatabase(
       path,
-      version: 9,
+      version: 2, // ✅ bump version
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE tables(
@@ -42,11 +42,13 @@ class DatabaseInitializer {
             pin TEXT NOT NULL,
             token TEXT NOT NULL,
             restaurant_id TEXT,
-            restaurant_name TEXT
+            restaurant_name TEXT,
+            user_id TEXT,
+            user_role TEXT  -- ✅ fixed comma + added user_id
           )
         ''');
 
-        // ✅ New shifts table
+        // ✅ Shifts table
         await db.execute('''
           CREATE TABLE shifts (
             shift_id INTEGER PRIMARY KEY,
@@ -92,13 +94,16 @@ class DatabaseInitializer {
           await db.execute('ALTER TABLE tables ADD COLUMN restaurant_id INTEGER');
         }
         if (oldVersion < 9) {
-          // ✅ Create shifts table during upgrade
           await db.execute('''
             CREATE TABLE shifts (
               shift_id INTEGER PRIMARY KEY,
               shift_date TEXT UNIQUE
             )
           ''');
+        }
+        if (oldVersion < 10) {
+          // ✅ Add user_id column to user_login for existing DB
+          await db.execute('ALTER TABLE user_login ADD COLUMN user_id TEXT');
         }
       },
     );

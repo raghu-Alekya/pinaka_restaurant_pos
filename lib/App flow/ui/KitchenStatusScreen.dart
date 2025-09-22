@@ -266,7 +266,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
           setState(() {
             _userPermissions = permissions;
           });
-        },
+        }, restaurantId: 'restaurantid',
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

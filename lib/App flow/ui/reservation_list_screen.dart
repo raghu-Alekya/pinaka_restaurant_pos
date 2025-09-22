@@ -246,7 +246,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
           setState(() {
             _userPermissions = permissions;
           });
-        },
+        }, restaurantId: 'widget.restaurantId',
       ),
       resizeToAvoidBottomInset: false,
       body: Stack(

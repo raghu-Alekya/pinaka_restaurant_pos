@@ -15,7 +15,8 @@ class CheckInBloc extends Bloc<CheckInEvent, CheckInState> {
     on<SubmitPinEvent>(_onSubmitPin);
   }
 
-  Future<void> _onSubmitPin(SubmitPinEvent event, Emitter<CheckInState> emit) async {
+  Future<void> _onSubmitPin(
+      SubmitPinEvent event, Emitter<CheckInState> emit) async {
     emit(CheckInLoading());
 
     try {
@@ -24,23 +25,25 @@ class CheckInBloc extends Bloc<CheckInEvent, CheckInState> {
         token: event.token,
       );
 
-      AppLogger.debug('KOT PIN Validation Response: $data');
+      AppLogger.debug('KOT PIN Validation Parsed Response: $data');
 
-      if (data['success'] == true && data['data'] != null) {
-        final permissions = UserPermissions.fromJson(data['data']['permissions']);
+      if (data['captainId'] != null && data['captainId'] != 0) {
+        // ⚡ No need for 'permissions' unless your API still returns them separately
+        final permissions = UserPermissions.fromJson(data['permissions'] ?? {});
+
         emit(CheckInSuccess(
           permissions: permissions,
           fullResponse: data,
+          captainId: data['captainId'],
         ));
-
-      }
-      else {
-        AppLogger.debug('Login Failed with message: ${data['message'] ?? 'Unknown error'}');
-        emit(CheckInFailure(data['message'] ?? 'Invalid PIN'));
+      } else {
+        emit(CheckInFailure('Invalid PIN or missing captainId'));
       }
     } catch (e) {
       AppLogger.debug('Login Exception: $e');
       emit(CheckInFailure('Error: $e'));
     }
   }
+
+
 }

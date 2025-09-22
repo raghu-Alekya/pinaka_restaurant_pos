@@ -19,7 +19,7 @@ class TopBar extends StatefulWidget implements PreferredSizeWidget {
     required this.token,
     required this.pin,
     this.userPermissions,
-    this.onPermissionsReceived,
+    this.onPermissionsReceived, required String restaurantId,
   }) : super(key: key);
 
   @override

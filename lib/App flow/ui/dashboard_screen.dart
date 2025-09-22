@@ -92,7 +92,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               );
             }
           }
-        },
+        }, restaurantId: 'restaurentid',
       ),
       body: const DashboardContent(),
       bottomNavigationBar: BottomNavBar(

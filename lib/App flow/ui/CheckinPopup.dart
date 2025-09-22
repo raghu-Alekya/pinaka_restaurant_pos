@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../blocs/Bloc Event/checkin_event.dart';
 import '../../blocs/Bloc Logic/checkin_bloc.dart';
 import '../../blocs/Bloc State/checkin_state.dart';
+import '../../local database/login_dao.dart';
 import '../../models/UserPermissions.dart';
 import '../../utils/SessionManager.dart';
 
@@ -89,12 +90,27 @@ class _CheckinpopupState extends State<Checkinpopup> {
   Future<void> _handleCheckInSuccess(CheckInSuccess state) async {
     setState(() => _isLoading = false);
 
-    final fullData = state.fullResponse['data'];
+    // fullResponse is already the top-level login info map
+    final fullData = state.fullResponse;
+
+    // Build permissions object directly from state
     final rawPermissions = Map<String, dynamic>.from(fullData['permissions'] ?? {});
     rawPermissions['displayName'] = fullData['displayName'] ?? '';
     rawPermissions['role'] = fullData['role'] ?? '';
     final permissions = UserPermissions.fromJson(rawPermissions);
+
+    // ✅ Save to session (permissions)
     await SessionManager.savePermissions(permissions);
+
+    // ✅ Persist login info (including captainId) to SQLite
+    await LoginDao().insertLogin(
+      fullData['pin'] ?? '',                 // PIN entered
+      widget.token,                          // token passed into popup
+      fullData['restaurantId']?.toString() ?? '',
+      fullData['restaurantName'] ?? '',
+      userId: (state.captainId).toString(),  // 👈 from Bloc
+      userRole: fullData['role'] ?? '',      // 👈 optional role
+    );
 
     widget.onPermissionsReceived?.call(permissions);
 
@@ -108,6 +124,7 @@ class _CheckinpopupState extends State<Checkinpopup> {
 
     widget.onCheckIn?.call();
   }
+
 
   Widget _buildPopupContent(BuildContext context) {
     return Center(

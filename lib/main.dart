@@ -2,10 +2,16 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart';
+import 'package:pinaka_restaurant_pos/repositories/category_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/checkin_repository.dart';
+import 'package:pinaka_restaurant_pos/repositories/minisubcategory_repository.dart';
+import 'package:pinaka_restaurant_pos/repositories/order_repository.dart';
+import 'package:pinaka_restaurant_pos/repositories/product_repository.dart';
+import 'package:pinaka_restaurant_pos/repositories/subcategory_repository.dart';
 import 'package:pinaka_restaurant_pos/utils/GlobalReservationMonitor.dart';
 import 'package:pinaka_restaurant_pos/utils/ShiftMonitor.dart';
 import 'package:pinaka_restaurant_pos/utils/global_navigator.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -14,6 +20,11 @@ import 'App flow/ui/splash_screen.dart';
 
 // Bloc Logic
 import 'blocs/Bloc Logic/auth_bloc.dart';
+import 'blocs/Bloc Logic/category_bloc.dart';
+import 'blocs/Bloc Logic/minisubcategory_bloc.dart';
+import 'blocs/Bloc Logic/order_bloc.dart';
+import 'blocs/Bloc Logic/product_bloc.dart';
+import 'blocs/Bloc Logic/subcategory_bloc.dart';
 import 'blocs/Bloc Logic/table_bloc.dart';
 import 'blocs/Bloc Logic/zone_bloc.dart';
 import 'blocs/Bloc Logic/attendance_bloc.dart';
@@ -34,7 +45,12 @@ void main() async {
   final dbPath = await getDatabasesPath();
   await deleteDatabase(join(dbPath, 'tables.db'));
   final prefs = await SharedPreferences.getInstance();
-  final token = prefs.getString('token');
+  final token = prefs.getString('token') ?? '';
+
+  final orderRepo = OrderRepository(
+    baseUrl: "https://merchantrestaurant.alektasolutions.com",
+
+  );
 
   if (token != null && token.isNotEmpty) {
     final employeeRepo = EmployeeRepository();
@@ -46,11 +62,18 @@ void main() async {
     GlobalReservationMonitor().start(token);
   }
 
-  runApp(const MyApp());
+  runApp(MyApp(
+    orderRepo: orderRepo,
+    token: token,
+  ));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final OrderRepository orderRepo;
+  final String token;
+
+  const MyApp({super.key, required this.orderRepo, required this.token});
+
 
   @override
   Widget build(BuildContext context) {
@@ -95,6 +118,42 @@ class MyApp extends StatelessWidget {
           BlocProvider<CheckInBloc>(
             create: (context) => CheckInBloc(CheckInRepository()),
           ),
+          BlocProvider<SubCategoryBloc>(
+            create: (_) => SubCategoryBloc(
+              subCategoryRepository: SubCategoryRepository(
+                baseUrl: "https://merchantrestaurant.alektasolutions.com",
+              ),
+            ),
+          ),
+          Provider<CheckInRepository>(
+            create: (_) => CheckInRepository(),
+          ),
+
+          // ✅ BlocProvider is only for Blocs/Cubits
+          BlocProvider<OrderBloc>(
+            create: (context) => OrderBloc(orderRepo, token),
+          ),
+
+          BlocProvider<CategoryBloc>(
+            create: (_) => CategoryBloc(
+              repository: CategoryRepository(
+                baseUrl: "https://merchantrestaurant.alektasolutions.com",
+              ),
+
+            ),
+          ),
+          BlocProvider<MiniSubCategoryBloc>(
+            create: (_) => MiniSubCategoryBloc(
+              repository: MiniSubCategoryRepository(
+                baseUrl: "https://merchantrestaurant.alektasolutions.com",
+                token: "token",
+              ),
+            ),
+          ),
+          BlocProvider<ProductBloc>(
+            create: (_) => ProductBloc(ProductRepository as ProductRepository),
+          ),
+
         ],
         child: MaterialApp(
           navigatorKey: navigatorKey,
