@@ -6,6 +6,16 @@ class ReservationMergePopup extends StatefulWidget {
   final Map<String, dynamic> tableData;
   final String token;
   final Function(int, Map<String, dynamic>) onMergeEdit;
+  final int people;
+  final String name;
+  final String phone;
+  final DateTime date;
+  final String time;
+  final String slotType;
+  final String zoneName;
+  final String restaurantName;
+  final int restaurantId;
+  final String priority;
 
   const ReservationMergePopup({
     super.key,
@@ -13,6 +23,16 @@ class ReservationMergePopup extends StatefulWidget {
     required this.tableData,
     required this.token,
     required this.onMergeEdit,
+    required this.people,
+    required this.name,
+    required this.phone,
+    required this.date,
+    required this.time,
+    required this.slotType,
+    required this.zoneName,
+    required this.restaurantName,
+    required this.restaurantId,
+    required this.priority,
   });
 
   @override
@@ -119,6 +139,27 @@ class _ReservationMergePopupState extends State<ReservationMergePopup> {
       return nameA.compareTo(nameB);
     });
     return tables;
+  }
+
+  Future<void> _saveReservation() async {
+    final mergedTablesString = widget.tableData['merged_tables'] ?? '';
+    final reservationData = {
+      'people': widget.people,
+      'name': widget.name,
+      'phone': widget.phone,
+      'date': widget.date.toString(),
+      'time': widget.time,
+      'tableNo': mergedTablesString,
+      'slotType': widget.slotType,
+      'zoneName': widget.zoneName,
+      'restaurantName': widget.restaurantName,
+      'restaurantId': widget.restaurantId,
+      'priority': widget.priority,
+      'isUpdateMode': widget.tableData['is_merged'] == true,
+      'reservationId': widget.tableData['reservation_id'] ?? 0,
+    };
+    print("Reservation Data: $reservationData");
+
   }
 
   @override
@@ -253,41 +294,31 @@ class _ReservationMergePopupState extends State<ReservationMergePopup> {
             ),
 
             const SizedBox(height: 16),
-
-            /// Merge Button
+            /// Merge & Confirm Reservation Button
             SizedBox(
-              width: 220,
+              width: 280,
               height: 40,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFF5A5A),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                onPressed: () {
+                onPressed: () async {
                   if (selectedParent == null || selectedChildren.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text(
-                              "Please select parent and child tables.")),
+                      const SnackBar(content: Text("Please select parent and child tables.")),
                     );
                     return;
                   }
-
                   widget.tableData['selectedParent'] = selectedParent;
-                  widget.tableData['selectedChildren'] =
-                      selectedChildren.toList();
-
+                  widget.tableData['selectedChildren'] = selectedChildren.toList();
                   Navigator.of(context).pop();
                   widget.onMergeEdit(widget.index, widget.tableData);
+                  await _saveReservation();
                 },
                 child: Text(
-                  isUpdateMode ? "Update & Proceed" : "Merge & Proceed",
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
+                  isUpdateMode ? "Update & confirm reservation" : "Merge & confirm reservation",
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white),
                 ),
               ),
             ),

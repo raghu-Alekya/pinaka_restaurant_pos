@@ -176,7 +176,7 @@ class CommonGridItem extends StatelessWidget {
           BoxShadow(color: Colors.black12, blurRadius: 2, offset: Offset(0, 1)),
         ],
       ),
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 5),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8),
         child: Column(
@@ -198,21 +198,21 @@ class CommonGridItem extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.group, size: 22, color: iconColor),
-                const SizedBox(width: 5),
+                Icon(Icons.group, size: 20, color: iconColor),
+                const SizedBox(width: 4),
                 Text(
                   capacityStr,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: iconColor,
-                    fontSize: 16,
+                    fontSize: 14,
                   ),
                 ),
                 if (isMerged) ...[
-                  const SizedBox(width: 5),
+                  const SizedBox(width: 4),
                   Icon(
                     Icons.link,
-                    size: 20,
+                    size: 18,
                     color: capacity == 0 ? Colors.blue : Colors.black,
                   ),
                 ],

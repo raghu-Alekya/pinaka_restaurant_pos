@@ -13,6 +13,14 @@ class AppConstants {
   static const String getAllZonesEndpoint = '$baseApiPath/zones/get-all-zones';
   static const String deleteZoneEndpoint = '$baseApiPath/zones/delete-zone';
 
+  // Dashboard
+  static const String dashboardRevenueByFiltersEndpoint =
+      '$baseApiPath/merchant-dashboard/get-revenue-by-filters';
+  static const String topProductsSoldEndpoint =
+      '$baseApiPath/merchant-dashboard/top-products-sold';
+  static const String topCategoriesSoldEndpoint =
+      '$baseApiPath/merchant-dashboard/top-categories-sold';
+
   // Table Management
   static const String createTableEndpoint = '$baseApiPath/tables/create-table';
   static const String getAllTablesEndpoint = '$baseApiPath/tables/get-all-tables';
@@ -26,6 +34,17 @@ class AppConstants {
 
   // Employee Management
   static const String getAllEmployeesEndpoint = '$baseApiPath/users/get-all-employees';
+
+  // Employee Attendance
+  static const String currentShiftEmployeesEndpoint =
+      '$baseApiPath/employee-attendance/current-shift';
+  static const String employeeAttendanceEndpoint =
+      '$baseApiPath/employee-attendance';
+  static const String inventoryAlertsEndpoint =
+      '$baseApiPath/employee-attendance/get-inventory-alerts';
+  static const String completedOrdersEndpoint =
+      '$baseApiPath/employee-attendance/get-all-completed-orders';
+
 
   // Shift Management
   static const String createShiftEndpoint = '$baseApiPath/shifts/create-shift';
