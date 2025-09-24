@@ -1556,10 +1556,11 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                               builder: (_) => ReservationUnmergePopup(
                                 index: index,
                                 tableData: tableData,
-                                onUnmerge: (i, updatedTable) {
+                                onUnmerge: (i, updatedTable) async {
                                   setState(() {
                                     _filteredTablesByArea[i]['isMerged'] = false;
                                   });
+
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
@@ -1603,7 +1604,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                                 index: index,
                                 tableData: tableData,
                                 token: widget.token,
-                                onMergeEdit: (i, updatedTable) {
+                                onMergeEdit: (i, updatedTable) async {
                                   setState(() {
                                     _filteredTablesByArea[i]['isMerged'] = true;
                                   });
@@ -1616,6 +1617,16 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                                     ),
                                   );
                                 },
+                                people: int.tryParse(_peopleController.text.trim()) ?? 1,
+                                name: _nameController.text.trim(),
+                                phone: _contactController.text.trim(),
+                                date: selectedDate,
+                                time: selectedSlot,
+                                slotType: selectedMeal,
+                                zoneName: selectedArea,
+                                restaurantName: widget.restaurantName,
+                                restaurantId: int.tryParse(widget.restaurantId) ?? 1,
+                                priority: _priorityController.text.trim(),
                               ),
                             );
                           },

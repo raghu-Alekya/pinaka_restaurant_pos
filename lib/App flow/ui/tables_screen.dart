@@ -955,17 +955,10 @@ class _TablesScreenState extends State<TablesScreen> {
           );
           return;
         }
-        if (status.toLowerCase() == 'reserve') {
-          AreaMovementNotifier.showPopup(
-            context: context,
-            fromArea: area ?? '',
-            toArea: '',
-            tableName: mergedTables,
-            customMessage: 'You cannot merge a reserved table',
-          );
-          return;
+        final statusLower = status.toLowerCase();
+        if (statusLower == 'available' || statusLower == 'dine in') {
+          _showTableActionPopup(context, index, tableData);
         }
-        _showTableActionPopup(context, index, tableData);
       },
       child: RotatedBox(quarterTurns: quarterTurns, child: borderedTable),
     );
@@ -1089,6 +1082,7 @@ class _TablesScreenState extends State<TablesScreen> {
         }
       },
       onLongPress: () {
+        final status = tableData['status']?.toLowerCase() ?? 'available';
         if (capacity == 0) {
           AreaMovementNotifier.showPopup(
             context: context,
@@ -1099,18 +1093,9 @@ class _TablesScreenState extends State<TablesScreen> {
           );
           return;
         }
-        final status = tableData['status']?.toLowerCase() ?? 'available';
-        if (status == 'reserve') {
-          AreaMovementNotifier.showPopup(
-            context: context,
-            fromArea: tableData['areaName'] ?? '',
-            toArea: '',
-            tableName: tableData['tableName'] ?? '',
-            customMessage: 'You cannot merge a reserved table',
-          );
-          return;
+        if (status == 'available' || status == 'dine in') {
+          _showTableActionPopup(context, actualIndex, tableData);
         }
-        _showTableActionPopup(context, actualIndex, tableData);
       },
     );
   }
@@ -1166,6 +1151,7 @@ class _TablesScreenState extends State<TablesScreen> {
         }
       },
       onLongPress: () {
+        final status = tableData['status']?.toLowerCase() ?? 'available';
         if (capacity == 0) {
           AreaMovementNotifier.showPopup(
             context: context,
@@ -1176,18 +1162,9 @@ class _TablesScreenState extends State<TablesScreen> {
           );
           return;
         }
-        final status = tableData['status']?.toLowerCase() ?? 'available';
-        if (status == 'reserve') {
-          AreaMovementNotifier.showPopup(
-            context: context,
-            fromArea: tableData['areaName'] ?? '',
-            toArea: '',
-            tableName: tableData['tableName'] ?? '',
-            customMessage: 'You cannot merge a reserved table',
-          );
-          return;
+        if (status == 'available' || status == 'dine in') {
+          _showTableActionPopup(context, actualIndex, tableData);
         }
-        _showTableActionPopup(context, actualIndex, tableData);
       },
     );
   }
@@ -1822,8 +1799,8 @@ class _TablesScreenState extends State<TablesScreen> {
                                 )
                                     : const SliverGridDelegateWithFixedCrossAxisCount(
                                   crossAxisCount: 11,
-                                  crossAxisSpacing: 20,
-                                  mainAxisSpacing: 20,
+                                  crossAxisSpacing: 18,
+                                  mainAxisSpacing: 18,
                                   childAspectRatio: 1.0,
                                 ),
                                 itemBuilder: (context, index) {

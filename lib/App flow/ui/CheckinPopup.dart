@@ -5,6 +5,7 @@ import '../../blocs/Bloc Logic/checkin_bloc.dart';
 import '../../blocs/Bloc State/checkin_state.dart';
 import '../../models/UserPermissions.dart';
 import '../../utils/SessionManager.dart';
+import '../widgets/area_movement_notifier.dart';
 
 class Checkinpopup extends StatefulWidget {
   final VoidCallback? onCheckIn;
@@ -97,13 +98,13 @@ class _CheckinpopupState extends State<Checkinpopup> {
     await SessionManager.savePermissions(permissions);
 
     widget.onPermissionsReceived?.call(permissions);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Check-In successful!'),
-        backgroundColor: Colors.green,
-        duration: Duration(seconds: 2),
-      ),
+    AreaMovementNotifier.showPopup(
+      context: context,
+      fromArea: '',
+      toArea: '',
+      tableName: '',
+      customMessage: 'Check-In successful!',
+      duration: const Duration(seconds: 2),
     );
 
     widget.onCheckIn?.call();
