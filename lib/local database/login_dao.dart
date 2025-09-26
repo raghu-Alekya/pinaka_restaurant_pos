@@ -9,7 +9,7 @@ class LoginDao {
       String restaurantId,
       String restaurantName, {
         required String userId,   // 👈 new field (captain/user ID)
-        String? userRole,         // 👈 optional
+        String? userRole, required displayName, required String role,         // 👈 optional
       }) async {
     final db = await DatabaseHelper().database;
     await db.insert(

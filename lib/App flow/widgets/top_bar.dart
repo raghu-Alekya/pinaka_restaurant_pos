@@ -128,7 +128,7 @@ class _TopBarState extends State<TopBar> {
                 ),
               ),
 
-              SizedBox(width: 140),
+              SizedBox(width: 120),
 
               /// Icon Buttons
               _buildModeToggle(),
@@ -435,7 +435,7 @@ class _TopBarState extends State<TopBar> {
 
   Widget _buildProfileSection() {
     return Container(
-      width: 170,
+      width: 180,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -476,7 +476,7 @@ class _TopBarState extends State<TopBar> {
     );
   }
 }
-  class TrianglePainter extends CustomPainter {
+class TrianglePainter extends CustomPainter {
   final bool isLeft;
   final Color fillColor;
   final Color borderColor;

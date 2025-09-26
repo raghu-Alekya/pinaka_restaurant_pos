@@ -24,15 +24,23 @@ class AuthRepository {
 
     final responseData = jsonDecode(response.body);
 
-    if (response.statusCode == 200 && responseData['success'] == true) {
+    if (response.statusCode == 200 && responseData['success'] == true)
+    {
       final data = responseData['data'];
 
       String token = data['token'];
       String restaurantId = data['restaurant_id'].toString();
       String restaurantName = data['restaurant_name'].toString();
       Map<String, dynamic> permissions = Map<String, dynamic>.from(data['permissions'] ?? {});
+      String displayName = permissions['displayName'] ?? '';
+      String role = permissions['role'] ?? '';
 
-      await loginDao.insertLogin(pin, token, restaurantId, restaurantName, userId: 'userid');
+
+
+
+
+      await loginDao.insertLogin(pin, token, restaurantId, restaurantName,
+          userId: 'userid', displayName: displayName, role: role);
 
       AppLogger.info('Login successful. Token and restaurant data saved.');
       AppLogger.info('Restaurant ID: $restaurantId');
@@ -45,7 +53,8 @@ class AuthRepository {
         'restaurant_name': restaurantName,
         'permissions': permissions,
       };
-    } else {
+    }
+    else {
       String errorMessage = responseData['message'] ?? "Login failed";
       AppLogger.warning('Login failed: $errorMessage');
       return {'success': false, 'message': errorMessage};

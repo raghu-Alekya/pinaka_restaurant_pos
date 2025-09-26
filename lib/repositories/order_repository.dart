@@ -22,7 +22,8 @@ class OrderRepository {
     required String restaurantName,
     required List<Guestcount> guests,
     required String tableName,
-  }) async {
+  }) async
+  {
     final url = Uri.parse('$baseUrl/wp-json/pinaka-restaurant-pos/v1/orders');
 
     final body = {
@@ -54,8 +55,19 @@ class OrderRepository {
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       final data = jsonDecode(response.body);
-      return OrderModel.fromJson(data);
-    } else {
+
+      final order = OrderModel.fromJson(data);
+
+      //  Extract the order_id
+      final orderId = data['order_id'] ?? order.id;
+
+      AppLogger.info(" Order created successfully with ID: $orderId");
+
+      return order.copyWith(orderId: orderId);
+      // ensure your model keeps id
+    }
+
+    else {
       throw Exception('Failed to create order: ${response.body}');
     }
   }
@@ -138,13 +150,13 @@ class OrderRepository {
           'Content-Type': 'application/json',
           'Authorization': token.startsWith("Bearer ")
               ? token
-              : "Bearer $token",   // ✅ fix double-bearer issue
+              : "Bearer $token",   //  fix double-bearer issue
         },
         body: jsonEncode(body),
       );
 
-      AppLogger.debug("🔹 KOT API Response Code: ${response.statusCode}");
-      AppLogger.debug("🔹 KOT API Response Body: ${response.body}");
+      AppLogger.debug(" KOT API Response Code: ${response.statusCode}");
+      AppLogger.debug(" KOT API Response Body: ${response.body}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
@@ -155,16 +167,18 @@ class OrderRepository {
           time: DateTime.now(),
           status: 'created',
           items: items,
+          parentOrderId: parentOrderId, // pass the actual parent order ID
         );
+
 
         AppLogger.info("KOT created successfully: ${jsonEncode(kot.toJson())}");
         return kot;
       } else {
-        AppLogger.error("❌ Failed to create KOT: ${response.statusCode} ${response.body}");
+        AppLogger.error(" Failed to create KOT: ${response.statusCode} ${response.body}");
         return null;
       }
     } catch (e, stackTrace) {
-      AppLogger.error("🔥 Error creating KOT: $e");
+      AppLogger.error(" Error creating KOT: $e");
       AppLogger.error(stackTrace.toString());
       return null;
     }
@@ -218,7 +232,7 @@ class OrderRepository {
       "meta_data": metaData,
     };
 
-    // ✅ Ensure either product_id OR variation_id
+    //  Ensure either product_id OR variation_id
     if (item.variationId != null && item.variationId! > 0) {
       lineItem["variation_id"] = item.variationId;
     } else if (item.productId != null && item.productId! > 0) {
@@ -229,9 +243,53 @@ class OrderRepository {
       return null;
     }
 
-    AppLogger.debug("🔹 Line item payload: $lineItem");
+    AppLogger.debug(" Line item payload: $lineItem");
     return lineItem;
   }
+  Future<OrderModel?> getOrderByTable(int tableId) async {
+    try {
+      final url = Uri.parse('$baseUrl/wp-json/pinaka-restaurant-pos/v1/orders?table_id=$tableId');
+      final response = await http.get(url, headers: {'Content-Type': 'application/json'});
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        if (data != null && data['parent_order'] != null) {
+          final parent = data['parent_order'];
+
+          // Declare item first, fallback to empty map if no items
+          Map<String, dynamic> item = {};
+          if (parent['kot_orders'] != null &&
+              parent['kot_orders'].isNotEmpty &&
+              parent['kot_orders'][0]['items'] != null &&
+              parent['kot_orders'][0]['items'].isNotEmpty) {
+            item = parent['kot_orders'][0]['items'][0];
+          }
+
+          return OrderModel(
+            orderId: parent['id'] ?? 0,
+            tableId: parent['table_id'] ?? 0,
+            tableName: parent['table_name'] ?? '',
+            zoneId: parent['zone_id'] ?? 0,
+            zoneName: parent['zone_name'] ?? '',
+            status: parent['status'] ?? '',
+            itemId: item['id'] ?? 0,
+            productId: item['product_id'] ?? 0,
+            itemName: item['item_name'] ?? '',
+            quantity: item['quantity'] ?? 0,
+            price: (item['price'] ?? 0).toDouble(),
+            amount: (item['amount'] ?? 0).toDouble(),
+          );
+        }
+      }
+    } catch (e) {
+      AppLogger.error("Error fetching order for table $tableId: $e");
+    }
+
+    return null;
+  }
+
+
 
 }
 

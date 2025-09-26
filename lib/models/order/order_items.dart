@@ -22,6 +22,7 @@ class OrderItems {
     this.note = '',
     required this.section,
   });
+  String get itemName => name;
 
   /// ✅ Total including add-ons (multiplies add-ons per item quantity)
   double get totalWithAddons {
@@ -37,27 +38,50 @@ class OrderItems {
   }
 
   factory OrderItems.fromJson(Map<String, dynamic> json) {
-    final rawAddOns = Map<String, dynamic>.from(json['addOns'] ?? {});
-    final structuredAddOns = rawAddOns.map((key, value) => MapEntry(
-      key,
-      {
-        'quantity': value['quantity'] ?? 0,
-        'price': (value['price'] as num?)?.toDouble() ?? 0.0,
-      },
-    ));
+    // Safe parsing of addOns
+    final addOnsData = json['addOns'];
+    final addOns = <String, Map<String, dynamic>>{};
+    if (addOnsData != null && addOnsData is Map) {
+      addOnsData.forEach((key, value) {
+        addOns[key] = {
+          'quantity': value?['quantity'] ?? 0,
+          'price': (value?['price'] as num?)?.toDouble() ?? 0.0,
+        };
+      });
+    }
+
+    // Safe parsing of modifiers
+    final modifiers = (json['modifiers'] as List?)?.map((e) => e.toString()).toList() ?? [];
+
+    // Safe parsing of section
+    final section = (json['section'] != null && json['section'] is Map<String, dynamic>)
+        ? Category.fromJson(json['section'])
+        : Category(
+      id: '0', // ✅ fallback as String
+      name: 'Unknown',
+      imagepath: '',
+      subCategories: [],
+    );
+// fallback
 
     return OrderItems(
-      productId: json['productId'],
-      variationId: json['variationId'], // ✅ parse if exists
-      name: json['name'],
-      quantity: json['quantity'],
-      price: (json['price'] as num).toDouble(),
-      modifiers: List<String>.from(json['modifiers'] ?? []),
-      addOns: structuredAddOns,
-      note: json['note'] ?? '',
-      section: Category.fromJson(json['section']),
+      productId: json['productId'] ?? 0,
+      variationId: json['variationId'],
+      name: json['name']?.toString()
+          ?? json['item_name']?.toString()
+          ?? 'Unknown',
+
+      quantity: json['quantity'] ?? 1,
+      price: (json['price'] as num?)?.toDouble() ?? 0.0,
+      addOns: addOns,
+      modifiers: modifiers,
+      note: json['note']?.toString() ?? '',
+      section: section, // ✅ use local variable here
     );
   }
+
+
+
 
   Map<String, dynamic> toJson() {
     final serializedAddOns = addOns.map((key, value) => MapEntry(key, {

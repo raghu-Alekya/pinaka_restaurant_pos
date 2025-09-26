@@ -109,7 +109,9 @@ class _CheckinpopupState extends State<Checkinpopup> {
       fullData['restaurantId']?.toString() ?? '',
       fullData['restaurantName'] ?? '',
       userId: (state.captainId).toString(),  // 👈 from Bloc
-      userRole: fullData['role'] ?? '',      // 👈 optional role
+      userRole: fullData['role'] ?? '',
+      displayName: fullData['name'] ?? '',
+      role: '',  // 👈 optional role
     );
 
     widget.onPermissionsReceived?.call(permissions);

@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart';
 import 'package:pinaka_restaurant_pos/repositories/category_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/checkin_repository.dart';
+import 'package:pinaka_restaurant_pos/repositories/kot_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/minisubcategory_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/order_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/product_repository.dart';
@@ -19,8 +20,11 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'App flow/ui/splash_screen.dart';
 
 // Bloc Logic
+import 'App flow/widgets/view_all_kots.dart';
+import 'blocs/Bloc Event/kot_event.dart';
 import 'blocs/Bloc Logic/auth_bloc.dart';
 import 'blocs/Bloc Logic/category_bloc.dart';
+import 'blocs/Bloc Logic/kot_bloc.dart';
 import 'blocs/Bloc Logic/minisubcategory_bloc.dart';
 import 'blocs/Bloc Logic/order_bloc.dart';
 import 'blocs/Bloc Logic/product_bloc.dart';
@@ -133,6 +137,21 @@ class MyApp extends StatelessWidget {
           BlocProvider<OrderBloc>(
             create: (context) => OrderBloc(orderRepo, token),
           ),
+          BlocProvider<KotBloc>(
+            create: (_) => KotBloc(KotRepository(baseUrl: 'https://merchantrestaurant.alektasolutions.com')),
+          ),
+          // BlocProvider(
+          //   create: (context) => KotBloc(
+          //     repository: KotRepository(baseUrl: 'https://merchantrestaurant.alektasolutions.com'),
+          //   )..add(FetchKots(
+          //     restaurantId: parentOrder.restaurantId,
+          //     zoneId: parentOrder.zoneId,
+          //     parentOrderId: parentOrder.id,
+          //   )),
+          //   child: const ViewAllKOTDropdown(),
+          // )
+
+
 
           BlocProvider<CategoryBloc>(
             create: (_) => CategoryBloc(

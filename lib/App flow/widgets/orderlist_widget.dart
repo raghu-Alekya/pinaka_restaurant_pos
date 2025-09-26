@@ -94,7 +94,7 @@ class OrderPanelList extends StatelessWidget {
 
                 // Item Name + Modifiers + AddOns + Note
                 SizedBox(
-                  width: 280, // your desired width
+                  width: 200, // your desired width
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -145,7 +145,7 @@ class OrderPanelList extends StatelessWidget {
 
                 // Modifier Button
                 SizedBox(
-                  width: 30, // desired width
+                  width: 60, // desired width
                   // height: 30, // optional, controls height too
                   child: IconButton(
                     padding: EdgeInsets.zero, // remove default padding
@@ -153,7 +153,7 @@ class OrderPanelList extends StatelessWidget {
                     onPressed: () => _showModifierPopup(context, index),
                   ),
                 ),
-                const SizedBox(width: 28),
+                const SizedBox(width: 14),
 
                 // Quantity Controls
                 Row(
@@ -169,6 +169,7 @@ class OrderPanelList extends StatelessWidget {
                         Icons.add, () => onIncreaseQuantity(index)),
                   ],
                 ),
+                const SizedBox(width:18),
 
                 // Amount (uses totalWithAddons)
                 SizedBox(

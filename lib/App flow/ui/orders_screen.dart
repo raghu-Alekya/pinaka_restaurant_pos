@@ -3,10 +3,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/ui/tables_screen.dart';
 
+import '../../blocs/Bloc Event/kot_event.dart';
 import '../../blocs/Bloc Event/order_event.dart';
 import '../../blocs/Bloc Logic/checkin_bloc.dart';
+import '../../blocs/Bloc Logic/kot_bloc.dart';
 import '../../blocs/Bloc Logic/order_bloc.dart';
 import '../../blocs/Bloc State/checkin_state.dart';
+import '../../blocs/Bloc State/kot_state.dart';
 import '../../blocs/Bloc State/order_state.dart';
 import '../../local database/login_dao.dart';
 import '../../local database/table_dao.dart';
@@ -14,6 +17,7 @@ import '../../models/order/order_items.dart';
 import '../../models/order/KOT_model.dart';
 import '../../models/order/guest_details.dart';
 import '../../repositories/checkin_repository.dart';
+import '../../repositories/kot_repository.dart';
 import '../../repositories/order_repository.dart';
 import '../../utils/logger.dart';
 import '../widgets/orderlist_widget.dart';
@@ -46,7 +50,10 @@ class OrderPanel extends StatelessWidget {
     required this.tableId,
     required this.tableName,
     required this.zoneId,
-    required this.zoneName, required this.placedTables, required this.pin, required this.restaurantName,
+    required this.zoneName,
+    required this.placedTables,
+    required this.pin,
+    required this.restaurantName,
   });
 
   @override
@@ -54,7 +61,7 @@ class OrderPanel extends StatelessWidget {
     return BlocBuilder<OrderBloc, OrderState>(
       builder: (context, state) {
         return Container(
-          width: 800,
+          width: 650,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: Colors.white,
@@ -64,149 +71,156 @@ class OrderPanel extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               /// Header row with badges & actions
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  headerBadgeRow(state),
-                  Row(
+              Center(
+                child: SizedBox(
+                  width: 500, // Total desired width for the row
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      actionButton(
-                        'Cancel',
-                        'assets/icon/delete.png',
-                        Colors.red,
-                        onPressed: () async {
-                          final currentOrderId = context.read<OrderBloc>().state.orderId;
+                      // Left side: header badges
+                      Expanded(
+                        child: headerBadgeRow(state),
+                      ),
 
-                          if (currentOrderId == 0) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text("No active order to cancel")),
-                            );
-                            return;
-                          }
+                      // Right side: action buttons
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 80, // Set desired width for Cancel button
+                            child: actionButton(
+                              'Cancel',
+                              'assets/icon/delete.png',
+                              Colors.red,
+                              onPressed: () async {
+                                final currentOrderId = context.read<OrderBloc>().state.orderId;
 
-                          AppLogger.info("Cancel order clicked → Order ID: $currentOrderId");
+                                if (currentOrderId == 0) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text("No active order to cancel")),
+                                  );
+                                  return;
+                                }
 
-                          showDialog(
-                            context: context,
-                            barrierDismissible: false,
-                            builder: (_) => const Center(child: CircularProgressIndicator()),
-                          );
+                                AppLogger.info("Cancel order clicked → Order ID: $currentOrderId");
 
-                          try {
-                            final orderRepo = OrderRepository(baseUrl: 'https://merchantrestaurant.alektasolutions.com');
+                                showDialog(
+                                  context: context,
+                                  barrierDismissible: false,
+                                  builder: (_) => const Center(child: CircularProgressIndicator()),
+                                );
 
-                            final responseJson = await orderRepo.cancelOrder(
-                              parentOrderId: currentOrderId,   // ✅ always from bloc state
-                              token: token,
-                              restaurantId: restaurantId,
-                              zoneId: zoneId,
-                            );
+                                try {
+                                  final orderRepo = OrderRepository(baseUrl: 'https://merchantrestaurant.alektasolutions.com');
 
-                            Navigator.of(context).pop(); // close loader
-
-                            if (responseJson['status'] == 'cancelled') {
-                              AppLogger.info("Order ${responseJson['order_id']} cancelled successfully");
-
-                              // update bloc
-                              context.read<OrderBloc>().add(
-                                CancelOrder(
-                                  parentOrderId: currentOrderId, // ✅ from state
-                                  token: token,
-                                ),
-                              );
-
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text("Order ${responseJson['order_id']} cancelled successfully")),
-                              );
-
-                              // navigate back to tables
-                              final tableDao = TableDao();
-                              final tables = await tableDao.getTablesByManagerPin(pin);
-
-                              Navigator.pushAndRemoveUntil(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => TablesScreen(
-                                    loadedTables: tables,
-                                    pin: pin,
+                                  final responseJson = await orderRepo.cancelOrder(
+                                    parentOrderId: currentOrderId,
                                     token: token,
                                     restaurantId: restaurantId,
-                                    restaurantName: restaurantName,
-                                  ),
-                                ),
-                                    (Route<dynamic> route) => false,
-                              );
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text("Failed to cancel order")),
-                              );
-                            }
-                          } catch (e) {
-                            Navigator.of(context).pop();
-                            AppLogger.error("Cancel order API error: $e");
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text("Error cancelling order: $e")),
-                            );
-                          }
-                        },
+                                    zoneId: zoneId,
+                                  );
 
-                      ),
+                                  Navigator.of(context).pop(); // close loader
 
+                                  if (responseJson['status'] == 'cancelled') {
+                                    AppLogger.info("Order ${responseJson['order_id']} cancelled successfully");
 
-                      const SizedBox(width: 14),
-                      elevatedActionButton(
-                        'Table layout',
-                        'assets/icon/arrow.png',
-                        onPressed: () {
-                          AppLogger.info("Table layout clicked");
+                                    // update bloc
+                                    context.read<OrderBloc>().add(
+                                      CancelOrder(
+                                        parentOrderId: currentOrderId,
+                                        token: token,
+                                      ),
+                                    );
 
-                          // Navigate to TablesScreen and clear navigation stack
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => TablesScreen(
-                                loadedTables: placedTables,   // pass from constructor
-                                pin: pin,                     // pass from constructor
-                                token: token,
-                                restaurantId: restaurantId,
-                                restaurantName: restaurantName,
-                              ),
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text("Order ${responseJson['order_id']} cancelled successfully")),
+                                    );
+
+                                    // navigate back to tables
+                                    final tableDao = TableDao();
+                                    final tables = await tableDao.getTablesByManagerPin(pin);
+
+                                    Navigator.pushAndRemoveUntil(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => TablesScreen(
+                                          loadedTables: tables,
+                                          pin: pin,
+                                          token: token,
+                                          restaurantId: restaurantId,
+                                          restaurantName: restaurantName,
+                                        ),
+                                      ),
+                                          (Route<dynamic> route) => false,
+                                    );
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text("Failed to cancel order")),
+                                    );
+                                  }
+                                } catch (e) {
+                                  Navigator.of(context).pop();
+                                  AppLogger.error("Cancel order API error: $e");
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text("Error cancelling order: $e")),
+                                  );
+                                }
+                              },
                             ),
-                                (route) => false, // clears all previous screens
-                          );
-                        },
-                      ),
+                          ),
+                          const SizedBox(width: 6),
+                          SizedBox(
+                            width: 100, // Set desired width for Table layout button
+                            child: elevatedActionButton(
+                              'Table layout',
+                              'assets/icon/arrow.png',
+                              onPressed: () {
+                                AppLogger.info("Table layout clicked");
 
+                                Navigator.pushAndRemoveUntil(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => TablesScreen(
+                                      loadedTables: placedTables,
+                                      pin: pin,
+                                      token: token,
+                                      restaurantId: restaurantId,
+                                      restaurantName: restaurantName,
+                                    ),
+                                  ),
+                                      (route) => false,
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
-                ],
+                ),
               ),
+
               const SizedBox(height: 4),
 
               /// Date & guest info
               Row(
                 children: [
-                  // Current Date
                   iconText(
                     'assets/icon/calender.png',
                     DateFormat('EEEE, d MMMM yyyy').format(DateTime.now()),
                   ),
                   const SizedBox(width: 10),
-
-                  // Current Time
                   iconText(
                     'assets/icon/clock.png',
                     DateFormat('hh:mm a').format(DateTime.now()),
                   ),
                   const Spacer(),
-
-                  // Guests
                   avatarName(
                     'assets/icon/person.png',
                     'Guests: ${state.guests.fold<int>(0, (sum, g) => sum + g.guestCount)}',
                   ),
-
-                  // Add Guest Button
                   IconButton(
                     onPressed: () async {
                       AppLogger.info("Add Guest clicked");
@@ -224,10 +238,8 @@ class OrderPanel extends StatelessWidget {
                           placedTables: [],
                           onGuestSaved: (Guestcount guest) async {
                             AppLogger.info("Guest saved: ${guest.guestCount}");
-
-                            // 1️⃣ Create order via repository
                             final orderRepository = OrderRepository(baseUrl: 'https://merchantrestaurant.alektasolutions.com');
-                            final order = await orderRepository.createOrder(  // ✅ use the instance
+                            final order = await orderRepository.createOrder(
                               tableId: tableId,
                               zoneId: zoneId,
                               restaurantId: restaurantId,
@@ -239,14 +251,10 @@ class OrderPanel extends StatelessWidget {
                               guests: [guest],
                             );
 
-
-                            // 2️⃣ Dispatch Bloc event with actual orderId
                             context.read<OrderBloc>().add(CreateOrderSuccess(orderId: orderId));
-
-                            // 3️⃣ Update guest count in Bloc
                             context.read<OrderBloc>().add(CreateOrder(
                               restaurantId: restaurantId,
-                              orderId: orderId,   // ✅ now real orderId
+                              orderId: orderId,
                               tableId: tableId,
                               zoneId: zoneId,
                               tableName: tableName,
@@ -254,7 +262,6 @@ class OrderPanel extends StatelessWidget {
                               guests: [guest],
                             ));
 
-                            // 4️⃣ Call external callback if needed
                             onGuestSaved(guest.guestCount);
                           },
                           token: token,
@@ -269,16 +276,30 @@ class OrderPanel extends StatelessWidget {
                     ),
                     tooltip: 'Add Guest',
                   ),
-
                 ],
               ),
-
               const SizedBox(height: 6),
 
-              /// KOT Dropdown
-              ViewAllKOTDropdown(kotList: state.kotList),
+              /// Dynamic KOT Dropdown
+              BlocBuilder<KotBloc, KotState>(
+                builder: (context, kotState) {
+                  final kots = kotState is KotLoaded
+                      ? List<KotModel>.from(kotState.kots)
+                      : <KotModel>[];
 
-              const SizedBox(height: 2),
+                  return ViewAllKOTDropdown(
+                    kots: kots,
+                    parentOrderId: state.orderId, // pass current orderId
+                    restaurantId: int.parse(restaurantId), // ensure type matches
+                    zoneId: zoneId,
+                    token: token,
+                  );
+                },
+              ),
+
+
+
+              const SizedBox(height: 6),
 
               /// Table header row
               Container(
@@ -292,13 +313,12 @@ class OrderPanel extends StatelessWidget {
                   children: [
                     SizedBox(width: 30, child: headerText('#')),
                     Expanded(child: headerText('Item Name')),
-                    SizedBox(width: 80, child: headerText('Modifiers / Add-ons')),
+                    SizedBox(width: 140, child: headerText('Modifiers / Add-ons')),
                     SizedBox(width: 60, child: headerText('Qty')),
-                    SizedBox(width: 80, child: headerText('Amount')),
+                    SizedBox(width: 50, child: headerText('Amount')),
                   ],
                 ),
               ),
-
               const SizedBox(height: 6),
 
               /// Order items list
@@ -319,63 +339,42 @@ class OrderPanel extends StatelessWidget {
                   addonPrices: addonPrices,
                   onIncreaseQuantity: (index) {
                     final item = state.orderItems[index];
-                    AppLogger.info(
-                        "Increase quantity: ${item.name} (was ${item.quantity})");
-                    context.read<OrderBloc>().add(
-                      UpdateOrderItemQuantity(
-                          index, item.quantity + 1),
-                    );
+                    AppLogger.info("Increase quantity: ${item.name} (was ${item.quantity})");
+                    context.read<OrderBloc>().add(UpdateOrderItemQuantity(index, item.quantity + 1));
                   },
                   onDecreaseQuantity: (index) {
                     final item = state.orderItems[index];
                     if (item.quantity > 1) {
-                      AppLogger.info(
-                          "Decrease quantity: ${item.name} (was ${item.quantity})");
-                      context.read<OrderBloc>().add(
-                        UpdateOrderItemQuantity(
-                            index, item.quantity - 1),
-                      );
+                      AppLogger.info("Decrease quantity: ${item.name} (was ${item.quantity})");
+                      context.read<OrderBloc>().add(UpdateOrderItemQuantity(index, item.quantity - 1));
                     }
                   },
                   onModifiersChanged: (index, modifiers, addOns, note) {
-
-                    // Convert simple Map<String, int> -> Map<String, Map<String, dynamic>>
                     final fullAddOns = <String, Map<String, dynamic>>{};
                     addOns.forEach((name, qty) {
-                      fullAddOns[name] = {
-                        'quantity': qty,
-                        'price': addonPrices[name] ?? 0.0, // take price from addonPrices
-                      };
+                      fullAddOns[name] = {'quantity': qty, 'price': addonPrices[name] ?? 0.0};
                     });
-
-                    AppLogger.info(
-                        "Modifiers updated for item $index: $modifiers, AddOns: $fullAddOns, Note: $note"
-                    );
-
-                    context.read<OrderBloc>().add(
-                      UpdateOrderItemDetails(
-                        index: index,
-                        modifiers: modifiers,
-                        addOns: fullAddOns, // now matches event type
-                        note: note,
-                      ),
-                    );
+                    AppLogger.info("Modifiers updated for item $index: $modifiers, AddOns: $fullAddOns, Note: $note");
+                    context.read<OrderBloc>().add(UpdateOrderItemDetails(
+                      index: index,
+                      modifiers: modifiers,
+                      addOns: fullAddOns,
+                      note: note,
+                    ));
                   },
-
                   onRemoveItem: (index) {
                     final item = state.orderItems[index];
                     AppLogger.info("Remove item: ${item.name}");
                     context.read<OrderBloc>().add(RemoveOrderItem(index));
-                  }, token: token,
+                  },
+                  token: token,
                 ),
               ),
-
               const SizedBox(height: 10),
 
               /// Total section
               Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFE5BF),
                   borderRadius: BorderRadius.circular(6),
@@ -383,21 +382,14 @@ class OrderPanel extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Total Items',
-                        style: TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.w600)),
+                    const Text('Total Items', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                     Text(
-                      state.orderItems
-                          .fold(0.0,
-                              (sum, item) => sum + item.totalWithAddons)
-                          .toStringAsFixed(2),
-                      style: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w600),
+                      state.orderItems.fold(0.0, (sum, item) => sum + item.totalWithAddons).toStringAsFixed(2),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
               ),
-
               const SizedBox(height: 6),
 
               /// Bottom action buttons
@@ -406,13 +398,13 @@ class OrderPanel extends StatelessWidget {
                 children: [
                   orderButton('Repeat order', const Color(0xFFF7C127), onPressed: () {
                     AppLogger.info("Repeat order clicked");
-                    // Add your repeat order logic here
                   }),
                   orderButton(
                     'KOT Print',
                     const Color(0xFFFF4D20),
                     onPressed: () async {
                       final orderBloc = context.read<OrderBloc>();
+                      final kotBloc = context.read<KotBloc>();
                       final orderRepo = OrderRepository(
                         baseUrl: 'https://merchantrestaurant.alektasolutions.com',
                       );
@@ -425,7 +417,6 @@ class OrderPanel extends StatelessWidget {
                         return;
                       }
 
-                      // Show loader
                       showDialog(
                         context: context,
                         barrierDismissible: false,
@@ -433,36 +424,18 @@ class OrderPanel extends StatelessWidget {
                       );
 
                       try {
-                        // Get saved login from repository (SharedPreferences)
                         final login = await checkInRepo.getSavedLogin();
+                        if (login == null) throw Exception('No login found!');
 
-                        if (login == null) {
-                          Navigator.of(context).pop(); // Close loader
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('No login found! Please login.')),
-                          );
-                          return;
-                        }
-
-                        // Extract required info safely
                         final token = login['token'] as String?;
                         final captainId = login['captainId'] as int? ?? 0;
-                        // final restaurantId = login['restaurantId'] as int? ?? 0;
-                        // final zoneId = login['zoneId'] as int? ?? 0;
 
-                        // Safety check
-                        if (token == null || captainId == 0 ) {
-                          Navigator.of(context).pop(); // Close loader
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Login expired or invalid. Please login again.')),
-                          );
-                          return;
-                        }
+                        if (token == null || captainId == 0) throw Exception('Login expired or invalid.');
 
-                        // Create KOT
+                        // 1️⃣ Create KOT
                         final KotModel? kot = await orderRepo.createKOT(
                           parentOrderId: state.orderId,
-                          kotId: "", // optional
+                          kotId: "",  // new KOT
                           items: state.orderItems,
                           token: token,
                           restaurantId: state.restaurantId,
@@ -470,22 +443,30 @@ class OrderPanel extends StatelessWidget {
                           captainId: captainId,
                         );
 
-                        Navigator.of(context).pop(); // Close loader
+                        Navigator.of(context).pop(); // close loader
 
                         if (kot != null) {
+                          // Add KOT to OrderBloc
                           orderBloc.add(AddKOT(kot));
+
+                          // Add KOT to KotBloc for immediate dropdown update
+                          kotBloc.add(AddKotToList(kot));
+
+                          // ✅ Clear current order items
+                          context.read<OrderBloc>().add(ClearOrder());  // <-- dispatch the event
+
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text('KOT Created: ${kot.kotNumber}')),
                           );
-                        } else {
+                        }
+                        else {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Failed to create KOT')),
                           );
                         }
-                      } catch (e, stackTrace) {
-                        Navigator.of(context).pop(); // Close loader on error
+                      } catch (e) {
+                        Navigator.of(context).pop();
                         AppLogger.error("Error creating KOT: $e");
-                        AppLogger.error(stackTrace.toString());
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('Error: ${e.toString()}')),
                         );
@@ -496,16 +477,12 @@ class OrderPanel extends StatelessWidget {
 
                   orderButton('Generate e-Bill', Colors.green, onPressed: () {
                     AppLogger.info("Generate e-Bill clicked");
-                    // Add e-Bill logic here
                   }),
                   orderButton('Pay', const Color(0xFF086888), onPressed: () {
                     AppLogger.info("Pay clicked");
-                    // Add payment logic here
                   }),
                 ],
-              )
-
-
+              ),
             ],
           ),
         );
@@ -525,23 +502,13 @@ class OrderPanel extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // 🟢 Zone name
           Text(
             state.zoneName.isNotEmpty ? state.zoneName : 'Unknown Zone',
             style: const TextStyle(fontWeight: FontWeight.bold),
           ),
-
           const SizedBox(width: 16),
-
-          // 🟢 Order ID
-          Text(
-            'Order ID: ${state.orderId}',
-            style: const TextStyle(color: Colors.black87),
-          ),
-
+          Text('Order ID: ${state.orderId}', style: const TextStyle(color: Colors.black87)),
           const SizedBox(width: 16),
-
-          // 🟢 Table name with icon
           Row(
             children: [
               Image.asset('assets/icon/table.png', width: 14, height: 14),
@@ -557,17 +524,13 @@ class OrderPanel extends StatelessWidget {
     );
   }
 
-
-
-  Widget actionButton(String text, String iconPath, Color color,
-      {required VoidCallback onPressed}) =>
+  Widget actionButton(String text, String iconPath, Color color, {required VoidCallback onPressed}) =>
       OutlinedButton.icon(
         style: OutlinedButton.styleFrom(
           backgroundColor: const Color(0xFFF6F6F6),
           foregroundColor: color,
           side: BorderSide(color: color, width: 1.0),
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         ),
         onPressed: onPressed,
@@ -575,19 +538,16 @@ class OrderPanel extends StatelessWidget {
         label: Text(text, style: const TextStyle(fontSize: 12)),
       );
 
-  Widget elevatedActionButton(String text, String iconPath,
-      {required VoidCallback onPressed}) =>
+  Widget elevatedActionButton(String text, String iconPath, {required VoidCallback onPressed}) =>
       ElevatedButton.icon(
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF152148),
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         ),
         onPressed: onPressed,
         icon: Image.asset(iconPath, width: 8, height: 8, color: Colors.white),
-        label: Text(text,
-            style: const TextStyle(fontSize: 12, color: Colors.white)),
+        label: Text(text, style: const TextStyle(fontSize: 12, color: Colors.white)),
       );
 
   Widget iconText(String assetPath, String label) => Row(
@@ -620,12 +580,9 @@ class OrderPanel extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 12),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
-        onPressed: onPressed, // synchronous
+        onPressed: onPressed,
         child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 12)),
       ),
     ),
   );
-
-
-
 }

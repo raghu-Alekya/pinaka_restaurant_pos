@@ -21,6 +21,7 @@ import '../../local database/area_dao.dart';
 import '../../local database/login_dao.dart';
 import '../../local database/table_dao.dart';
 import '../../models/UserPermissions.dart';
+import '../../models/order/guest_details.dart';
 import '../../models/view_mode.dart';
 import '../../repositories/checkin_repository.dart';
 import '../../repositories/employee_repository.dart';
@@ -1370,7 +1371,53 @@ class _TablesScreenState extends State<TablesScreen> {
       BuildContext context,
       int index,
       Map<String, dynamic> tableData,
-      ) {
+      ) async {
+    final tableStatus = (tableData['status'] ?? '').toString().toLowerCase().trim();
+    final tableId = tableData['id'] ?? 0;
+    final zoneId = tableData['zone_id'] ?? 0;
+    final tableName = tableData['name'] ?? 'Table';
+    final zoneName = tableData['zone_name'] ?? 'Main Zone';
+
+    final orderRepo = OrderRepository(baseUrl: 'https://merchantrestaurant.alektasolutions.com');
+
+    try {
+      // Fetch the existing order for this table
+      final existingOrder = await orderRepo.getOrderByTable(tableId);
+
+      if (existingOrder != null) {
+        // ✅ Order exists → navigate directly to Dashboard, skip popup
+        final previousGuestCount = tableData['guest_count'] ?? 0;
+        context.read<OrderBloc>().add(CreateOrderSuccess(orderId: existingOrder.orderId));
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => BlocProvider.value(
+              value: context.read<OrderBloc>(),
+              child: DashboardScreen(
+                guestDetails: Guestcount(guestCount: previousGuestCount),
+                token: "YOUR_VALID_TOKEN_HERE",
+                restaurantId: '1',
+                orderId: existingOrder.orderId,
+                tableId: tableId,
+                zoneId: zoneId,
+                zoneName: zoneName,
+                tableName: tableName,
+              ),
+            ),
+          ),
+        );
+        return; // Exit to skip popup
+      }
+    } catch (e) {
+      AppLogger.error("Error fetching existing order: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Failed to check existing order.")),
+      );
+      return; // Stop to prevent popup in error state
+    }
+
+    // ─── No existing order → show popup ───
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -1384,20 +1431,7 @@ class _TablesScreenState extends State<TablesScreen> {
             tableData: tableData,
             placedTables: placedTables,
             onGuestSaved: (guestDetails) async {
-              final tableId = tableData['id'];
-              final zoneId = tableData['zone_id'];
-              final tableName = tableData['name'] ?? 'Table';
-              final zoneName = tableData['zone_name'] ?? 'Main Zone';
-
-
-              AppLogger.info("Guest details saved");
-              AppLogger.info("Guest Count: ${guestDetails.guestCount}");
-              AppLogger.info("Table ID: $tableId, Zone ID: $zoneId");
-
               try {
-                final orderRepo = OrderRepository(
-                    baseUrl: 'https://merchantrestaurant.alektasolutions.com');
-
                 final orderModel = await orderRepo.createOrder(
                   restaurantId: '1',
                   tableId: tableId,
@@ -1407,14 +1441,12 @@ class _TablesScreenState extends State<TablesScreen> {
                   token: 'YOUR_VALID_TOKEN_HERE',
                   zoneName: zoneName,
                   restaurantName: 'My Restaurant',
-                  tableName: tableName, // ✅ pass correct table name
+                  tableName: tableName,
                 );
 
-                AppLogger.info("✅ Order created via API with Order ID: ${orderModel.orderId}");
-
-                context.read<OrderBloc>().add(CreateOrderSuccess(orderId: orderModel.orderId));
-
-
+                context.read<OrderBloc>().add(
+                  CreateOrderSuccess(orderId: orderModel.orderId),
+                );
 
                 Navigator.push(
                   context,
@@ -1428,18 +1460,16 @@ class _TablesScreenState extends State<TablesScreen> {
                         orderId: orderModel.orderId,
                         tableId: tableId,
                         zoneId: zoneId,
-                        zoneName: tableData['zone_name'] ?? 'Main Zone',
-                        tableName: tableData['name'] ?? 'Table',
+                        zoneName: zoneName,
+                        tableName: tableName,
                       ),
                     ),
                   ),
                 );
-
-                AppLogger.info("Navigated to DashboardScreen with Order ID: ${orderModel.orderId}");
               } catch (e) {
-                AppLogger.error(" Failed to create order: $e");
+                AppLogger.error("Failed to create order: $e");
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("Failed to create order, please try again.")),
+                  const SnackBar(content: Text("Failed to create order, please try again.")),
                 );
               }
             },
