@@ -35,6 +35,8 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
 
   List<Map<String, dynamic>> employees = [];
   bool isLoading = true;
+  final TextEditingController _shiftController = TextEditingController();
+  String shiftQuery = "";
 
   late DashboardRepository _repository;
 
@@ -60,13 +62,14 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => TablesScreen(
-              loadedTables: tables,
-              pin: widget.pin,
-              token: widget.token,
-              restaurantId: widget.restaurantId,
-              restaurantName: widget.restaurantName,
-            ),
+            builder: (_) =>
+                TablesScreen(
+                  loadedTables: tables,
+                  pin: widget.pin,
+                  token: widget.token,
+                  restaurantId: widget.restaurantId,
+                  restaurantName: widget.restaurantName,
+                ),
           ),
         );
       }
@@ -125,9 +128,15 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
   Widget build(BuildContext context) {
     final filteredEmployees = employees.where((emp) {
       final query = searchQuery.toLowerCase();
+      final shiftQ = shiftQuery.toLowerCase();
       final name = emp["name"].toString().toLowerCase();
       final id = emp["user_id"].toString().toLowerCase();
-      return name.contains(query) || id.contains(query);
+      final shift = (emp["shift_timing"] ?? "").toLowerCase();
+
+      final matchesNameOrId = name.contains(query) || id.contains(query);
+      final matchesShift = shift.contains(shiftQ);
+
+      return matchesNameOrId && matchesShift;
     }).toList();
 
     final totalPages = (filteredEmployees.length / entriesPerPage).ceil();
@@ -138,7 +147,6 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
     const double headerHeight = 50;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F1F3),
       appBar: TopBar(
         token: widget.token,
         pin: widget.pin,
@@ -149,12 +157,14 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
           });
         },
       ),
-      body: Padding(
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        color: Colors.white,
         padding: const EdgeInsets.all(15),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Back button + Title + Search
             Row(
               children: [
                 Container(
@@ -171,12 +181,12 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: const [
-                        Icon(Icons.arrow_back, size: 20),
-                        SizedBox(width: 7),
+                        Icon(Icons.arrow_back, size: 18),
+                        SizedBox(width: 5),
                         Text(
                           'Back',
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w500),
+                          style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                         ),
                       ],
                     ),
@@ -193,21 +203,57 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                   ),
                 ),
                 SizedBox(
-                  width: 260,
+                  width: 200,
                   child: TextField(
                     controller: _searchController,
-                    onChanged: (value) =>
-                        setState(() => searchQuery = value),
+                    onChanged: (value) => setState(() => searchQuery = value),
                     decoration: InputDecoration(
                       hintText: "Search ID or Name",
                       prefixIcon: const Icon(Icons.search, size: 18),
                       filled: true,
                       fillColor: Colors.white,
                       contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 10),
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide.none,
+                        borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: Colors.grey.shade600, width: 1.5),
+                      ),
+                    ),
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                SizedBox(
+                  width: 150,
+                  child: TextField(
+                    controller: _shiftController,
+                    onChanged: (value) => setState(() => shiftQuery = value),
+                    decoration: InputDecoration(
+                      hintText: "Search Shift",
+                      prefixIcon: const Icon(Icons.schedule, size: 18),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: Colors.grey.shade600, width: 1.5),
                       ),
                     ),
                     style: const TextStyle(fontSize: 14),
@@ -216,8 +262,6 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
               ],
             ),
             const SizedBox(height: 10),
-
-            // Employee Table Container
             Expanded(
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())
@@ -228,6 +272,14 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                     topLeft: Radius.circular(16),
                     topRight: Radius.circular(16),
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      spreadRadius: 2,
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
                 child: Column(
@@ -270,8 +322,10 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                         itemCount: currentData.length,
                         itemBuilder: (context, index) {
                           final emp = currentData[index];
-                          final status = emp["attendance_status"] ?? "-";
-                          final shift = emp["shift_timing"] ?? "-";
+                          final status =
+                              emp["attendance_status"] ?? "-";
+                          final shift =
+                              emp["shift_timing"] ?? "-";
 
                           Color bgColor;
                           Color textColor;
@@ -279,7 +333,8 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                           if (status.toLowerCase() == "present") {
                             bgColor = const Color(0xFFDFF6E2);
                             textColor = Colors.green;
-                          } else if (status.toLowerCase() == "absent") {
+                          } else if (status.toLowerCase() ==
+                              "absent") {
                             bgColor = const Color(0xFFFDE2E2);
                             textColor = Colors.red;
                           } else {
@@ -299,7 +354,8 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                             ),
                             child: Row(
                               children: [
-                                _TableCell(emp["user_id"].toString()),
+                                _TableCell(
+                                    emp["user_id"].toString()),
                                 _TableCell(emp["name"].toString()),
                                 _TableCell(emp["phone"] ?? "-"),
                                 _TableCell(emp["designation"].toString()),
@@ -327,11 +383,13 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                           height: 40,
                           child: OutlinedButton(
                             onPressed: currentPage > 1
-                                ? () => setState(() => currentPage--)
+                                ? () =>
+                                setState(() => currentPage--)
                                 : null,
                             style: OutlinedButton.styleFrom(
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(6)),
+                                  borderRadius:
+                                  BorderRadius.circular(6)),
                               padding: EdgeInsets.zero,
                             ),
                             child: const Text("Previous",
@@ -346,11 +404,13 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                           height: 40,
                           child: OutlinedButton(
                             onPressed: currentPage < totalPages
-                                ? () => setState(() => currentPage++)
+                                ? () =>
+                                setState(() => currentPage++)
                                 : null,
                             style: OutlinedButton.styleFrom(
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(6)),
+                                  borderRadius:
+                                  BorderRadius.circular(6)),
                               padding: EdgeInsets.zero,
                             ),
                             child: const Text("Next",

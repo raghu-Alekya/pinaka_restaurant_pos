@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/ui/tables_screen.dart';
 import '../../local database/table_dao.dart';
@@ -50,13 +53,9 @@ class DashboardStats {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   UserPermissions? _userPermissions;
-
-  // Filters
-  String _selectedPeriod = "Daily";
   Map<String, dynamic>? _selectedZone;
-
-  // Data
-  List<String> periods = ["Daily", "Weekly", "Monthly"];
+  String _selectedPeriod = "";
+  List<String> periods = [];
   List<Map<String, dynamic>> zones = [];
   String totalRevenue = "0";
   String revenueTrend = "";
@@ -82,6 +81,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool isTopProductsLoading = true;
   List<Map<String, dynamic>> topCategories = [];
   bool isTopCategoriesLoading = true;
+  List<Map<String, dynamic>> revenueChartData = [];
+  bool isRevenueChartLoading = true;
+  String selectedPaymentOrderType = "Dine In";
 
   @override
   void initState() {
@@ -118,6 +120,119 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  List<String> paymentOrderTypes = [];
+  List<String> paymentModes = [];
+  Map<String, double> paymentRevenue = {};
+  bool isPaymentLoading = true;
+  Future<void> fetchPaymentModesRevenue({String? orderType}) async {
+    if (_selectedZone == null) return;
+
+    setState(() => isPaymentLoading = true);
+
+    try {
+      final token = widget.token;
+      final zoneId = _selectedZone!['id'];
+      final range = _selectedPeriod.toLowerCase();
+      final order = orderType ?? "Dine In";
+
+      final url =
+          'https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1/merchant-dashboard/get-payment-modes-revenue?restaurant_id=${widget.restaurantId}&range=$range&zone_id=$zoneId&order_type=${Uri.encodeComponent(order)}';
+
+      print("=== Fetching Payment Modes Revenue ===");
+      print("Selected Zone ID: $zoneId");
+      print("Selected Range: $range");
+      print("Request URL: $url");
+      print("=====================================");
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        print("=== Payment Modes Revenue API Response ===");
+        print(data);
+        print("=========================================");
+
+        paymentOrderTypes = List<String>.from(data['order_types'] ?? []);
+        paymentModes = List<String>.from(data['payment_modes'] ?? []);
+        if (orderType != null && paymentOrderTypes.contains(orderType)) {
+          selectedPaymentOrderType = orderType;
+        } else if (paymentOrderTypes.isNotEmpty) {
+          selectedPaymentOrderType = paymentOrderTypes.first;
+        }
+
+        setState(() => isPaymentLoading = false);
+
+        final rawPaymentRevenue = data['payment_revenue'];
+
+        paymentRevenue = {};
+
+        if (rawPaymentRevenue == null) {
+          print("payment_revenue is null");
+        } else if (rawPaymentRevenue is List) {
+          print("payment_revenue is a List: $rawPaymentRevenue");
+          for (var e in rawPaymentRevenue) {
+            if (e is Map<String, dynamic>) {
+              final mode = e['mode']?.toString() ?? "Unknown";
+              final percentStr =
+                  e['percent']?.toString().replaceAll('%', '') ?? "0";
+              final percent = double.tryParse(percentStr) ?? 0;
+              paymentRevenue[mode] = percent;
+            }
+          }
+        } else if (rawPaymentRevenue is Map) {
+          print("payment_revenue is a Map: $rawPaymentRevenue");
+          final paymentData = rawPaymentRevenue['payment_types'];
+          if (paymentData is List) {
+            for (var e in paymentData) {
+              if (e is Map<String, dynamic>) {
+                final mode = e['mode']?.toString() ?? "Unknown";
+                final percentStr =
+                    e['percent']?.toString().replaceAll('%', '') ?? "0";
+                final percent = double.tryParse(percentStr) ?? 0;
+                paymentRevenue[mode] = percent;
+              }
+            }
+          } else if (paymentData is Map) {
+            paymentData.forEach((key, value) {
+              final percentStr = value?.toString().replaceAll('%', '') ?? "0";
+              final percent = double.tryParse(percentStr) ?? 0;
+              paymentRevenue[key.toString()] = percent;
+            });
+          }
+        }
+
+        setState(() => isPaymentLoading = false);
+      } else {
+        print("Failed to load payment revenue: ${response.body}");
+        setState(() => isPaymentLoading = false);
+      }
+    } catch (e) {
+      print("Error fetching payment revenue: $e");
+      setState(() => isPaymentLoading = false);
+    }
+  }
+
+  Future<void> fetchRevenueChart() async {
+    setState(() => isRevenueChartLoading = true);
+    try {
+      final data = await _repository.fetchRevenueChart(
+        range: _selectedPeriod.toLowerCase(),
+        zoneId: _selectedZone?['id'],
+      );
+      setState(() {
+        revenueChartData = data;
+        isRevenueChartLoading = false;
+      });
+    } catch (e) {
+      print(e);
+      setState(() => isRevenueChartLoading = false);
+    }
+  }
+
   Future<void> fetchTopCategories() async {
     setState(() => isTopCategoriesLoading = true);
     try {
@@ -147,6 +262,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       setState(() => isInventoryLoading = false);
     }
   }
+
   Future<void> fetchCompletedOrders() async {
     setState(() => isCompletedOrdersLoading = true);
     try {
@@ -169,7 +285,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
       final nowTime = DateFormat('hh:mm a').format(DateTime.now());
 
-      final empList = await repo.fetchCurrentShiftEmployees(date: today, time: nowTime);
+      final empList = await repo.fetchCurrentShiftEmployees(
+        date: today,
+        time: nowTime,
+      );
       setState(() {
         employees = empList;
         isEmployeeLoading = false;
@@ -188,6 +307,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         selectedPeriod: _selectedPeriod,
         selectedZone: _selectedZone,
       );
+      List<String> serverPeriods = List<String>.from(result['periods'] ?? []);
+      serverPeriods.removeWhere((p) => p.toLowerCase() == "daily");
 
       setState(() {
         zones = result['zones'];
@@ -198,10 +319,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ordersTrend = result['ordersTrend'];
         activeOrders = result['activeOrders'];
         runningTables = result['runningTables'];
-        isLoading = false;
+        periods = serverPeriods;
+        if (!periods.contains(_selectedPeriod) && periods.isNotEmpty) {
+          _selectedPeriod = periods.first;
+        }
       });
+      await fetchRevenueChart();
+      await fetchPaymentModesRevenue();
     } catch (e) {
       print(e);
+      setState(() => isLoading = false);
+    } finally {
       setState(() => isLoading = false);
     }
   }
@@ -214,8 +342,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         context,
         MaterialPageRoute(
           builder:
-              (_) =>
-              TablesScreen(
+              (_) => TablesScreen(
                 loadedTables: tables,
                 pin: widget.pin,
                 token: widget.token,
@@ -226,35 +353,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
   }
-
-  final Map<String, Map<String, Map<String, double>>> revenueData = {
-    "Week": {
-      "Week 1": {"Dine In": 70, "Takeaway": 42},
-      "Week 2": {"Dine In": 60, "Takeaway": 35},
-      "Week 3": {"Dine In": 80, "Takeaway": 50},
-      "Week 4": {"Dine In": 55, "Takeaway": 30},
-      "Week 5": {"Dine In": 65, "Takeaway": 38},
-      "Week 6": {"Dine In": 70, "Takeaway": 42},
-      "Week 7": {"Dine In": 60, "Takeaway": 35},
-      "Week 8": {"Dine In": 80, "Takeaway": 50},
-      "Week 9": {"Dine In": 55, "Takeaway": 30},
-      "Week 10": {"Dine In": 65, "Takeaway": 38},
-    },
-    "Month": {
-      "Jan": {"Dine In": 40, "Takeaway": 42},
-      "Feb": {"Dine In": 52, "Takeaway": 40},
-      "Mar": {"Dine In": 75, "Takeaway": 46},
-      "Apr": {"Dine In": 68, "Takeaway": 42},
-      "May": {"Dine In": 80, "Takeaway": 50},
-      "Jun": {"Dine In": 75, "Takeaway": 52},
-      "Jul": {"Dine In": 90, "Takeaway": 58},
-      "Aug": {"Dine In": 60, "Takeaway": 56},
-      "Sep": {"Dine In": 82, "Takeaway": 54},
-      "Oct": {"Dine In": 80, "Takeaway": 50},
-      "Nov": {"Dine In": 78, "Takeaway": 47},
-      "Dec": {"Dine In": 82, "Takeaway": 51},
-    },
-  };
 
   @override
   Widget build(BuildContext context) {
@@ -277,8 +375,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 context,
                 MaterialPageRoute(
                   builder:
-                      (_) =>
-                      TablesScreen(
+                      (_) => TablesScreen(
                         loadedTables: tables,
                         pin: widget.pin,
                         token: widget.token,
@@ -292,217 +389,219 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
       ),
       body:
-      isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(25, 15, 0, 0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-
-            /// Greeting + Date + Time + Filters
-            Row(
-              children: [
-                Text(
-                  "Good Morning ${widget.userPermissions?.displayName ??
-                      "User Name"} !",
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const Spacer(),
-
-                /// Date
-                Row(
+          isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(25, 15, 0, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.calendar_today, size: 16),
-                    const SizedBox(width: 6),
-                    Text(currentDate),
-                  ],
-                ),
-                const SizedBox(width: 10),
-
-                /// Time
-                Row(
-                  children: [
-                    const Icon(Icons.access_time, size: 16),
-                    const SizedBox(width: 6),
-                    Text(currentTime),
-                  ],
-                ),
-                const SizedBox(width: 20),
-                if (periods.isNotEmpty)
-                  DropdownButtonHideUnderline(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.grey.shade300),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
+                    /// Greeting + Date + Time + Filters
+                    Row(
+                      children: [
+                        Text(
+                          "Good Morning ${widget.userPermissions?.displayName ?? "User Name"} !",
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
                           ),
-                        ],
-                      ),
-                      child: DropdownButton<String>(
-                        value: _selectedPeriod,
-                        items:
-                        periods.map((p) {
-                          return DropdownMenuItem(
-                            value: p,
-                            child: Text(
-                              p,
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w500,
+                        ),
+                        const Spacer(),
+
+                        /// Date
+                        Row(
+                          children: [
+                            const Icon(Icons.calendar_today, size: 16),
+                            const SizedBox(width: 6),
+                            Text(currentDate),
+                          ],
+                        ),
+                        const SizedBox(width: 10),
+
+                        /// Time
+                        Row(
+                          children: [
+                            const Icon(Icons.access_time, size: 16),
+                            const SizedBox(width: 6),
+                            Text(currentTime),
+                          ],
+                        ),
+                        const SizedBox(width: 20),
+                        if (periods.isNotEmpty)
+                          DropdownButtonHideUnderline(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: Colors.grey.shade300),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.05),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: DropdownButton<String>(
+                                value: _selectedPeriod,
+                                items:
+                                    periods.map((p) {
+                                      return DropdownMenuItem(
+                                        value: p,
+                                        child: Text(
+                                          p,
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                onChanged: (val) {
+                                  setState(() => _selectedPeriod = val!);
+                                  fetchDashboard();
+                                  fetchRevenueChart();
+                                  fetchPaymentModesRevenue();
+                                },
                               ),
                             ),
-                          );
-                        }).toList(),
-                        onChanged: (val) {
-                          setState(() => _selectedPeriod = val!);
-                          fetchDashboard();
-                        },
-                      ),
-                    ),
-                  ),
-                const SizedBox(width: 8),
+                          ),
+                        const SizedBox(width: 8),
 
-                /// Zone Filter
-                if (zones.isNotEmpty)
-                  DropdownButtonHideUnderline(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.grey.shade300),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
+                        /// Zone Filter
+                        if (zones.isNotEmpty)
+                          DropdownButtonHideUnderline(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: Colors.grey.shade300),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.05),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: DropdownButton<Map<String, dynamic>>(
+                                value: _selectedZone,
+                                items:
+                                    zones.map((z) {
+                                      return DropdownMenuItem(
+                                        value: z,
+                                        child: Text(
+                                          z['name'] ?? '',
+                                          style: const TextStyle(fontSize: 15),
+                                        ),
+                                      );
+                                    }).toList(),
+                                onChanged: (val) {
+                                  setState(() => _selectedZone = val);
+                                  fetchDashboard();
+                                  fetchRevenueChart();
+                                  fetchPaymentModesRevenue();
+                                },
+                              ),
+                            ),
+                          ),
+                        const SizedBox(width: 25),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    /// Metric Cards
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _metricCard(
+                            icon: Icons.currency_rupee,
+                            iconBg: Colors.green,
+                            title: "Total Revenue",
+                            value: totalRevenue,
+                            cardColor: Colors.green.shade50,
+                            trend: revenueTrend,
+                          ),
+                          const SizedBox(width: 20),
+                          _metricCard(
+                            icon: Icons.shopping_bag,
+                            iconBg: Colors.orange,
+                            title: "Total Orders",
+                            value: totalOrders,
+                            cardColor: Colors.orange.shade50,
+                            trend: ordersTrend,
+                          ),
+                          const SizedBox(width: 20),
+                          _metricCard(
+                            icon: Icons.pending_actions,
+                            iconBg: Colors.pink,
+                            title: "Active Orders",
+                            value: activeOrders,
+                            cardColor: Colors.pink.shade50,
+                          ),
+                          const SizedBox(width: 20),
+                          _metricCard(
+                            icon: Icons.table_bar,
+                            iconBg: Colors.purple,
+                            title: "Running Tables",
+                            value: runningTables,
+                            cardColor: Colors.purple.shade50,
                           ),
                         ],
                       ),
-                      child: DropdownButton<Map<String, dynamic>>(
-                        value: _selectedZone,
-                        items:
-                        zones.map((z) {
-                          return DropdownMenuItem(
-                            value: z,
-                            child: Text(
-                              z['name'] ?? '',
-                              style: const TextStyle(fontSize: 15),
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (val) {
-                          setState(() => _selectedZone = val);
-                          fetchDashboard();
-                        },
+                    ),
+
+                    const SizedBox(height: 30),
+
+                    /// Other Cards (horizontal scroll)
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          topProductsCard(),
+                          const SizedBox(width: 25),
+                          topCategoriesCard(),
+                          const SizedBox(width: 25),
+                          StocksCard(),
+                        ],
                       ),
                     ),
-                  ),
-                const SizedBox(width: 25),
-              ],
-            ),
-            const SizedBox(height: 20),
 
-            /// Metric Cards
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _metricCard(
-                    icon: Icons.attach_money,
-                    iconBg: Colors.green,
-                    title: "Total Revenue",
-                    value: totalRevenue,
-                    cardColor: Colors.green.shade50,
-                    trend: revenueTrend,
-                  ),
-                  const SizedBox(width: 20),
-                  _metricCard(
-                    icon: Icons.shopping_bag,
-                    iconBg: Colors.orange,
-                    title: "Total Orders",
-                    value: totalOrders,
-                    cardColor: Colors.orange.shade50,
-                    trend: ordersTrend,
-                  ),
-                  const SizedBox(width: 20),
-                  _metricCard(
-                    icon: Icons.pending_actions,
-                    iconBg: Colors.pink,
-                    title: "Active Orders",
-                    value: activeOrders,
-                    cardColor: Colors.pink.shade50,
-                  ),
-                  const SizedBox(width: 20),
-                  _metricCard(
-                    icon: Icons.table_bar,
-                    iconBg: Colors.purple,
-                    title: "Running Tables",
-                    value: runningTables,
-                    cardColor: Colors.purple.shade50,
-                  ),
-                ],
+                    const SizedBox(height: 30),
+
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          revenueBreakdownCard(),
+                          const SizedBox(width: 25),
+                          paymentModesCard(),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 25),
+
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          recentTransactionsCard(),
+                          const SizedBox(width: 25),
+                          employeeListCard(),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-
-            const SizedBox(height: 30),
-
-            /// Other Cards (horizontal scroll)
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  topProductsCard(),
-                  const SizedBox(width: 25),
-                  topCategoriesCard(),
-                  const SizedBox(width: 25),
-                  StocksCard(),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 30),
-
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  revenueBreakdownCard(),
-                  const SizedBox(width: 25),
-                  paymentModesCard(),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 25),
-
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  recentTransactionsCard(),
-                  const SizedBox(width: 25),
-                  employeeListCard(),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
       bottomNavigationBar: BottomNavBar(
         selectedIndex: 0,
         onItemTapped: (index) {
@@ -523,14 +622,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget revenueBreakdownCard() {
-    String _selectedRevenuePeriod = "Week";
-    final List<String> periods = ["Week", "Month"];
-
-    return StatefulBuilder(
-      builder: (context, setState) {
-        final data = revenueData[_selectedRevenuePeriod] ?? {};
-
-        return Container(
+    return isRevenueChartLoading
+        ? Center(child: CircularProgressIndicator())
+        : Container(
           width: 872,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -547,43 +641,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
-              /// Title + Dropdown
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    "Total Revenue",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _selectedRevenuePeriod,
-                      items:
-                      periods.map((p) {
-                        return DropdownMenuItem(
-                          value: p,
-                          child: Text(
-                            p,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        setState(() {
-                          _selectedRevenuePeriod = val!;
-                        });
-                      },
-                    ),
-                  ),
-                ],
+              const Text(
+                "Total Revenue",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 12),
-
-              /// Bar Chart
+              const SizedBox(height: 15),
               SizedBox(
                 height: 280,
                 child: BarChart(
@@ -594,11 +656,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       enabled: true,
                       touchTooltipData: BarTouchTooltipData(
                         getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                          final label = data.keys.elementAt(group.x.toInt());
+                          if (rod.toY <= 0) return null;
+                          final label =
+                              revenueChartData[group.x.toInt()]['label'] ?? '';
                           final category =
-                          rodIndex == 0 ? "Dine In" : "Takeaway";
+                              rodIndex == 0 ? "Dine In" : "Takeaway";
+                          final value = rod.toY;
                           return BarTooltipItem(
-                            "$label\n$category: ${rod.toY.toStringAsFixed(0)}",
+                            "$label\n$category: ${value.toStringAsFixed(0)}",
                             const TextStyle(
                               color: Colors.white,
                               fontSize: 12,
@@ -613,7 +678,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         sideTitles: SideTitles(
                           showTitles: true,
                           getTitlesWidget: (value, meta) {
-                            final label = data.keys.elementAt(value.toInt());
+                            final label =
+                                revenueChartData[value.toInt()]['label'] ?? '';
                             return Text(
                               label,
                               style: const TextStyle(
@@ -653,45 +719,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       drawVerticalLine: false,
                       horizontalInterval: 20,
                       getDrawingHorizontalLine:
-                          (value) =>
-                          FlLine(
+                          (value) => FlLine(
                             color: Colors.grey.withOpacity(0.2),
                             strokeWidth: 1,
                           ),
                     ),
-                    barGroups: List.generate(data.length, (index) {
-                      final label = data.keys.elementAt(index);
-                      final dineIn = data[label]!["Dine In"]!;
-                      final takeaway = data[label]!["Takeaway"]!;
+                    barGroups: List.generate(revenueChartData.length, (index) {
+                      final item = revenueChartData[index];
+                      final dineIn = (item['dine_in_perc'] ?? 0).toDouble();
+                      final takeaway = (item['takeaway_perc'] ?? 0).toDouble();
                       return BarChartGroupData(
                         x: index,
                         barRods: [
-                          BarChartRodData(
-                            toY: dineIn,
-                            width: 14,
-                            borderRadius: BorderRadius.circular(4),
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.blue.shade700,
-                                Colors.blue.shade300,
-                              ],
+                          if (dineIn > 0)
+                            BarChartRodData(
+                              toY: dineIn,
+                              width: 14,
+                              borderRadius: BorderRadius.circular(4),
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.blue.shade700,
+                                  Colors.blue.shade300,
+                                ],
+                              ),
                             ),
-                          ),
-                          BarChartRodData(
-                            toY: takeaway,
-                            width: 14,
-                            borderRadius: BorderRadius.circular(4),
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.green.shade700,
-                                Colors.green.shade300,
-                              ],
+                          if (takeaway > 0)
+                            BarChartRodData(
+                              toY: takeaway,
+                              width: 14,
+                              borderRadius: BorderRadius.circular(4),
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.green.shade700,
+                                  Colors.green.shade300,
+                                ],
+                              ),
                             ),
-                          ),
                         ],
                         barsSpace: 6,
                       );
@@ -715,43 +782,54 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
         );
-      },
-    );
   }
 
   Widget paymentModesCard() {
-    final Map<String, Map<String, Map<String, double>>> paymentData = {
-      "Week": {
-        "Dine In": {"Cards": 5000, "Cash": 3000, "UPI": 2000},
-        "Takeaway": {"Cards": 4000, "Cash": 2000, "UPI": 1000},
-      },
-      "Month": {
-        "Dine In": {"Cards": 20000, "Cash": 12000, "UPI": 8000},
-        "Takeaway": {"Cards": 15000, "Cash": 9000, "UPI": 5000},
-      },
-    };
-
-    final List<String> periods = ["Week", "Month"];
-    final List<String> orderTypes = ["Dine In", "Takeaway"];
-
-    String selectedPeriod = "Week";
-    String selectedOrderType = "Dine In";
-
     final colors = {
       "Cards": Colors.blue,
       "Cash": Colors.green,
-      "UPI": Colors.redAccent,
+      "Upi": Colors.redAccent,
     };
 
     return StatefulBuilder(
       builder: (context, setState) {
-        final paymentModes =
-            paymentData[selectedPeriod]?[selectedOrderType] ?? {};
-        final total =
-        paymentModes.values.isNotEmpty
-            ? paymentModes.values.reduce((a, b) => a + b)
-            : 1.0;
-
+        final revenueData = paymentRevenue;
+        final hasData =
+            revenueData.isNotEmpty &&
+            revenueData.values.any((value) => value > 0);
+        final chartSections =
+            hasData
+                ? revenueData.entries.map((e) {
+                  final percentage = e.value;
+                  return PieChartSectionData(
+                    value: percentage,
+                    color: colors[e.key] ?? Colors.grey,
+                    radius: 40,
+                    showTitle: true,
+                    title: "${percentage.toStringAsFixed(0)}%",
+                    titleStyle: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: colors[e.key] ?? Colors.grey,
+                    ),
+                    titlePositionPercentageOffset: 1.6,
+                  );
+                }).toList()
+                : [
+                  PieChartSectionData(
+                    value: 100,
+                    color: Colors.grey.shade300,
+                    radius: 40,
+                    showTitle: true,
+                    title: "0%",
+                    titleStyle: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade600,
+                    ),
+                    titlePositionPercentageOffset: 1.6,
+                  ),
+                ];
         return Container(
           width: 427,
           padding: const EdgeInsets.all(16),
@@ -766,127 +844,102 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-
-              /// Header + Filters
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    "Payment Modes",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.indigo,
-                    ),
-                  ),
-                  Row(
+          child:
+              isPaymentLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-
-                      /// Order Type Dropdown
-                      DropdownButton<String>(
-                        value: selectedOrderType,
-                        underline: const SizedBox(),
-                        items:
-                        orderTypes
-                            .map(
-                              (e) =>
-                              DropdownMenuItem(
-                                value: e,
-                                child: Text(e),
-                              ),
-                        )
-                            .toList(),
-                        onChanged: (val) {
-                          setState(() {
-                            selectedOrderType = val!;
-                          });
-                        },
+                      /// Header + Order Type Filter
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            "Payment Modes",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.indigo,
+                            ),
+                          ),
+                          if (paymentOrderTypes.isNotEmpty)
+                            DropdownButton<String>(
+                              value: selectedPaymentOrderType,
+                              underline: const SizedBox(),
+                              items:
+                                  paymentOrderTypes
+                                      .map(
+                                        (e) => DropdownMenuItem(
+                                          value: e,
+                                          child: Text(e),
+                                        ),
+                                      )
+                                      .toList(),
+                              onChanged: (val) {
+                                if (val == null) return;
+                                setState(() {
+                                  selectedPaymentOrderType = val;
+                                  fetchPaymentModesRevenue(orderType: val);
+                                });
+                              },
+                            ),
+                        ],
                       ),
 
-                      /// Period Dropdown
-                      DropdownButton<String>(
-                        value: selectedPeriod,
-                        underline: const SizedBox(),
-                        items:
-                        periods
-                            .map(
-                              (p) =>
-                              DropdownMenuItem(
-                                value: p,
-                                child: Text(p),
-                              ),
-                        )
-                            .toList(),
-                        onChanged: (val) {
-                          setState(() {
-                            selectedPeriod = val!;
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              /// Pie Chart
-              SizedBox(
-                height: 265,
-                child: PieChart(
-                  PieChartData(
-                    centerSpaceRadius: 55,
-                    sectionsSpace: 2,
-                    borderData: FlBorderData(show: false),
-                    sections:
-                    paymentModes.entries.map((e) {
-                      final percentage = (e.value / total) * 100;
-                      return PieChartSectionData(
-                        value: e.value,
-                        color: colors[e.key],
-                        radius: 40,
-                        showTitle: true,
-                        title: "${percentage.toStringAsFixed(0)}%",
-                        titleStyle: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: colors[e.key],
-                        ),
-                        titlePositionPercentageOffset: 1.6,
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              /// Legends
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children:
-                paymentModes.keys.map((key) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Row(
-                      children: [
-                        Icon(Icons.circle, size: 10, color: colors[key]),
-                        const SizedBox(width: 4),
-                        Text(
-                          key,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w500,
+                      /// Pie Chart
+                      SizedBox(
+                        height: 270,
+                        child: PieChart(
+                          PieChartData(
+                            centerSpaceRadius: 55,
+                            sectionsSpace: 2,
+                            borderData: FlBorderData(show: false),
+                            sections: chartSections,
                           ),
                         ),
-                      ],
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
-          ),
+                      ),
+                      const SizedBox(height: 8),
+
+                      /// Legends
+                      hasData
+                          ? Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children:
+                                revenueData.keys.map((key) {
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.circle,
+                                          size: 10,
+                                          color: colors[key] ?? Colors.grey,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          key,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                          )
+                          : Center(
+                            child: Text(
+                              "No payment data",
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                    ],
+                  ),
         );
       },
     );
@@ -941,19 +994,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         Expanded(
                           child: Padding(
                             padding: EdgeInsets.symmetric(vertical: 8),
-                            child: Text("Name", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
+                            child: Text(
+                              "Name",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
                           ),
                         ),
                         Expanded(
                           child: Padding(
                             padding: EdgeInsets.symmetric(vertical: 8),
-                            child: Text("Items Sold", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
+                            child: Text(
+                              "Items Sold",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
                           ),
                         ),
                         Expanded(
                           child: Padding(
                             padding: EdgeInsets.symmetric(vertical: 8),
-                            child: Text("Net Sales", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
+                            child: Text(
+                              "Net Sales",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
                           ),
                         ),
                       ],
@@ -1054,19 +1119,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         Expanded(
                           child: Padding(
                             padding: EdgeInsets.symmetric(vertical: 8),
-                            child: Text("Name", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
+                            child: Text(
+                              "Name",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
                           ),
                         ),
                         Expanded(
                           child: Padding(
                             padding: EdgeInsets.symmetric(vertical: 8),
-                            child: Text("Items Sold", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
+                            child: Text(
+                              "Items Sold",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
                           ),
                         ),
                         Expanded(
                           child: Padding(
                             padding: EdgeInsets.symmetric(vertical: 8),
-                            child: Text("Net Sales", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
+                            child: Text(
+                              "Net Sales",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
                           ),
                         ),
                       ],
@@ -1236,44 +1313,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 isCompletedOrdersLoading
                     ? const Center(child: CircularProgressIndicator())
                     : Expanded(
-                  child: ListView.builder(
-                    itemCount: completedOrders.length,
-                    itemBuilder: (context, index) {
-                      final tx = completedOrders[index];
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                tx["order_id"].toString(),
-                                textAlign: TextAlign.center,
-                              ),
+                      child: ListView.builder(
+                        itemCount: completedOrders.length,
+                        itemBuilder: (context, index) {
+                          final tx = completedOrders[index];
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    tx["order_id"].toString(),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    tx["order_type"].toString(),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    tx["payment_type"].toString(),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    "₹${tx["total"]}",
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ],
                             ),
-                            Expanded(
-                              child: Text(
-                                tx["order_type"].toString(),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                            Expanded(
-                              child: Text(
-                                tx["payment_type"].toString(),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                            Expanded(
-                              child: Text(
-                                "₹${tx["total"]}",
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
+                          );
+                        },
+                      ),
+                    ),
               ],
             ),
           ),
@@ -1319,13 +1396,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => EmployeeListScreen(
-                        pin: widget.pin,
-                        token: widget.token,
-                        restaurantId: widget.restaurantId,
-                        restaurantName: widget.restaurantName,
-                        userPermissions: widget.userPermissions,
-                      ),
+                      builder:
+                          (_) => EmployeeListScreen(
+                            pin: widget.pin,
+                            token: widget.token,
+                            restaurantId: widget.restaurantId,
+                            restaurantName: widget.restaurantName,
+                            userPermissions: widget.userPermissions,
+                          ),
                     ),
                   );
                 },
@@ -1361,7 +1439,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             "Employee ID",
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                                fontWeight: FontWeight.bold, color: Colors.black),
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
                           ),
                         ),
                       ),
@@ -1372,7 +1452,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             "Name",
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                                fontWeight: FontWeight.bold, color: Colors.black),
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
                           ),
                         ),
                       ),
@@ -1383,7 +1465,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             "Designation",
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                                fontWeight: FontWeight.bold, color: Colors.black),
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
                           ),
                         ),
                       ),
@@ -1394,7 +1478,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             "Status",
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                                fontWeight: FontWeight.bold, color: Colors.black),
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
                           ),
                         ),
                       ),
@@ -1406,72 +1492,90 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                 /// 🔹 Employee Rows
                 Expanded(
-                  child: isEmployeeLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : ListView.builder(
-                    itemCount: employees.length,
-                    itemBuilder: (context, index) {
-                      final emp = employees[index];
+                  child:
+                      isEmployeeLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : ListView.builder(
+                            itemCount: employees.length,
+                            itemBuilder: (context, index) {
+                              final emp = employees[index];
 
-                      String userId = (emp["user_id"]?.toString().trim().isEmpty ?? true)
-                          ? "-"
-                          : emp["user_id"].toString();
+                              String userId =
+                                  (emp["user_id"]?.toString().trim().isEmpty ??
+                                          true)
+                                      ? "-"
+                                      : emp["user_id"].toString();
 
-                      String name = (emp["name"]?.toString().trim().isEmpty ?? true)
-                          ? "-"
-                          : emp["name"].toString();
+                              String name =
+                                  (emp["name"]?.toString().trim().isEmpty ??
+                                          true)
+                                      ? "-"
+                                      : emp["name"].toString();
 
-                      String designation = (emp["designation"]?.toString().trim().isEmpty ?? true)
-                          ? "-"
-                          : emp["designation"].toString();
+                              String designation =
+                                  (emp["designation"]
+                                              ?.toString()
+                                              .trim()
+                                              .isEmpty ??
+                                          true)
+                                      ? "-"
+                                      : emp["designation"].toString();
 
-                      String status = (emp["attendance_status"]?.toString().trim().isEmpty ?? true)
-                          ? "-"
-                          : emp["attendance_status"].toString();
+                              String status =
+                                  (emp["attendance_status"]
+                                              ?.toString()
+                                              .trim()
+                                              .isEmpty ??
+                                          true)
+                                      ? "-"
+                                      : emp["attendance_status"].toString();
 
-                      final isPresent = status == "Present";
+                              final isPresent = status == "Present";
 
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                userId,
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                            Expanded(
-                              child: Text(
-                                name,
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                            Expanded(
-                              child: Text(
-                                designation,
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                            Expanded(
-                              child: Text(
-                                status,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: status == "-"
-                                      ? Colors.grey
-                                      : (isPresent
-                                      ? Colors.green.shade800
-                                      : Colors.red.shade800),
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 4,
                                 ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        userId,
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Text(
+                                        name,
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Text(
+                                        designation,
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Text(
+                                        status,
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color:
+                                              status == "-"
+                                                  ? Colors.grey
+                                                  : (isPresent
+                                                      ? Colors.green.shade800
+                                                      : Colors.red.shade800),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
                 ),
               ],
             ),
@@ -1511,81 +1615,82 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 14),
           Expanded(
-            child: isInventoryLoading
-                ? const Center(child: CircularProgressIndicator())
-                : inventoryAlerts.isEmpty
-                ? const Center(child: Text("No low stock items"))
-                : Column(
-              children: [
-                /// Curved header row
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Row(
-                    children: const [
-                      Expanded(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: 8),
-                          child: Text(
-                            "Name",
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                            ),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: 8),
-                          child: Text(
-                            "Alerts",
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 4),
-
-                /// Inventory rows
-                ...inventoryAlerts.map(
-                      (item) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
+            child:
+                isInventoryLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : inventoryAlerts.isEmpty
+                    ? const Center(child: Text("No low stock items"))
+                    : Column(
                       children: [
-                        Expanded(
-                          child: Text(
-                            item['name'] ?? item['in_name'] ?? '',
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                        /// Curved header row
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Row(
+                            children: const [
+                              Expanded(
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 8),
+                                  child: Text(
+                                    "Name",
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 8),
+                                  child: Text(
+                                    "Alerts",
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        Expanded(
-                          child: Text(
-                            "Reorder",
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Color(0xFFAA3028),
-                              fontWeight: FontWeight.bold,
+                        const SizedBox(height: 4),
+
+                        /// Inventory rows
+                        ...inventoryAlerts.map(
+                          (item) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    item['name'] ?? item['in_name'] ?? '',
+                                    textAlign: TextAlign.center,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    "Reorder",
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: Color(0xFFAA3028),
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
                       ],
                     ),
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
@@ -1602,9 +1707,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }) {
     bool isPositive = true;
     String trendText = "";
-    if (trend != null && trend
-        .trim()
-        .isNotEmpty) {
+    if (trend != null && trend.trim().isNotEmpty) {
       trend = trend.trim();
       isPositive = trend.startsWith("↑");
       trendText = trend.substring(1).trim();
@@ -1648,9 +1751,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(width: 18),
             Expanded(
               child: Column(
-                mainAxisAlignment: trend != null
-                    ? MainAxisAlignment.start
-                    : MainAxisAlignment.center,
+                mainAxisAlignment:
+                    trend != null
+                        ? MainAxisAlignment.start
+                        : MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (trend != null) const SizedBox(height: 45),
@@ -1676,8 +1780,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Row(
                       children: [
                         Icon(
-                          isPositive ? Icons.arrow_upward : Icons
-                              .arrow_downward,
+                          isPositive
+                              ? Icons.arrow_upward
+                              : Icons.arrow_downward,
                           size: 16,
                           color: isPositive ? Colors.green : Colors.red,
                         ),

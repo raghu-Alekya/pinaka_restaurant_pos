@@ -45,7 +45,6 @@ class AppConstants {
   static const String completedOrdersEndpoint =
       '$baseApiPath/employee-attendance/get-all-completed-orders';
 
-
   // Shift Management
   static const String createShiftEndpoint = '$baseApiPath/shifts/create-shift';
   static const String updateShiftEndpoint = '$baseApiPath/shifts/update-shift';
@@ -60,6 +59,12 @@ class AppConstants {
   static const String cancelReservationEndpoint = '$baseApiPath/reservation/cancel-reservation';
   static const String reservationDateRangeEndpoint = '$baseApiPath/reservation/reservation-date-range';
   static const String getAllMergeTablesWithReservationEndpoint = '$baseApiPath/tables/get-all-merge-tables-with-reservation';
+
+  // kitchen status
+  static const String getAllOrderTypesEndpoint = '$baseApiPath/kot/get-all-order-types';
+  static const String getAllUsersEndpoint = '$baseApiPath/users/get-all-users';
+  static const String getAllOrdersEndpoint = '$baseApiPath/kot/order-filters-api';
+  static const String getParentKotOrdersEndpoint = '$baseApiPath/kot/get-parent-kot-orders';
 
   // Slots
   static String getAllSlotsByDate(String formattedDate) =>
