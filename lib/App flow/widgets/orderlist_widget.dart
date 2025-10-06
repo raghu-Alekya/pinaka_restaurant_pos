@@ -76,125 +76,158 @@ class OrderPanelList extends StatelessWidget {
           background: Container(
             color: Colors.red,
             alignment: Alignment.centerRight,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
             child: const Icon(Icons.delete, color: Colors.white),
           ),
           onDismissed: (_) => onRemoveItem(index),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Serial #
-                SizedBox(
-                  width: 30,
-                  child: Text('${index + 1}',
-                      style: const TextStyle(fontSize: 12)),
-                ),
+            padding: const EdgeInsets.symmetric(vertical: 1),
+            child: Container(
+              padding: const EdgeInsets.all(2), // inner padding
+              decoration: BoxDecoration(
+                color: Colors.white, // white background
+                borderRadius: BorderRadius.circular(6), // rounded corners
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 1,
+                    offset: Offset(1, 1),
+                  ),
+                ],
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const SizedBox(width:7),
+                  // Serial #
+                  SizedBox(
+                    width: 50,
+                    child: Text(
+                      '${item.productId}', // ✅ use productId instead of id
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
 
-                // Item Name + Modifiers + AddOns + Note
-                SizedBox(
-                  width: 200, // your desired width
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+
+
+                  // Item Name + Modifiers + AddOns + Note
+                  SizedBox(
+                    width: 180,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(item.name,
+                            style: const TextStyle(
+                                fontSize: 14, fontWeight: FontWeight.w500)),
+                        if (item.modifiers.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              _formatModifierList(item.modifiers.cast<String>()),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.red,
+                                fontWeight: FontWeight.w500,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        if (item.addOns.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              _formatAddOnsList(item.addOns),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.blue,
+                                fontWeight: FontWeight.w500,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        if (item.note.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              'Note: ${item.note}',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontStyle: FontStyle.italic,
+                                color: Colors.black54,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+
+                  // Modifier Button
+                  SizedBox(
+                    width: 60,
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: const Icon(Icons.add, color: Colors.red, size: 20),
+                      onPressed: () => _showModifierPopup(context, index),
+                    ),
+                  ),
+                  // Modifier Button
+                  // SizedBox(
+                  //   width: 60,
+                  //   child: IconButton(
+                  //     padding: EdgeInsets.zero,
+                  //     icon: Icon(
+                  //       Icons.add,
+                  //       color: item.hasOptions ? Colors.red : Colors.grey, // 🔹 greyed if no options
+                  //       size: 20,
+                  //     ),
+                  //     onPressed: item.hasOptions
+                  //         ? () => _showModifierPopup(context, index)
+                  //         : null, // 🔹 disabled if no modifiers/add-ons
+                  //   ),
+                  // ),
+
+                  const SizedBox(width: 30),
+
+                  // Quantity Controls
+                  Row(
                     children: [
-                      Text(item.name,
-                          style: const TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.bold)),
-                      if (item.modifiers.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Text(
-                            _formatModifierList(item.modifiers.cast<String>()),
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: Colors.red,
-                              fontWeight: FontWeight.w500,
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
-                        ),
-                      if (item.addOns.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Text(
-                            _formatAddOnsList(item.addOns),
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: Colors.blue,
-                              fontWeight: FontWeight.w500,
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
-                        ),
-                      if (item.note.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Text(
-                            'Note: ${item.note}',
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontStyle: FontStyle.italic,
-                              color: Colors.black54,
-                            ),
-                          ),
-                        ),
+                      _quantityButton(Icons.remove, () => onDecreaseQuantity(index)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        child: Text('${item.quantity}',
+                            style: const TextStyle(fontSize: 14)),
+                      ),
+                      _quantityButton(Icons.add, () => onIncreaseQuantity(index)),
                     ],
                   ),
-                ),
+                  const SizedBox(width:10),
 
-                // Modifier Button
-                SizedBox(
-                  width: 60, // desired width
-                  // height: 30, // optional, controls height too
-                  child: IconButton(
-                    padding: EdgeInsets.zero, // remove default padding
-                    icon: const Icon(Icons.add, color: Colors.red, size: 20),
-                    onPressed: () => _showModifierPopup(context, index),
-                  ),
-                ),
-                const SizedBox(width: 14),
-
-                // Quantity Controls
-                Row(
-                  children: [
-                    _quantityButton(
-                        Icons.remove, () => onDecreaseQuantity(index)),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6),
-                      child: Text('${item.quantity}',
-                          style: const TextStyle(fontSize: 14)),
-                    ),
-                    _quantityButton(
-                        Icons.add, () => onIncreaseQuantity(index)),
-                  ],
-                ),
-                const SizedBox(width:18),
-
-                // Amount (uses totalWithAddons)
-                SizedBox(
-                  width: 80,
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      '₹${item.totalWithAddons.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.bold),
+                  // Amount
+                  SizedBox(
+                    width: 70,
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        '₹${item.totalWithAddons.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.w500),
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
       },
+
     );
   }
 
   Widget _quantityButton(IconData icon, VoidCallback? onPressed) {
     return Container(
-      width: 25,
-      height: 25,
+      width: 30,
+      height: 30,
       decoration: BoxDecoration(
         color: const Color(0xFFFCDFDC),
         borderRadius: BorderRadius.circular(4),

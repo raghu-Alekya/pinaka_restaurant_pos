@@ -184,7 +184,7 @@ class _SideBarWidgetsState extends State<SideBarWidgets> {
             );
           } else if (state is CategoryLoaded) {
             return Container(
-              margin: const EdgeInsets.only(left: 12, top: 12, bottom: 16),
+              margin: const EdgeInsets.only(left: 12, top: 6, bottom: 10),
               width: sidebarWidth,
               height: MediaQuery.of(context).size.height * 0.9,
               decoration: BoxDecoration(
@@ -192,7 +192,7 @@ class _SideBarWidgetsState extends State<SideBarWidgets> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: const EdgeInsets.symmetric(vertical: 10),
                 child: SingleChildScrollView(
                   controller: _scrollController,
                   physics: const BouncingScrollPhysics(),

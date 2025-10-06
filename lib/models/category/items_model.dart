@@ -7,6 +7,11 @@ class Product {
   final bool isVeg;
   final List<Variant> variants;
 
+  // ✅ New fields
+  final List<String> modifiers;
+  final List<String> addOns;
+  final bool hasOptions;
+
   // Constructor
   Product({
     required this.id,
@@ -15,9 +20,15 @@ class Product {
     List<String>? images,
     required this.isVeg,
     required this.variants,
+    List<String>? modifiers,
+    List<String>? addOns,
+    bool? hasOptions,
     String? image,
   })  : images = images ?? [],
-        image = image ?? (images != null && images.isNotEmpty ? images.first : '');
+        image = image ?? (images != null && images.isNotEmpty ? images.first : ''),
+        modifiers = modifiers ?? [],
+        addOns = addOns ?? [],
+        hasOptions = hasOptions ?? ((modifiers?.isNotEmpty ?? false) || (addOns?.isNotEmpty ?? false));
 
   // ✅ copyWith for immutability
   Product copyWith({
@@ -28,6 +39,9 @@ class Product {
     String? image,
     bool? isVeg,
     List<Variant>? variants,
+    List<String>? modifiers,
+    List<String>? addOns,
+    bool? hasOptions,
   }) {
     return Product(
       id: id ?? this.id,
@@ -37,6 +51,10 @@ class Product {
       image: image ?? (images != null && images.isNotEmpty ? images.first : this.image),
       isVeg: isVeg ?? this.isVeg,
       variants: variants ?? this.variants,
+      modifiers: modifiers ?? this.modifiers,
+      addOns: addOns ?? this.addOns,
+      hasOptions: hasOptions ?? ((modifiers ?? this.modifiers).isNotEmpty ||
+          (addOns ?? this.addOns).isNotEmpty),
     );
   }
 
@@ -47,6 +65,24 @@ class Product {
         .toList() ??
         [];
 
+    final modifiers = (json['modifiers'] as List<dynamic>?)
+        ?.map((e) => e.toString())
+        .toList() ??
+        [];
+
+    final addOns = (json['addOns'] as List<dynamic>?)
+        ?.map((e) => e.toString())
+        .toList() ??
+        [];
+
+    // 🔹 Correct unified isVeg parsing
+    bool parsedIsVeg = false;
+    final rawIsVeg = json['is_veg'] ?? json['isVeg'] ?? json['veg_type'] ?? json['type'];
+    if (rawIsVeg != null) {
+      final val = rawIsVeg.toString().toLowerCase().trim();
+      parsedIsVeg = val == 'true' || val == '1' || val == 'veg';
+    }
+
     return Product(
       id: json['id'] is int
           ? json['id']
@@ -54,16 +90,21 @@ class Product {
       name: json['name'] ?? '',
       price: double.tryParse(json['price']?.toString() ?? '0.0') ?? 0.0,
       images: images,
-      isVeg: (json['isVeg']?.toString().toLowerCase() == 'true') ||
-          (json['type']?.toString().toLowerCase() == 'veg'),
+      isVeg: parsedIsVeg, // ✅ Now correctly set
       variants: (json['variants'] as List<dynamic>?)
           ?.map((v) => Variant.fromJson(v))
           .toList() ??
           [],
-      image: json['image'], // fallback handled in constructor
+      image: json['image'],
+      modifiers: modifiers,
+      addOns: addOns,
+      hasOptions: (modifiers.isNotEmpty || addOns.isNotEmpty),
     );
   }
 
+
+
+  // toJson
   Map<String, dynamic> toJson() {
     return {
       "id": id,
@@ -73,9 +114,13 @@ class Product {
       "image": image,
       "isVeg": isVeg,
       "variants": variants.map((v) => v.toJson()).toList(),
+      "modifiers": modifiers,
+      "addOns": addOns,
+      "hasOptions": hasOptions,
     };
   }
 }
+
 
 class Variant {
   final int productId;

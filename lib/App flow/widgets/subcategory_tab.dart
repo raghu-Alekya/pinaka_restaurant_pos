@@ -69,22 +69,22 @@ class _SubCategoryTabWidgetState extends State<SubCategoryTabWidget> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.subCategories.isEmpty) return const SizedBox(height: 90);
+    if (widget.subCategories.isEmpty) return const SizedBox(height: 70);
 
     return Container(
-      margin: const EdgeInsets.all(8),
-      padding: const EdgeInsets.all(8),
+      margin: const EdgeInsets.all(1),
+      padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.grey.shade300, width: 1),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(2, 2))],
+        color: Color(0XFFDEE8FF),
+        // border: Border.all(color: Colors.grey.shade300, width: 1),
+        // borderRadius: BorderRadius.circular(12),
+        // boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 0, offset: Offset(1, 2))],
       ),
-      height: 130,
+      height: 120,
       child: Stack(
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 40.0),
+            padding: const EdgeInsets.symmetric(horizontal: 0.0),
             child: ListView.builder(
               controller: _scrollController,
               scrollDirection: Axis.horizontal,
@@ -100,9 +100,9 @@ class _SubCategoryTabWidgetState extends State<SubCategoryTabWidget> {
                     widget.onTap?.call(index); // triggers mini-subcategory load
                   },
                   child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                    margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
                     padding: const EdgeInsets.all(6),
-                    width: 90,
+                    width: 80,
                     decoration: BoxDecoration(
                       color: isSelected ? const Color(0xFFFCDFDC) : const Color(0xFFF2F2F7),
                       borderRadius: BorderRadius.circular(10),
@@ -145,24 +145,66 @@ class _SubCategoryTabWidgetState extends State<SubCategoryTabWidget> {
               },
             ),
           ),
-          Positioned(
-            left: 0,
-            top: 25,
-            child: IconButton(
-              icon: const Icon(Icons.arrow_back_ios, size: 16),
-              onPressed: _scrollLeft,
-              color: Colors.black,
-            ),
-          ),
-          Positioned(
-            right: 0,
-            top: 25,
-            child: IconButton(
-              icon: const Icon(Icons.arrow_forward_ios, size: 16),
-              onPressed: _scrollRight,
-              color: Colors.black,
-            ),
-          ),
+          // Positioned(
+          //   left: 0,
+          //   top: 0,
+          //   bottom: 0,
+          //   child: Center(
+          //     child: Container(
+          //       width: 32, // circular size
+          //       height: 32,
+          //       decoration: BoxDecoration(
+          //         color: Colors.white, // background color of the circle
+          //         shape: BoxShape.circle,
+          //         boxShadow: [
+          //           BoxShadow(
+          //             color: Colors.black26,
+          //             blurRadius: 4,
+          //             offset: Offset(0, 2),
+          //           ),
+          //         ],
+          //       ),
+          //       child: IconButton(
+          //         padding: EdgeInsets.zero, // remove default padding
+          //         icon: const Icon(Icons.arrow_back_ios, size: 16),
+          //         onPressed: _scrollLeft,
+          //         color: Colors.black,
+          //         splashRadius: 20,
+          //       ),
+          //     ),
+          //   ),
+          // ),
+          //
+          // Positioned(
+          //   right: 0,
+          //   top: 0,
+          //   bottom: 0,
+          //   child: Center(
+          //     child: Container(
+          //       width: 32, // circular size
+          //       height: 32,
+          //       decoration: BoxDecoration(
+          //         color: Colors.white, // background color of the circle
+          //         shape: BoxShape.circle,
+          //         boxShadow: [
+          //           BoxShadow(
+          //             color: Colors.black26,
+          //             blurRadius: 4,
+          //             offset: Offset(0, 2),
+          //           ),
+          //         ],
+          //       ),
+          //       child: IconButton(
+          //         padding: EdgeInsets.zero, // remove default padding
+          //         icon: const Icon(Icons.arrow_forward_ios, size: 16),
+          //         onPressed: _scrollRight,
+          //         color: Colors.black,
+          //         splashRadius: 20,
+          //       ),
+          //     ),
+          //   ),
+          // ),
+
         ],
       ),
     );

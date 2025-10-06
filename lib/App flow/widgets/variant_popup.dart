@@ -67,7 +67,9 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
           quantity: entry.value,
           modifiers: [],
           section: widget.section,
-          productId: 0,
+          productId: widget.product.id, // ✅ main product id
+          variantId: variant.variationId
+
         );
         widget.orderBloc.add(AddOrderItem(orderItem));
         print("[VariantPopup] Added: ${orderItem.name} x${orderItem.quantity}");
@@ -94,17 +96,29 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
                   'Choose Variants',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
+                Container(
+                  width: 30,  // Set the desired width
+                  height: 30, // Set the desired height
+                  decoration: BoxDecoration(
+                    color: Colors.red, // Background color
+                    shape: BoxShape.circle, // Makes it circular
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white, size: 16), // Icon size
+                    onPressed: () => Navigator.pop(context),
+                    padding: const EdgeInsets.all(0), // Remove extra padding
+                    constraints: const BoxConstraints(), // Remove default constraints
+                  ),
                 ),
+
+
               ],
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 25),
 
             // Horizontal scrollable variants
             Container(
-              height: 280,
+              height: 260,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: widget.product.variants.length,
@@ -115,7 +129,8 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
 
                   return Container(
                     width: 180,
-                    padding: const EdgeInsets.all(12),
+                    height: 450,
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: Colors.grey.shade50,
                       borderRadius: BorderRadius.circular(12),
@@ -130,29 +145,74 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
                             variant.image.isNotEmpty
                                 ? variant.image
                                 : 'https://via.placeholder.com/100',
-                            width: 140,
+                            width: 120,
                             height: 90,
                             fit: BoxFit.cover,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 12),
                         Text(widget.product.name, textAlign: TextAlign.center),
                         Text(variant.name, style: const TextStyle(fontWeight: FontWeight.bold)),
                         Text("Rs.${variant.price.toStringAsFixed(0)}/-", style: const TextStyle(color: Colors.grey)),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 12),
                         quantity == 0
                             ? ElevatedButton(
                           onPressed: () => _increment(index),
+                          style: ElevatedButton.styleFrom(
+                            minimumSize: const Size(150, 40), // width, height
+                          ),
                           child: const Text("+ ADD"),
                         )
-                            : Row(
+
+                            :Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            IconButton(icon: const Icon(Icons.remove), onPressed: () => _decrement(index)),
-                            Text('$quantity'),
-                            IconButton(icon: const Icon(Icons.add), onPressed: () => _increment(index)),
+                            // Decrement button
+                            Container(
+                              width: 40,  // set desired width
+                              height: 40, // set desired height
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade100, // background color
+                                border: Border.all(color: Colors.blue), // border color
+                                borderRadius: BorderRadius.circular(4), // rounded corners
+                              ),
+                              child: IconButton(
+                                icon: const Icon(Icons.remove, size: 12, color: Colors.blue), // smaller icon
+                                onPressed: () => _decrement(index),
+                                padding: EdgeInsets.zero, // remove extra padding
+                                constraints: const BoxConstraints(
+                                  minWidth: 24,
+                                  minHeight: 24,
+                                ), // remove default min size
+                              ),
+                            ),
+
+
+                            // Quantity text
+                            Text('$quantity', style: const TextStyle(fontWeight: FontWeight.bold)),
+
+                            // Increment button
+                            Container(
+                              width: 40,  // set desired width
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade100, // background color
+                                border: Border.all(color: Colors.blue),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: IconButton(
+                                icon: const Icon(Icons.add, size: 16, color: Colors.blue),
+                                onPressed: () => _increment(index),
+                                padding: const EdgeInsets.all(2),
+                                constraints: const BoxConstraints(
+                                  minWidth: 24,
+                                  minHeight: 24,
+                                ),
+                              ),
+                            ),
                           ],
                         ),
+
                       ],
                     ),
                   );

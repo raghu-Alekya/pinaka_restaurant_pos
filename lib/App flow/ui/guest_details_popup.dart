@@ -198,7 +198,7 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                                 tableId: tableId,
                                 tableName: tableName,
                                 zoneId: zoneId,
-                                zoneName: zoneName,
+                                zoneName: zoneName, kotList: [],
                               ),
                             ),
                           );

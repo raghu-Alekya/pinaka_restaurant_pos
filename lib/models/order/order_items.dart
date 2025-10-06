@@ -11,6 +11,9 @@ class OrderItems {
   final Map<String, Map<String, dynamic>> addOns; // {'Cheese': {'quantity': 2, 'price': 20.0}}
   final String note;
 
+  // ✅ New field
+  final bool hasOptions;
+
   OrderItems({
     required this.productId,
     this.variationId, // ✅ optional
@@ -21,6 +24,7 @@ class OrderItems {
     this.addOns = const {},
     this.note = '',
     required this.section,
+    this.hasOptions = false, required variantId, // default false
   });
   String get itemName => name;
 
@@ -66,17 +70,16 @@ class OrderItems {
 
     return OrderItems(
       productId: json['productId'] ?? 0,
-      variationId: json['variationId'],
-      name: json['name']?.toString()
-          ?? json['item_name']?.toString()
-          ?? 'Unknown',
-
+      variantId: json['variantId'] ?? json['variationId'] ?? 0, // ✅ FIXED
+      name: json['name']?.toString() ??
+          json['item_name']?.toString() ??
+          'Unknown',
       quantity: json['quantity'] ?? 1,
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       addOns: addOns,
       modifiers: modifiers,
       note: json['note']?.toString() ?? '',
-      section: section, // ✅ use local variable here
+      section: section,
     );
   }
 
@@ -115,7 +118,7 @@ class OrderItems {
   }) {
     return OrderItems(
       productId: productId ?? this.productId,
-      variationId: variationId ?? this.variationId, // ✅ include here
+      variantId: variationId ?? this.variationId, // ✅ include here
       name: name ?? this.name,
       quantity: quantity ?? this.quantity,
       price: price ?? this.price,

@@ -61,7 +61,7 @@ class OrderPanel extends StatelessWidget {
     return BlocBuilder<OrderBloc, OrderState>(
       builder: (context, state) {
         return Container(
-          width: 650,
+          width: 700,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: Colors.white,
@@ -73,13 +73,14 @@ class OrderPanel extends StatelessWidget {
               /// Header row with badges & actions
               Center(
                 child: SizedBox(
-                  width: 500, // Total desired width for the row
+                  width: 480, // Total desired width for the row
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       // Left side: header badges
-                      Expanded(
+                      Flexible(
+                        fit: FlexFit.loose, // 👈 allows it to take only as much width as needed
                         child: headerBadgeRow(state),
                       ),
 
@@ -170,7 +171,7 @@ class OrderPanel extends StatelessWidget {
                               },
                             ),
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 8),
                           SizedBox(
                             width: 100, // Set desired width for Table layout button
                             child: elevatedActionButton(
@@ -202,10 +203,12 @@ class OrderPanel extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 4),
+              // const SizedBox(height: 1),
 
               /// Date & guest info
               Row(
+                crossAxisAlignment: CrossAxisAlignment.center, // vertically center
+                mainAxisSize: MainAxisSize.min, // prevent extra space
                 children: [
                   iconText(
                     'assets/icon/calender.png',
@@ -217,164 +220,196 @@ class OrderPanel extends StatelessWidget {
                     DateFormat('hh:mm a').format(DateTime.now()),
                   ),
                   const Spacer(),
-                  avatarName(
-                    'assets/icon/person.png',
-                    'Guests: ${state.guests.fold<int>(0, (sum, g) => sum + g.guestCount)}',
-                  ),
-                  IconButton(
-                    onPressed: () async {
-                      AppLogger.info("Add Guest clicked");
-                      showDialog(
-                        context: context,
-                        builder: (_) => GuestDetailsPopup(
-                          index: 0,
-                          tableData: {
-                            'id': tableId,
-                            'zoneId': zoneId,
-                            'zoneName': zoneName,
-                            'name': tableName,
-                            'capacity': 6,
-                          },
-                          placedTables: [],
-                          onGuestSaved: (Guestcount guest) async {
-                            AppLogger.info("Guest saved: ${guest.guestCount}");
-                            final orderRepository = OrderRepository(baseUrl: 'https://merchantrestaurant.alektasolutions.com');
-                            final order = await orderRepository.createOrder(
-                              tableId: tableId,
-                              zoneId: zoneId,
-                              restaurantId: restaurantId,
-                              guestCount: guest.guestCount,
-                              token: token,
-                              tableName: tableName,
-                              zoneName: zoneName,
-                              restaurantName: restaurantName,
-                              guests: [guest],
-                            );
-
-                            context.read<OrderBloc>().add(CreateOrderSuccess(orderId: orderId));
-                            context.read<OrderBloc>().add(CreateOrder(
-                              restaurantId: restaurantId,
-                              orderId: orderId,
-                              tableId: tableId,
-                              zoneId: zoneId,
-                              tableName: tableName,
-                              zoneName: zoneName,
-                              guests: [guest],
-                            ));
-
-                            onGuestSaved(guest.guestCount);
-                          },
-                          token: token,
-                          restaurantId: restaurantId,
-                        ),
-                      );
-                    },
-                    icon: Image.asset(
-                      'assets/icon/add_icon.png',
-                      width: 18,
-                      height: 18,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF7F7),
+                      borderRadius: BorderRadius.circular(6),
                     ),
-                    tooltip: 'Add Guest',
+                    child: Row(
+                      children: [
+                        avatarName(
+                          'assets/icon/person.png',
+                          'Guests: ${state.guests.fold<int>(0, (sum, g) => sum + g.guestCount)}',
+                        ),
+                        const SizedBox(width: 1),
+                        IconButton(
+                          onPressed: () async {
+                            AppLogger.info("Add Guest clicked");
+                            showDialog(
+                              context: context,
+                              builder: (_) => GuestDetailsPopup(
+                                index: 0,
+                                tableData: {
+                                  'id': tableId,
+                                  'zoneId': zoneId,
+                                  'zoneName': zoneName,
+                                  'name': tableName,
+                                  'capacity': 6,
+                                },
+                                placedTables: [],
+                                onGuestSaved: (Guestcount guest) async {
+                                  AppLogger.info("Guest saved: ${guest.guestCount}");
+                                  final orderRepository = OrderRepository(
+                                      baseUrl:
+                                      'https://merchantrestaurant.alektasolutions.com');
+                                  final order = await orderRepository.createOrder(
+                                    tableId: tableId,
+                                    zoneId: zoneId,
+                                    restaurantId: restaurantId,
+                                    guestCount: guest.guestCount,
+                                    token: token,
+                                    tableName: tableName,
+                                    zoneName: zoneName,
+                                    restaurantName: restaurantName,
+                                    guests: [guest],
+                                  );
+
+                                  context.read<OrderBloc>().add(
+                                    CreateOrderSuccess(
+                                      orderId: orderId,
+                                      // tableId: tableId,
+                                      // zoneId: zoneId,
+                                      // tableName: tableName,
+                                      // zoneName: zoneName,
+                                      // restaurantId: restaurantId,
+                                      // guests: [guest], // or existing guests list
+                                      // kotList: [],            // empty initially or fetched KOTs
+                                      // orderItems: [],         // empty initially or fetched order items
+                                    ),
+                                  );
+
+                                  context.read<OrderBloc>().add(CreateOrder(
+                                    restaurantId: restaurantId,
+                                    orderId: orderId,
+                                    tableId: tableId,
+                                    zoneId: zoneId,
+                                    tableName: tableName,
+                                    zoneName: zoneName,
+                                    guests: [guest],
+                                  ));
+
+                                  onGuestSaved(guest.guestCount);
+                                },
+                                token: token,
+                                restaurantId: restaurantId,
+                              ),
+                            );
+                          },
+                          icon: Image.asset(
+                            'assets/icon/add_icon.png',
+                            width: 18,
+                            height: 18,
+                          ),
+                          tooltip: 'Add Guest',
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
-
-              /// Dynamic KOT Dropdown
-              BlocBuilder<KotBloc, KotState>(
-                builder: (context, kotState) {
-                  final kots = kotState is KotLoaded
-                      ? List<KotModel>.from(kotState.kots)
-                      : <KotModel>[];
-
-                  return ViewAllKOTDropdown(
-                    kots: kots,
-                    parentOrderId: state.orderId, // pass current orderId
-                    restaurantId: int.parse(restaurantId), // ensure type matches
-                    zoneId: zoneId,
-                    token: token,
-                  );
-                },
-              ),
 
 
+              // const SizedBox(height: 4),
 
-              const SizedBox(height: 6),
-
-              /// Table header row
-              Container(
-                height: 32,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF989292),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Row(
+              Expanded(
+                child: Stack(
                   children: [
-                    SizedBox(width: 30, child: headerText('#')),
-                    Expanded(child: headerText('Item Name')),
-                    SizedBox(width: 140, child: headerText('Modifiers / Add-ons')),
-                    SizedBox(width: 60, child: headerText('Qty')),
-                    SizedBox(width: 50, child: headerText('Amount')),
+                    // 1️⃣ Base: Order items list
+                    Column(
+                      children: [
+                        // Spacer equal to dropdown collapsed height
+                        SizedBox(height: 36),
+                        const SizedBox(height:6),// collapsed dropdown height
+
+                        // Table header (always visible)
+                        Container(
+                          height: 30,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF989292),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Row(
+                            children: [
+                              SizedBox(width: 50, child: headerText('#')),
+                              Expanded(child: headerText('Item Name')),
+                              SizedBox(width: 120, child: headerText('Modifiers')),
+                              SizedBox(width: 75, child: headerText('Qty')),
+                              SizedBox(width: 50, child: headerText('Amount')),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+
+                        // Order items list
+                        Expanded(
+                          child: Container(
+                            color: const Color(0xFFF1F1F3), // set background color
+                            child: OrderPanelList(
+                              orderItems: state.orderItems,
+                              addonPrices: addonPrices,
+                              onIncreaseQuantity: (index) {
+                                final item = state.orderItems[index];
+                                context.read<OrderBloc>().add(UpdateOrderItemQuantity(index, item.quantity + 1));
+                              },
+                              onDecreaseQuantity: (index) {
+                                final item = state.orderItems[index];
+                                if (item.quantity > 1) {
+                                  context.read<OrderBloc>().add(UpdateOrderItemQuantity(index, item.quantity - 1));
+                                }
+                              },
+                              onModifiersChanged: (index, modifiers, addOns, note) {
+                                final fullAddOns = <String, Map<String, dynamic>>{};
+                                addOns.forEach((name, qty) {
+                                  fullAddOns[name] = {'quantity': qty, 'price': addonPrices[name] ?? 0.0};
+                                });
+                                context.read<OrderBloc>().add(UpdateOrderItemDetails(
+                                  index: index,
+                                  modifiers: modifiers,
+                                  addOns: fullAddOns,
+                                  note: note,
+                                ));
+                              },
+                              onRemoveItem: (index) {
+                                context.read<OrderBloc>().add(RemoveOrderItem(index));
+                              },
+                              token: token,
+                            ),
+                          ),
+                        )
+
+                      ],
+                    ),
+                    const SizedBox(height:2),
+
+                    // 2️⃣ Overlay: ViewAllKOTDropdown
+                    BlocBuilder<KotBloc, KotState>(
+                      builder: (context, kotState) {
+                        final kots = kotState is KotLoaded ? kotState.kots : <KotModel>[];
+                        return Positioned(
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          child: ViewAllKOTDropdown(
+                            kots: kots,
+                            parentOrderId: state.orderId,
+                            restaurantId: int.parse(restaurantId),
+                            zoneId: zoneId,
+                            token: token,
+                          ),
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),
-              const SizedBox(height: 6),
 
-              /// Order items list
-              Expanded(
-                child: state.orderItems.isEmpty
-                    ? const Center(
-                  child: Text(
-                    'No items added yet',
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 14,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                )
-                    : OrderPanelList(
-                  orderItems: state.orderItems,
-                  addonPrices: addonPrices,
-                  onIncreaseQuantity: (index) {
-                    final item = state.orderItems[index];
-                    AppLogger.info("Increase quantity: ${item.name} (was ${item.quantity})");
-                    context.read<OrderBloc>().add(UpdateOrderItemQuantity(index, item.quantity + 1));
-                  },
-                  onDecreaseQuantity: (index) {
-                    final item = state.orderItems[index];
-                    if (item.quantity > 1) {
-                      AppLogger.info("Decrease quantity: ${item.name} (was ${item.quantity})");
-                      context.read<OrderBloc>().add(UpdateOrderItemQuantity(index, item.quantity - 1));
-                    }
-                  },
-                  onModifiersChanged: (index, modifiers, addOns, note) {
-                    final fullAddOns = <String, Map<String, dynamic>>{};
-                    addOns.forEach((name, qty) {
-                      fullAddOns[name] = {'quantity': qty, 'price': addonPrices[name] ?? 0.0};
-                    });
-                    AppLogger.info("Modifiers updated for item $index: $modifiers, AddOns: $fullAddOns, Note: $note");
-                    context.read<OrderBloc>().add(UpdateOrderItemDetails(
-                      index: index,
-                      modifiers: modifiers,
-                      addOns: fullAddOns,
-                      note: note,
-                    ));
-                  },
-                  onRemoveItem: (index) {
-                    final item = state.orderItems[index];
-                    AppLogger.info("Remove item: ${item.name}");
-                    context.read<OrderBloc>().add(RemoveOrderItem(index));
-                  },
-                  token: token,
-                ),
-              ),
-              const SizedBox(height: 10),
+              // const SizedBox(height: 10),
 
               /// Total section
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFE5BF),
                   borderRadius: BorderRadius.circular(6),
@@ -494,25 +529,30 @@ class OrderPanel extends StatelessWidget {
 
   Widget headerBadgeRow(OrderState state) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFECEEFB),
+        color: const Color(0xFFECEEFB), //  background only for container
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min, //  keeps width only as per content
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
             state.zoneName.isNotEmpty ? state.zoneName : 'Unknown Zone',
             style: const TextStyle(fontWeight: FontWeight.bold),
           ),
-          const SizedBox(width: 16),
-          Text('Order ID: ${state.orderId}', style: const TextStyle(color: Colors.black87)),
-          const SizedBox(width: 16),
+          const SizedBox(width: 8),
+          Text(
+            'Order ID: ${state.orderId}',
+            style: const TextStyle(color: Colors.black87),
+          ),
+          const SizedBox(width: 8),
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Image.asset('assets/icon/table.png', width: 14, height: 14),
-              const SizedBox(width: 6),
+              Image.asset('assets/icon/table.png', width: 18, height: 18),
+              const SizedBox(width: 4),
               Text(
                 state.tableName.isNotEmpty ? state.tableName : 'Unknown Table',
                 style: const TextStyle(color: Colors.black87),
@@ -522,6 +562,7 @@ class OrderPanel extends StatelessWidget {
         ],
       ),
     );
+
   }
 
   Widget actionButton(String text, String iconPath, Color color, {required VoidCallback onPressed}) =>
@@ -552,8 +593,8 @@ class OrderPanel extends StatelessWidget {
 
   Widget iconText(String assetPath, String label) => Row(
     children: [
-      Image.asset(assetPath, width: 10, height: 10),
-      const SizedBox(width: 4),
+      Image.asset(assetPath, width: 18, height: 18),
+      const SizedBox(width: 2),
       Text(label, style: const TextStyle(fontSize: 14)),
     ],
   );
@@ -568,21 +609,28 @@ class OrderPanel extends StatelessWidget {
 
   Widget headerText(String text) => Text(
     text,
-    style: const TextStyle(color: Colors.white, fontSize: 12),
+    style: const TextStyle(color: Colors.white, fontSize: 13),
   );
 
   Widget orderButton(String text, Color color, {required VoidCallback onPressed}) => Expanded(
     child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2),
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: SizedBox(
+        height: 55, // increased height
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: color,
+            padding: const EdgeInsets.symmetric(vertical: 16), // optional: increase padding too
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          onPressed: onPressed,
+          child: Text(
+            text,
+            style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900),
+          ),
         ),
-        onPressed: onPressed,
-        child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 12)),
       ),
     ),
   );
+
 }

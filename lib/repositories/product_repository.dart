@@ -23,7 +23,21 @@ class ProductRepository {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
-        return data.map((item) => Product.fromJson(item)).toList();
+
+        // ✅ Map JSON to Product with hasOptions
+        final List<Product> items = data.map((json) {
+          final modifiers = (json['modifiers'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+              [];
+          final addOns = (json['addons'] as Map<String, dynamic>?) ?? {};
+
+          final hasOptions = modifiers.isNotEmpty || addOns.isNotEmpty;
+
+          return Product.fromJson(json).copyWith(hasOptions: hasOptions);
+        }).toList();
+
+        return items;
       } else {
         throw Exception("Failed to load products: ${response.statusCode}");
       }
@@ -31,36 +45,37 @@ class ProductRepository {
       throw Exception("Error fetching products: $e");
     }
   }
+
   Future<List<Product>> fetchProductsByMiniSubCategory(int miniSubCategoryId) async {
-    final response = await http.get(Uri.parse('$baseUrl/products?mini_sub_category_id=$miniSubCategoryId'));
+    final response = await http.get(
+      Uri.parse('$baseUrl/products?mini_sub_category_id=$miniSubCategoryId'),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+    );
+
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body) as List;
-      return data.map((e) => Product.fromJson(e)).toList();
+
+      final List<Product> items = data.map((json) {
+        final modifiers = (json['modifiers'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+            [];
+        final addOns = (json['addons'] as Map<String, dynamic>?) ?? {};
+
+        final hasOptions = modifiers.isNotEmpty || addOns.isNotEmpty;
+
+        return Product.fromJson(json).copyWith(hasOptions: hasOptions);
+      }).toList();
+
+      return items;
     } else {
       throw Exception('Failed to load products for mini subcategory');
     }
   }
 
-  // Fetch variants for a specific product
-  // Future<List<Variant>> fetchVariants(int productId) async {
-  //   try {
-  //     final url = "$baseUrl/wp-json/wc/v3/products/$productId/variations";
-  //     final response = await http.get(
-  //       Uri.parse(url),
-  //       headers: {
-  //         "Authorization": "Bearer $token",
-  //         "Content-Type": "application/json",
-  //       },
-  //     );
-  //
-  //     if (response.statusCode == 200) {
-  //       final List<dynamic> data = json.decode(response.body);
-  //       return data.map((v) => Variant.fromJson(v)).toList();
-  //     } else {
-  //       throw Exception("Failed to load variants: ${response.statusCode}");
-  //     }
-  //   } catch (e) {
-  //     throw Exception("Error fetching variants: $e");
-  //   }
-  // }
+// Fetch variants for a specific product (optional)
+// Future<List<Variant>> fetchVariants(int productId) async { ... }
 }

@@ -19,6 +19,7 @@ import '../../models/sidebar/category_model_.dart';
 import '../../repositories/minisubcategory_repository.dart';
 import '../../repositories/product_repository.dart';
 import '../../repositories/variant_repository.dart';
+import '../widgets/bottom_nav_bar.dart';
 import '../widgets/subcategory_tab.dart';
 import '../widgets/sidebar_widgets.dart';
 import '../widgets/minisubcategory_widget.dart';
@@ -45,7 +46,7 @@ class DashboardScreen extends StatefulWidget {
     required this.tableId,
     required this.zoneId,
     required this.zoneName,
-    required this.tableName,
+    required this.tableName, required kotList,
   });
 
   @override
@@ -53,6 +54,7 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  int _bottomNavIndex = 0;
   List<MiniSubCategory> currentSubCategories = [];
   MiniSubCategory? selectedFolder;
   int? selectedSubCategoryId;
@@ -104,9 +106,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void onFolderSelected(MiniSubCategory folder) {
     setState(() {
       selectedFolder = folder;
-      breadcrumbNames.add(folder.name);
-      breadcrumbIds.add(folder.id);
 
+      // Get the current sub-category name
+      final categoryState = context.read<CategoryBloc>().state;
+      String subCategoryName = '';
+      if (categoryState is CategoryLoaded) {
+        final subCategory = categoryState.selectedCategory!.subCategories
+            .firstWhere((sub) => sub.id == selectedSubCategoryId);
+        subCategoryName = subCategory.name;
+      }
+
+      // Ensure sub-category is in breadcrumb at index 1
+      if (breadcrumbNames.length < 2) {
+        breadcrumbNames.insert(1, subCategoryName);
+        breadcrumbIds.insert(1, selectedSubCategoryId ?? 0);
+      }
+
+      // Replace last breadcrumb (folder) if exists, otherwise add
+      if (breadcrumbNames.length > 2) {
+        breadcrumbNames[2] = folder.name;
+        breadcrumbIds[2] = folder.id;
+      } else {
+        breadcrumbNames.add(folder.name);
+        breadcrumbIds.add(folder.id);
+      }
+
+      // Update products under this folder
       currentSubCategories = folder.products
           .map((p) => MiniSubCategory(
         id: p.id,
@@ -137,7 +162,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   quantity: 1,
                   modifiers: [],
                   section: section,
-                  productId: 0,
+                  productId: 0, variantId: null,
                 ),
               ),
             );
@@ -157,7 +182,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             quantity: 1,
             modifiers: [],
             section: section,
-            productId: 0,
+            productId: 0, variantId: null,
           ),
         ),
       );
@@ -196,32 +221,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _onBreadcrumbTap(int index) {
-    if (index == breadcrumbNames.length - 1) return;
-
     setState(() {
+      // Keep root always, truncate after clicked index
       breadcrumbNames = breadcrumbNames.sublist(0, index + 1);
       breadcrumbIds = breadcrumbIds.sublist(0, index + 1);
-    });
 
-    if (index == 0) {
-      selectedFolder = null;
-      selectedSubCategoryId = null;
-      currentSubCategories = [];
-      context.read<MiniSubCategoryBloc>().add(ResetMiniSubCategory());
-    } else if (index == 1) {
-      final subCategoryId = breadcrumbIds[1];
-      final categoryState = context.read<CategoryBloc>().state;
-      if (categoryState is CategoryLoaded) {
-        final subCategory = categoryState.selectedCategory!.subCategories
-            .firstWhere((sub) => sub.id == subCategoryId);
-        onSubCategoryTap(subCategory);
+      // Reset folder selection if clicking root
+      if (index == 0) {
+        selectedFolder = null;
+        selectedSubCategoryId = breadcrumbIds.length > 1 ? breadcrumbIds[1] : null;
+
+        // Keep sub-category breadcrumb if it exists
+        if (selectedSubCategoryId != null && breadcrumbNames.length == 1) {
+          // Example: Main Course > Biryani
+          final categoryState = context.read<CategoryBloc>().state;
+          if (categoryState is CategoryLoaded) {
+            final subCategory = categoryState.selectedCategory!.subCategories
+                .firstWhere((sub) => sub.id == selectedSubCategoryId);
+            breadcrumbNames.add(subCategory.name);
+          }
+        }
+
+        currentSubCategories = [];
+        context.read<MiniSubCategoryBloc>().add(ResetMiniSubCategory());
       }
-    } else {
-      final folderId = breadcrumbIds[index];
-      final folder = currentSubCategories.firstWhere((f) => f.id == folderId);
-      onFolderSelected(folder);
-    }
+    });
   }
+  void _onNavItemTapped(int index) {
+    setState(() {
+      _bottomNavIndex = index;
+    });
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -238,116 +269,170 @@ class _DashboardScreenState extends State<DashboardScreen> {
         color: const Color(0xFFDEE8FF),
         child: Row(
           children: [
+            // LEFT SIDE: Sidebar + MiniSubCategory + Bottom Nav
             Expanded(
-              flex: 8,
-              child: SideBarWidgets(
-                token: widget.token,
-                restaurantId: widget.restaurantId,
-              ),
-            ),
-            const SizedBox(width: 20),
-            Expanded(
-              flex: 55,
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: BlocBuilder<CategoryBloc, CategoryState>(
-                  builder: (context, state) {
-                    if (state is CategoryLoaded && state.selectedCategory != null) {
-                      final category = state.selectedCategory!;
-
-                      // Reset subcategory if category changed
-                      if (selectedCategoryName != category.name) {
-                        selectedCategoryName = category.name;
-                        selectedSubCategoryId = null;
-                        currentSubCategories = [];
-                        selectedFolder = null;
-                        breadcrumbNames = [];
-                        breadcrumbIds = [];
-                        context.read<MiniSubCategoryBloc>().add(ResetMiniSubCategory());
-                      }
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SubCategoryTabWidget(
-                            subCategories: category.subCategories ?? [],
-                            selectedIndex: category.subCategories?.indexWhere(
-                                    (sub) => sub.id == selectedSubCategoryId) ??
-                                -1,
-                            onTap: (index) {
-                              final subCategory = category.subCategories![index];
-                              onSubCategoryTap(subCategory);
-                            },
+              flex: 63,
+              child: Column(
+                children: [
+                  // Top part: Sidebar + MiniSubCategory
+                  Expanded(
+                    child: Row(
+                      children: [
+                        // Sidebar
+                        Expanded(
+                          flex: 8,
+                          child: SideBarWidgets(
+                            token: widget.token,
+                            restaurantId: widget.restaurantId,
                           ),
-                          const SizedBox(height: 8),
-                          if (breadcrumbNames.isNotEmpty) ...[
-                            _buildBreadcrumbs(),
-                            const SizedBox(height: 8),
-                          ],
-                          Expanded(
-                            child: BlocBuilder<MiniSubCategoryBloc, MiniSubCategoryState>(
-                              builder: (context, miniState) {
-                                if (miniState is MiniSubCategoryLoading) {
+                        ),
+                        const SizedBox(width: 10),
+                        // MiniSubCategory / Category area
+                        Expanded(
+                          flex: 55,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child:
+                            BlocBuilder<CategoryBloc, CategoryState>(
+                              builder: (context, state) {
+                                if (state is CategoryLoaded &&
+                                    state.selectedCategory != null) {
+                                  final category = state.selectedCategory!;
+
+                                  if (selectedCategoryName != category.name) {
+                                    selectedCategoryName = category.name;
+                                    selectedSubCategoryId = null;
+                                    currentSubCategories = [];
+                                    selectedFolder = null;
+                                    breadcrumbNames = [];
+                                    breadcrumbIds = [];
+                                    context
+                                        .read<MiniSubCategoryBloc>()
+                                        .add(ResetMiniSubCategory());
+                                  }
+
+                                  return Column(
+                                    crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                    children: [
+                                      SubCategoryTabWidget(
+                                        subCategories:
+                                        category.subCategories ?? [],
+                                        selectedIndex: category.subCategories
+                                            ?.indexWhere((sub) =>
+                                        sub.id ==
+                                            selectedSubCategoryId) ??
+                                            -1,
+                                        onTap: (index) {
+                                          final subCategory =
+                                          category.subCategories![index];
+                                          onSubCategoryTap(subCategory);
+                                        },
+                                      ),
+                                      const SizedBox(height: 8),
+                                      if (breadcrumbNames.isNotEmpty) ...[
+                                        _buildBreadcrumbs(),
+                                        const SizedBox(height: 8),
+                                      ],
+                                      Expanded(
+                                        child: BlocBuilder<
+                                            MiniSubCategoryBloc,
+                                            MiniSubCategoryState>(
+                                          builder: (context, miniState) {
+                                            if (miniState
+                                            is MiniSubCategoryLoading) {
+                                              return const Center(
+                                                  child:
+                                                  CircularProgressIndicator());
+                                            } else if (miniState
+                                            is MiniSubCategoryLoaded) {
+                                              currentSubCategories =
+                                                  miniState.miniSubCategories;
+
+                                              final variantRepo =
+                                              VariantRepository(
+                                                baseUrl:
+                                                'https://merchantrestaurant.alektasolutions.com',
+                                                token: widget.token,
+                                              );
+
+                                              return MiniSubCategoryWidget(
+                                                subCategories:
+                                                currentSubCategories,
+                                                section: category,
+                                                onFolderSelected:
+                                                onFolderSelected,
+                                                onItemSelected: (product) =>
+                                                    onItemSelected(
+                                                        product, category),
+                                                fetchProducts:
+                                                productRepository
+                                                    .fetchProductsBySubCategory,
+                                                repository: repository,
+                                                tappedSubCategoryId:
+                                                selectedSubCategoryId ??
+                                                    -1,
+                                                variantRepository: variantRepo,
+                                              );
+                                            } else if (miniState
+                                            is MiniSubCategoryError) {
+                                              return Center(
+                                                  child:
+                                                  Text(miniState.message));
+                                            } else {
+                                              return const Center(
+                                                  child: Text(
+                                                      'No mini subcategories available'));
+                                            }
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                }
+
+                                if (state is CategoryLoading) {
                                   return const Center(
                                       child: CircularProgressIndicator());
-                                } else if (miniState is MiniSubCategoryLoaded) {
-                                  currentSubCategories =
-                                      miniState.miniSubCategories;
-
-                                  final variantRepo = VariantRepository(
-                                    baseUrl:
-                                    'https://merchantrestaurant.alektasolutions.com',
-                                    token: widget.token,
-                                  );
-
-                                  return MiniSubCategoryWidget(
-                                    subCategories: currentSubCategories,
-                                    section: category,
-                                    onFolderSelected: onFolderSelected,
-                                    onItemSelected: (product) =>
-                                        onItemSelected(product, category),
-                                    fetchProducts:
-                                    productRepository.fetchProductsBySubCategory,
-                                    repository: repository,
-                                    tappedSubCategoryId:
-                                    selectedSubCategoryId ?? -1,
-                                    variantRepository: variantRepo,
-                                  );
-                                } else if (miniState is MiniSubCategoryError) {
-                                  return Center(child: Text(miniState.message));
-                                } else {
-                                  return const Center(
-                                      child: Text('No mini subcategories available'));
                                 }
+
+                                if (state is CategoryError) {
+                                  return Center(child: Text(state.message));
+                                }
+
+                                return const Center(
+                                    child: Text("Select a section from sidebar"));
                               },
                             ),
                           ),
-                        ],
-                      );
-                    }
+                        ),
+                      ],
+                    ),
+                  ),
 
-                    if (state is CategoryLoading) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-
-                    if (state is CategoryError) {
-                      return Center(child: Text(state.message));
-                    }
-
-                    return const Center(child: Text("Select a section from sidebar"));
-                  },
-                ),
+                  // Bottom Navigation
+      SizedBox(
+        height: 55, // fixed height for bottom nav
+        child: BottomNavBar(
+          selectedIndex: _bottomNavIndex,
+          onItemTapped: _onNavItemTapped,
+          userPermissions: null,
+        ),
+      )],
               ),
             ),
+            // const SizedBox(width:1),
+
+            // RIGHT SIDE: Order Panel (unchanged)
             Expanded(
-              flex: 40,
+              flex: 45,
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: BlocBuilder<OrderBloc, OrderState>(
                   builder: (context, state) {
                     return Column(
                       children: [
-                        const SizedBox(height: 12),
+                        // const SizedBox(height: 2),
                         Expanded(
                           child: OrderPanel(
                             token: widget.token,
@@ -377,3 +462,5 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 }
+
+

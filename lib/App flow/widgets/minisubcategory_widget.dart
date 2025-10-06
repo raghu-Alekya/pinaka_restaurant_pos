@@ -4,9 +4,11 @@ import '../../blocs/Bloc Event/order_event.dart';
 import '../../blocs/Bloc Logic/order_bloc.dart';
 import '../../models/category/items_model.dart';
 import '../../models/category/minisubcategory_model.dart';
+import '../../models/order/modifier_model.dart';
 import '../../models/order/order_items.dart';
 import '../../models/sidebar/category_model_.dart';
 import '../../repositories/minisubcategory_repository.dart';
+import '../../repositories/modifier_repository.dart';
 import '../../repositories/variant_repository.dart';
 import '../widgets/variant_popup.dart';
 
@@ -17,6 +19,12 @@ class MiniSubCategoryWidget extends StatefulWidget {
   final VariantRepository variantRepository;
   final int tappedSubCategoryId;
   final Future<List<Product>> Function(int subCategoryId) fetchProducts;
+  final ModifierRepository? modifierRepository; // nullable
+
+  // final String baseUrl;
+  // final String token;
+  // final int section;
+
 
   final void Function(MiniSubCategory folder)? onFolderSelected;
   final void Function(Product item)? onItemSelected;
@@ -31,6 +39,10 @@ class MiniSubCategoryWidget extends StatefulWidget {
     required this.fetchProducts,
     this.onFolderSelected,
     this.onItemSelected,
+    this.modifierRepository,
+    // required this.baseUrl,
+    // required this.token,
+    // required this.section,
   });
 
   @override
@@ -60,19 +72,37 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
   }
 
   Future<void> _autoSelectAndLoad() async {
-    // 1️⃣ Check for folders
     final folders = currentSubCategories.where((e) => e.isFolder).toList();
     if (folders.isNotEmpty) {
-      selectedFolder = folders[0]; // auto-select first folder
+      selectedFolder = folders[0];
       widget.onFolderSelected?.call(selectedFolder!);
       setState(() {});
 
-      // Automatically fetch products inside this folder
-      if ((selectedFolder!.products.isEmpty)) {
+      if (selectedFolder!.products.isEmpty) {
         try {
+          // 1️⃣ Fetch products
           final products = await widget.fetchProducts(selectedFolder!.id);
+
+          // 2️⃣ Map veg/non-veg based on folder name
+          final folderName = selectedFolder!.name.toLowerCase();
+          final updatedProducts = products.map((p) {
+            if (folderName.contains('veg')) return p.copyWith(isVeg: true);
+            if (folderName.contains('non veg')) return p.copyWith(isVeg: false);
+            return p;
+          }).toList();
+
+          // 3️⃣ Update folder object
+          final newFolder = selectedFolder!.copyWith(
+            products: updatedProducts,
+            count: updatedProducts.length,
+          );
+
           setState(() {
-            selectedFolder = selectedFolder!.copyWith(products: products, count: products.length);
+            // IMPORTANT: replace selectedFolder and also update it in the list
+            selectedFolder = newFolder;
+            currentSubCategories = currentSubCategories.map((e) {
+              return e.id == newFolder.id ? newFolder : e;
+            }).toList();
           });
         } catch (e) {
           print("[MiniSubCategoryWidget] Error fetching products for folder: $e");
@@ -81,12 +111,14 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       return;
     }
 
-    // 2️⃣ If no folders, fetch direct items
+    // No folders → fetch direct items
     final hasDirectItems = currentSubCategories.any((e) => !e.isFolder);
     if (!hasDirectItems) {
       await _fetchDirectProducts(widget.tappedSubCategoryId);
     }
   }
+
+
 
   Future<void> _fetchDirectProducts(int subCategoryId) async {
     setState(() => isLoadingDirectProducts = true);
@@ -116,12 +148,27 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
     });
     widget.onFolderSelected?.call(folder);
 
-    // Load folder products if not already loaded
-    if (selectedFolder != null && (selectedFolder!.products.isEmpty)) {
+    if (selectedFolder != null && selectedFolder!.products.isEmpty) {
       try {
         final products = await widget.fetchProducts(selectedFolder!.id);
+
+        final folderName = selectedFolder!.name.toLowerCase();
+        final updatedProducts = products.map((p) {
+          if (folderName.contains('veg')) return p.copyWith(isVeg: true);
+          if (folderName.contains('non veg')) return p.copyWith(isVeg: false);
+          return p;
+        }).toList();
+
+        final newFolder = selectedFolder!.copyWith(
+          products: updatedProducts,
+          count: updatedProducts.length,
+        );
+
         setState(() {
-          selectedFolder = selectedFolder!.copyWith(products: products, count: products.length);
+          selectedFolder = newFolder;
+          currentSubCategories = currentSubCategories.map((e) {
+            return e.id == newFolder.id ? newFolder : e;
+          }).toList();
         });
       } catch (e) {
         print("[MiniSubCategoryWidget] Error fetching folder products: $e");
@@ -129,33 +176,44 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
     }
   }
 
+
+
   Future<void> _onItemTap(BuildContext context, Product item) async {
     final orderBloc = context.read<OrderBloc>();
 
-    void addDirectly(Product product) {
-      final orderItem = OrderItems(
-        name: product.name,
-        price: product.price,
-        quantity: 1,
-        modifiers: [],
-        section: widget.section,
-        productId: product.id,
-      );
-      orderBloc.add(AddOrderItem(orderItem));
-      print("[Dashboard] ✅ Added directly (no variants): ${orderItem.name}");
-    }
+    // Fetch modifiers for this product
+    final modifiers = await widget.modifierRepository?.fetchModifiersByProductId(item.id) ?? [];
+
+    // Determine if product has options
+    final hasOptions = (modifiers.isNotEmpty || (item.addOns?.isNotEmpty ?? false));
+
+    // Create OrderItem
+    final orderItem = OrderItems(
+      name: item.name,
+      price: item.price,
+      quantity: 1,
+      modifiers: [],
+      addOns: {},
+      section: widget.section,
+      productId: item.id,
+      hasOptions: hasOptions,
+      variationId: null,
+      variantId: null, // 🔹 now accurate
+    );
 
     try {
+      // Check for variants
       final variants = await widget.variantRepository.fetchVariantsByProduct(item.id);
       if (variants.isNotEmpty) {
         final updatedProduct = item.copyWith(variants: variants);
         _showVariantPopup(context, updatedProduct, orderBloc, widget.section);
       } else {
-        addDirectly(item);
+        orderBloc.add(AddOrderItem(orderItem));
+        print("[Dashboard] Added to order: ${orderItem.name} with hasOptions=$hasOptions");
       }
     } catch (e) {
-      print("[Dashboard] ⚠️ Error fetching variants: $e");
-      addDirectly(item);
+      print("[Dashboard] Error fetching variants: $e");
+      orderBloc.add(AddOrderItem(orderItem));
     }
   }
 
@@ -181,7 +239,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
             quantity: 1,
             modifiers: [],
             section: section,
-            productId: product.id,
+            productId: product.id, variantId: null,
           );
           orderBloc.add(AddOrderItem(orderItem));
           print("[VariantPopup] Added to order: ${orderItem.name} x${orderItem.quantity}");
@@ -202,53 +260,65 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    return ListView(
-      padding: const EdgeInsets.all(6),
-      children: [
-        if (folders.isNotEmpty) ...[
-          _buildFolderGrid(folders),
-          const SizedBox(height: 6),
-          if (selectedFolder != null && folderItems.isNotEmpty)
-            _buildItemsGrid(folderItems),
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.white, width: 1.2), // Grid border
+        borderRadius: BorderRadius.circular(12),
+        color: Color(0XFFDEE8FF),
+        boxShadow: const [
+          BoxShadow(color: Colors.white, blurRadius: 3, offset: Offset(0, 0)),
         ],
-        if (folders.isEmpty && directItems.isNotEmpty)
-          _buildItemsGrid(directItems.expand<Product>((e) => e.products).toList()),
-      ],
+      ),
+      child: ListView(
+        padding: const EdgeInsets.all(6),
+        children: [
+          if (folders.isNotEmpty) ...[
+            _buildFolderGrid(folders),
+            const SizedBox(height: 6),
+            if (selectedFolder != null && folderItems.isNotEmpty)
+              _buildItemsGrid(folderItems),
+          ],
+          if (folders.isEmpty && directItems.isNotEmpty)
+            _buildItemsGrid(directItems.expand<Product>((e) => e.products).toList()),
+        ],
+      ),
     );
   }
 
   Widget _buildFolderGrid(List<MiniSubCategory> folders) {
     return SizedBox(
-      height: 70,
+      height: 40, // adjust height for row layout
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 2),
         itemCount: folders.length,
         separatorBuilder: (_, __) => const SizedBox(width: 10),
         itemBuilder: (context, index) {
           final folder = folders[index];
           final isSelected = selectedFolder == folder;
+
           return GestureDetector(
             onTap: () => _onFolderTap(folder),
             child: Container(
-              width: 130,
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: isSelected ? const Color(0xFFFCDFDC) : Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.grey.shade300, width: 1),
                 boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 3)],
               ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+              child: Row(
+                mainAxisSize: MainAxisSize.min, // hug content
                 children: [
                   const Icon(Icons.folder, size: 20, color: Colors.black),
-                  const SizedBox(height: 6),
-                  Text(
-                    folder.name,
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      folder.name,
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
@@ -285,44 +355,62 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
               border: Border.all(color: Colors.grey.shade300, width: 1),
               boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2)],
             ),
-            child: Row(
+            child: Stack(
               children: [
-                if (item.image.isNotEmpty)
-                  Image.network(
-                    item.image,
-                    width: 60,
-                    height: 65,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
-                    const Icon(Icons.fastfood, size: 40),
-                  )
-                else
-                  const Icon(Icons.fastfood, size: 40, color: Colors.black),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.name,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                Row(
+                  children: [
+                    if (item.image.isNotEmpty)
+                      Image.network(
+                        item.image,
+                        width: 60,
+                        height: 65,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                        const Icon(Icons.fastfood, size: 40),
+                      )
+                    else
+                      const Icon(Icons.fastfood, size: 40, color: Colors.black),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.name,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '₹${item.price.toStringAsFixed(0)}',
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '₹${item.price.toStringAsFixed(0)}',
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 4),
-                      Image.asset(
+                    ),
+                  ],
+                ),
+                // Veg/Non-Veg icon at top-right
+                Positioned(
+                  top: 2,
+                  right: 2,
+                  child: Builder(
+                    builder: (_) {
+                      final sectionName = widget.section.name.toLowerCase();
+                      if (sectionName.contains('alcohol') ||
+                          sectionName.contains('bewerages') ||
+                          sectionName.contains('dessert')) {
+                        return const SizedBox.shrink();
+                      }
+                      return Image.asset(
                         item.isVeg
                             ? 'assets/icon/veg_icon.png'
                             : 'assets/icon/nonveg_icon.png',
                         width: 15,
                         height: 15,
-                      ),
-                    ],
+                      );
+                    },
                   ),
                 ),
               ],
@@ -332,4 +420,5 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       },
     );
   }
+
 }

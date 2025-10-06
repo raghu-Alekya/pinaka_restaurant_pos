@@ -54,6 +54,13 @@ class MiniSubCategory {
   });
 
   factory MiniSubCategory.fromJson(Map<String, dynamic> json) {
+    List<Product> productList = (json['products'] is List)
+        ? (json['products'] as List).map((e) {
+      // Use product's actual isVeg
+      return Product.fromJson(e);
+    }).toList()
+        : [];
+
     return MiniSubCategory(
       id: json['id'] is int ? json['id'] : int.tryParse(json['id'].toString()) ?? 0,
       name: json['name'] ?? '',
@@ -61,11 +68,10 @@ class MiniSubCategory {
       count: json['count'] is int ? json['count'] : int.tryParse(json['count'].toString()) ?? 0,
       imagePath: json['imagepath'],
       isFolder: json['isFolder'].toString().toLowerCase() == 'true',
-      products: (json['products'] is List)
-          ? (json['products'] as List).map((e) => Product.fromJson(e)).toList()
-          : [],
+      products: productList,
     );
   }
+
 
   Map<String, dynamic> toJson() {
     return {
@@ -79,7 +85,6 @@ class MiniSubCategory {
     };
   }
 
-  // ✅ Add copyWith
   MiniSubCategory copyWith({
     int? id,
     String? name,
@@ -99,5 +104,13 @@ class MiniSubCategory {
       products: products ?? this.products,
     );
   }
-}
 
+  // ✅ New computed property for folder veg status
+  bool get isVegFolder {
+    if (!isFolder) return false; // Not a folder
+    if (products.isEmpty) return true; // Default veg for empty folder
+    if (products.every((p) => p.isVeg)) return true; // All products veg
+    if (products.every((p) => !p.isVeg)) return false; // All products non-veg
+    return true; // Mixed products → default veg or handle as mixed
+  }
+}
