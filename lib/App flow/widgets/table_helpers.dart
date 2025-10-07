@@ -38,68 +38,72 @@ class TableHelpers {
       ],
     );
   }
-
-  static Widget buildTableContent(String name, String area, int capacity, Color color) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          name,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: color,
-            fontSize: 16,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.group, size: 25, color: color),
-            const SizedBox(width: 5),
-            Text(
-              '$capacity',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: color,
-                fontSize: 16,
-              ),
+  static Widget buildTableContent(
+      String name,
+      String area,
+      int capacity,
+      Color color, {
+        bool isMerged = false,
+      }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            name,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            softWrap: false,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: color,
+              fontSize: 16,
             ),
-          ],
-        ),
-      ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.group, size: 25, color: color),
+              const SizedBox(width: 5),
+              Text(
+                '$capacity',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                  fontSize: 16,
+                ),
+              ),
+              if (isMerged) ...[
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.link,
+                  size: 20,
+                  color: capacity == 0 ? Colors.blue : Colors.black,
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
     );
   }
 
   static Size getPlacedTableSize(int capacity, String shape) {
     switch (shape) {
       case "circle":
+        return const Size(105, 105);
+
       case "square":
-        {
-          double baseSize = 50.0;
-          double increasePerSeat = 10.0;
-          double size = (baseSize + (capacity * increasePerSeat)).clamp(
-            90.0,
-            160.0,
-          );
-          return Size(size, size);
-        }
+        return const Size(105, 105);
 
       case "rectangle":
-        {
-          double baseWidth = 80.0;
-          double increasePerSeat = 35.0;
-          double width = (baseWidth + (capacity * increasePerSeat)).clamp(
-            170.0,
-            450.0,
-          );
-          double height = 110.0;
-          return Size(width, height);
-        }
+        return const Size(200, 100);
 
       default:
-        return Size(120, 120);
+        return const Size(100, 100);
     }
   }
   static Offset clampPositionToCanvas(Offset position, Size tableSize) {

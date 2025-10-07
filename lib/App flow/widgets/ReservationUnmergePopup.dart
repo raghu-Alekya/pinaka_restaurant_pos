@@ -12,8 +12,18 @@ class ReservationUnmergePopup extends StatelessWidget {
     required this.onUnmerge,
   });
 
+  void _unmergeTable(BuildContext context) {
+    Navigator.of(context).pop();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      onUnmerge(index, tableData);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final mergedTables =
+        tableData['merged_tables'] ?? tableData['tableName'] ?? '';
+
     return AlertDialog(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
@@ -45,14 +55,10 @@ class ReservationUnmergePopup extends StatelessWidget {
               text: TextSpan(
                 style: const TextStyle(color: Colors.black87, fontSize: 15),
                 children: [
-                  const TextSpan(text: 'Do you really want to unmerge '),
+                  const TextSpan(
+                      text: 'Do you really want to unmerge the table(s): '),
                   TextSpan(
-                    text: tableData['table_name'] ?? '',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const TextSpan(text: ' with '),
-                  TextSpan(
-                    text: tableData['mergedWith'] ?? '',
+                    text: mergedTables,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const TextSpan(text: '?'),
@@ -66,14 +72,13 @@ class ReservationUnmergePopup extends StatelessWidget {
                 TextButton(
                   style: TextButton.styleFrom(
                     backgroundColor: const Color(0xFFF1F4F8),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
+                  onPressed: () => Navigator.of(context).pop(),
                   child: const Text(
                     'No, Keep It.',
                     style: TextStyle(color: Color(0xFF4C5F7D)),
@@ -83,17 +88,13 @@ class ReservationUnmergePopup extends StatelessWidget {
                 TextButton(
                   style: TextButton.styleFrom(
                     backgroundColor: const Color(0xFFFE6464),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      onUnmerge(index, tableData);
-                    });
-                  },
+                  onPressed: () => _unmergeTable(context),
                   child: const Text(
                     'Yes, Unmerge!',
                     style: TextStyle(color: Colors.white),

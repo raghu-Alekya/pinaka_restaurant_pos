@@ -107,7 +107,13 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
         _removeOverlay();
       }
     });
-
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FocusManager.instance.addListener(() {
+        if (! _priorityFocusNode.hasFocus) {
+          _removeOverlay();
+        }
+      });
+    });
     _loadZones();
     _fetchSlotsAndMeals().then((_) {
       _fetchTables();
@@ -243,11 +249,21 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
 
     final selectedZoneId = selectedZone['zone_id'];
     print('Selected Zone ID: $selectedZoneId');
-    print('Filtering tables for zone_id: $selectedZoneId');
 
-    return allTables.where((table) {
+    final filtered = allTables.where((table) {
       return table['zone_id'].toString() == selectedZoneId.toString();
     }).toList();
+    filtered.sort((a, b) {
+      final nameA = a['table_name']?.toString() ?? '';
+      final nameB = b['table_name']?.toString() ?? '';
+      final numA = int.tryParse(RegExp(r'\d+').stringMatch(nameA) ?? '') ?? 0;
+      final numB = int.tryParse(RegExp(r'\d+').stringMatch(nameB) ?? '') ?? 0;
+
+      if (numA != numB) return numA.compareTo(numB);
+      return nameA.compareTo(nameB);
+    });
+
+    return filtered;
   }
 
   void _validateAndSubmit() {
@@ -736,7 +752,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
           ),
 
-          const SizedBox(width: 120),
+          const SizedBox(width: 70),
           Container(
             height: 40,
             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -804,7 +820,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 240),
+          const SizedBox(width: 290),
           _isLoadingAreas
               ? const Padding(
             padding: EdgeInsets.symmetric(horizontal: 12),
@@ -892,7 +908,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
             "Booking Details",
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 20),
 
           _buildLabeledField(
             "No. of People * :",
@@ -900,10 +916,10 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 15),
 
           _buildLabeledField("Name *:", _nameController),
-          const SizedBox(height: 5),
+          const SizedBox(height: 15),
 
           _buildLabeledField(
             "Mobile Number *:",
@@ -911,7 +927,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 15),
 
           _buildLabeledField(
             "Priority/Category:",
@@ -1135,7 +1151,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
               "Table Selection Area",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             Expanded(
               child: tablesToShow.isEmpty
                   ? const Center(
@@ -1155,7 +1171,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                   crossAxisCount: 4,
                   crossAxisSpacing: 10,
                   mainAxisSpacing: 10,
-                  childAspectRatio: 1.4,
+                  childAspectRatio: 1.7,
                 ),
                 itemBuilder: (context, index) {
                   final table = tablesToShow[index];
@@ -1164,6 +1180,8 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                   final shape = table['shape']?.toLowerCase() ?? '';
                   final status = (table['status'] ?? '').toLowerCase();
                   final isSelected = selectedTables.contains(tableName);
+                  final isMerged = table['is_merged'] == true;
+                  final displayName = isMerged ? table['merged_tables'] ?? tableName : tableName;
 
                   // Shape image path
                   String shapeAsset;
@@ -1209,6 +1227,17 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                       if (status == 'reserve' && tableName != _originalSelectedTable) {
                         return;
                       }
+                      final int tableCapacity = int.tryParse('$capacity') ?? 0;
+                      if (tableCapacity == 0) {
+                        AreaMovementNotifier.showPopup(
+                          context: context,
+                          fromArea: table['areaName'] ?? '',
+                          toArea: '',
+                          tableName: tableName,
+                          customMessage: 'Unable to reserve: Table has 0 capacity',
+                        );
+                        return;
+                      }
 
                       setState(() {
                         if (isSelected) {
@@ -1220,6 +1249,18 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                       });
                     },
                     onLongPress: () {
+                      final int tableCapacity = int.tryParse('${table['capacity']}') ?? 0;
+                      if (tableCapacity == 0) {
+                        AreaMovementNotifier.showPopup(
+                          context: context,
+                          fromArea: table['areaName'] ?? '',
+                          toArea: '',
+                          tableName: table['table_name'] ?? '',
+                          customMessage: 'Unable to Edit Merge: This is a child table. Please Edit from parent table',
+                        );
+                        return;
+                      }
+
                       final enrichedTable = {
                         ...table,
                         'areaName': selectedArea,
@@ -1278,7 +1319,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                                       const SizedBox(width: 8),
                                       Expanded(
                                         child: Text(
-                                          tableName,
+                                          displayName,
                                           overflow: TextOverflow.ellipsis,
                                           style: TextStyle(
                                             fontWeight: FontWeight.w500,
@@ -1289,33 +1330,41 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                                       ),
                                     ],
                                   ),
-                                  const Spacer(),
+                                  const SizedBox(height: 5),
                                   Row(
                                     children: [
                                       const SizedBox(width: 4),
                                       Icon(
                                         Icons.group,
-                                        size: 22,
+                                        size: 20,
                                         color: iconColor,
                                       ),
-                                      const SizedBox(width: 8),
+                                      const SizedBox(width: 10),
                                       Text(
                                         '$capacity',
                                         style: TextStyle(
                                           fontWeight: FontWeight.w500,
-                                          fontSize: 17,
+                                          fontSize: 15,
                                           color: textColor,
                                         ),
                                       ),
-                                      const SizedBox(width: 8),
+                                      const SizedBox(width: 10),
                                       Image.asset(
                                         shapeAsset,
-                                        width: 26,
-                                        height: 26,
+                                        width: 25,
+                                        height: 25,
                                         fit: BoxFit.contain,
                                         color: iconColor,
                                         colorBlendMode: BlendMode.srcIn,
                                       ),
+                                      if (isMerged) ...[
+                                        const SizedBox(width: 6),
+                                        Icon(
+                                          Icons.link,
+                                          size: 18,
+                                          color: (capacity == 0) ? Colors.blue : Colors.black,
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 ],
@@ -1349,7 +1398,9 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       int index,
       Map<String, dynamic> tableData,
       ) async {
-    final bool isMerged = tableData['isMerged'] ?? false;
+    final bool isMerged = tableData['is_merged'] ?? false;
+    final String mergedTables = tableData['merged_tables'] ?? tableData['tableName'] ?? '';
+    final String areaName = tableData['areaName'] ?? '';
     final String status = (tableData['status'] ?? '').toLowerCase();
 
     if (status == "reserve") {
@@ -1417,7 +1468,42 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                   const SizedBox(height: 12),
                   Text.rich(
                     TextSpan(
-                      children: [
+                      children: isMerged
+                          ? [
+                        const TextSpan(
+                          text: "This table is already merged with the following tables in ",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.black54,
+                          ),
+                        ),
+                        TextSpan(
+                          text: areaName,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const TextSpan(
+                          text: ". Modify this merge or unmerge to restore individual tables.\n\n",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.black54,
+                          ),
+                        ),
+                        TextSpan(
+                          text: mergedTables,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ]
+                          : [
                         const TextSpan(
                           text: "Select the tables you want to merge in this ",
                           style: TextStyle(
@@ -1427,7 +1513,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                           ),
                         ),
                         TextSpan(
-                          text: "${tableData['areaName'] ?? ''}",
+                          text: areaName,
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
@@ -1435,8 +1521,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                           ),
                         ),
                         const TextSpan(
-                          text:
-                          " area. Merging will combine them into a single reservation under the same guest.",
+                          text: ". Merging will combine them into a single reservation under the same guest.",
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w400,
@@ -1447,7 +1532,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 28),
+                const SizedBox(height: 28),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -1471,10 +1556,11 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                               builder: (_) => ReservationUnmergePopup(
                                 index: index,
                                 tableData: tableData,
-                                onUnmerge: (i, updatedTable) {
+                                onUnmerge: (i, updatedTable) async {
                                   setState(() {
                                     _filteredTablesByArea[i]['isMerged'] = false;
                                   });
+
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
@@ -1517,7 +1603,8 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                               builder: (_) => ReservationMergePopup(
                                 index: index,
                                 tableData: tableData,
-                                onMergeEdit: (i, updatedTable) {
+                                token: widget.token,
+                                onMergeEdit: (i, updatedTable) async {
                                   setState(() {
                                     _filteredTablesByArea[i]['isMerged'] = true;
                                   });
@@ -1530,6 +1617,16 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                                     ),
                                   );
                                 },
+                                people: int.tryParse(_peopleController.text.trim()) ?? 1,
+                                name: _nameController.text.trim(),
+                                phone: _contactController.text.trim(),
+                                date: selectedDate,
+                                time: selectedSlot,
+                                slotType: selectedMeal,
+                                zoneName: selectedArea,
+                                restaurantName: widget.restaurantName,
+                                restaurantId: int.tryParse(widget.restaurantId) ?? 1,
+                                priority: _priorityController.text.trim(),
                               ),
                             );
                           },

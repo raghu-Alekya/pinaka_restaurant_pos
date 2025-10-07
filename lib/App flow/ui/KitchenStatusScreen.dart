@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/UserPermissions.dart';
+import '../../repositories/kitchen_repository.dart';
 import '../../repositories/zone_repository.dart';
 import '../../utils/SessionManager.dart';
 import '../widgets/NavigationHelper.dart';
@@ -30,10 +31,11 @@ class KitchenStatusScreen extends StatefulWidget {
 class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   UserPermissions? _userPermissions;
   String selectedOrderType = "Dine-In";
+  List<Map<String, dynamic>> _orders = [];
   String? selectedArea;
   final TextEditingController _searchController = TextEditingController();
   String searchQuery = '';
-  final List<String> _users = ['Raghav Kumar', 'Anita Sharma', 'John Doe'];
+  List<Map<String, dynamic>> _users = [];
   List<Map<String, dynamic>> _zones = [];
   final zoneRepo = ZoneRepository();
   int? _selectedTableIndex;
@@ -41,12 +43,33 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   String? _selectedKot;
   List<Map<String, dynamic>> _kotItems = [];
   int? _expandedKotIndex;
+  Map<String, dynamic>? _selectedUser;
+  List<String> _orderTypes = [];
+  late KitchenRepository kitchenRepo;
 
   @override
   void initState() {
     super.initState();
+    kitchenRepo = KitchenRepository(token: widget.token);
     _loadPermissions();
-    _fetchZones();
+    _initializeData();
+    _searchController.addListener(() {
+      setState(() {
+        searchQuery = _searchController.text.toLowerCase();
+      });
+    });
+  }
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _initializeData() async {
+    await _loadPermissions();
+    await _fetchZones();
+    await _fetchOrderTypes();
+    _fetchOrders();
   }
 
   Future<void> _loadPermissions() async {
@@ -54,7 +77,39 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     if (savedPermissions != null) {
       setState(() {
         _userPermissions = savedPermissions;
+        _selectedUser = {
+          "id": savedPermissions.userId,
+          "name": savedPermissions.displayName,
+          "role": savedPermissions.role,
+        };
+        _selectedTableIndex = null;
+        _selectedTable = null;
+        _selectedKot = null;
+        _kotItems.clear();
       });
+    }
+  }
+
+  Future<void> _fetchOrders() async {
+    final orders = await kitchenRepo.fetchOrders(
+      selectedOrderType: selectedOrderType,
+      restaurantId: widget.restaurantId,
+      selectedArea: selectedArea,
+      zones: _zones,
+      selectedUser: _selectedUser,
+    );
+
+    if (mounted) {
+      setState(() {
+        _orders = orders;
+        _selectedTable = null;
+        _selectedKot = null;
+        _kotItems.clear();
+      });
+    }
+
+    for (var order in _orders) {
+      await _fetchParentKotOrders(order);
     }
   }
 
@@ -70,162 +125,112 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     }
   }
 
-  final List<Map<String, dynamic>> _allTables = [
-    {
-      "tableNo": "1",
-      "orderId": "3287",
-      "time": "9:37 PM",
-      "zone": "second Floor",
-      "orderType": "Dine-In",
-      "kots": List.generate(23, (index) => "#KOT${index + 1}"),
-    },
-    {
-      "tableNo": "5",
-      "orderId": "3287",
-      "time": "9:37 PM",
-      "zone": "Garden",
-      "orderType": "Dine-In",
-      "kots": List.generate(18, (index) => "#KOT${index + 1}"),
-    },
-    {
-      "tableNo": "8",
-      "orderId": "3290",
-      "time": "9:40 PM",
-      "zone": "First Floor",
-      "orderType": "Dine-In",
-      "kots": ["#200", "#201"],
-    },
-    {
-      "tableNo": "3",
-      "orderId": "3295",
-      "time": "9:45 PM",
-      "zone": "Main dining",
-      "orderType": "Dine-In",
-      "kots": ["#300"],
-    },
-    {
-      "tableNo": "9",
-      "orderId": "3300",
-      "time": "9:50 PM",
-      "zone": "Garden",
-      "orderType": "Dine-In",
-      "kots": ["#400", "#401", "#402"],
-    },
-    {
-      "tableNo": "10",
-      "orderId": "3305",
-      "time": "9:55 PM",
-      "zone": "Garden",
-      "orderType": "Dine-In",
-      "kots": List.generate(5, (index) => "#KOT${500 + index}"),
-    },
-    {
-      "tableNo": "11",
-      "orderId": "3310",
-      "time": "10:00 PM",
-      "zone": "Main dining",
-      "orderType": "Dine-In",
-      "kots": ["#600", "#601"],
-    },
-    {
-      "tableNo": "12",
-      "orderId": "3315",
-      "time": "10:05 PM",
-      "zone": "First Floor",
-      "orderType": "Dine-In",
-      "kots": List.generate(3, (index) => "#KOT${700 + index}"),
-    },
-    {
-      "tableNo": "13",
-      "orderId": "3320",
-      "time": "10:10 PM",
-      "zone": "second Floor",
-      "orderType": "Dine-In",
-      "kots": ["#800"],
-    },
-    {
-      "tableNo": "14",
-      "orderId": "3325",
-      "time": "10:15 PM",
-      "zone": "Garden",
-      "orderType": "Dine-In",
-      "kots": ["#900", "#901", "#902", "#903"],
-    },
-    {
-      "tableNo": "15",
-      "orderId": "3330",
-      "time": "10:20 PM",
-      "zone": "second Floor",
-      "orderType": "Dine-In",
-      "kots": List.generate(7, (index) => "#KOT${1000 + index}"),
-    },
-    {
-      "tableNo": "16",
-      "orderId": "3335",
-      "time": "10:25 PM",
-      "zone": "Main dining",
-      "orderType": "Dine-In",
-      "kots": ["#1100"],
-    },
-    {
-      "tableNo": "17",
-      "orderId": "3340",
-      "time": "10:30 PM",
-      "zone": "First Floor",
-      "orderType": "Dine-In",
-      "kots": List.generate(4, (index) => "#KOT${1200 + index}"),
-    },
-    {
-      "tableNo": "18",
-      "orderId": "3345",
-      "time": "10:35 PM",
-      "zone": "second Floor",
-      "orderType": "Dine-In",
-      "kots": ["#1300", "#1301"],
-    },
-    {
-      "tableNo": "19",
-      "orderId": "3350",
-      "time": "10:40 PM",
-      "zone": "Garden",
-      "orderType": "Dine-In",
-      "kots": ["#1400"],
-    },
-  ];
+  Future<void> _fetchParentKotOrders(Map<String, dynamic> order) async {
+    if (selectedArea == null &&
+        _normalizeOrderType(selectedOrderType) != "takeaways") return;
+
+    final parentOrderId = (order['order_id'] ?? order['id']).toString();
+    final zoneId = _normalizeOrderType(selectedOrderType) != "takeaways"
+        ? (order['zone_id'] ?? order['zoneId'])?.toString()
+        : null;
+
+    try {
+      final kotOrders = await kitchenRepo.fetchParentKotOrders(
+        restaurantId: widget.restaurantId,
+        parentOrderId: parentOrderId,
+        orderType: selectedOrderType,
+        zoneId: zoneId,
+        selectedUser: _selectedUser,
+      );
+
+      if (mounted) {
+        setState(() {
+          order['kots'] =
+              kotOrders.map((kot) => kot['kot_number']?.toString() ?? '').toList();
+          order['kotOrders'] = kotOrders;
+          if (_selectedTable != null &&
+              _selectedTable!['order_id'] == order['order_id'] &&
+              order['kots'].isNotEmpty &&
+              _normalizeOrderType(selectedOrderType) != "dinein") {
+            _onKotSelected(order['kots'].first, 0);
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint("Error in _fetchParentKotOrders: $e");
+    }
+  }
+
+  Future<void> _fetchOrderTypes() async {
+    final types = await kitchenRepo.fetchOrderTypes();
+    if (mounted) {
+      setState(() {
+        _orderTypes = types;
+        if (_orderTypes.isNotEmpty) {
+          selectedOrderType = _orderTypes.first;
+          _selectedTableIndex = null;
+          _selectedTable = null;
+          _selectedKot = null;
+          _kotItems.clear();
+        }
+      });
+    }
+  }
+
+  String _normalizeOrderType(String type) {
+    return type.toLowerCase().replaceAll(" ", "");
+  }
 
   List<Map<String, dynamic>> get filteredTables {
-    return _allTables.where((table) {
-      final matchesArea = selectedArea == null || table['zone'] == selectedArea;
-      final matchesSearch =
-          searchQuery.isEmpty ||
-              table['tableNo'].toString().toLowerCase().contains(searchQuery) ||
-              table['orderId'].toString().toLowerCase().contains(searchQuery);
-      final matchesOrderType = table['orderType'] == selectedOrderType;
+    final query = searchQuery.toLowerCase();
 
-      return matchesArea && matchesSearch && matchesOrderType;
+    return _orders.where((order) {
+      final matchesOrderType =
+          normalizeOrderType(order['order_type'] ?? '') ==
+              normalizeOrderType(selectedOrderType);
+
+      final matchesArea =
+      selectedOrderType == "Takeaways"
+          ? true
+          : (selectedArea == null || order['zone_name'] == selectedArea);
+
+      final tableName = (order['table_name'] ?? '').toString().toLowerCase();
+      final orderId = (order['order_id'] ?? '').toString().toLowerCase();
+
+      final matchesSearch = query.isEmpty ||
+          tableName.contains(query) ||
+          orderId.contains(query);
+
+      return matchesOrderType && matchesArea && matchesSearch;
     }).toList();
   }
   void _onKotSelected(String kot, int index) {
     setState(() {
-      if (_selectedKot == kot) {
+      if (_selectedKot == kot && normalizeOrderType(selectedOrderType) != "takeaways") {
         _selectedKot = null;
         _expandedKotIndex = null;
         _kotItems.clear();
       } else {
         _selectedKot = kot;
         _expandedKotIndex = index;
-        _kotItems = [
-          {"itemName": "Panner Tikka", "qty": 1, "price": 190.0},
-          {"itemName": "Panner Masala", "qty": 1, "price": 250.0},
-          {"itemName": "Dal Makhni", "qty": 1, "price": 180.0},
-          {"itemName": "Chicken 65", "qty": 3, "price": 225.0},
-          {"itemName": "Cashew Paneer Curry", "qty": 1, "price": 220.0},
-          {"itemName": "Chicken Dum Biryani", "qty": 5, "price": 320.0},
-          {"itemName": "Veg Manchow Soup", "qty": 4, "price": 120.0},
-        ];
+
+        final allKotOrders = _selectedTable?['kotOrders'] ?? [];
+        final selectedKotOrder = allKotOrders.firstWhere(
+              (k) => k['kot_number'].toString() == kot,
+          orElse: () => <String, dynamic>{},
+        );
+
+        _kotItems = List<Map<String, dynamic>>.from(
+          selectedKotOrder['line_items'] ?? [],
+        );
       }
     });
   }
+
+  String normalizeOrderType(String type) {
+    return type.toLowerCase().replaceAll("-", "").replaceAll(" ", "");
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -235,10 +240,20 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         token: widget.token,
         pin: widget.pin,
         userPermissions: _userPermissions,
-        onPermissionsReceived: (permissions) {
+        onPermissionsReceived: (permissions) async {
           setState(() {
             _userPermissions = permissions;
+            _selectedUser = {
+              "id": permissions.userId,
+              "name": permissions.displayName,
+              "role": permissions.role,
+            };
+            _selectedTableIndex = null;
+            _selectedTable = null;
+            _selectedKot = null;
+            _kotItems.clear();
           });
+          await _fetchOrders();
         },
       ),
       body: Column(
@@ -277,13 +292,15 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    _buildOrderTypeButton("Dine-In"),
-                                    const SizedBox(width: 25),
-                                    _buildOrderTypeButton("Takeaways"),
-                                    const SizedBox(width: 25),
-                                    _buildOrderTypeButton("Online Orders"),
-                                  ],
+                                  children:
+                                  _orderTypes.map((type) {
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                      ),
+                                      child: _buildOrderTypeButton(type),
+                                    );
+                                  }).toList(),
                                 ),
                               ),
                               _buildAreaDropdown(),
@@ -309,23 +326,29 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         ],
       ),
       bottomNavigationBar: BottomNavBar(
-        selectedIndex: 1,
+        selectedIndex: 2,
         onItemTapped: (index) {
           NavigationHelper.handleNavigation(
             context,
-            1,
+            2,
             index,
             widget.pin,
             widget.token,
             widget.restaurantId,
             widget.restaurantName,
+            _userPermissions,
           );
         },
+        userPermissions: _userPermissions,
       ),
     );
   }
 
   Widget _buildAreaDropdown() {
+    if (normalizeOrderType(selectedOrderType) != "dinein") {
+      return const SizedBox.shrink();
+    }
+
     return Container(
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -346,10 +369,14 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
           onChanged: (newValue) {
             setState(() {
               selectedArea = newValue;
+              _selectedTableIndex = null;
+              _selectedTable = null;
+              _selectedKot = null;
+              _kotItems.clear();
             });
+            _fetchOrders();
           },
-          items:
-          _zones.map((zone) {
+          items: _zones.map((zone) {
             return DropdownMenuItem<String>(
               value: zone['zone_name'],
               child: Text(
@@ -364,22 +391,26 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   }
 
   Widget _buildOrderTypeButton(String title) {
-    // Permission checks
     bool isEnabled = true;
-    if (title == "Takeaways") {
+    if (normalizeOrderType(title) == "takeaways" ||
+        normalizeOrderType(title) == "onlineorders") {
       isEnabled = _userPermissions?.canViewOrderTypes ?? false;
-    } else if (title == "Online Orders") {
-      isEnabled = _userPermissions?.canViewOrderTypes  ?? false;
     }
 
-    bool isSelected = title == selectedOrderType;
+    bool isSelected =
+        normalizeOrderType(title) == normalizeOrderType(selectedOrderType);
 
     return GestureDetector(
       onTap: () {
         if (isEnabled) {
           setState(() {
             selectedOrderType = title;
+            _selectedTableIndex = null;
+            _selectedTable = null;
+            _selectedKot = null;
+            _kotItems.clear();
           });
+          _fetchOrders();
         } else {
           AreaMovementNotifier.showPopup(
             context: context,
@@ -396,7 +427,8 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
           Text(
             title,
             style: TextStyle(
-              color: isEnabled
+              color:
+              isEnabled
                   ? (isSelected ? Colors.red : Colors.black)
                   : Colors.grey,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -416,7 +448,6 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       ),
     );
   }
-
   Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -431,43 +462,31 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
             ),
           ),
           const Spacer(),
-          _buildUserDropdown(),
-          const SizedBox(width: 10),
-          _buildSearchBar(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUserDropdown() {
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: _users.first,
-          icon: const Icon(
-            Icons.arrow_drop_down,
-            color: Colors.black,
-            size: 18,
+          if (_selectedTable != null) ...[
+            Container(
+              height: 50,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              alignment: Alignment.centerLeft,
+              child: Text(
+                "${_selectedTable!['table_owner'] ?? '-'}",
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+          ],
+          SizedBox(
+            width: 250,
+            child: _buildSearchBar(),
           ),
-          dropdownColor: Colors.white,
-          style: const TextStyle(color: Colors.black, fontSize: 14),
-          onChanged: (value) {
-            // Handle user change
-          },
-          items:
-          _users
-              .map(
-                (name) => DropdownMenuItem(value: name, child: Text(name)),
-          )
-              .toList(),
-        ),
+        ],
       ),
     );
   }
@@ -496,9 +515,8 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
 
   Widget _buildTableList() {
     final tables = filteredTables;
-
     if (tables.isEmpty) {
-      return Center(child: Text('No orders found'));
+      return const Center(child: Text('No orders found'));
     }
 
     return GridView.builder(
@@ -511,11 +529,11 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       itemCount: tables.length,
       itemBuilder: (context, index) {
         final table = tables[index];
-        final kotCount = table["kots"].length;
+        final kotCount = table["remaining_count"] ?? 0;
         final bool isSelected = _selectedTableIndex == index;
 
         return GestureDetector(
-          onTap: () {
+          onTap: () async {
             setState(() {
               if (_selectedTableIndex == index) {
                 _selectedTableIndex = null;
@@ -527,97 +545,149 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                 _selectedTable = table;
                 _selectedKot = null;
                 _kotItems.clear();
+                if (normalizeOrderType(selectedOrderType) != "dinein") {
+                  _onKotSelected(
+                    (table['kots'] as List<dynamic>?)?.first ?? '',
+                    0,
+                  );
+                }
               }
             });
+
+            if (_selectedTable != null) {
+              await _fetchParentKotOrders(_selectedTable!);
+            }
           },
-          child: Container(
-            padding: const EdgeInsets.all(13),
-            decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFF0C6FDB) : Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 6),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "Table No: ${table['tableNo']}",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: isSelected ? Colors.white : Colors.black,
-                      ),
-                    ),
-                    Text(
-                      table["time"],
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: isSelected ? Colors.white : Colors.black,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "Order ID: ${table['orderId']}",
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: isSelected ? Colors.white : Colors.black,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    if (kotCount == 1)
-                      _buildKotCircleWithOverlap(
-                        kotText: "KOT",
-                        isSelected: isSelected,
-                        kotCount: kotCount,
-                      )
-                    else
-                      Row(
-                        children: [
-                          Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              Positioned(
-                                left: 14,
-                                child: _buildKotCircleWithOverlap(
-                                  kotText: "KOT",
-                                  isSelected: isSelected,
-                                  kotCount: kotCount,
-                                  isSecondary: true,
-                                ),
-                              ),
-                              _buildKotCircleWithOverlap(
-                                kotText: "KOT",
-                                isSelected: isSelected,
-                                kotCount: kotCount,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(width: 15),
-                          Text(
-                            "+${kotCount - 1}",
-                            style: TextStyle(
-                              color: isSelected ? Colors.white : Colors.black87,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+          child: normalizeOrderType(selectedOrderType) == "dinein"
+              ? _buildDineInCard(table, kotCount, isSelected)
+              : _buildTakeawayCard(table, kotCount, isSelected),
         );
       },
+    );
+  }
+
+  Widget _buildTakeawayCard(Map<String, dynamic> order,
+      int kotCount,
+      bool isSelected,) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isSelected ? const Color(0xFF0C6FDB) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Text(
+              "Order ID: ${order['order_id']}",
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: isSelected ? Colors.white : Colors.black,
+              ),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                order["order_time"] ?? '',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isSelected ? Colors.white : Colors.black,
+                ),
+              ),
+              const SizedBox(height: 8),
+              CircleAvatar(
+                radius: 18,
+                backgroundColor:
+                isSelected ? Colors.white : const Color(0xFF0C6FDB),
+                child: Text(
+                  "KOT",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: isSelected ? const Color(0xFF0C6FDB) : Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDineInCard(Map<String, dynamic> order,
+      int kotCount,
+      bool isSelected,) {
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: isSelected ? const Color(0xFF0C6FDB) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "Table: ${order['table_name'] ?? '-'}",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: isSelected ? Colors.white : Colors.black,
+                ),
+              ),
+              Text(
+                order["order_time"] ?? '',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isSelected ? Colors.white : Colors.black,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "Order ID: ${order['order_id']}",
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isSelected ? Colors.white : Colors.black,
+                ),
+              ),
+              Row(
+                children: [
+                  _buildKotCircleWithOverlap(
+                    kotText: "KOT",
+                    isSelected: isSelected,
+                    kotCount: kotCount,
+                  ),
+                  if ((order['remaining_count'] ?? 0) > 0) ...[
+                    const SizedBox(width: 5),
+                    Text(
+                      "+${order['remaining_count']}",
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : Colors.black87,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -655,9 +725,10 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     );
   }
 
-
   Widget _buildOrderDetails() {
     final bool hasTable = _selectedTable != null;
+    final List<String> kots =
+        (_selectedTable?['kots'] as List<dynamic>?)?.cast<String>() ?? [];
 
     return Container(
       decoration: BoxDecoration(
@@ -668,7 +739,6 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Container
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -677,111 +747,128 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
             ),
             child: Row(
               children: [
-                Text(
-                  "Table No: ${hasTable ? _selectedTable!['tableNo'] : '---'}",
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
+                if (selectedOrderType != "Takeaways") ...[
+                  Text(
+                    "Table No: ${hasTable
+                        ? _selectedTable!['table_name']
+                        : '---'}",
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
                 const SizedBox(width: 10),
                 Text(
-                  "Order ID: ${hasTable ? _selectedTable!['orderId'] : '---'}",
+                  "Order ID: ${hasTable ? _selectedTable!['order_id'] : '---'}",
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(width: 10),
                 Text(
-                  "KOT: ${_selectedKot ?? '---'}",
+                  "${_selectedKot ?? '---'}",
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 const Spacer(),
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     elevation: 0,
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 12,
+                    ),
                     minimumSize: const Size(36, 36),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ).copyWith(
                     backgroundColor: WidgetStateProperty.resolveWith<Color>(
-                          (states) {
-                        if (states.contains(WidgetState.disabled)) {
-                          return const Color(0xFFBDE5C0);
-                        }
-                        return Colors.green;
-                      },
+                          (states) =>
+                      states.contains(WidgetState.disabled)
+                          ? const Color(0xFFBDE5C0)
+                          : Colors.green,
                     ),
                     foregroundColor: WidgetStateProperty.resolveWith<Color>(
-                          (states) {
-                        if (states.contains(WidgetState.disabled)) {
-                          return Colors.white70;
-                        }
-                        return Colors.white;
-                      },
+                          (states) =>
+                      states.contains(WidgetState.disabled)
+                          ? Colors.white70
+                          : Colors.white,
                     ),
                   ),
                   icon: const Icon(Icons.print, size: 15),
-                  label: const Text('Print KOT', style: TextStyle(fontSize: 12)),
-                  onPressed: _selectedKot != null ? () {} : null,
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                    minimumSize: const Size(36, 36),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ).copyWith(
-                    backgroundColor: WidgetStateProperty.resolveWith<Color>(
-                          (states) {
-                        if (states.contains(WidgetState.disabled)) {
-                          return const Color(0xFFCBD9F0);
-                        }
-                        return Colors.blue;
-                      },
-                    ),
-                    foregroundColor: WidgetStateProperty.resolveWith<Color>(
-                          (states) {
-                        if (states.contains(WidgetState.disabled)) {
-                          return Colors.white70;
-                        }
-                        return Colors.white;
-                      },
-                    ),
+                  label: const Text(
+                    'Print KOT',
+                    style: TextStyle(fontSize: 12),
                   ),
-                  icon: const Icon(Icons.edit, size: 15),
-                  label: const Text('Void Items', style: TextStyle(fontSize: 12)),
                   onPressed: _selectedKot != null ? () {} : null,
                 ),
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                    minimumSize: const Size(36, 36),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ).copyWith(
-                    backgroundColor: WidgetStateProperty.resolveWith<Color>(
-                          (states) {
-                        if (states.contains(WidgetState.disabled)) {
-                          return const Color(0xFFFCECCB);
-                        }
-                        return Colors.amber;
-                      },
+                if (normalizeOrderType(selectedOrderType) == "dinein") ...[
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 12,
+                      ),
+                      minimumSize: const Size(36, 36),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ).copyWith(
+                      backgroundColor: WidgetStateProperty.resolveWith<Color>(
+                            (states) =>
+                        states.contains(WidgetState.disabled)
+                            ? const Color(0xFFCBD9F0)
+                            : Colors.blue,
+                      ),
+                      foregroundColor: WidgetStateProperty.resolveWith<Color>(
+                            (states) =>
+                        states.contains(WidgetState.disabled)
+                            ? Colors.white70
+                            : Colors.white,
+                      ),
                     ),
-                    foregroundColor: WidgetStateProperty.resolveWith<Color>(
-                          (states) {
-                        if (states.contains(WidgetState.disabled)) {
-                          return Colors.black45;
-                        }
-                        return Colors.black87;
-                      },
+                    icon: const Icon(Icons.edit, size: 15),
+                    label: const Text(
+                      'Void Items',
+                      style: TextStyle(fontSize: 12),
                     ),
+                    onPressed: _selectedKot != null ? () {} : null,
                   ),
-                  icon: const Icon(Icons.edit, size: 15),
-                  label: const Text('Transfer KOT', style: TextStyle(fontSize: 12)),
-                  onPressed: _selectedKot != null ? () {} : null,
-                ),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 12,
+                      ),
+                      minimumSize: const Size(36, 36),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ).copyWith(
+                      backgroundColor: WidgetStateProperty.resolveWith<Color>(
+                            (states) =>
+                        states.contains(WidgetState.disabled)
+                            ? const Color(0xFFFCECCB)
+                            : Colors.amber,
+                      ),
+                      foregroundColor: WidgetStateProperty.resolveWith<Color>(
+                            (states) =>
+                        states.contains(WidgetState.disabled)
+                            ? Colors.black45
+                            : Colors.black87,
+                      ),
+                    ),
+                    icon: const Icon(Icons.edit, size: 15),
+                    label: const Text(
+                      'Transfer KOT',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    onPressed: _selectedKot != null ? () {} : null,
+                  ),
+                ],
               ],
             ),
           ),
-
           const SizedBox(height: 10),
           Expanded(
             child: Container(
@@ -790,17 +877,29 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                 color: const Color(0xFFD8E4FF),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: hasTable && (_selectedTable!['kots'] as List).isNotEmpty
+              child:
+              hasTable && kots.isNotEmpty
                   ? SingleChildScrollView(
                 child: Column(
-                  children: (_selectedTable!['kots'] as List<String>)
-                      .asMap()
-                      .entries
-                      .map((entry) {
+                  children:
+                  kots.asMap().entries.map((entry) {
                     final index = entry.key;
                     final kot = entry.value;
+                    final kotOrders = (_selectedTable?['kotOrders'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
+                    final kotOrder = kotOrders.firstWhere(
+                          (k) => k['kot_number'] == kot,
+                      orElse: () => {},
+                    );
                     final bool isSelectedKot = kot == _selectedKot;
-
+                    final kotTime = kotOrder['time'] ?? '';
+                    final kotOrderBy = kotOrder['order_by'] ?? '';
+                    String displayTime = '';
+                    if (kotTime.isNotEmpty) {
+                      final parts = kotTime.split(' ');
+                      if (parts.length >= 3) {
+                        displayTime = "${parts[1]} ${parts[2]}";
+                      }
+                    }
                     return Column(
                       children: [
                         GestureDetector(
@@ -818,6 +917,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                             ),
                             child: Row(
                               children: [
+                                // Kot number
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                   decoration: BoxDecoration(
@@ -830,28 +930,36 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                                   ),
                                 ),
                                 const SizedBox(width: 10),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(4),
+                                if (displayTime.isNotEmpty)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(displayTime),
                                   ),
-                                  child: const Text("12:30 PM"),
-                                ),
+
                                 const SizedBox(width: 10),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFFFF3CD),
-                                    borderRadius: BorderRadius.circular(4),
+                                if (kotOrderBy.isNotEmpty)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFFF3CD),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      kotOrderBy,
+                                      style: const TextStyle(fontWeight: FontWeight.w500),
+                                    ),
                                   ),
-                                  child: const Text(
-                                    "Anil Kumar",
-                                    style: TextStyle(fontWeight: FontWeight.w500),
-                                  ),
-                                ),
+
                                 const Spacer(),
-                                Icon(isSelectedKot ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down),
+
+                                if (selectedOrderType != "Takeaways")
+                                  Icon(
+                                    isSelectedKot ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                                  ),
                               ],
                             ),
                           ),
@@ -877,8 +985,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
 
   Widget _buildKotItemsOverlay() {
     return Container(
-      width: 580,
-      height: 280,
+      width: 630,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(6),
@@ -886,34 +993,43 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(6),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.vertical,
-          child: DataTable(
-            headingRowColor: WidgetStateProperty.all(const Color(0xFFE0E0E0)),
-            columnSpacing: 16,
-            horizontalMargin: 20,
-            columns: const [
-              DataColumn(label: Text('S.No')),
-              DataColumn(label: Text('Item Name')),
-              DataColumn(label: Text('Qty')),
-              DataColumn(label: Text('Price')),
-              DataColumn(label: Text('Total Price')),
-            ],
-            rows:
-            _kotItems.asMap().entries.map((entry) {
-              final index = entry.key + 1;
-              final item = entry.value;
-              final total = item['qty'] * item['price'];
-              return DataRow(
-                cells: [
-                  DataCell(Text(index.toString())),
-                  DataCell(Text(item['itemName'])),
-                  DataCell(Text(item['qty'].toString())),
-                  DataCell(Text(item['price'].toStringAsFixed(2))),
-                  DataCell(Text(total.toStringAsFixed(2))),
-                ],
-              );
-            }).toList(),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxHeight: 290, // cap at 290
+          ),
+          child: SingleChildScrollView(
+            child: DataTable(
+              headingRowColor: WidgetStateProperty.all(const Color(0xFFE0E0E0)),
+              columnSpacing: 16,
+              horizontalMargin: 20,
+              columns: const [
+                DataColumn(label: Text('S.No')),
+                DataColumn(label: Text('Item Name')),
+                DataColumn(label: Text('Qty')),
+                DataColumn(label: Text('Price')),
+                DataColumn(label: Text('Total Price')),
+              ],
+              rows: _kotItems
+                  .asMap()
+                  .entries
+                  .map((entry) {
+                final index = entry.key + 1;
+                final item = entry.value;
+                final qty = (item['quantity'] ?? 0).toDouble();
+                final price = (item['price'] ?? 0).toDouble();
+                final total = qty * price;
+
+                return DataRow(
+                  cells: [
+                    DataCell(Text(index.toString())),
+                    DataCell(Text(item['item_name'] ?? '')),
+                    DataCell(Text(qty.toStringAsFixed(0))),
+                    DataCell(Text(price.toStringAsFixed(2))),
+                    DataCell(Text(total.toStringAsFixed(2))),
+                  ],
+                );
+              }).toList(),
+            ),
           ),
         ),
       ),

@@ -1,4 +1,5 @@
 class UserPermissions {
+  final String userId;
   final bool canAccessDashboard;
   final bool canViewMenu;
   final bool canEditMenu;
@@ -25,6 +26,7 @@ class UserPermissions {
   final String role;
 
   UserPermissions({
+    required this.userId,
     required this.canAccessDashboard,
     required this.canViewMenu,
     required this.canEditMenu,
@@ -53,6 +55,7 @@ class UserPermissions {
 
   factory UserPermissions.fromJson(Map<String, dynamic> json) {
     return UserPermissions(
+      userId: json['user_id']?.toString() ?? '',
       canAccessDashboard: json['canAccessDashboard'] ?? false,
       canViewMenu: json['canViewMenu'] ?? false,
       canEditMenu: json['canEditMenu'] ?? false,
@@ -82,6 +85,7 @@ class UserPermissions {
 
   Map<String, dynamic> toJson() {
     return {
+      'user_id': userId, // ✅
       'canAccessDashboard': canAccessDashboard,
       'canViewMenu': canViewMenu,
       'canEditMenu': canEditMenu,
