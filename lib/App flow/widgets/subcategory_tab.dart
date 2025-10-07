@@ -145,65 +145,65 @@ class _SubCategoryTabWidgetState extends State<SubCategoryTabWidget> {
               },
             ),
           ),
-          // Positioned(
-          //   left: 0,
-          //   top: 0,
-          //   bottom: 0,
-          //   child: Center(
-          //     child: Container(
-          //       width: 32, // circular size
-          //       height: 32,
-          //       decoration: BoxDecoration(
-          //         color: Colors.white, // background color of the circle
-          //         shape: BoxShape.circle,
-          //         boxShadow: [
-          //           BoxShadow(
-          //             color: Colors.black26,
-          //             blurRadius: 4,
-          //             offset: Offset(0, 2),
-          //           ),
-          //         ],
-          //       ),
-          //       child: IconButton(
-          //         padding: EdgeInsets.zero, // remove default padding
-          //         icon: const Icon(Icons.arrow_back_ios, size: 16),
-          //         onPressed: _scrollLeft,
-          //         color: Colors.black,
-          //         splashRadius: 20,
-          //       ),
-          //     ),
-          //   ),
-          // ),
-          //
-          // Positioned(
-          //   right: 0,
-          //   top: 0,
-          //   bottom: 0,
-          //   child: Center(
-          //     child: Container(
-          //       width: 32, // circular size
-          //       height: 32,
-          //       decoration: BoxDecoration(
-          //         color: Colors.white, // background color of the circle
-          //         shape: BoxShape.circle,
-          //         boxShadow: [
-          //           BoxShadow(
-          //             color: Colors.black26,
-          //             blurRadius: 4,
-          //             offset: Offset(0, 2),
-          //           ),
-          //         ],
-          //       ),
-          //       child: IconButton(
-          //         padding: EdgeInsets.zero, // remove default padding
-          //         icon: const Icon(Icons.arrow_forward_ios, size: 16),
-          //         onPressed: _scrollRight,
-          //         color: Colors.black,
-          //         splashRadius: 20,
-          //       ),
-          //     ),
-          //   ),
-          // ),
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            child: Center(
+              child: Container(
+                width: 32, // circular size
+                height: 32,
+                decoration: BoxDecoration(
+                  color: Colors.white, // background color of the circle
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: IconButton(
+                  padding: EdgeInsets.zero, // remove default padding
+                  icon: const Icon(Icons.arrow_back_ios, size: 16),
+                  onPressed: _scrollLeft,
+                  color: Colors.black,
+                  splashRadius: 20,
+                ),
+              ),
+            ),
+          ),
+
+          Positioned(
+            right: 0,
+            top: 0,
+            bottom: 0,
+            child: Center(
+              child: Container(
+                width: 32, // circular size
+                height: 32,
+                decoration: BoxDecoration(
+                  color: Colors.white, // background color of the circle
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: IconButton(
+                  padding: EdgeInsets.zero, // remove default padding
+                  icon: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onPressed: _scrollRight,
+                  color: Colors.black,
+                  splashRadius: 20,
+                ),
+              ),
+            ),
+          ),
 
         ],
       ),

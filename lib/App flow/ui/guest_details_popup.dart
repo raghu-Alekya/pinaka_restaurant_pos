@@ -9,6 +9,7 @@ import 'dashboard screen.dart';
 
 class GuestDetailsPopup extends StatefulWidget {
   final int index;
+  final String pin;
   final Map<String, dynamic> tableData;
   final List<Map<String, dynamic>> placedTables;
   final void Function(Guestcount) onGuestSaved;
@@ -18,6 +19,7 @@ class GuestDetailsPopup extends StatefulWidget {
   const GuestDetailsPopup({
     Key? key,
     required this.index,
+    required this.pin,
     required this.tableData,
     required this.placedTables,
     required this.onGuestSaved,
@@ -199,6 +201,9 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                                 tableName: tableName,
                                 zoneId: zoneId,
                                 zoneName: zoneName, kotList: [],
+                                pin: widget.pin,
+                                restaurantName: widget.restaurantId,
+                                userPermissions: null,
                               ),
                             ),
                           );

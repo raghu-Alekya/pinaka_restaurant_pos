@@ -106,11 +106,18 @@ class MiniSubCategory {
   }
 
   // ✅ New computed property for folder veg status
-  bool get isVegFolder {
-    if (!isFolder) return false; // Not a folder
-    if (products.isEmpty) return true; // Default veg for empty folder
-    if (products.every((p) => p.isVeg)) return true; // All products veg
-    if (products.every((p) => !p.isVeg)) return false; // All products non-veg
-    return true; // Mixed products → default veg or handle as mixed
+  // In MiniSubCategory
+  bool? get isVegFolder {
+    if (!isFolder) return null; // Not a folder → no icon
+    if (products.isEmpty) return null; // Empty folder → no icon
+
+    final nonNullIsVeg = products.map((p) => p.isVeg).where((v) => v != null).toList();
+
+    if (nonNullIsVeg.isEmpty) return null; // All null → no icon
+    if (nonNullIsVeg.every((v) => v == true)) return true; // All veg
+    if (nonNullIsVeg.every((v) => v == false)) return false; // All non-veg
+
+    return null; // Mixed → no icon
   }
+
 }

@@ -7,11 +7,12 @@ class BottomNavBar extends StatefulWidget {
   final Function(int) onItemTapped;
   final UserPermissions? userPermissions;
 
-  BottomNavBar({
+  const BottomNavBar({
+    Key? key,
     required this.selectedIndex,
     required this.onItemTapped,
     required this.userPermissions,
-  });
+  }) : super(key: key);
 
   @override
   State<BottomNavBar> createState() => _BottomNavBarState();
@@ -33,16 +34,16 @@ class _BottomNavBarState extends State<BottomNavBar> {
 
   void _scrollLeft() {
     _scrollController.animateTo(
-      _scrollController.offset - 100,
-      duration: const Duration(milliseconds: 200),
+      _scrollController.offset - 120,
+      duration: const Duration(milliseconds: 250),
       curve: Curves.easeInOut,
     );
   }
 
   void _scrollRight() {
     _scrollController.animateTo(
-      _scrollController.offset + 100,
-      duration: const Duration(milliseconds: 200),
+      _scrollController.offset + 120,
+      duration: const Duration(milliseconds: 250),
       curve: Curves.easeInOut,
     );
   }
@@ -58,42 +59,33 @@ class _BottomNavBarState extends State<BottomNavBar> {
         color: const Color(0xFF0A1B4D),
         child: Row(
           children: [
-            // Left Arrow
             IconButton(
               icon: const Icon(Icons.arrow_left, color: Colors.white),
               onPressed: _scrollLeft,
             ),
-            // Scrollable Row
             Expanded(
               child: SingleChildScrollView(
                 controller: _scrollController,
                 scrollDirection: Axis.horizontal,
                 child: Row(
-                  children: List.generate(items.length * 2 - 1, (i) {
-                    if (i.isOdd) {
-                      return Container(
-                        width: 1,
-                        height: 15,
-                        color: Colors.white,
-                      );
-                    }
-                    final index = i ~/ 2;
+                  children: List.generate(items.length, (index) {
                     final isSelected = widget.selectedIndex == index;
+
                     return InkWell(
                       onTap: () {
+                        // permission check example
                         if (items[index]["label"] == "Dashboard" &&
-                            (widget.userPermissions?.canAccessDashboard ?? false) ==
-                                false) {
+                            (widget.userPermissions?.canAccessDashboard ?? true) == false) {
                           AreaMovementNotifier.showPopup(
                             context: context,
                             fromArea: '',
                             toArea: '',
                             tableName: 'Dashboard',
-                            customMessage:
-                            'You don’t have permissions to access Dashboard',
+                            customMessage: 'You don’t have permission to access Dashboard',
                           );
                           return;
                         }
+
                         widget.onItemTapped(index);
                       },
                       child: Container(
@@ -118,13 +110,12 @@ class _BottomNavBarState extends State<BottomNavBar> {
                             Text(
                               items[index]["label"],
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: 14,
                                 color: isSelected
                                     ? Colors.white
                                     : const Color(0xFFC4C7D1),
-                                fontWeight: isSelected
-                                    ? FontWeight.w600
-                                    : FontWeight.normal,
+                                fontWeight:
+                                isSelected ? FontWeight.w600 : FontWeight.normal,
                               ),
                             ),
                           ],
@@ -135,7 +126,6 @@ class _BottomNavBarState extends State<BottomNavBar> {
                 ),
               ),
             ),
-            // Right Arrow
             IconButton(
               icon: const Icon(Icons.arrow_right, color: Colors.white),
               onPressed: _scrollRight,

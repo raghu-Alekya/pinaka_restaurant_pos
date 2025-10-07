@@ -1402,7 +1402,7 @@ class _TablesScreenState extends State<TablesScreen> {
                 tableId: tableId,
                 zoneId: zoneId,
                 zoneName: zoneName,
-                tableName: tableName, kotList: [],
+                tableName: tableName, kotList: [], pin: widget.pin, restaurantName: widget.restaurantName, userPermissions: null,
               ),
             ),
           ),
@@ -1462,6 +1462,9 @@ class _TablesScreenState extends State<TablesScreen> {
                         zoneId: zoneId,
                         zoneName: zoneName,
                         tableName: tableName, kotList: [],
+                        pin: widget.pin,
+                        restaurantName: widget.restaurantName,
+                        userPermissions: null,
                       ),
                     ),
                   ),
@@ -1474,7 +1477,7 @@ class _TablesScreenState extends State<TablesScreen> {
               }
             },
             token: '',
-            restaurantId: '1',
+            restaurantId: '1', pin: widget.pin,
           ),
         );
       },

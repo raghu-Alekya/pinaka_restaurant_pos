@@ -397,22 +397,17 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
                   right: 2,
                   child: Builder(
                     builder: (_) {
-                      final sectionName = widget.section.name.toLowerCase();
-                      if (sectionName.contains('alcohol') ||
-                          sectionName.contains('bewerages') ||
-                          sectionName.contains('dessert')) {
-                        return const SizedBox.shrink();
-                      }
+                      final bool? isVeg = item.isVeg; // or item.isVegFolder for folder
+                      if (isVeg == null) return const SizedBox.shrink(); // No icon
                       return Image.asset(
-                        item.isVeg
-                            ? 'assets/icon/veg_icon.png'
-                            : 'assets/icon/nonveg_icon.png',
+                        isVeg ? 'assets/icon/veg_icon.png' : 'assets/icon/nonveg_icon.png',
                         width: 15,
                         height: 15,
                       );
                     },
                   ),
-                ),
+                )
+
               ],
             ),
           ),

@@ -4,7 +4,7 @@ class Product {
   final double price;
   final List<String> images;
   final String image; // first image or fallback
-  final bool isVeg;
+  final bool? isVeg;
   final List<Variant> variants;
 
   // ✅ New fields
@@ -18,7 +18,7 @@ class Product {
     required this.name,
     required this.price,
     List<String>? images,
-    required this.isVeg,
+     this.isVeg,
     required this.variants,
     List<String>? modifiers,
     List<String>? addOns,
@@ -76,13 +76,13 @@ class Product {
         [];
 
     // 🔹 Correct unified isVeg parsing
-    bool parsedIsVeg = false;
+    bool? parsedIsVeg;
     final rawIsVeg = json['is_veg'] ?? json['isVeg'] ?? json['veg_type'] ?? json['type'];
     if (rawIsVeg != null) {
       final val = rawIsVeg.toString().toLowerCase().trim();
-      parsedIsVeg = val == 'true' || val == '1' || val == 'veg';
-    }
-
+      if (val == 'true' || val == '1' || val == 'veg') parsedIsVeg = true;
+      else if (val == 'false' || val == '0' || val == 'nonveg') parsedIsVeg = false;
+    } // else remains null
     return Product(
       id: json['id'] is int
           ? json['id']

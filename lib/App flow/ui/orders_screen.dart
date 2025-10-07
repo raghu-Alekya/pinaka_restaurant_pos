@@ -292,7 +292,7 @@ class OrderPanel extends StatelessWidget {
                                   onGuestSaved(guest.guestCount);
                                 },
                                 token: token,
-                                restaurantId: restaurantId,
+                                restaurantId: restaurantId, pin: pin,
                               ),
                             );
                           },

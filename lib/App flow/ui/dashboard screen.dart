@@ -10,6 +10,7 @@ import '../../blocs/Bloc Logic/order_bloc.dart';
 import '../../blocs/Bloc State/category_states.dart';
 import '../../blocs/Bloc State/minisubcategory.dart';
 import '../../blocs/Bloc State/order_state.dart';
+import '../../models/UserPermissions.dart';
 import '../../models/category/items_model.dart';
 import '../../models/category/minisubcategory_model.dart';
 import '../../models/category/subcategory_model.dart';
@@ -19,6 +20,7 @@ import '../../models/sidebar/category_model_.dart';
 import '../../repositories/minisubcategory_repository.dart';
 import '../../repositories/product_repository.dart';
 import '../../repositories/variant_repository.dart';
+import '../widgets/NavigationHelper.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/subcategory_tab.dart';
 import '../widgets/sidebar_widgets.dart';
@@ -28,17 +30,22 @@ import '../widgets/variant_popup.dart';
 import 'orders_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
+  final String pin;
   final String token;
   final String restaurantId;
+  final String restaurantName;
   final Guestcount guestDetails;
   final int orderId;
   final int tableId;
   final int zoneId;
   final String zoneName;
   final String tableName;
+  final UserPermissions? userPermissions;
+
 
   const DashboardScreen({
     super.key,
+    required this.pin,
     required this.token,
     required this.restaurantId,
     required this.guestDetails,
@@ -47,6 +54,8 @@ class DashboardScreen extends StatefulWidget {
     required this.zoneId,
     required this.zoneName,
     required this.tableName, required kotList,
+    required this.restaurantName,
+    required this.userPermissions,
   });
 
   @override
@@ -248,10 +257,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
   void _onNavItemTapped(int index) {
-    setState(() {
-      _bottomNavIndex = index;
-    });
+    NavigationHelper.handleNavigation(
+      context,
+      _bottomNavIndex, // current selected index
+      index, // tapped item index
+      widget.pin, // ✅ use widget.pin instead of pin
+      widget.token, // ✅ use widget.token
+      widget.restaurantId, // ✅ use widget.restaurantId
+      widget.restaurantName, // ✅ use widget.restaurantName
+      widget.userPermissions, // ✅ use widget.userPermissions
+    );
   }
+
+
 
 
   @override
@@ -411,14 +429,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
 
                   // Bottom Navigation
-      SizedBox(
-        height: 55, // fixed height for bottom nav
-        child: BottomNavBar(
-          selectedIndex: _bottomNavIndex,
-          onItemTapped: _onNavItemTapped,
-          userPermissions: null,
-        ),
-      )],
+                  SizedBox(
+                    height: 55, // fixed height for bottom nav
+                    child: BottomNavBar(
+                      selectedIndex: _bottomNavIndex,
+                      onItemTapped: _onNavItemTapped,
+                      userPermissions: null,
+                    ),
+                  )],
               ),
             ),
             // const SizedBox(width:1),
