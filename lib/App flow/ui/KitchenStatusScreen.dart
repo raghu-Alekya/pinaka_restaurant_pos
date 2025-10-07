@@ -66,8 +66,8 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   }
 
   Future<void> _initializeData() async {
+    await _loadPermissions();
     await _fetchZones();
-    await _fetchUsers();
     await _fetchOrderTypes();
     _fetchOrders();
   }
@@ -77,7 +77,39 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     if (savedPermissions != null) {
       setState(() {
         _userPermissions = savedPermissions;
+        _selectedUser = {
+          "id": savedPermissions.userId,
+          "name": savedPermissions.displayName,
+          "role": savedPermissions.role,
+        };
+        _selectedTableIndex = null;
+        _selectedTable = null;
+        _selectedKot = null;
+        _kotItems.clear();
       });
+    }
+  }
+
+  Future<void> _fetchOrders() async {
+    final orders = await kitchenRepo.fetchOrders(
+      selectedOrderType: selectedOrderType,
+      restaurantId: widget.restaurantId,
+      selectedArea: selectedArea,
+      zones: _zones,
+      selectedUser: _selectedUser,
+    );
+
+    if (mounted) {
+      setState(() {
+        _orders = orders;
+        _selectedTable = null;
+        _selectedKot = null;
+        _kotItems.clear();
+      });
+    }
+
+    for (var order in _orders) {
+      await _fetchParentKotOrders(order);
     }
   }
 
@@ -90,20 +122,6 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
           selectedArea = zones.first['zone_name'];
         }
       });
-    }
-  }
-  Future<void> _fetchOrders() async {
-    final orders = await kitchenRepo.fetchOrders(
-      selectedOrderType: selectedOrderType,
-      restaurantId: widget.restaurantId,
-      selectedArea: selectedArea,
-      zones: _zones,
-      selectedUser: _selectedUser,
-    );
-
-    if (mounted) setState(() => _orders = orders);
-    for (var order in _orders) {
-      await _fetchParentKotOrders(order);
     }
   }
 
@@ -127,14 +145,14 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
 
       if (mounted) {
         setState(() {
-          _selectedTable?['kots'] =
+          order['kots'] =
               kotOrders.map((kot) => kot['kot_number']?.toString() ?? '').toList();
-          _selectedTable?['kotOrders'] = kotOrders;
-
-          if (_selectedTable?['kots'] != null &&
-              _selectedTable!['kots'].isNotEmpty &&
+          order['kotOrders'] = kotOrders;
+          if (_selectedTable != null &&
+              _selectedTable!['order_id'] == order['order_id'] &&
+              order['kots'].isNotEmpty &&
               _normalizeOrderType(selectedOrderType) != "dinein") {
-            _onKotSelected(_selectedTable!['kots'].first, 0);
+            _onKotSelected(order['kots'].first, 0);
           }
         });
       }
@@ -148,17 +166,13 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     if (mounted) {
       setState(() {
         _orderTypes = types;
-        if (_orderTypes.isNotEmpty) selectedOrderType = _orderTypes.first;
-      });
-    }
-  }
-
-  Future<void> _fetchUsers() async {
-    final users = await kitchenRepo.fetchUsers();
-    if (mounted) {
-      setState(() {
-        _users = users;
-        if (_users.isNotEmpty) _selectedUser = _users.first;
+        if (_orderTypes.isNotEmpty) {
+          selectedOrderType = _orderTypes.first;
+          _selectedTableIndex = null;
+          _selectedTable = null;
+          _selectedKot = null;
+          _kotItems.clear();
+        }
       });
     }
   }
@@ -226,10 +240,20 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         token: widget.token,
         pin: widget.pin,
         userPermissions: _userPermissions,
-        onPermissionsReceived: (permissions) {
+        onPermissionsReceived: (permissions) async {
           setState(() {
             _userPermissions = permissions;
+            _selectedUser = {
+              "id": permissions.userId,
+              "name": permissions.displayName,
+              "role": permissions.role,
+            };
+            _selectedTableIndex = null;
+            _selectedTable = null;
+            _selectedKot = null;
+            _kotItems.clear();
           });
+          await _fetchOrders();
         },
       ),
       body: Column(
@@ -424,7 +448,6 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       ),
     );
   }
-
   Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -439,60 +462,35 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
             ),
           ),
           const Spacer(),
-          _buildUserDropdown(),
-          const SizedBox(width: 10),
-          _buildSearchBar(),
+          if (_selectedTable != null) ...[
+            Container(
+              height: 50,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              alignment: Alignment.centerLeft,
+              child: Text(
+                "${_selectedTable!['table_owner'] ?? '-'}",
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+          ],
+          SizedBox(
+            width: 250,
+            child: _buildSearchBar(),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildUserDropdown() {
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<Map<String, dynamic>>(
-          value: _selectedUser,
-          icon: const Icon(
-            Icons.arrow_drop_down,
-            color: Colors.black,
-            size: 18,
-          ),
-          dropdownColor: Colors.white,
-          style: const TextStyle(color: Colors.black, fontSize: 14),
-          onChanged: (value) {
-            setState(() {
-              _selectedUser = value;
-              _selectedTableIndex = null;
-              _selectedTable = null;
-              _selectedKot = null;
-              _kotItems.clear();
-            });
-            _fetchOrders();
-          },
-          items: _users.isNotEmpty
-              ? _users.map((user) {
-            return DropdownMenuItem<Map<String, dynamic>>(
-              value: user,
-              child: Text(user['name'] ?? user['username']),
-            );
-          }).toList()
-              : [
-            const DropdownMenuItem<Map<String, dynamic>>(
-              value: null,
-              child: Text("No users available"),
-            )
-          ],
-        ),
-      ),
-    );
-  }
   Widget _buildSearchBar() {
     return SizedBox(
       width: 260,
