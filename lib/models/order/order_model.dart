@@ -1,3 +1,7 @@
+import '../sidebar/category_model_.dart';
+import 'KOT_model.dart';
+import 'order_items.dart'; // make sure this imports your OrderItems model
+
 class OrderModel {
   final int orderId;
   final int tableId;
@@ -6,13 +10,9 @@ class OrderModel {
   final String zoneName;
   final String status;
 
-  // Order item fields
-  final int itemId;
-  final int productId;
-  final String itemName;
-  final int quantity;
-  final double price;
-  final double amount;
+  // ✅ Now supports multiple items
+  final List<OrderItems> items;
+  final List<KotModel> kotOrders;
 
   OrderModel({
     required this.orderId,
@@ -21,12 +21,8 @@ class OrderModel {
     required this.zoneId,
     required this.zoneName,
     required this.status,
-    required this.itemId,
-    required this.productId,
-    required this.itemName,
-    required this.quantity,
-    required this.price,
-    required this.amount,
+    this.items = const [],
+    this.kotOrders = const [],
   });
 
   /// Convenience getter
@@ -51,6 +47,37 @@ class OrderModel {
       return 0.0;
     }
 
+    // 🔹 Parse KOTs
+    List<KotModel> kotOrders = [];
+    List<OrderItems> items = [];
+    if (data['kot_orders'] != null) {
+      kotOrders = (data['kot_orders'] as List<dynamic>)
+          .map((k) => KotModel.fromJson(k))
+          .toList();
+
+      // Extract all line items from all KOTs
+      for (var kot in kotOrders) {
+        for (var lineItem in kot.items) {
+          items.add(OrderItems(
+            productId: lineItem.productId,
+            name: lineItem.itemName,
+            quantity: lineItem.quantity,
+            price: lineItem.price,
+            variantId: null,
+            section: lineItem.section ??
+                Category(
+                  id: '0',
+                  name: 'Default',
+                  imagepath: '',
+                  subCategories: [],
+                ),
+            modifiers: lineItem.modifiers,
+            addOns: lineItem.addOns,
+          ));
+        }
+      }
+    }
+
     return OrderModel(
       orderId: parseInt(data['order_id']),
       tableId: parseInt(data['table_id']),
@@ -58,12 +85,8 @@ class OrderModel {
       zoneId: parseInt(data['zone_id']),
       zoneName: data['zone_name']?.toString() ?? '',
       status: data['status']?.toString() ?? '',
-      itemId: parseInt(data['id']),
-      productId: parseInt(data['product_id']),
-      itemName: data['item_name']?.toString() ?? '',
-      quantity: parseInt(data['quantity']),
-      price: parseDouble(data['price']),
-      amount: parseDouble(data['amount']),
+      items: items,
+      kotOrders: kotOrders,
     );
   }
 
@@ -76,12 +99,8 @@ class OrderModel {
       "zone_id": zoneId,
       "zone_name": zoneName,
       "status": status,
-      "id": itemId,
-      "product_id": productId,
-      "item_name": itemName,
-      "quantity": quantity,
-      "price": price,
-      "amount": amount,
+      "items": items.map((e) => e.toJson()).toList(),
+      "kot_orders": kotOrders.map((e) => e.toJson()).toList(),
     };
   }
 
@@ -93,12 +112,8 @@ class OrderModel {
     int? zoneId,
     String? zoneName,
     String? status,
-    int? itemId,
-    int? productId,
-    String? itemName,
-    int? quantity,
-    double? price,
-    double? amount,
+    List<OrderItems>? items,
+    List<KotModel>? kotOrders,
   }) {
     return OrderModel(
       orderId: orderId ?? this.orderId,
@@ -107,12 +122,8 @@ class OrderModel {
       zoneId: zoneId ?? this.zoneId,
       zoneName: zoneName ?? this.zoneName,
       status: status ?? this.status,
-      itemId: itemId ?? this.itemId,
-      productId: productId ?? this.productId,
-      itemName: itemName ?? this.itemName,
-      quantity: quantity ?? this.quantity,
-      price: price ?? this.price,
-      amount: amount ?? this.amount,
+      items: items ?? this.items,
+      kotOrders: kotOrders ?? this.kotOrders,
     );
   }
 }

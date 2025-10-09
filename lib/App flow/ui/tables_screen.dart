@@ -8,9 +8,11 @@ import 'package:intl/intl.dart';
 import '../../blocs/Bloc Event/TableEvent.dart';
 import '../../blocs/Bloc Event/ZoneEvent.dart';
 import '../../blocs/Bloc Event/attendance_event.dart';
+import '../../blocs/Bloc Event/kot_event.dart';
 import '../../blocs/Bloc Event/order_event.dart';
 import '../../blocs/Bloc Logic/attendance_bloc.dart';
 import '../../blocs/Bloc Logic/checkin_bloc.dart';
+import '../../blocs/Bloc Logic/kot_bloc.dart';
 import '../../blocs/Bloc Logic/order_bloc.dart';
 import '../../blocs/Bloc Logic/table_bloc.dart';
 import '../../blocs/Bloc Logic/zone_bloc.dart';
@@ -21,7 +23,10 @@ import '../../local database/area_dao.dart';
 import '../../local database/login_dao.dart';
 import '../../local database/table_dao.dart';
 import '../../models/UserPermissions.dart';
+import '../../models/order/KOT_model.dart';
 import '../../models/order/guest_details.dart';
+import '../../models/order/order_items.dart';
+import '../../models/order/order_model.dart';
 import '../../models/view_mode.dart';
 import '../../repositories/checkin_repository.dart';
 import '../../repositories/employee_repository.dart';
@@ -70,6 +75,7 @@ class TablesScreen extends StatefulWidget {
   final String token;
   final String restaurantId;
   final String restaurantName;
+  final int ?zoneId;
 
   const TablesScreen({
     Key? key,
@@ -78,6 +84,7 @@ class TablesScreen extends StatefulWidget {
     required this.token,
     required this.restaurantId,
     required this.restaurantName,
+     this.zoneId,
   }) : super(key: key);
 
   @override
@@ -87,6 +94,11 @@ class TablesScreen extends StatefulWidget {
 ViewMode _currentViewMode = ViewMode.gridCommonImage;
 
 class _TablesScreenState extends State<TablesScreen> {
+
+  final OrderRepository orderRepository = OrderRepository(
+    baseUrl: "https://merchantrestaurant.alektasolutions.com", // Replace with your backend URL
+  );
+
   /// Current zoom scale applied to the floor plan canvas.
   double _scale = 1.0;
 
@@ -108,7 +120,8 @@ class _TablesScreenState extends State<TablesScreen> {
       widget.token,
       widget.restaurantId,
       widget.restaurantName,
-      _userPermissions,
+      _userPermissions as UserPermissions?,
+      // widget.zoneId as UserPermissions?
     );
     setState(() {
       _selectedIndex = index;
@@ -885,22 +898,25 @@ class _TablesScreenState extends State<TablesScreen> {
 
     Widget gestureTable = GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () {
+      onTap: () async {
         final statusLower = status.toLowerCase();
         final reservationDateStr = tableData['reservationDate'];
         final reservationTimeStr = tableData['reservationTime'];
 
+        // 1️⃣ Child table check
         if (capacity == 0) {
           AreaMovementNotifier.showPopup(
             context: context,
             fromArea: area ?? '',
             toArea: '',
             tableName: mergedTables,
-            customMessage: 'Unable to order: This is a child table. Please order from parent table',
+            customMessage:
+            'Unable to order: This is a child table. Please order from parent table',
           );
           return;
         }
 
+        // 2️⃣ Reservation check
         if (statusLower == 'reserve' &&
             reservationDateStr != null &&
             reservationTimeStr != null &&
@@ -922,10 +938,91 @@ class _TablesScreenState extends State<TablesScreen> {
           return;
         }
 
-        if (!_showPopup) {
-          _showGuestDetailsPopup(context, index, tableData);
+        // 3️⃣ Available → show popup
+        if (statusLower == 'available') {
+          if (!_showPopup) {
+            _showGuestDetailsPopup(context, index, tableData);
+          }
+          return;
         }
+
+        // 4️⃣ Dine → fetch existing order & navigate to Dashboard
+        if (statusLower == 'dine' || statusLower == 'dine in') {
+          final orderRepository = OrderRepository(
+            baseUrl: 'https://merchantrestaurant.alektasolutions.com',
+          );
+
+          OrderModel? existingOrder;
+          try {
+            existingOrder = await orderRepository.getOrderByTable(
+              tableId: tableData['table_id'] ?? 0,
+              token: widget.token,
+              restaurantId: int.parse(widget.restaurantId),
+              zoneId: tableData['zone_id'] != null
+                  ? int.parse(tableData['zone_id'].toString())
+                  : null,
+            );
+          } catch (e) {
+            AppLogger.error("Failed to fetch existing order: $e");
+          }
+
+          final List<KotModel> existingKots = existingOrder?.kotOrders ?? [];
+          final List<OrderItems> existingOrderItems = existingOrder?.kotOrders
+              ?.expand((kot) => kot.items)
+              .toList() ??
+              [];
+
+          // ✅ Get KotBloc from context
+          final kotBloc = context.read<KotBloc>();
+          kotBloc.add(SetExistingKots(kots: existingKots));
+          kotBloc.add(PrepareNewKot(parentOrderId: existingOrder?.orderId ?? 0));
+
+          final int guestCount = 0;
+          final Guestcount guestDetails = Guestcount(guestCount: guestCount);
+
+          final orderBloc = context.read<OrderBloc>();
+          orderBloc.add(LoadExistingOrder(
+            orderId: existingOrder?.orderId ?? 0,
+            tableId: existingOrder?.tableId ?? tableData['table_id'] ?? 0,
+            zoneId: existingOrder?.zoneId ?? tableData['zone_id'] ?? 0,
+            tableName: existingOrder?.tableName ?? tableData['tableName'] ?? '',
+            zoneName: existingOrder?.zoneName ?? tableData['zoneName'] ?? '',
+            restaurantId: widget.restaurantId,
+            kotList: existingKots,
+            guests: [guestDetails],
+          ));
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => MultiBlocProvider(
+                providers: [
+                  BlocProvider.value(value: orderBloc),
+                  BlocProvider.value(value: kotBloc),
+                  BlocProvider.value(value: context.read<CheckInBloc>()),
+                ],
+                child: DashboardScreen(
+                  token: widget.token,
+                  restaurantId: orderBloc.state.restaurantId.toString(),
+                  tableData: tableData,
+                  pin: widget.pin,
+                  orderId: orderBloc.state.orderId,
+                  tableId: orderBloc.state.tableId,
+                  zoneId: orderBloc.state.zoneId,
+                  zoneName: orderBloc.state.zoneName,
+                  tableName: orderBloc.state.tableName,
+                  kotList: orderBloc.state.kotList,
+                  restaurantName: widget.restaurantName,
+                  userPermissions: null,
+                  guestDetails: tableData['guestDetails'] ?? guestDetails,
+                ),
+              ),
+            ),
+          );
+        }
+
       },
+
       onDoubleTap: (_userPermissions == null ||
           !_userPermissions!.canDoubleTap ||
           status.toLowerCase() != 'available')
@@ -1043,31 +1140,38 @@ class _TablesScreenState extends State<TablesScreen> {
       ),
     );
   }
+
+
+
+
   Widget _buildShapeBasedGridItem(
-    Map<String, dynamic> tableData,
-    int filteredIndex,
-  ) {
+      Map<String, dynamic> tableData,
+      int filteredIndex,
+      ) {
     final actualIndex = placedTables.indexOf(tableData);
     final int capacity = int.tryParse(tableData['capacity']?.toString() ?? '0') ?? 0;
 
     return ShapeBasedGridItem(
       tableData: tableData,
-      onTap: () {
+      onTap: () async {
         final status = tableData['status']?.toLowerCase() ?? 'available';
         final reservationDateStr = tableData['reservationDate'];
         final reservationTimeStr = tableData['reservationTime'];
 
+        // 1️⃣ Child table check
         if (capacity == 0) {
           AreaMovementNotifier.showPopup(
             context: context,
             fromArea: tableData['areaName'] ?? '',
             toArea: '',
             tableName: tableData['tableName'] ?? '',
-            customMessage: 'Unable to order: This is a child table. Please order from parent table',
+            customMessage:
+            'Unable to order: This is a child table. Please order from parent table',
           );
           return;
         }
 
+        // 2️⃣ Reservation check
         if (status == 'reserve' &&
             reservationDateStr != null &&
             reservationTimeStr != null &&
@@ -1089,10 +1193,85 @@ class _TablesScreenState extends State<TablesScreen> {
           return;
         }
 
-        if (!_showPopup) {
-          _showGuestDetailsPopup(context, actualIndex, tableData);
+        // 3️⃣ Available table → show popup
+        if (status == 'available') {
+          if (!_showPopup) {
+            _showGuestDetailsPopup(context, actualIndex, tableData);
+          }
+          return;
+        }
+
+        // 4️⃣ Dine table → fetch existing order & navigate to Dashboard
+        if (status == 'dine' || status == 'dine in') {
+          final orderRepository = OrderRepository(
+            baseUrl: 'https://merchantrestaurant.alektasolutions.com',
+          );
+
+          OrderModel? existingOrder;
+          try {
+            existingOrder = await orderRepository.getOrderByTable(
+              tableId: tableData['table_id'] ?? 0,
+              token: widget.token,
+              restaurantId: int.parse(widget.restaurantId),
+              zoneId: tableData['zone_id'] != null
+                  ? int.parse(tableData['zone_id'].toString())
+                  : null,
+            );
+          } catch (e) {
+            AppLogger.error("Failed to fetch existing order: $e");
+          }
+
+          final List<KotModel> existingKots = existingOrder?.kotOrders ?? [];
+          final List<OrderItems> existingOrderItems = existingOrder?.kotOrders
+              ?.expand((kot) => kot.items)
+              .toList() ??
+              [];
+          final guestDetails = Guestcount(guestCount: 0); // replace if real data available
+
+          final orderBloc = context.read<OrderBloc>();
+          orderBloc.add(LoadExistingOrder(
+            orderId: existingOrder?.orderId ?? 0,
+            tableId: existingOrder?.tableId ?? tableData['table_id'] ?? 0,
+            zoneId: existingOrder?.zoneId ?? tableData['zone_id'] ?? 0,
+            tableName: existingOrder?.tableName ?? tableData['tableName'] ?? '',
+            zoneName: existingOrder?.zoneName ?? tableData['zoneName'] ?? '',
+            restaurantId: widget.restaurantId,
+            kotList: existingKots,
+            // orderItems: existingOrderItems,
+            guests: [guestDetails],
+          ));
+
+          // Navigate to DashboardScreen
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => MultiBlocProvider(
+                providers: [
+                  BlocProvider.value(value: context.read<OrderBloc>()),
+                  BlocProvider.value(value: context.read<KotBloc>()),
+                  BlocProvider.value(value: context.read<CheckInBloc>()),
+                ],
+                child: DashboardScreen(
+                  token: widget.token,
+                  restaurantId: widget.restaurantId,
+                  tableData: tableData,
+                  pin: widget.pin,
+                  orderId: orderBloc.state.orderId,
+                  tableId: orderBloc.state.tableId,
+                  zoneId: orderBloc.state.zoneId,
+                  zoneName: orderBloc.state.zoneName,
+                  tableName: orderBloc.state.tableName,
+                  kotList: orderBloc.state.kotList,
+                  restaurantName: widget.restaurantName,
+                  userPermissions: null,
+                  guestDetails: tableData['guestDetails'] ?? guestDetails,
+                ),
+              ),
+            ),
+          );
         }
       },
+
       onLongPress: () {
         if (capacity == 0) {
           AreaMovementNotifier.showPopup(
@@ -1121,30 +1300,33 @@ class _TablesScreenState extends State<TablesScreen> {
   }
 
   Widget _buildCommonGridItem(
-    Map<String, dynamic> tableData,
-    int filteredIndex,
-  ) {
+      Map<String, dynamic> tableData,
+      int filteredIndex,
+      ) {
     final actualIndex = placedTables.indexOf(tableData);
     final int capacity = int.tryParse(tableData['capacity']?.toString() ?? '0') ?? 0;
 
     return CommonGridItem(
       tableData: tableData,
-      onTap: () {
+      onTap: () async {
         final status = tableData['status']?.toLowerCase() ?? 'available';
         final reservationDateStr = tableData['reservationDate'];
         final reservationTimeStr = tableData['reservationTime'];
 
+        // 1️⃣ Child table check
         if (capacity == 0) {
           AreaMovementNotifier.showPopup(
             context: context,
             fromArea: tableData['areaName'] ?? '',
             toArea: '',
             tableName: tableData['tableName'] ?? '',
-            customMessage: 'Unable to order: This is a child table. Please order from parent table',
+            customMessage:
+            'Unable to order: This is a child table. Please order from parent table',
           );
           return;
         }
 
+        // 2️⃣ Reservation check
         if (status == 'reserve' &&
             reservationDateStr != null &&
             reservationTimeStr != null &&
@@ -1166,10 +1348,84 @@ class _TablesScreenState extends State<TablesScreen> {
           return;
         }
 
-        if (!_showPopup) {
-          _showGuestDetailsPopup(context, actualIndex, tableData);
+        // 3️⃣ Available table → show popup
+        if (status == 'available') {
+          if (!_showPopup) {
+            _showGuestDetailsPopup(context, actualIndex, tableData);
+          }
+          return;
+        }
+
+        // 4️⃣ Dine table → fetch existing order & navigate to Dashboard
+        if (status == 'dine' || status == 'dine in') {
+          final orderRepository = OrderRepository(
+            baseUrl: 'https://merchantrestaurant.alektasolutions.com',
+          );
+
+          OrderModel? existingOrder;
+          try {
+            existingOrder = await orderRepository.getOrderByTable(
+              tableId: tableData['table_id'] ?? 0,
+              token: widget.token,
+              restaurantId: int.parse(widget.restaurantId),
+              zoneId: tableData['zone_id'] != null
+                  ? int.parse(tableData['zone_id'].toString())
+                  : null,
+            );
+          } catch (e) {
+            AppLogger.error("Failed to fetch existing order: $e");
+          }
+
+          final List<KotModel> existingKots = existingOrder?.kotOrders ?? [];
+          final List<OrderItems> existingOrderItems = existingOrder?.kotOrders
+              ?.expand((kot) => kot.items)
+              .toList() ??
+              [];
+          final guestDetails = Guestcount(guestCount: 0); // Replace with real data if available
+
+          final orderBloc = context.read<OrderBloc>();
+          orderBloc.add(LoadExistingOrder(
+            orderId: existingOrder?.orderId ?? 0,
+            tableId: existingOrder?.tableId ?? tableData['table_id'] ?? 0,
+            zoneId: existingOrder?.zoneId ?? tableData['zone_id'] ?? 0,
+            tableName: existingOrder?.tableName ?? tableData['tableName'] ?? '',
+            zoneName: existingOrder?.zoneName ?? tableData['zoneName'] ?? '',
+            restaurantId: widget.restaurantId,
+            kotList: existingKots,
+            // orderItems: existingOrderItems,
+            guests: [guestDetails],
+          ));
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => MultiBlocProvider(
+                providers: [
+                  BlocProvider.value(value: context.read<OrderBloc>()),
+                  BlocProvider.value(value: context.read<KotBloc>()),
+                  BlocProvider.value(value: context.read<CheckInBloc>()),
+                ],
+                child: DashboardScreen(
+                  token: widget.token,
+                  restaurantId: widget.restaurantId,
+                  tableData: tableData,
+                  pin: widget.pin,
+                  orderId: orderBloc.state.orderId,
+                  tableId: orderBloc.state.tableId,
+                  zoneId: orderBloc.state.zoneId,
+                  zoneName: orderBloc.state.zoneName,
+                  tableName: orderBloc.state.tableName,
+                  kotList: orderBloc.state.kotList,
+                  restaurantName: widget.restaurantName,
+                  userPermissions: null,
+                  guestDetails: tableData['guestDetails'] ?? guestDetails,
+                ),
+              ),
+            ),
+          );
         }
       },
+
       onLongPress: () {
         if (capacity == 0) {
           AreaMovementNotifier.showPopup(
@@ -1196,6 +1452,7 @@ class _TablesScreenState extends State<TablesScreen> {
       },
     );
   }
+
 
   /// Clamps a given [position] of a table so it stays within the canvas bounds.
   ///
@@ -1380,42 +1637,42 @@ class _TablesScreenState extends State<TablesScreen> {
 
     final orderRepo = OrderRepository(baseUrl: 'https://merchantrestaurant.alektasolutions.com');
 
-    try {
-      // Fetch the existing order for this table
-      final existingOrder = await orderRepo.getOrderByTable(tableId);
-
-      if (existingOrder != null) {
-        // ✅ Order exists → navigate directly to Dashboard, skip popup
-        final previousGuestCount = tableData['guest_count'] ?? 0;
-        context.read<OrderBloc>().add(CreateOrderSuccess(orderId: existingOrder.orderId));
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => BlocProvider.value(
-              value: context.read<OrderBloc>(),
-              child: DashboardScreen(
-                guestDetails: Guestcount(guestCount: previousGuestCount),
-                token: "YOUR_VALID_TOKEN_HERE",
-                restaurantId: '1',
-                orderId: existingOrder.orderId,
-                tableId: tableId,
-                zoneId: zoneId,
-                zoneName: zoneName,
-                tableName: tableName, kotList: [], pin: widget.pin, restaurantName: widget.restaurantName, userPermissions: null,
-              ),
-            ),
-          ),
-        );
-        return; // Exit to skip popup
-      }
-    } catch (e) {
-      AppLogger.error("Error fetching existing order: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Failed to check existing order.")),
-      );
-      return; // Stop to prevent popup in error state
-    }
+    // try {
+    //   // Fetch the existing order for this table
+    //   final existingOrder = await orderRepo.getOrderByTable(tableId,token);
+    //
+    //   if (existingOrder != null) {
+    //     // ✅ Order exists → navigate directly to Dashboard, skip popup
+    //     final previousGuestCount = tableData['guest_count'] ?? 0;
+    //     context.read<OrderBloc>().add(CreateOrderSuccess(orderId: existingOrder.orderId));
+    //
+    //     Navigator.push(
+    //       context,
+    //       MaterialPageRoute(
+    //         builder: (_) => BlocProvider.value(
+    //           value: context.read<OrderBloc>(),
+    //           child: DashboardScreen(
+    //             guestDetails: Guestcount(guestCount: previousGuestCount),
+    //             token: "YOUR_VALID_TOKEN_HERE",
+    //             restaurantId: '1',
+    //             orderId: existingOrder.orderId,
+    //             tableId: tableId,
+    //             zoneId: zoneId,
+    //             zoneName: zoneName,
+    //             tableName: tableName, kotList: [], pin: widget.pin, restaurantName: widget.restaurantName, userPermissions: null, tableData: {},
+    //           ),
+    //         ),
+    //       ),
+    //     );
+    //     return; // Exit to skip popup
+    //   }
+    // } catch (e) {
+    //   AppLogger.error("Error fetching existing order: $e");
+    //   ScaffoldMessenger.of(context).showSnackBar(
+    //     const SnackBar(content: Text("Failed to check existing order.")),
+    //   );
+    //   return; // Stop to prevent popup in error state
+    // }
 
     // ─── No existing order → show popup ───
     showGeneralDialog(
@@ -1464,7 +1721,7 @@ class _TablesScreenState extends State<TablesScreen> {
                         tableName: tableName, kotList: [],
                         pin: widget.pin,
                         restaurantName: widget.restaurantName,
-                        userPermissions: null,
+                        userPermissions: null, tableData: {},
                       ),
                     ),
                   ),

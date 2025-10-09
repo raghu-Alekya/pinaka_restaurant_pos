@@ -7,8 +7,9 @@ class DatabaseInitializer {
 
     return await openDatabase(
       path,
-      version: 2, // ✅ bump version
+      version: 11, // ✅ bump version for new columns
       onCreate: (db, version) async {
+        // ✅ Tables table
         await db.execute('''
           CREATE TABLE tables(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -26,6 +27,7 @@ class DatabaseInitializer {
           )
         ''');
 
+        // ✅ Areas table
         await db.execute('''
           CREATE TABLE areas(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,6 +38,7 @@ class DatabaseInitializer {
           )
         ''');
 
+        // ✅ User login table (latest structure)
         await db.execute('''
           CREATE TABLE user_login (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -44,7 +47,9 @@ class DatabaseInitializer {
             restaurant_id TEXT,
             restaurant_name TEXT,
             user_id TEXT,
-            user_role TEXT  -- ✅ fixed comma + added user_id
+            user_role TEXT,
+            display_name TEXT,
+            role TEXT
           )
         ''');
 
@@ -56,6 +61,8 @@ class DatabaseInitializer {
           )
         ''');
       },
+
+      // ✅ Migration logic for existing users
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 3) {
           await db.execute('ALTER TABLE tables ADD COLUMN pin TEXT');
@@ -102,8 +109,13 @@ class DatabaseInitializer {
           ''');
         }
         if (oldVersion < 10) {
-          // ✅ Add user_id column to user_login for existing DB
           await db.execute('ALTER TABLE user_login ADD COLUMN user_id TEXT');
+        }
+        if (oldVersion < 11) {
+          // ✅ add missing columns for display_name, user_role, and role
+          await db.execute('ALTER TABLE user_login ADD COLUMN user_role TEXT');
+          await db.execute('ALTER TABLE user_login ADD COLUMN display_name TEXT');
+          await db.execute('ALTER TABLE user_login ADD COLUMN role TEXT');
         }
       },
     );

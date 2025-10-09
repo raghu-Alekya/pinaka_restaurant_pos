@@ -167,7 +167,8 @@ class OrderRepository {
           time: DateTime.now(),
           status: 'created',
           items: items,
-          parentOrderId: parentOrderId, // pass the actual parent order ID
+          parentOrderId: parentOrderId,
+          captainId: captainId,
         );
 
 
@@ -246,44 +247,72 @@ class OrderRepository {
     AppLogger.debug(" Line item payload: $lineItem");
     return lineItem;
   }
-  Future<OrderModel?> getOrderByTable(int tableId) async {
+  Future<OrderModel?> getOrderByTable({
+    required int restaurantId,
+    int? zoneId,
+    required int tableId,
+    required String token,
+  }) async {
+    AppLogger.debug(
+      '🐛 Fetching order with parameters → tableId=$tableId, zoneId=${zoneId ?? 'null'}, restaurantId=$restaurantId',
+    );
+
     try {
-      final url = Uri.parse('$baseUrl/wp-json/pinaka-restaurant-pos/v1/orders?table_id=$tableId');
-      final response = await http.get(url, headers: {'Content-Type': 'application/json'});
+      final queryParams = {
+        'restaurant_id': restaurantId.toString(),
+        'table_id': tableId.toString(),
+        if (zoneId != null) 'zone_id': zoneId.toString(),
+      };
+
+      final url = Uri.parse(
+          '$baseUrl/wp-json/pinaka-restaurant-pos/v1/kot/get-order-by-table')
+          .replace(queryParameters: queryParams);
+
+      AppLogger.debug("🐛 Request URL: $url");
+
+      final response = await http.get(url, headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      });
+
+      AppLogger.debug("🐛 Response status code: ${response.statusCode}");
+      AppLogger.debug("🐛 Response body: ${response.body}");
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        AppLogger.debug("🐛 Decoded JSON data: $data");
 
-        if (data != null && data['parent_order'] != null) {
-          final parent = data['parent_order'];
-
-          // Declare item first, fallback to empty map if no items
-          Map<String, dynamic> item = {};
-          if (parent['kot_orders'] != null &&
-              parent['kot_orders'].isNotEmpty &&
-              parent['kot_orders'][0]['items'] != null &&
-              parent['kot_orders'][0]['items'].isNotEmpty) {
-            item = parent['kot_orders'][0]['items'][0];
-          }
-
-          return OrderModel(
-            orderId: parent['id'] ?? 0,
-            tableId: parent['table_id'] ?? 0,
-            tableName: parent['table_name'] ?? '',
-            zoneId: parent['zone_id'] ?? 0,
-            zoneName: parent['zone_name'] ?? '',
-            status: parent['status'] ?? '',
-            itemId: item['id'] ?? 0,
-            productId: item['product_id'] ?? 0,
-            itemName: item['item_name'] ?? '',
-            quantity: item['quantity'] ?? 0,
-            price: (item['price'] ?? 0).toDouble(),
-            amount: (item['amount'] ?? 0).toDouble(),
-          );
+        if (data == null || data.isEmpty) {
+          AppLogger.error("⛔ No parent order found for table $tableId");
+          return null;
         }
+
+        final parent = data['parent_order'] as Map<String, dynamic>? ?? data as Map<String, dynamic>;
+
+        // Parse all KOTs
+        final kotOrders = (parent['kot_orders'] as List<dynamic>? ?? [])
+            .map((k) => KotModel.fromJson(k as Map<String, dynamic>))
+            .toList();
+
+        // Flatten all items from all KOTs
+        final items = kotOrders.expand((kot) => kot.items).toList();
+
+        return OrderModel(
+          orderId: parent['order_id'] ?? parent['id'] ?? 0,
+          tableId: parent['table_id'] ?? 0,
+          tableName: parent['table_name'] ?? '',
+          zoneId: parent['zone_id'] ?? 0,
+          zoneName: parent['zone_name'] ?? '',
+          status: parent['status'] ?? '',
+          items: items,
+          kotOrders: kotOrders,
+        );
+
+      } else {
+        AppLogger.error("⛔ Failed to fetch order. Status: ${response.statusCode}");
       }
-    } catch (e) {
-      AppLogger.error("Error fetching order for table $tableId: $e");
+    } catch (e, st) {
+      AppLogger.error("⛔ Error fetching order for table $tableId: $e\n$st");
     }
 
     return null;

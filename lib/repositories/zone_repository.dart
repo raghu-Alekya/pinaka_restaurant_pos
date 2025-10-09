@@ -72,7 +72,7 @@ class ZoneRepository {
         final row = result.first;
 
         // Get restaurant_id and restaurant_name from login
-        final login = await loginDao.getLogin();
+        final login = await loginDao.getLatestLogin();
 
         return {
           'success': true,

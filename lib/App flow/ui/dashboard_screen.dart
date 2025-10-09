@@ -54,6 +54,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 token: widget.token,
                 restaurantId: widget.restaurantId,
                 restaurantName: widget.restaurantName,
+                // zoneId: widget.zoneId,
               ),
         ),
       );
@@ -106,7 +107,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             widget.token,
             widget.restaurantId,
             widget.restaurantName,
-            _userPermissions,
+            _userPermissions as UserPermissions?,
+            // widget.zoneId
           );
         },
         userPermissions: _userPermissions,

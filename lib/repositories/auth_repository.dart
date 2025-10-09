@@ -91,6 +91,6 @@ class AuthRepository {
 
 
   Future<Map<String, dynamic>?> getSavedLogin() async {
-    return await loginDao.getLogin();
+    return await loginDao.getLatestLogin();
   }
 }

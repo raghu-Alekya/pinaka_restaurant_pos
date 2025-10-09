@@ -132,10 +132,9 @@ class MyApp extends StatelessWidget {
           Provider<CheckInRepository>(
             create: (_) => CheckInRepository(),
           ),
-
           // ✅ BlocProvider is only for Blocs/Cubits
           BlocProvider<OrderBloc>(
-            create: (context) => OrderBloc(orderRepo, token),
+            create: (context) => OrderBloc(orderRepo, token  ),
           ),
           BlocProvider<KotBloc>(
             create: (_) => KotBloc(KotRepository(baseUrl: 'https://merchantrestaurant.alektasolutions.com')),

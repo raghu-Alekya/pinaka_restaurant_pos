@@ -8,8 +8,10 @@ class LoginDao {
       String token,
       String restaurantId,
       String restaurantName, {
-        required String userId,   // 👈 new field (captain/user ID)
-        String? userRole, required displayName, required String role,         // 👈 optional
+        required String userId,
+        String? userRole,
+        required String displayName,
+        required String role,
       }) async {
     final db = await DatabaseHelper().database;
     await db.insert(
@@ -19,18 +21,23 @@ class LoginDao {
         'token': token,
         'restaurant_id': restaurantId,
         'restaurant_name': restaurantName,
-        'user_id': userId,     // 👈 save captain/user ID
-        'user_role': userRole, // 👈 save user role (optional)
+        'user_id': userId,
+        'user_role': userRole,
+        'display_name': displayName,
+        'role': role,
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
-    // print("✅ Login saved locally");
   }
 
-  /// Get the first saved login
-  Future<Map<String, dynamic>?> getLogin() async {
+  /// ✅ Get the latest login (most recent check-in)
+  Future<Map<String, dynamic>?> getLatestLogin() async {
     final db = await DatabaseHelper().database;
-    final result = await db.query('user_login', limit: 1);
+    final result = await db.query(
+      'user_login',
+      orderBy: 'rowid DESC', // latest inserted first
+      limit: 1,
+    );
     return result.isNotEmpty ? result.first : null;
   }
 

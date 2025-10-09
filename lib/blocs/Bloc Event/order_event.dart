@@ -37,13 +37,15 @@ class SelectTable extends OrderEvent {
   final int tableId;
   final int zoneId;
   final String tableName;     // ✅ added
-  final String zoneName;      // ✅ added
+  final String zoneName;
+  final  restaurantId;// ✅ added
 
   SelectTable({
     required this.tableId,
     required this.zoneId,
     this.tableName = '',
     this.zoneName = '',
+    required this .restaurantId,
   });
 }
 
@@ -134,22 +136,54 @@ class AddKOT extends OrderEvent {
 }
 /// 🔹 Create KOT from current order items
 // Create KOT from current order items (trigger API)
+/// 🔹 Create KOT from current order items (trigger API)
 class CreateKOT extends OrderEvent {
-final  kotId;
-final int parentOrderId;
-final List<OrderItems> items;
-final String token;
-final int restaurantId;   // ✅ add this
-final int zoneId;
-final captainId;
+  final  kotId;
+  final int parentOrderId;
+  final List<OrderItems> items;
+  final String token;
+  final int  restaurantId; // ✅ add this
+  final int zoneId;
+  final int captainId;
 
-
-CreateKOT(this.restaurantId, this.zoneId, this.captainId, {
-required this.kotId,
-required this.parentOrderId,
-required this.items,
-required this.token,
-
-});
+  CreateKOT(
+      this.restaurantId,
+      this.zoneId,
+      this.captainId, {
+        required this.kotId,
+        required this.parentOrderId,
+        required this.items,
+        required this.token,
+      });
 }
+
+/// 🔹 Load existing order and KOTs when table already has active orders
+class LoadExistingOrder extends OrderEvent {
+  final int orderId;
+  final int tableId;
+  final String tableName;
+  final int zoneId;
+  final String zoneName;
+  // final List<OrderItems> orderItems;
+  final List<KotModel> kotList;
+  final List<Guestcount> guests;
+  final String restaurantId;
+
+  LoadExistingOrder({
+    required this.orderId,
+    required this.tableId,
+    required this.tableName,
+    required this.zoneId,
+    required this.zoneName,
+    // required this.orderItems,
+    required this.kotList,
+    required this.guests,
+    required this.restaurantId,
+  });
+}
+
+
+
+
+
 

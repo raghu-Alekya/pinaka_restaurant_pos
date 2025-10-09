@@ -3,6 +3,7 @@ import 'package:http/http.dart' as context;
 import '../../models/order/KOT_model.dart';
 import '../../models/order/guest_details.dart';
 import '../../models/order/order_items.dart';
+import '../../models/sidebar/category_model_.dart';
 import '../../repositories/order_repository.dart';
 import '../Bloc Event/order_event.dart';
 import '../Bloc State/checkin_state.dart';
@@ -41,15 +42,65 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
     });
 
     /// Select table
-    on<SelectTable>((event, emit) {
+    /// Select table
+    on<SelectTable>((event, emit) async {
       AppLogger.info("🔹 Selected Table: ${event.tableId}, Zone: ${event.zoneId}");
+
+      // Update table info immediately
       emit(state.copyWith(
         tableId: event.tableId,
         zoneId: event.zoneId,
         tableName: event.tableName,
         zoneName: event.zoneName,
+        restaurantId: event.restaurantId,
       ));
+
+      try {
+        // Fetch existing order
+        final existingOrder = await repository.getOrderByTable(
+          tableId: event.tableId,
+          zoneId: event.zoneId,
+          restaurantId: int.parse(event.restaurantId),
+          token: token,
+        );
+
+        if (existingOrder != null) {
+          // Flatten all items from all KOTs into orderItems
+          final orderItems = existingOrder.items
+              .map((item) => OrderItems(
+            productId: item.productId,
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price,
+            variantId: item.variationId,
+            section: item.section,
+            modifiers: item.modifiers,
+            addOns: item.addOns,
+          ))
+              .toList();
+
+          final kotList = existingOrder.kotOrders;
+          final guests = <Guestcount>[]; // Empty for now
+
+          emit(state.copyWith(
+            orderId: existingOrder.orderId,
+            orderItems: orderItems,
+            kotList: kotList,
+            guests: guests,
+          ));
+
+          AppLogger.info(
+            "✅ Loaded existing order with ${orderItems.length} items and ${kotList.length} KOTs",
+          );
+        } else {
+          AppLogger.info("No existing order for table ${event.tableName}");
+        }
+      } catch (e, st) {
+        AppLogger.error("Failed to fetch existing order: $e\n$st");
+      }
     });
+
+
 
     /// Order created successfully
     on<CreateOrderSuccess>((event, emit) {
@@ -155,6 +206,7 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
       emit(state.copyWith(kotList: updatedKOTs));
     });
     /// 🔹 Create KOT via API
+    /// 🔹 Create KOT via API
     on<CreateKOT>((event, emit) async {
       AppLogger.info("Creating KOT: ${event.kotId} for Order ID: ${event.parentOrderId}");
 
@@ -166,21 +218,40 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
           token: event.token,
           restaurantId: event.restaurantId,
           zoneId: event.zoneId,
-          captainId: event.captainId, // ✅ already available
+          captainId: event.captainId,
         );
 
         if (kot != null) {
           final updatedKOTs = List<KotModel>.from(state.kotList)..add(kot);
           emit(state.copyWith(kotList: updatedKOTs));
-          AppLogger.info("KOT created successfully: ${kot.kotId}");
+          AppLogger.info("✅ KOT created successfully: ${kot.kotId}");
         }
       } catch (e) {
-        AppLogger.error("Failed to create KOT: $e");
+        AppLogger.error("❌ Failed to create KOT: $e");
       }
     });
 
+    /// 🔹 Load existing order (used when table already has active order)
+    on<LoadExistingOrder>((event, emit) {
+      AppLogger.info(
+          "Loading existing order ID=${event.orderId}, Table=${event.tableName}, Zone=${event.zoneName}");
+
+      emit(state.copyWith(
+        orderId: event.orderId,
+        tableId: event.tableId,
+        zoneId: event.zoneId,
+        tableName: event.tableName,
+        zoneName: event.zoneName,
+        restaurantId: event.restaurantId,
+        kotList: event.kotList,
+        // orderItems: event.orderItems,
+        guests: event.guests,
+      ));
+    });
 
   }
 
-
 }
+
+
+

@@ -37,7 +37,7 @@ class DashboardScreen extends StatefulWidget {
   final Guestcount guestDetails;
   final int orderId;
   final int tableId;
-  final int zoneId;
+   // int zoneId;
   final String zoneName;
   final String tableName;
   final UserPermissions? userPermissions;
@@ -51,11 +51,12 @@ class DashboardScreen extends StatefulWidget {
     required this.guestDetails,
     required this.orderId,
     required this.tableId,
-    required this.zoneId,
+     // this.zoneId,
     required this.zoneName,
     required this.tableName, required kotList,
     required this.restaurantName,
     required this.userPermissions,
+    required Map<String, dynamic> tableData, required int zoneId,
   });
 
   @override
@@ -265,7 +266,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       widget.token, // ✅ use widget.token
       widget.restaurantId, // ✅ use widget.restaurantId
       widget.restaurantName, // ✅ use widget.restaurantName
-      widget.userPermissions, // ✅ use widget.userPermissions
+      widget.userPermissions as UserPermissions?,
+      // widget.zoneId as UserPermissions?,// ✅ use widget.userPermissions
     );
   }
 

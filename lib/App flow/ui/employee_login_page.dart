@@ -119,6 +119,7 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
                       restaurantId: state.restaurantId,
                       restaurantName: state.restaurantName,
                       loadedTables: tables,
+                      // zoneId: state.zoneId,
                     ),
                   ),
                 );

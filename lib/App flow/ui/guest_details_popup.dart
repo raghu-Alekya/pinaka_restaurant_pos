@@ -152,6 +152,7 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                             zoneId: zoneId,
                             tableName: tableName,
                             zoneName: zoneName,
+                            restaurantId: int.parse(widget.restaurantId), // use widget.restaurantId
                           ),
                         );
 
@@ -203,7 +204,7 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                                 zoneName: zoneName, kotList: [],
                                 pin: widget.pin,
                                 restaurantName: widget.restaurantId,
-                                userPermissions: null,
+                                userPermissions: null, tableData: {},
                               ),
                             ),
                           );

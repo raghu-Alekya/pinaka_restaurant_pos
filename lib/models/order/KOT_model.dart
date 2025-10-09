@@ -8,6 +8,7 @@ class KotModel {
   final String status;
   final List<OrderItems> items;
   final int parentOrderId;
+  final int captainId; // ✅ Add this field
 
   KotModel({
     required this.kotId,
@@ -16,6 +17,7 @@ class KotModel {
     required this.status,
     required this.items,
     required this.parentOrderId,
+    required this.captainId, // ✅ Add to constructor
   });
 
   /// Safe JSON parsing
@@ -54,6 +56,7 @@ class KotModel {
       status: parseString(json['status'], 'Pending'),
       items: parseItems(json['line_items']),
       parentOrderId: parseInt(json['parent_order_id']),
+      captainId: parseInt(json['captain_id']), // ✅ Correctly parsed
     );
   }
 
@@ -65,6 +68,7 @@ class KotModel {
       'status': status,
       'line_items': items.map((item) => item.toJson()).toList(),
       'parent_order_id': parentOrderId,
+      'captain_id': captainId, // ✅ Include in KOT body
     };
   }
 }

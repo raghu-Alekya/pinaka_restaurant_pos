@@ -11,6 +11,8 @@ class KotBloc extends Bloc<KotEvent, KotState> {
   KotBloc(this.repository) : super(KotInitial()) {
     on<FetchKots>(_onFetchKots);
     on<AddKotToList>(_onAddKotToList);
+    on<SetExistingKots>(_onSetExistingKots);
+    on<PrepareNewKot>(_onPrepareNewKot);
   }
 
   Future<void> _onFetchKots(FetchKots event, Emitter<KotState> emit) async {
@@ -37,4 +39,38 @@ class KotBloc extends Bloc<KotEvent, KotState> {
       emit(KotLoaded(updatedList));
     }
   }
+  void _onLoadKots(LoadKots event, Emitter<KotState> emit) {
+    currentParentOrderId = event.parentOrderId;
+    emit(KotLoaded(event.kots));
+  }
+  void _onSetExistingKots(SetExistingKots event, Emitter<KotState> emit) {
+    currentParentOrderId = event.kots.isNotEmpty ? event.kots.first.parentOrderId : 0;
+    emit(KotLoaded(event.kots));
+  }
+
+  // / Handler implementation
+  void _onPrepareNewKot(PrepareNewKot event, Emitter<KotState> emit) {
+    if (state is KotLoaded) {
+      final currentState = state as KotLoaded;
+
+      // Create a new empty KOT
+      final newKot = KotModel(
+        kotId: 0, // 0 or backend-generated when printing
+        parentOrderId: event.parentOrderId,
+        items: [],
+        status: 'new',
+        kotNumber: '',
+        time: DateTime.now(), // assign current time
+        captainId: 0,
+      );
+
+      final updatedList = List<KotModel>.from(currentState.kots)..add(newKot);
+
+      // Update state
+      emit(KotLoaded(updatedList));
+    }
+  }
+
+
 }
+

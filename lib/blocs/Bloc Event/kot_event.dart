@@ -81,3 +81,25 @@ class RemoveKot extends KotEvent {
   @override
   List<Object?> get props => [kotId];
 }
+
+/// 🔹 New event to load existing KOTs directly
+class LoadKots extends KotEvent {
+  final List<KotModel> kots;
+  final int parentOrderId;
+
+  LoadKots({required this.kots, required this.parentOrderId});
+}
+class SetExistingKots extends KotEvent {
+  final List<KotModel> kots;
+  SetExistingKots({required this.kots});
+}
+
+/// 🔹 Prepare a new KOT (adds an empty KOT to the list)
+class PrepareNewKot extends KotEvent {
+  final int parentOrderId; // Optional, link to existing order
+
+  const PrepareNewKot({required this.parentOrderId});
+
+  @override
+  List<Object?> get props => [parentOrderId];
+}

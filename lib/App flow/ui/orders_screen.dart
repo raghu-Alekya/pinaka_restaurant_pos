@@ -38,6 +38,8 @@ class OrderPanel extends StatelessWidget {
   final List<Map<String, dynamic>> placedTables;
   final String pin;
   final String restaurantName;
+  final List<OrderItems>? existingOrderItems;
+  final List<KotModel>? existingKots;
 
   const OrderPanel({
     super.key,
@@ -54,10 +56,36 @@ class OrderPanel extends StatelessWidget {
     required this.placedTables,
     required this.pin,
     required this.restaurantName,
+    this.existingOrderItems, // ✅ optional
+    this.existingKots,
   });
 
   @override
   Widget build(BuildContext context) {
+    // 1️⃣ Trigger KOT loading for existing order
+    final orderBloc = context.read<OrderBloc>();
+    final kotBloc = context.read<KotBloc>();
+
+    // ✅ Initialize OrderBloc with existing order items if not already loaded
+    if (orderId != 0 && orderBloc.state.orderId != orderId) {
+      orderBloc.add(LoadExistingOrder(
+        orderId: orderId,
+        tableId: tableId,
+        zoneId: zoneId,
+        tableName: tableName,
+        zoneName: zoneName,
+        kotList: existingKots ?? [],
+        guests: [guestcount],
+        // orderItems: existingOrderItems ?? [],
+        restaurantId:restaurantId,
+      ));
+    }
+
+    // ✅ Initialize KotBloc with existing KOTs if not already loaded
+    if (orderId != 0 && existingKots != null && (kotBloc.state is! KotLoaded || (kotBloc.state as KotLoaded).kots.isEmpty)) {
+      context.read<KotBloc>().add(SetExistingKots(kots: existingKots!));
+
+    }
     return BlocBuilder<OrderBloc, OrderState>(
       builder: (context, state) {
         return Container(
@@ -443,7 +471,6 @@ class OrderPanel extends StatelessWidget {
                       final orderRepo = OrderRepository(
                         baseUrl: 'https://merchantrestaurant.alektasolutions.com',
                       );
-                      final checkInRepo = context.read<CheckInRepository>();
 
                       if (state.orderItems.isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -459,55 +486,66 @@ class OrderPanel extends StatelessWidget {
                       );
 
                       try {
-                        final login = await checkInRepo.getSavedLogin();
-                        if (login == null) throw Exception('No login found!');
+                        // ✅ Get latest login from local DB
+                        // 1️⃣ Fetch latest saved login
+                        final login = await LoginDao().getLatestLogin();
+                        if (login == null || login['user_id'] == null) {
+                          throw Exception('No captain logged in!');
+                        }
 
+                        // 2️⃣ Parse user ID and token safely
+                        final userId = int.tryParse(login['user_id'].toString());
                         final token = login['token'] as String?;
-                        final captainId = login['captainId'] as int? ?? 0;
+                        if (userId == null || token == null || token.isEmpty) {
+                          throw Exception('Invalid login info!');
+                        }
 
-                        if (token == null || captainId == 0) throw Exception('Login expired or invalid.');
+                        // 3️⃣ Build KOT body
+                        final kotBody = {
+                          'flag_type': 'kot_order',
+                          'parent_order_id': state.orderId,
+                          'restaurant_id': state.restaurantId.toString(),
+                          'zone_id': state.zoneId,
+                          'captain_id': userId, // ✅ latest captain ID
+                          'line_items': state.orderItems.map((item) => item.toJson()).toList(),
+                        };
 
-                        // 1️⃣ Create KOT
+                        // 4️⃣ Call API to create KOT
                         final KotModel? kot = await orderRepo.createKOT(
                           parentOrderId: state.orderId,
-                          kotId: "",  // new KOT
+                          kotId: "", // new KOT
                           items: state.orderItems,
                           token: token,
-                          restaurantId: state.restaurantId,
-                          zoneId: state.zoneId,
-                          captainId: captainId,
+                          restaurantId: restaurantId,
+                          zoneId: zoneId,
+                          captainId: userId,
                         );
 
                         Navigator.of(context).pop(); // close loader
 
                         if (kot != null) {
-                          // Add KOT to OrderBloc
+                          // Update blocs
                           orderBloc.add(AddKOT(kot));
-
-                          // Add KOT to KotBloc for immediate dropdown update
                           kotBloc.add(AddKotToList(kot));
-
-                          // ✅ Clear current order items
-                          context.read<OrderBloc>().add(ClearOrder());  // <-- dispatch the event
+                          orderBloc.add(ClearOrder());
 
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text('KOT Created: ${kot.kotNumber}')),
                           );
-                        }
-                        else {
+                        } else {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Failed to create KOT')),
                           );
                         }
                       } catch (e) {
                         Navigator.of(context).pop();
-                        AppLogger.error("Error creating KOT: $e");
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('Error: ${e.toString()}')),
                         );
                       }
                     },
                   ),
+
 
 
                   orderButton('Generate e-Bill', Colors.green, onPressed: () {
@@ -528,42 +566,46 @@ class OrderPanel extends StatelessWidget {
   // ================= Widgets =================
 
   Widget headerBadgeRow(OrderState state) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFECEEFB), //  background only for container
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min, //  keeps width only as per content
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
-            state.zoneName.isNotEmpty ? state.zoneName : 'Unknown Zone',
-            style: const TextStyle(fontWeight: FontWeight.bold),
+    return BlocBuilder<OrderBloc, OrderState>(
+      builder: (context, state) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFECEEFB),
+            borderRadius: BorderRadius.circular(8),
           ),
-          const SizedBox(width: 8),
-          Text(
-            'Order ID: ${state.orderId}',
-            style: const TextStyle(color: Colors.black87),
-          ),
-          const SizedBox(width: 8),
-          Row(
+          child: Row(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Image.asset('assets/icon/table.png', width: 18, height: 18),
-              const SizedBox(width: 4),
               Text(
-                state.tableName.isNotEmpty ? state.tableName : 'Unknown Table',
+                state.zoneName.isNotEmpty ? state.zoneName : 'Loading...',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Order ID: ${state.orderId}',
                 style: const TextStyle(color: Colors.black87),
+              ),
+              const SizedBox(width: 8),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.asset('assets/icon/table.png', width: 18, height: 18),
+                  const SizedBox(width: 4),
+                  Text(
+                    state.tableName.isNotEmpty ? state.tableName : 'Loading...',
+                    style: const TextStyle(color: Colors.black87),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
-
   }
+
 
   Widget actionButton(String text, String iconPath, Color color, {required VoidCallback onPressed}) =>
       OutlinedButton.icon(

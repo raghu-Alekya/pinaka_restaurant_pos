@@ -15,6 +15,7 @@ class NavigationHelper {
       String token,
       String restaurantId,
       String restaurantName,
+      // String zoneId,
       UserPermissions? userPermissions,
       ) async {
     if (tappedIndex == currentIndex) return;
@@ -44,6 +45,7 @@ class NavigationHelper {
             token: token,
             restaurantId: restaurantId,
             restaurantName: restaurantName,
+            // zoneId: zoneId,
           ),
         ),
       );
