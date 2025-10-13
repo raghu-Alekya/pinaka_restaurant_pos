@@ -1171,7 +1171,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                   crossAxisCount: 4,
                   crossAxisSpacing: 10,
                   mainAxisSpacing: 10,
-                  childAspectRatio: 1.7,
+                  childAspectRatio: 1.6,
                 ),
                 itemBuilder: (context, index) {
                   final table = tablesToShow[index];

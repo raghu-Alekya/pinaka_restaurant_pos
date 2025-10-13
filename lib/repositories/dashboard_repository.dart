@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../constants/constants.dart';
+import '../utils/logger.dart';
 
 class DashboardRepository {
   final String token;
@@ -17,9 +18,9 @@ class DashboardRepository {
   }) async {
     try {
       final url = Uri.parse(
-        "https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1/merchant-dashboard/get-revenue-by-filters"
-            "?restaurant_id=$restaurantId&range=${selectedPeriod.toLowerCase()}"
-            "${selectedZone != null ? "&zone_id=${selectedZone['id']}" : ""}",
+          "${AppConstants.getRevenueByFiltersEndpoint}"
+              "?restaurant_id=$restaurantId&range=${selectedPeriod.toLowerCase()}"
+              "${selectedZone != null ? "&zone_id=${selectedZone['id']}" : ""}"
       );
 
       final response = await http.get(
@@ -36,8 +37,6 @@ class DashboardRepository {
       final fetchedZones = List<Map<String, dynamic>>.from(
         decoded['restaurant_zones'] ?? [],
       );
-
-      // Select a zone: either previously selected or default to first
       Map<String, dynamic>? updatedZone;
       if (fetchedZones.isNotEmpty) {
         updatedZone = selectedZone != null
@@ -62,6 +61,39 @@ class DashboardRepository {
     } catch (e) {
       throw Exception("Error fetching dashboard: $e");
     }
+  }
+  Future<Map<String, dynamic>> fetchPaymentModesRevenue({
+    required String zoneId,
+    required String range,
+    String orderType = "Dine In",
+  }) async {
+    final url = Uri.parse(
+      "${AppConstants.getPaymentModesRevenueEndpoint}"
+          "?restaurant_id=$restaurantId"
+          "&range=$range"
+          "&zone_id=$zoneId"
+          "&order_type=${Uri.encodeComponent(orderType)}",
+    );
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      AppLogger.debug("Payment modes revenue response: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data;
+      } else {
+        AppLogger.warning(
+            "Failed to load payment revenue (${response.statusCode}): ${response.body}");
+      }
+    } catch (e) {
+      AppLogger.error("Error fetching payment revenue: $e");
+    }
+
+    return {};
   }
   Future<List<Map<String, dynamic>>> fetchCurrentShiftEmployees({
     required String date,
@@ -194,12 +226,12 @@ class DashboardRepository {
     }
   }
 
-  Future<List<Map<String, dynamic>>> fetchRevenueChart({
+  Future<Map<String, dynamic>> fetchRevenueChart({
     required String range,
     required int? zoneId,
   }) async {
     final url = Uri.parse(
-        "https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1/merchant-dashboard/get-chart-revenue?restaurant_id=$restaurantId&range=$range&zone_id=${zoneId ?? 0}"
+        "${AppConstants.getChartRevenueEndpoint}?restaurant_id=$restaurantId&range=$range&zone_id=${zoneId ?? 0}"
     );
 
     final response = await http.get(
@@ -211,85 +243,20 @@ class DashboardRepository {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      return List<Map<String, dynamic>>.from(data['monthly_revenue_chart'] ?? []);
-    } else {
-      throw Exception('Failed to fetch revenue chart');
-    }
-  }
 
-  Future<Map<String, dynamic>> fetchPaymentModesRevenue({
-    required int zoneId,
-    required String range,
-    String orderType = "Dine In",
-  }) async {
-    try {
-      final url = Uri.parse(
-        'https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1/merchant-dashboard/get-payment-modes-revenue'
-            '?restaurant_id=$restaurantId&range=$range&zone_id=$zoneId&order_type=${Uri.encodeComponent(orderType)}',
+      String revenueText = (data['revenue'] ?? '').toString();
+      revenueText = revenueText.replaceAllMapped(
+        RegExp(r'(\d+(?:\.\d+)?)'),
+            (match) => '₹${match.group(1)}',
       );
-
-      print("=== Fetching Payment Modes Revenue ===");
-      print("Zone ID: $zoneId");
-      print("Range: $range");
-      print("Order Type: $orderType");
-      print("URL: $url");
-      print("=====================================");
-
-      final response = await http.get(
-        url,
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception("Failed to fetch payment revenue: ${response.body}");
-      }
-
-      final data = json.decode(response.body);
-
-      // Parse order types and payment modes
-      final orderTypes = List<String>.from(data['order_types'] ?? []);
-      final paymentModes = List<String>.from(data['payment_modes'] ?? []);
-
-      // Parse revenue data
-      final Map<String, double> paymentRevenue = {};
-      final rawPaymentRevenue = data['payment_revenue'];
-
-      if (rawPaymentRevenue != null) {
-        if (rawPaymentRevenue is List) {
-          for (var e in rawPaymentRevenue) {
-            if (e is Map<String, dynamic>) {
-              final mode = e['mode']?.toString() ?? "Unknown";
-              final percentStr = e['percent']?.toString().replaceAll('%', '') ?? "0";
-              paymentRevenue[mode] = double.tryParse(percentStr) ?? 0;
-            }
-          }
-        } else if (rawPaymentRevenue is Map) {
-          final paymentData = rawPaymentRevenue['payment_types'];
-          if (paymentData is List) {
-            for (var e in paymentData) {
-              if (e is Map<String, dynamic>) {
-                final mode = e['mode']?.toString() ?? "Unknown";
-                final percentStr = e['percent']?.toString().replaceAll('%', '') ?? "0";
-                paymentRevenue[mode] = double.tryParse(percentStr) ?? 0;
-              }
-            }
-          } else if (paymentData is Map) {
-            paymentData.forEach((key, value) {
-              final percentStr = value?.toString().replaceAll('%', '') ?? "0";
-              paymentRevenue[key.toString()] = double.tryParse(percentStr) ?? 0;
-            });
-          }
-        }
-      }
 
       return {
-        "order_types": orderTypes,
-        "payment_modes": paymentModes,
-        "payment_revenue": paymentRevenue,
+        'chartData': List<Map<String, dynamic>>.from(data['revenue_chart'] ?? []),
+        'yAxisValues': List<String>.from(data['y_axis_values'] ?? []),
+        'revenueSummary': revenueText,
       };
-    } catch (e) {
-      print("Error in fetchPaymentModesRevenue: $e");
-      throw Exception("Error fetching payment revenue: $e");
+    } else {
+      throw Exception('Failed to fetch revenue chart');
     }
   }
 }

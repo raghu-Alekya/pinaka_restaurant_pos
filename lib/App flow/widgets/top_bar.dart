@@ -5,6 +5,7 @@ import '../../repositories/auth_repository.dart';
 import '../../repositories/employee_repository.dart';
 import '../ui/CheckinPopup.dart';
 import '../ui/DailyAttendanceScreen.dart';
+import '../ui/SettingsScreen.dart';
 import '../ui/employee_login_page.dart';
 import 'LogoutConfirmationDialog.dart';
 
@@ -128,7 +129,7 @@ class _TopBarState extends State<TopBar> {
                 ),
               ),
 
-              SizedBox(width: 140),
+              SizedBox(width: 120),
 
               /// Icon Buttons
               _buildModeToggle(),
@@ -146,7 +147,20 @@ class _TopBarState extends State<TopBar> {
               SizedBox(width: 10),
               _buildNotificationIconButton(),
               SizedBox(width: 15),
-              _buildIconButton(Icons.settings),
+              _buildIconButton(
+                Icons.settings,
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => SettingsScreen(
+                        token: widget.token,
+                        pin: widget.pin,
+                      ),
+                    ),
+                  );
+                },
+              ),
               SizedBox(width: 15),
               _buildIconButton(Icons.logout, onPressed: () async {
                 final result = await showDialog<bool>(
@@ -435,7 +449,7 @@ class _TopBarState extends State<TopBar> {
 
   Widget _buildProfileSection() {
     return Container(
-      width: 170,
+      width: 165,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.white,
