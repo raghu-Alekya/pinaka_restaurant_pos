@@ -7,6 +7,7 @@ import 'package:pinaka_restaurant_pos/App%20flow/ui/tables_screen.dart';
 import '../../local database/table_dao.dart';
 import '../../models/UserPermissions.dart';
 import '../../repositories/dashboard_repository.dart';
+import '../../utils/logger.dart';
 import '../widgets/NavigationHelper.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/top_bar.dart';
@@ -84,6 +85,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<Map<String, dynamic>> revenueChartData = [];
   bool isRevenueChartLoading = true;
   String selectedPaymentOrderType = "Dine In";
+  List<String> revenueYAxisValues = [];
+  List<String> paymentOrderTypes = [];
+  List<String> paymentModes = [];
+  Map<String, double> paymentRevenue = {};
+  bool isPaymentLoading = true;
+  String revenueSummary = '';
 
   @override
   void initState() {
@@ -119,99 +126,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
       setState(() => isTopProductsLoading = false);
     }
   }
-
-  List<String> paymentOrderTypes = [];
-  List<String> paymentModes = [];
-  Map<String, double> paymentRevenue = {};
-  bool isPaymentLoading = true;
   Future<void> fetchPaymentModesRevenue({String? orderType}) async {
     if (_selectedZone == null) return;
 
     setState(() => isPaymentLoading = true);
 
     try {
-      final token = widget.token;
-      final zoneId = _selectedZone!['id'];
-      final range = _selectedPeriod.toLowerCase();
-      final order = orderType ?? "Dine In";
-
-      final url =
-          'https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1/merchant-dashboard/get-payment-modes-revenue?restaurant_id=${widget.restaurantId}&range=$range&zone_id=$zoneId&order_type=${Uri.encodeComponent(order)}';
-
-      print("=== Fetching Payment Modes Revenue ===");
-      print("Selected Zone ID: $zoneId");
-      print("Selected Range: $range");
-      print("Request URL: $url");
-      print("=====================================");
-
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {'Authorization': 'Bearer $token'},
+      final data = await _repository.fetchPaymentModesRevenue(
+        zoneId: _selectedZone!['id'].toString(),
+        range: _selectedPeriod.toLowerCase(),
+        orderType: orderType ?? selectedPaymentOrderType,
       );
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+      paymentOrderTypes = List<String>.from(data['order_types'] ?? []);
+      paymentModes = List<String>.from(data['payment_modes'] ?? []);
 
-        print("=== Payment Modes Revenue API Response ===");
-        print(data);
-        print("=========================================");
-
-        paymentOrderTypes = List<String>.from(data['order_types'] ?? []);
-        paymentModes = List<String>.from(data['payment_modes'] ?? []);
-        if (orderType != null && paymentOrderTypes.contains(orderType)) {
-          selectedPaymentOrderType = orderType;
-        } else if (paymentOrderTypes.isNotEmpty) {
-          selectedPaymentOrderType = paymentOrderTypes.first;
-        }
-
-        setState(() => isPaymentLoading = false);
-
-        final rawPaymentRevenue = data['payment_revenue'];
-
-        paymentRevenue = {};
-
-        if (rawPaymentRevenue == null) {
-          print("payment_revenue is null");
-        } else if (rawPaymentRevenue is List) {
-          print("payment_revenue is a List: $rawPaymentRevenue");
-          for (var e in rawPaymentRevenue) {
-            if (e is Map<String, dynamic>) {
-              final mode = e['mode']?.toString() ?? "Unknown";
-              final percentStr =
-                  e['percent']?.toString().replaceAll('%', '') ?? "0";
-              final percent = double.tryParse(percentStr) ?? 0;
-              paymentRevenue[mode] = percent;
-            }
-          }
-        } else if (rawPaymentRevenue is Map) {
-          print("payment_revenue is a Map: $rawPaymentRevenue");
-          final paymentData = rawPaymentRevenue['payment_types'];
-          if (paymentData is List) {
-            for (var e in paymentData) {
-              if (e is Map<String, dynamic>) {
-                final mode = e['mode']?.toString() ?? "Unknown";
-                final percentStr =
-                    e['percent']?.toString().replaceAll('%', '') ?? "0";
-                final percent = double.tryParse(percentStr) ?? 0;
-                paymentRevenue[mode] = percent;
-              }
-            }
-          } else if (paymentData is Map) {
-            paymentData.forEach((key, value) {
-              final percentStr = value?.toString().replaceAll('%', '') ?? "0";
-              final percent = double.tryParse(percentStr) ?? 0;
-              paymentRevenue[key.toString()] = percent;
-            });
-          }
-        }
-
-        setState(() => isPaymentLoading = false);
-      } else {
-        print("Failed to load payment revenue: ${response.body}");
-        setState(() => isPaymentLoading = false);
+      if (orderType != null && paymentOrderTypes.contains(orderType)) {
+        selectedPaymentOrderType = orderType;
+      } else if (paymentOrderTypes.isNotEmpty) {
+        selectedPaymentOrderType = paymentOrderTypes.first;
       }
+
+      final rawPaymentRevenue = data['payment_revenue'];
+      paymentRevenue = {};
+
+      if (rawPaymentRevenue is Map<String, dynamic> &&
+          rawPaymentRevenue['payment_types'] is List) {
+        for (var e in rawPaymentRevenue['payment_types']) {
+          if (e is Map<String, dynamic>) {
+            final mode = e['mode']?.toString() ?? "Unknown";
+            final amount = (e['amount'] ?? 0).toDouble();
+            paymentRevenue[mode] = amount;
+          }
+        }
+      } else if (rawPaymentRevenue is List && rawPaymentRevenue.isEmpty) {
+        AppLogger.debug("Payment revenue is empty");
+      }
+
+      setState(() => isPaymentLoading = false);
     } catch (e) {
-      print("Error fetching payment revenue: $e");
+      print("Error processing payment revenue: $e");
       setState(() => isPaymentLoading = false);
     }
   }
@@ -223,8 +177,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         range: _selectedPeriod.toLowerCase(),
         zoneId: _selectedZone?['id'],
       );
+
       setState(() {
-        revenueChartData = data;
+        revenueChartData = List<Map<String, dynamic>>.from(data['chartData'] ?? []);
+        revenueYAxisValues = List<String>.from(data['yAxisValues'] ?? []);
+        revenueSummary = data['revenueSummary'] ?? '';
         isRevenueChartLoading = false;
       });
     } catch (e) {
@@ -232,7 +189,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       setState(() => isRevenueChartLoading = false);
     }
   }
-
   Future<void> fetchTopCategories() async {
     setState(() => isTopCategoriesLoading = true);
     try {
@@ -308,7 +264,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         selectedZone: _selectedZone,
       );
       List<String> serverPeriods = List<String>.from(result['periods'] ?? []);
-      serverPeriods.removeWhere((p) => p.toLowerCase() == "daily");
 
       setState(() {
         zones = result['zones'];
@@ -580,7 +535,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       scrollDirection: Axis.horizontal,
                       child: Row(
                         children: [
-                          revenueBreakdownCard(),
+                          revenueBreakdownCard(revenueChartData, revenueYAxisValues,revenueSummary),
                           const SizedBox(width: 25),
                           paymentModesCard(),
                         ],
@@ -621,154 +576,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget revenueBreakdownCard() {
-    return isRevenueChartLoading
-        ? Center(child: CircularProgressIndicator())
-        : Container(
-          width: 872,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
+  Widget revenueBreakdownCard(
+      List<Map<String, dynamic>> chartData,
+      List<String> yAxisValues,
+      String revenueSummary,
+      ) {
+    if (chartData.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final maxY = (yAxisValues.length - 1).toDouble();
+    final maxAmount = chartData
+        .map<double>((e) =>
+    ((e['dine_in_amount'] ?? 0).toDouble() +
+        (e['takeaway_amount'] ?? 0).toDouble()))
+        .fold<double>(0, (a, b) => a > b ? a : b);
+
+    return Container(
+      width: 872,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
                 "Total Revenue",
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 15),
-              SizedBox(
-                height: 280,
-                child: BarChart(
-                  BarChartData(
-                    alignment: BarChartAlignment.spaceAround,
-                    maxY: 100,
-                    barTouchData: BarTouchData(
-                      enabled: true,
-                      touchTooltipData: BarTouchTooltipData(
-                        getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                          if (rod.toY <= 0) return null;
-                          final label =
-                              revenueChartData[group.x.toInt()]['label'] ?? '';
-                          final category =
-                              rodIndex == 0 ? "Dine In" : "Takeaway";
-                          final value = rod.toY;
-                          return BarTooltipItem(
-                            "$label\n$category: ${value.toStringAsFixed(0)}",
-                            const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              backgroundColor: Colors.black87,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    titlesData: FlTitlesData(
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          getTitlesWidget: (value, meta) {
-                            final label =
-                                revenueChartData[value.toInt()]['label'] ?? '';
-                            return Text(
-                              label,
-                              style: const TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      leftTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          interval: 20,
-                          reservedSize: 30,
-                          getTitlesWidget: (value, meta) {
-                            return Text(
-                              value.toInt().toString(),
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: Colors.black,
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      rightTitles: AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      topTitles: AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                    ),
-                    borderData: FlBorderData(show: false),
-                    gridData: FlGridData(
-                      show: true,
-                      drawVerticalLine: false,
-                      horizontalInterval: 20,
-                      getDrawingHorizontalLine:
-                          (value) => FlLine(
-                            color: Colors.grey.withOpacity(0.2),
-                            strokeWidth: 1,
-                          ),
-                    ),
-                    barGroups: List.generate(revenueChartData.length, (index) {
-                      final item = revenueChartData[index];
-                      final dineIn = (item['dine_in_perc'] ?? 0).toDouble();
-                      final takeaway = (item['takeaway_perc'] ?? 0).toDouble();
-                      return BarChartGroupData(
-                        x: index,
-                        barRods: [
-                          if (dineIn > 0)
-                            BarChartRodData(
-                              toY: dineIn,
-                              width: 14,
-                              borderRadius: BorderRadius.circular(4),
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  Colors.blue.shade700,
-                                  Colors.blue.shade300,
-                                ],
-                              ),
-                            ),
-                          if (takeaway > 0)
-                            BarChartRodData(
-                              toY: takeaway,
-                              width: 14,
-                              borderRadius: BorderRadius.circular(4),
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  Colors.green.shade700,
-                                  Colors.green.shade300,
-                                ],
-                              ),
-                            ),
-                        ],
-                        barsSpace: 6,
-                      );
-                    }),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
               Row(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: const [
                   Icon(Icons.circle, size: 10, color: Colors.blue),
                   SizedBox(width: 4),
@@ -781,7 +629,154 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ],
           ),
-        );
+
+          const SizedBox(height: 15),
+          SizedBox(
+            height: 280,
+            child: BarChart(
+              BarChartData(
+                alignment: BarChartAlignment.spaceAround,
+                maxY: maxY,
+                backgroundColor: Colors.grey.shade200,
+                barTouchData: BarTouchData(
+                  enabled: true,
+                  touchTooltipData: BarTouchTooltipData(
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      final item = chartData[group.x.toInt()];
+                      final label = item['label'] ?? '';
+                      final amount = rodIndex == 0
+                          ? (item['dine_in_amount'] ?? 0).toDouble()
+                          : (item['takeaway_amount'] ?? 0).toDouble();
+                      final category = rodIndex == 0 ? "Dine In" : "Takeaway";
+
+                      if (amount <= 0) return null;
+
+                      return BarTooltipItem(
+                        "$label\n$category: ₹${amount.toStringAsFixed(0)}",
+                        const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          backgroundColor: Colors.black87,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                titlesData: FlTitlesData(
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (value, meta) {
+                        final index = value.toInt();
+                        if (index < 0 || index >= chartData.length) {
+                          return const SizedBox();
+                        }
+                        final label = chartData[index]['label'] ?? '';
+                        return Text(
+                          label,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 40,
+                      interval: 1,
+                      getTitlesWidget: (value, meta) {
+                        final index = value.toInt();
+                        if (index < 0 || index >= yAxisValues.length) {
+                          return const SizedBox();
+                        }
+                        return Text(
+                          yAxisValues[index],
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.black,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  rightTitles:
+                  AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles:
+                  AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                ),
+                borderData: FlBorderData(show: false),
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: 1,
+                  getDrawingHorizontalLine: (value) => FlLine(
+                    color: Colors.grey.withOpacity(0.2),
+                    strokeWidth: 1,
+                  ),
+                ),
+                barGroups: List.generate(chartData.length, (index) {
+                  final item = chartData[index];
+                  final dineIn = (item['dine_in_amount'] ?? 0).toDouble();
+                  final takeaway = (item['takeaway_amount'] ?? 0).toDouble();
+
+                  final dineInY =
+                  maxAmount > 0 ? (dineIn / maxAmount * maxY) : 0.0;
+                  final takeawayY =
+                  maxAmount > 0 ? (takeaway / maxAmount * maxY) : 0.0;
+
+                  return BarChartGroupData(
+                    x: index,
+                    barRods: [
+                      BarChartRodData(
+                        toY: dineInY,
+                        width: 14,
+                        borderRadius: BorderRadius.circular(4),
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: dineIn > 0
+                              ? [Colors.blue.shade700, Colors.blue.shade300]
+                              : [Colors.transparent, Colors.transparent],
+                        ),
+                      ),
+                      BarChartRodData(
+                        toY: takeawayY,
+                        width: 14,
+                        borderRadius: BorderRadius.circular(4),
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: takeaway > 0
+                              ? [Colors.green.shade700, Colors.green.shade300]
+                              : [Colors.transparent, Colors.transparent],
+                        ),
+                      ),
+                    ],
+                    barsSpace: 6,
+                  );
+                }),
+              ),
+            ),
+          ),
+          if (revenueSummary.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Center(
+              child: Text(
+                revenueSummary,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.green,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   Widget paymentModesCard() {
@@ -795,41 +790,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
       builder: (context, setState) {
         final revenueData = paymentRevenue;
         final hasData =
-            revenueData.isNotEmpty &&
-            revenueData.values.any((value) => value > 0);
-        final chartSections =
-            hasData
-                ? revenueData.entries.map((e) {
-                  final percentage = e.value;
-                  return PieChartSectionData(
-                    value: percentage,
-                    color: colors[e.key] ?? Colors.grey,
-                    radius: 40,
-                    showTitle: true,
-                    title: "${percentage.toStringAsFixed(0)}%",
-                    titleStyle: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: colors[e.key] ?? Colors.grey,
-                    ),
-                    titlePositionPercentageOffset: 1.6,
-                  );
-                }).toList()
-                : [
-                  PieChartSectionData(
-                    value: 100,
-                    color: Colors.grey.shade300,
-                    radius: 40,
-                    showTitle: true,
-                    title: "0%",
-                    titleStyle: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade600,
-                    ),
-                    titlePositionPercentageOffset: 1.6,
-                  ),
-                ];
+            revenueData.isNotEmpty && revenueData.values.any((value) => value > 0);
+
+        final totalAmount = hasData
+            ? revenueData.values.reduce((a, b) => a + b)
+            : 1;
+
+        final chartSections = hasData
+            ? revenueData.entries.map((e) {
+          final amount = e.value;
+          final percentage = (amount / totalAmount) * 100;
+          return PieChartSectionData(
+            value: amount,
+            color: colors[e.key] ?? Colors.grey,
+            radius: 40,
+            showTitle: true,
+            title: "${percentage.toStringAsFixed(0)}%",
+            titleStyle: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: colors[e.key] ?? Colors.grey,
+            ),
+            titlePositionPercentageOffset: 1.6,
+          );
+        }).toList()
+            : [
+          PieChartSectionData(
+            value: 1,
+            color: Colors.grey.shade300,
+            radius: 40,
+            showTitle: true,
+            title: "0%",
+            titleStyle: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey.shade600,
+            ),
+            titlePositionPercentageOffset: 1.6,
+          ),
+        ];
+
         return Container(
           width: 427,
           padding: const EdgeInsets.all(16),
@@ -844,102 +844,95 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ],
           ),
-          child:
-              isPaymentLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      /// Header + Order Type Filter
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            "Payment Modes",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.indigo,
-                            ),
-                          ),
-                          if (paymentOrderTypes.isNotEmpty)
-                            DropdownButton<String>(
-                              value: selectedPaymentOrderType,
-                              underline: const SizedBox(),
-                              items:
-                                  paymentOrderTypes
-                                      .map(
-                                        (e) => DropdownMenuItem(
-                                          value: e,
-                                          child: Text(e),
-                                        ),
-                                      )
-                                      .toList(),
-                              onChanged: (val) {
-                                if (val == null) return;
-                                setState(() {
-                                  selectedPaymentOrderType = val;
-                                  fetchPaymentModesRevenue(orderType: val);
-                                });
-                              },
-                            ),
-                        ],
-                      ),
+          child: isPaymentLoading
+              ? const Center(child: CircularProgressIndicator())
+              : Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              /// Header + Order Type Filter
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "Payment Modes",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.indigo,
+                    ),
+                  ),
+                  if (paymentOrderTypes.isNotEmpty)
+                    DropdownButton<String>(
+                      value: selectedPaymentOrderType,
+                      underline: const SizedBox(),
+                      items: paymentOrderTypes
+                          .map((e) => DropdownMenuItem(
+                        value: e,
+                        child: Text(e),
+                      ))
+                          .toList(),
+                      onChanged: (val) {
+                        if (val == null) return;
+                        setState(() {
+                          selectedPaymentOrderType = val;
+                          fetchPaymentModesRevenue(orderType: val);
+                        });
+                      },
+                    ),
+                ],
+              ),
 
-                      /// Pie Chart
-                      SizedBox(
-                        height: 270,
-                        child: PieChart(
-                          PieChartData(
-                            centerSpaceRadius: 55,
-                            sectionsSpace: 2,
-                            borderData: FlBorderData(show: false),
-                            sections: chartSections,
+              /// Pie Chart
+              SizedBox(
+                height: 270,
+                child: PieChart(
+                  PieChartData(
+                    centerSpaceRadius: 55,
+                    sectionsSpace: 2,
+                    borderData: FlBorderData(show: false),
+                    sections: chartSections,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              /// Legends
+              hasData
+                  ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: revenueData.keys.map((key) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.circle,
+                          size: 10,
+                          color: colors[key] ?? Colors.grey,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          "$key (₹${revenueData[key]})",
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-
-                      /// Legends
-                      hasData
-                          ? Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children:
-                                revenueData.keys.map((key) {
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.circle,
-                                          size: 10,
-                                          color: colors[key] ?? Colors.grey,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          key,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }).toList(),
-                          )
-                          : Center(
-                            child: Text(
-                              "No payment data",
-                              style: TextStyle(
-                                color: Colors.grey.shade600,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                    ],
+                      ],
+                    ),
+                  );
+                }).toList(),
+              )
+                  : Center(
+                child: Text(
+                  "No payment data",
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
                   ),
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
