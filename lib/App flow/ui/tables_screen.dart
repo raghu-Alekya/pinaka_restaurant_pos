@@ -8,8 +8,12 @@ import 'package:intl/intl.dart';
 import '../../blocs/Bloc Event/TableEvent.dart';
 import '../../blocs/Bloc Event/ZoneEvent.dart';
 import '../../blocs/Bloc Event/attendance_event.dart';
+import '../../blocs/Bloc Event/kot_event.dart';
+import '../../blocs/Bloc Event/order_event.dart';
 import '../../blocs/Bloc Logic/attendance_bloc.dart';
 import '../../blocs/Bloc Logic/checkin_bloc.dart';
+import '../../blocs/Bloc Logic/kot_bloc.dart';
+import '../../blocs/Bloc Logic/order_bloc.dart';
 import '../../blocs/Bloc Logic/table_bloc.dart';
 import '../../blocs/Bloc Logic/zone_bloc.dart';
 import '../../blocs/Bloc State/ZoneState.dart';
@@ -19,9 +23,14 @@ import '../../local database/area_dao.dart';
 import '../../local database/login_dao.dart';
 import '../../local database/table_dao.dart';
 import '../../models/UserPermissions.dart';
+import '../../models/order/KOT_model.dart';
+import '../../models/order/guest_details.dart';
+import '../../models/order/order_items.dart';
+import '../../models/order/order_model.dart';
 import '../../models/view_mode.dart';
 import '../../repositories/checkin_repository.dart';
 import '../../repositories/employee_repository.dart';
+import '../../repositories/order_repository.dart';
 import '../../repositories/table_merge_repository.dart';
 import '../../repositories/table_repository.dart';
 import '../../repositories/zone_repository.dart';
@@ -47,6 +56,7 @@ import '../widgets/bottom_nav_bar.dart';
 import '../widgets/table_helpers.dart';
 import 'CheckinPopup.dart';
 import 'DailyAttendanceScreen.dart';
+import 'dashboard screen.dart';
 import 'guest_details_popup.dart';
 
 /// Screen widget that manages the floor plan of tables in a restaurant POS system.
@@ -65,6 +75,7 @@ class TablesScreen extends StatefulWidget {
   final String token;
   final String restaurantId;
   final String restaurantName;
+  final int ?zoneId;
 
   const TablesScreen({
     Key? key,
@@ -73,6 +84,7 @@ class TablesScreen extends StatefulWidget {
     required this.token,
     required this.restaurantId,
     required this.restaurantName,
+    this.zoneId,
   }) : super(key: key);
 
   @override
@@ -82,6 +94,11 @@ class TablesScreen extends StatefulWidget {
 ViewMode _currentViewMode = ViewMode.gridCommonImage;
 
 class _TablesScreenState extends State<TablesScreen> {
+
+  final OrderRepository orderRepository = OrderRepository(
+    baseUrl: "https://merchantrestaurant.alektasolutions.com", // Replace with your backend URL
+  );
+
   /// Current zoom scale applied to the floor plan canvas.
   double _scale = 1.0;
 
@@ -103,7 +120,8 @@ class _TablesScreenState extends State<TablesScreen> {
       widget.token,
       widget.restaurantId,
       widget.restaurantName,
-      _userPermissions,
+      _userPermissions as UserPermissions?,
+      // widget.zoneId as UserPermissions?
     );
     setState(() {
       _selectedIndex = index;
@@ -226,9 +244,9 @@ class _TablesScreenState extends State<TablesScreen> {
         setState(() {
           _userPermissions = savedPermissions;
           _currentViewMode =
-              _userPermissions!.canDefaultLayout == 'gridCommonImage'
-                  ? ViewMode.gridCommonImage
-                  : ViewMode.normal;
+          _userPermissions!.canDefaultLayout == 'gridCommonImage'
+              ? ViewMode.gridCommonImage
+              : ViewMode.normal;
         });
       }
 
@@ -296,27 +314,27 @@ class _TablesScreenState extends State<TablesScreen> {
       barrierDismissible: false,
       builder:
           (_) => BlocProvider(
-            create: (_) => CheckInBloc(CheckInRepository()),
-            child: Checkinpopup(
-              token: widget.token,
-              onCheckIn: () {
-                Navigator.of(context).pop();
-                setState(() => _isCheckInDone = true);
-              },
-              onCancel: () {
-                Navigator.of(context).pop();
-              },
-              onPermissionsReceived: (permissions) {
-                setState(() {
-                  _userPermissions = permissions;
-                  _currentViewMode =
-                      _userPermissions!.canDefaultLayout == 'gridCommonImage'
-                          ? ViewMode.gridCommonImage
-                          : ViewMode.normal;
-                });
-              },
-            ),
-          ),
+        create: (_) => CheckInBloc(CheckInRepository()),
+        child: Checkinpopup(
+          token: widget.token,
+          onCheckIn: () {
+            Navigator.of(context).pop();
+            setState(() => _isCheckInDone = true);
+          },
+          onCancel: () {
+            Navigator.of(context).pop();
+          },
+          onPermissionsReceived: (permissions) {
+            setState(() {
+              _userPermissions = permissions;
+              _currentViewMode =
+              _userPermissions!.canDefaultLayout == 'gridCommonImage'
+                  ? ViewMode.gridCommonImage
+                  : ViewMode.normal;
+            });
+          },
+        ),
+      ),
     );
   }
 
@@ -374,11 +392,11 @@ class _TablesScreenState extends State<TablesScreen> {
   ///
   /// Returns `true` if overlapping, `false` otherwise.
   bool _isOverlapping(
-    Offset newPos,
-    Size newSize, {
-    int? skipIndex,
-    String? areaName,
-  }) {
+      Offset newPos,
+      Size newSize, {
+        int? skipIndex,
+        String? areaName,
+      }) {
     const double tablePadding = 13.0;
     const double chairClearance = 17.0;
 
@@ -429,11 +447,11 @@ class _TablesScreenState extends State<TablesScreen> {
   ///
   /// Returns a suitable non-overlapping position or the original position if none found.
   Offset _findNonOverlappingPosition(
-    Offset pos,
-    Size size, {
-    int? skipIndex,
-    String? areaName,
-  }) {
+      Offset pos,
+      Size size, {
+        int? skipIndex,
+        String? areaName,
+      }) {
     const int maxAttempts = 1000;
     const double step = 27.0;
 
@@ -842,8 +860,8 @@ class _TablesScreenState extends State<TablesScreen> {
     final bool isMerged = tableData['is_merged'] ?? false;
 
     final size = TableHelpers.getPlacedTableSize(capacity, shape);
-
     final String status = tableData['status'] ?? 'Available';
+
     Widget tableContent = PlacedTableBuilder.buildPlacedTableWidget(
       name: mergedTables,
       capacity: capacity,
@@ -880,22 +898,25 @@ class _TablesScreenState extends State<TablesScreen> {
 
     Widget gestureTable = GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () {
+      onTap: () async {
         final statusLower = status.toLowerCase();
         final reservationDateStr = tableData['reservationDate'];
         final reservationTimeStr = tableData['reservationTime'];
 
+        // 1️⃣ Child table check
         if (capacity == 0) {
           AreaMovementNotifier.showPopup(
             context: context,
             fromArea: area ?? '',
             toArea: '',
             tableName: mergedTables,
-            customMessage: 'Unable to order: This is a child table. Please order from parent table',
+            customMessage:
+            'Unable to order: This is a child table. Please order from parent table',
           );
           return;
         }
 
+        // 2️⃣ Reservation check
         if (statusLower == 'reserve' &&
             reservationDateStr != null &&
             reservationTimeStr != null &&
@@ -917,8 +938,86 @@ class _TablesScreenState extends State<TablesScreen> {
           return;
         }
 
-        if (!_showPopup) {
-          _showGuestDetailsPopup(context, index, tableData);
+        // 3️⃣ Available → show popup
+        if (statusLower == 'available') {
+          if (!_showPopup) {
+            _showGuestDetailsPopup(context, index, tableData);
+          }
+          return;
+        }
+
+        // 4️⃣ Dine → fetch existing order & navigate
+        if (statusLower == 'dine' || statusLower == 'dine in') {
+          final orderRepository = OrderRepository(
+            baseUrl: 'https://merchantrestaurant.alektasolutions.com',
+          );
+
+          OrderModel? existingOrder;
+          try {
+            existingOrder = await orderRepository.getOrderByTable(
+              tableId: tableData['table_id'] ?? 0,
+              token: widget.token,
+              restaurantId: int.parse(widget.restaurantId),
+              zoneId: tableData['zone_id'] ?? 0,
+            );
+          } catch (e) {
+            AppLogger.error("Failed to fetch existing order: $e");
+          }
+
+          final List<KotModel> existingKots = existingOrder?.kotOrders ?? [];
+          final List<OrderItems> existingOrderItems =
+              existingOrder?.kotOrders?.expand((kot) => kot.items).toList() ?? [];
+
+          final kotBloc = context.read<KotBloc>();
+          kotBloc.add(SetExistingKots(kots: existingKots));
+
+          // 🔹 Extract guest count from KOTs
+          final guestDetails = [Guestcount(guestCount: existingOrder?.guestCount ?? 0)];
+
+
+          final orderBloc = context.read<OrderBloc>();
+          orderBloc.add(LoadExistingOrder(
+            orderId: existingOrder?.orderId ?? 0,
+            tableId: existingOrder?.tableId ?? tableData['table_id'] ?? 0,
+            zoneId: existingOrder?.zoneId ?? tableData['zone_id'] ?? 0,
+            tableName: existingOrder?.tableName ?? tableData['tableName'] ?? '',
+            zoneName: existingOrder?.zoneName ?? tableData['areaName'] ?? '',
+            restaurantId: widget.restaurantId,
+            kotList: existingKots,
+            // guests: guestDetails,
+            guestDetails: Guestcount(
+              guestCount: existingOrder?.guestCount ?? 0, // default 0 if null
+            ),
+          ));
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => MultiBlocProvider(
+                providers: [
+                  BlocProvider.value(value: orderBloc),
+                  BlocProvider.value(value: kotBloc),
+                  BlocProvider.value(value: context.read<CheckInBloc>()),
+                ],
+                child: DashboardScreen(
+                    token: widget.token,
+                    restaurantId: orderBloc.state.restaurantId.toString(),
+                    tableData: tableData,
+                    pin: widget.pin,
+                    orderId: orderBloc.state.orderId,
+                    tableId: orderBloc.state.tableId,
+                    zoneId: orderBloc.state.zoneId,
+                    zoneName: orderBloc.state.zoneName,
+                    tableName: orderBloc.state.tableName,
+                    kotList: orderBloc.state.kotList,
+                    restaurantName: widget.restaurantName,
+                    userPermissions: null,
+                    guestDetails: orderBloc.state.guestDetails
+
+                ),
+              ),
+            ),
+          );
         }
       },
       onDoubleTap: (_userPermissions == null ||
@@ -951,14 +1050,22 @@ class _TablesScreenState extends State<TablesScreen> {
             fromArea: tableData['areaName'] ?? '',
             toArea: '',
             tableName: tableData['tableName'] ?? '',
-            customMessage: 'Unable to Edit Merge: This is a child table. Please Edit from parent table',
+            customMessage:
+            'Unable to Edit Merge: This is a child table. Please Edit from parent table',
           );
           return;
         }
-        final statusLower = status.toLowerCase();
-        if (statusLower == 'available' || statusLower == 'dine in') {
-          _showTableActionPopup(context, index, tableData);
+        if (status.toLowerCase() == 'reserve') {
+          AreaMovementNotifier.showPopup(
+            context: context,
+            fromArea: area ?? '',
+            toArea: '',
+            tableName: mergedTables,
+            customMessage: 'You cannot merge a reserved table',
+          );
+          return;
         }
+        _showTableActionPopup(context, index, tableData);
       },
       child: RotatedBox(quarterTurns: quarterTurns, child: borderedTable),
     );
@@ -969,10 +1076,8 @@ class _TablesScreenState extends State<TablesScreen> {
       top: 0,
       right: 0,
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 8.0,
-          vertical: 4.0,
-        ),
+        padding:
+        const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
         child: Column(
           children: [
             if (!_showPopup)
@@ -1030,32 +1135,45 @@ class _TablesScreenState extends State<TablesScreen> {
         ],
       ),
     );
+
   }
+
+  // /// ✅ Add or confirm this method exists
+  // void _updateTablePosition(int index, Offset newPosition) {
+  //   setState(() {
+  //     placedTables[index]['position'] = newPosition;
+  //   });
+  // }
+
+
   Widget _buildShapeBasedGridItem(
-    Map<String, dynamic> tableData,
-    int filteredIndex,
-  ) {
+      Map<String, dynamic> tableData,
+      int filteredIndex,
+      ) {
     final actualIndex = placedTables.indexOf(tableData);
     final int capacity = int.tryParse(tableData['capacity']?.toString() ?? '0') ?? 0;
 
     return ShapeBasedGridItem(
       tableData: tableData,
-      onTap: () {
+      onTap: () async {
         final status = tableData['status']?.toLowerCase() ?? 'available';
         final reservationDateStr = tableData['reservationDate'];
         final reservationTimeStr = tableData['reservationTime'];
 
+        // 1️⃣ Child table check
         if (capacity == 0) {
           AreaMovementNotifier.showPopup(
             context: context,
             fromArea: tableData['areaName'] ?? '',
             toArea: '',
             tableName: tableData['tableName'] ?? '',
-            customMessage: 'Unable to order: This is a child table. Please order from parent table',
+            customMessage:
+            'Unable to order: This is a child table. Please order from parent table',
           );
           return;
         }
 
+        // 2️⃣ Reservation check
         if (status == 'reserve' &&
             reservationDateStr != null &&
             reservationTimeStr != null &&
@@ -1077,12 +1195,89 @@ class _TablesScreenState extends State<TablesScreen> {
           return;
         }
 
-        if (!_showPopup) {
-          _showGuestDetailsPopup(context, actualIndex, tableData);
+        // 3️⃣ Available table → show popup
+        if (status == 'available') {
+          if (!_showPopup) {
+            _showGuestDetailsPopup(context, actualIndex, tableData);
+          }
+          return;
+        }
+
+        // 4️⃣ Dine table → fetch existing order & navigate to Dashboard
+        if (status == 'dine' || status == 'dine in') {
+          final orderRepository = OrderRepository(
+            baseUrl: 'https://merchantrestaurant.alektasolutions.com',
+          );
+
+          OrderModel? existingOrder;
+          try {
+            existingOrder = await orderRepository.getOrderByTable(
+              tableId: tableData['table_id'] ?? 0,
+              token: widget.token,
+              restaurantId: int.parse(widget.restaurantId),
+              zoneId: tableData['zone_id'] != null
+                  ? int.parse(tableData['zone_id'].toString())
+                  : null,
+            );
+          } catch (e) {
+            AppLogger.error("Failed to fetch existing order: $e");
+          }
+
+          final List<KotModel> existingKots = existingOrder?.kotOrders ?? [];
+          final List<OrderItems> existingOrderItems = existingOrder?.kotOrders
+              ?.expand((kot) => kot.items)
+              .toList() ??
+              [];
+          final guestDetails = Guestcount(guestCount: 0); // replace if real data available
+
+          final orderBloc = context.read<OrderBloc>();
+          orderBloc.add(LoadExistingOrder(
+            orderId: existingOrder?.orderId ?? 0,
+            tableId: existingOrder?.tableId ?? tableData['table_id'] ?? 0,
+            zoneId: existingOrder?.zoneId ?? tableData['zone_id'] ?? 0,
+            tableName: existingOrder?.tableName ?? tableData['tableName'] ?? '',
+            zoneName: existingOrder?.zoneName ?? tableData['zoneName'] ?? '',
+            restaurantId: widget.restaurantId,
+            kotList: existingKots,
+            // orderItems: existingOrderItems,
+            // guests: [guestDetails],
+            guestDetails: Guestcount(
+              guestCount: existingOrder?.guestCount ?? 0, // default 0 if null
+            ),
+          ));
+
+          // Navigate to DashboardScreen
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => MultiBlocProvider(
+                providers: [
+                  BlocProvider.value(value: context.read<OrderBloc>()),
+                  BlocProvider.value(value: context.read<KotBloc>()),
+                  BlocProvider.value(value: context.read<CheckInBloc>()),
+                ],
+                child: DashboardScreen(
+                  token: widget.token,
+                  restaurantId: widget.restaurantId,
+                  tableData: tableData,
+                  pin: widget.pin,
+                  orderId: orderBloc.state.orderId,
+                  tableId: orderBloc.state.tableId,
+                  zoneId: orderBloc.state.zoneId,
+                  zoneName: orderBloc.state.zoneName,
+                  tableName: orderBloc.state.tableName,
+                  kotList: orderBloc.state.kotList,
+                  restaurantName: widget.restaurantName,
+                  userPermissions: null,
+                  guestDetails: tableData['guestDetails'] ?? guestDetails,
+                ),
+              ),
+            ),
+          );
         }
       },
+
       onLongPress: () {
-        final status = tableData['status']?.toLowerCase() ?? 'available';
         if (capacity == 0) {
           AreaMovementNotifier.showPopup(
             context: context,
@@ -1093,38 +1288,50 @@ class _TablesScreenState extends State<TablesScreen> {
           );
           return;
         }
-        if (status == 'available' || status == 'dine in') {
-          _showTableActionPopup(context, actualIndex, tableData);
+        final status = tableData['status']?.toLowerCase() ?? 'available';
+        if (status == 'reserve') {
+          AreaMovementNotifier.showPopup(
+            context: context,
+            fromArea: tableData['areaName'] ?? '',
+            toArea: '',
+            tableName: tableData['tableName'] ?? '',
+            customMessage: 'You cannot merge a reserved table',
+          );
+          return;
         }
+        _showTableActionPopup(context, actualIndex, tableData);
       },
     );
   }
 
   Widget _buildCommonGridItem(
-    Map<String, dynamic> tableData,
-    int filteredIndex,
-  ) {
+      Map<String, dynamic> tableData,
+      int filteredIndex,
+      ) {
     final actualIndex = placedTables.indexOf(tableData);
     final int capacity = int.tryParse(tableData['capacity']?.toString() ?? '0') ?? 0;
 
     return CommonGridItem(
       tableData: tableData,
-      onTap: () {
+      onTap: () async {
         final status = tableData['status']?.toLowerCase() ?? 'available';
         final reservationDateStr = tableData['reservationDate'];
         final reservationTimeStr = tableData['reservationTime'];
 
+        // 1️⃣ Child table check
         if (capacity == 0) {
           AreaMovementNotifier.showPopup(
             context: context,
             fromArea: tableData['areaName'] ?? '',
             toArea: '',
             tableName: tableData['tableName'] ?? '',
-            customMessage: 'Unable to order: This is a child table. Please order from parent table',
+            customMessage:
+            'Unable to order: This is a child table. Please order from parent table',
           );
           return;
         }
 
+        // 2️⃣ Reservation check
         if (status == 'reserve' &&
             reservationDateStr != null &&
             reservationTimeStr != null &&
@@ -1146,12 +1353,88 @@ class _TablesScreenState extends State<TablesScreen> {
           return;
         }
 
-        if (!_showPopup) {
-          _showGuestDetailsPopup(context, actualIndex, tableData);
+        // 3️⃣ Available table → show popup
+        if (status == 'available') {
+          if (!_showPopup) {
+            _showGuestDetailsPopup(context, actualIndex, tableData);
+          }
+          return;
+        }
+
+        // 4️⃣ Dine table → fetch existing order & navigate to Dashboard
+        if (status == 'dine' || status == 'dine in') {
+          final orderRepository = OrderRepository(
+            baseUrl: 'https://merchantrestaurant.alektasolutions.com',
+          );
+
+          OrderModel? existingOrder;
+          try {
+            existingOrder = await orderRepository.getOrderByTable(
+              tableId: tableData['table_id'] ?? 0,
+              token: widget.token,
+              restaurantId: int.parse(widget.restaurantId),
+              zoneId: tableData['zone_id'] != null
+                  ? int.parse(tableData['zone_id'].toString())
+                  : null,
+            );
+          } catch (e) {
+            AppLogger.error("Failed to fetch existing order: $e");
+          }
+
+          final List<KotModel> existingKots = existingOrder?.kotOrders ?? [];
+          final List<OrderItems> existingOrderItems = existingOrder?.kotOrders
+              ?.expand((kot) => kot.items)
+              .toList() ??
+              [];
+          final guestDetails = Guestcount(guestCount: 0); // Replace with real data if available
+
+          final orderBloc = context.read<OrderBloc>();
+          orderBloc.add(LoadExistingOrder(
+            orderId: existingOrder?.orderId ?? 0,
+            tableId: existingOrder?.tableId ?? tableData['table_id'] ?? 0,
+            zoneId: existingOrder?.zoneId ?? tableData['zone_id'] ?? 0,
+            tableName: existingOrder?.tableName ?? tableData['tableName'] ?? '',
+            zoneName: existingOrder?.zoneName ?? tableData['zoneName'] ?? '',
+            restaurantId: widget.restaurantId,
+            kotList: existingKots,
+            guestDetails: Guestcount(
+              guestCount: existingOrder?.guestCount ?? 0, // default 0 if null
+            ),
+            // orderItems: existingOrderItems,
+            // guests: [guestDetails],
+          ));
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => MultiBlocProvider(
+                providers: [
+                  BlocProvider.value(value: context.read<OrderBloc>()),
+                  BlocProvider.value(value: context.read<KotBloc>()),
+                  BlocProvider.value(value: context.read<CheckInBloc>()),
+                ],
+                child: DashboardScreen(
+                  token: widget.token,
+                  restaurantId: widget.restaurantId,
+                  tableData: tableData,
+                  pin: widget.pin,
+                  orderId: orderBloc.state.orderId,
+                  tableId: orderBloc.state.tableId,
+                  zoneId: orderBloc.state.zoneId,
+                  zoneName: orderBloc.state.zoneName,
+                  tableName: orderBloc.state.tableName,
+                  kotList: orderBloc.state.kotList,
+                  restaurantName: widget.restaurantName,
+                  userPermissions: null,
+                  guestDetails: tableData['guestDetails'] ?? guestDetails,
+                ),
+              ),
+            ),
+          );
         }
       },
+
       onLongPress: () {
-        final status = tableData['status']?.toLowerCase() ?? 'available';
         if (capacity == 0) {
           AreaMovementNotifier.showPopup(
             context: context,
@@ -1162,12 +1445,22 @@ class _TablesScreenState extends State<TablesScreen> {
           );
           return;
         }
-        if (status == 'available' || status == 'dine in') {
-          _showTableActionPopup(context, actualIndex, tableData);
+        final status = tableData['status']?.toLowerCase() ?? 'available';
+        if (status == 'reserve') {
+          AreaMovementNotifier.showPopup(
+            context: context,
+            fromArea: tableData['areaName'] ?? '',
+            toArea: '',
+            tableName: tableData['tableName'] ?? '',
+            customMessage: 'You cannot merge a reserved table',
+          );
+          return;
         }
+        _showTableActionPopup(context, actualIndex, tableData);
       },
     );
   }
+
 
   /// Clamps a given [position] of a table so it stays within the canvas bounds.
   ///
@@ -1340,10 +1633,56 @@ class _TablesScreenState extends State<TablesScreen> {
   /// - `index`: The index of the table being modified.
   /// - `tableData`: The table data for the selected table.
   void _showGuestDetailsPopup(
-    BuildContext context,
-    int index,
-    Map<String, dynamic> tableData,
-  ) {
+      BuildContext context,
+      int index,
+      Map<String, dynamic> tableData,
+      ) async {
+    final tableStatus = (tableData['status'] ?? '').toString().toLowerCase().trim();
+    final tableId = tableData['id'] ?? 0;
+    final zoneId = tableData['zone_id'] ?? 0;
+    final tableName = tableData['name'] ?? 'Table';
+    final zoneName = tableData['zone_name'] ?? 'Main Zone';
+
+    final orderRepo = OrderRepository(baseUrl: 'https://merchantrestaurant.alektasolutions.com');
+
+    // try {
+    //   // Fetch the existing order for this table
+    //   final existingOrder = await orderRepo.getOrderByTable(tableId,token);
+    //
+    //   if (existingOrder != null) {
+    //     // ✅ Order exists → navigate directly to Dashboard, skip popup
+    //     final previousGuestCount = tableData['guest_count'] ?? 0;
+    //     context.read<OrderBloc>().add(CreateOrderSuccess(orderId: existingOrder.orderId));
+    //
+    //     Navigator.push(
+    //       context,
+    //       MaterialPageRoute(
+    //         builder: (_) => BlocProvider.value(
+    //           value: context.read<OrderBloc>(),
+    //           child: DashboardScreen(
+    //             guestDetails: Guestcount(guestCount: previousGuestCount),
+    //             token: "YOUR_VALID_TOKEN_HERE",
+    //             restaurantId: '1',
+    //             orderId: existingOrder.orderId,
+    //             tableId: tableId,
+    //             zoneId: zoneId,
+    //             zoneName: zoneName,
+    //             tableName: tableName, kotList: [], pin: widget.pin, restaurantName: widget.restaurantName, userPermissions: null, tableData: {},
+    //           ),
+    //         ),
+    //       ),
+    //     );
+    //     return; // Exit to skip popup
+    //   }
+    // } catch (e) {
+    //   AppLogger.error("Error fetching existing order: $e");
+    //   ScaffoldMessenger.of(context).showSnackBar(
+    //     const SnackBar(content: Text("Failed to check existing order.")),
+    //   );
+    //   return; // Stop to prevent popup in error state
+    // }
+
+    // ─── No existing order → show popup ───
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -1356,11 +1695,60 @@ class _TablesScreenState extends State<TablesScreen> {
             index: index,
             tableData: tableData,
             placedTables: placedTables,
+            onGuestSaved: (guestDetails) async {
+              try {
+                final orderModel = await orderRepo.createOrder(
+                  restaurantId: '1',
+                  tableId: tableId,
+                  zoneId: zoneId,
+                  guests: [guestDetails],
+                  guestCount: guestDetails.guestCount,
+                  token: 'YOUR_VALID_TOKEN_HERE',
+                  zoneName: zoneName,
+                  restaurantName: 'My Restaurant',
+                  tableName: tableName,
+                );
+
+                context.read<OrderBloc>().add(
+                  CreateOrderSuccess(orderId: orderModel.orderId),
+                );
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => BlocProvider.value(
+                      value: context.read<OrderBloc>(),
+                      child: DashboardScreen(
+                        guestDetails: guestDetails,
+                        token: "YOUR_VALID_TOKEN_HERE",
+                        restaurantId: '1',
+                        orderId: orderModel.orderId,
+                        tableId: tableId,
+                        zoneId: zoneId,
+                        zoneName: zoneName,
+                        tableName: tableName, kotList: [],
+                        pin: widget.pin,
+                        restaurantName: widget.restaurantName,
+                        userPermissions: null, tableData: {},
+                      ),
+                    ),
+                  ),
+                );
+              } catch (e) {
+                AppLogger.error("Failed to create order: $e");
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Failed to create order, please try again.")),
+                );
+              }
+            },
+            token: '',
+            restaurantId: '1', pin: widget.pin,
           ),
         );
       },
     );
   }
+
 
   Widget _buildSharedAreaFilter() {
     if (areaNames.isEmpty) return SizedBox.shrink();
@@ -1379,43 +1767,43 @@ class _TablesScreenState extends State<TablesScreen> {
           controller: gridScrollController,
           child: Row(
             children:
-                areaNames.map((area) {
-                  _areaKeys.putIfAbsent(area, () => GlobalKey());
+            areaNames.map((area) {
+              _areaKeys.putIfAbsent(area, () => GlobalKey());
 
-                  final bool isSelected = selectedArea == area;
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                    child: Container(
-                      key: _areaKeys[area],
-                      child: TextButton(
-                        onPressed: () => _selectArea(area),
-                        style: TextButton.styleFrom(
-                          backgroundColor:
-                              isSelected
-                                  ? const Color(0xFFFD6464)
-                                  : Colors.transparent,
-                          foregroundColor:
-                              isSelected ? Colors.white : Colors.black87,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 15.0,
-                            vertical: 13.0,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(5),
-                          ),
-                          textStyle: const TextStyle(
-                            fontWeight: FontWeight.w500,
-                            fontSize: 12.5,
-                          ),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          visualDensity: VisualDensity.compact,
-                        ),
-                        child: Text(area),
+              final bool isSelected = selectedArea == area;
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                child: Container(
+                  key: _areaKeys[area],
+                  child: TextButton(
+                    onPressed: () => _selectArea(area),
+                    style: TextButton.styleFrom(
+                      backgroundColor:
+                      isSelected
+                          ? const Color(0xFFFD6464)
+                          : Colors.transparent,
+                      foregroundColor:
+                      isSelected ? Colors.white : Colors.black87,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 15.0,
+                        vertical: 13.0,
                       ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      textStyle: const TextStyle(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 12.5,
+                      ),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
                     ),
-                  );
-                }).toList(),
+                    child: Text(area),
+                  ),
+                ),
+              );
+            }).toList(),
           ),
         ),
       ),
@@ -1515,8 +1903,8 @@ class _TablesScreenState extends State<TablesScreen> {
             } else if (state is TableDeletedState) {
               final deletedName = state.tableName.toLowerCase();
               final index = placedTables.indexWhere(
-                (table) =>
-                    table['tableName'].toString().toLowerCase() == deletedName,
+                    (table) =>
+                table['tableName'].toString().toLowerCase() == deletedName,
               );
               if (index != -1) {
                 final removed = placedTables[index];
@@ -1549,17 +1937,17 @@ class _TablesScreenState extends State<TablesScreen> {
 
               setState(() {
                 final tablesToRemove =
-                    placedTables
-                        .where((t) => t['areaName'] == areaName)
-                        .map((t) => t['tableName'].toString().toLowerCase())
-                        .toList();
+                placedTables
+                    .where((t) => t['areaName'] == areaName)
+                    .map((t) => t['tableName'].toString().toLowerCase())
+                    .toList();
 
                 placedTables.removeWhere((t) => t['areaName'] == areaName);
                 _usedAreaNames.remove(areaName);
                 _usedTableNames.removeAll(tablesToRemove);
                 if (selectedArea == areaName) {
                   selectedArea =
-                      _usedAreaNames.isNotEmpty ? _usedAreaNames.first : '';
+                  _usedAreaNames.isNotEmpty ? _usedAreaNames.first : '';
                 }
 
                 _isDeletingArea = false;
@@ -1571,10 +1959,10 @@ class _TablesScreenState extends State<TablesScreen> {
                 widget.token,
               );
               final updatedAreaNames =
-                  updatedZones
-                      .map((z) => z['zone_name'].toString())
-                      .toSet()
-                      .cast<String>();
+              updatedZones
+                  .map((z) => z['zone_name'].toString())
+                  .toSet()
+                  .cast<String>();
 
               setState(() {
                 _usedAreaNames = updatedAreaNames;
@@ -1591,10 +1979,10 @@ class _TablesScreenState extends State<TablesScreen> {
 
               final isValidShift =
                   currentShift != null &&
-                  currentShift['shift_status']?.toLowerCase() == 'open' &&
-                  currentShift['shift_id'] != null &&
-                  currentShift['user_id'] != 0 &&
-                  currentShift['start_time'] != false;
+                      currentShift['shift_status']?.toLowerCase() == 'open' &&
+                      currentShift['shift_id'] != null &&
+                      currentShift['user_id'] != 0 &&
+                      currentShift['start_time'] != false;
 
               if (isValidShift) {
                 if (!_isCheckInDone) _showCheckInPopupDirectly();
@@ -1607,12 +1995,12 @@ class _TablesScreenState extends State<TablesScreen> {
                 barrierDismissible: false,
                 builder:
                     (_) => AttendancePopup(
-                      employees: state.employees,
-                      token: widget.token,
-                      onComplete: (String extractedStartTime) async {
-                        _showCheckInPopupDirectly();
-                      },
-                    ),
+                  employees: state.employees,
+                  token: widget.token,
+                  onComplete: (String extractedStartTime) async {
+                    _showCheckInPopupDirectly();
+                  },
+                ),
               );
             }
           },
@@ -1621,6 +2009,22 @@ class _TablesScreenState extends State<TablesScreen> {
       child: Scaffold(
         backgroundColor: const Color(0xFFF0F3FC),
         resizeToAvoidBottomInset: false,
+        // appBar: TopBar(
+        //   token: widget.token,
+        //   pin: widget.pin,
+        //   userPermissions: _userPermissions,
+        //   onPermissionsReceived: (permissions) {
+        //     setState(() {
+        //       _userPermissions = permissions;
+        //       if (_userPermissions!.canDefaultLayout == 'gridCommonImage') {
+        //         _currentViewMode = ViewMode.gridCommonImage;
+        //       } else {
+        //         _currentViewMode = ViewMode.normal;
+        //       }
+        //     });
+        //   }, restaurantId: 'widget.restaurantId',
+        // ),
+
         appBar: TopBar(
           token: widget.token,
           pin: widget.pin,
@@ -1647,171 +2051,171 @@ class _TablesScreenState extends State<TablesScreen> {
                 right: _showPopup ? popupWidth : 0,
                 bottom: 0,
                 child:
-                    _isLoadingTables
-                        ? const Center(
-                          child: CircularProgressIndicator(
-                            color: Color(0xFF0A1B4D),
+                _isLoadingTables
+                    ? const Center(
+                  child: CircularProgressIndicator(
+                    color: Color(0xFF0A1B4D),
+                  ),
+                )
+                    : Stack(
+                  children: [
+                    TablePlacementWidget(
+                      placedTables: placedTables,
+                      scale: _scale,
+                      showPopup: _showPopup,
+                      addTable: (data, position) {
+                        context.read<TableBloc>().add(
+                          AddTableEvent(
+                            tableData: data,
+                            position: position,
+                            token: widget.token,
+                            pin: int.parse(widget.pin),
                           ),
-                        )
-                        : Stack(
-                          children: [
-                            TablePlacementWidget(
-                              placedTables: placedTables,
-                              scale: _scale,
-                              showPopup: _showPopup,
-                              addTable: (data, position) {
-                                context.read<TableBloc>().add(
-                                  AddTableEvent(
-                                    tableData: data,
-                                    position: position,
-                                    token: widget.token,
-                                    pin: int.parse(widget.pin),
-                                  ),
-                                );
-                              },
-                              updateTablePosition: _updateTablePosition,
-                              buildAddContentPrompt:
-                                  () => const SizedBox.shrink(),
-                              buildPlacedTable: _buildPlacedTable,
-                              selectedArea: selectedArea ?? '',
-                              onTapOutside: _handleTapOutside,
-                              isLoading: _isLoadingTables,
+                        );
+                      },
+                      updateTablePosition: _updateTablePosition,
+                      buildAddContentPrompt:
+                          () => const SizedBox.shrink(),
+                      buildPlacedTable: _buildPlacedTable,
+                      selectedArea: selectedArea ?? '',
+                      onTapOutside: _handleTapOutside,
+                      isLoading: _isLoadingTables,
+                    ),
+                    if (_filteredTables.isEmpty &&
+                        areaNames.isNotEmpty &&
+                        !_showPopup)
+                      Positioned(
+                        top: MediaQuery.of(context).size.height * 0.32,
+                        left: 20,
+                        right: 20,
+                        child: RichText(
+                          textAlign: TextAlign.center,
+                          text: const TextSpan(
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Color(0xFF0A1B4D),
+                              fontWeight: FontWeight.w400,
                             ),
-                            if (_filteredTables.isEmpty &&
-                                areaNames.isNotEmpty &&
-                                !_showPopup)
-                              Positioned(
-                                top: MediaQuery.of(context).size.height * 0.32,
-                                left: 20,
-                                right: 20,
-                                child: RichText(
-                                  textAlign: TextAlign.center,
-                                  text: const TextSpan(
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: Color(0xFF0A1B4D),
-                                      fontWeight: FontWeight.w400,
-                                    ),
-                                    children: [
-                                      TextSpan(
-                                        text:
-                                            'No tables have been added in this area yet.\n Click the',
-                                        style: TextStyle(height: 1.4),
-                                      ),
-                                      TextSpan(
-                                        text: ' "Table Setup"',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          height: 1.4,
-                                        ),
-                                      ),
-                                      TextSpan(
-                                        text:
-                                            ' button to create and arrange your tables.',
-                                        style: TextStyle(height: 1.4),
-                                      ),
-                                    ],
-                                  ),
+                            children: [
+                              TextSpan(
+                                text:
+                                'No tables have been added in this area yet.\n Click the',
+                                style: TextStyle(height: 1.4),
+                              ),
+                              TextSpan(
+                                text: ' "Table Setup"',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  height: 1.4,
                                 ),
                               ),
-                          ],
+                              TextSpan(
+                                text:
+                                ' button to create and arrange your tables.',
+                                style: TextStyle(height: 1.4),
+                              ),
+                            ],
+                          ),
                         ),
+                      ),
+                  ],
+                ),
               )
             else
               Positioned.fill(
                 child: Padding(
                   padding: EdgeInsets.only(
                     top:
-                        _currentViewMode == ViewMode.gridShapeBased ||
-                                _currentViewMode == ViewMode.gridCommonImage
-                            ? 80
-                            : 20,
+                    _currentViewMode == ViewMode.gridShapeBased ||
+                        _currentViewMode == ViewMode.gridCommonImage
+                        ? 80
+                        : 20,
                     left: 20,
                     right: 20,
                     bottom: 20,
                   ),
                   child:
-                      _isLoadingTables
-                          ? const Center(
-                            child: CircularProgressIndicator(
+                  _isLoadingTables
+                      ? const Center(
+                    child: CircularProgressIndicator(
+                      color: Color(0xFF0A1B4D),
+                    ),
+                  )
+                      : (_filteredTables.isEmpty &&
+                      areaNames.isNotEmpty &&
+                      !_showPopup)
+                      ? Stack(
+                    children: [
+                      Positioned(
+                        top: MediaQuery.of(context).size.height * 0.25,
+                        left: 20,
+                        right: 20,
+                        child: RichText(
+                          textAlign: TextAlign.center,
+                          text: const TextSpan(
+                            style: TextStyle(
+                              fontSize: 16,
                               color: Color(0xFF0A1B4D),
+                              fontWeight: FontWeight.w400,
                             ),
-                          )
-                          : (_filteredTables.isEmpty &&
-                              areaNames.isNotEmpty &&
-                              !_showPopup)
-                          ? Stack(
                             children: [
-                              Positioned(
-                                top: MediaQuery.of(context).size.height * 0.25,
-                                left: 20,
-                                right: 20,
-                                child: RichText(
-                                  textAlign: TextAlign.center,
-                                  text: const TextSpan(
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: Color(0xFF0A1B4D),
-                                      fontWeight: FontWeight.w400,
-                                    ),
-                                    children: [
-                                      TextSpan(
-                                        text:
-                                            'No tables have been added in this area yet.\n Click the',
-                                        style: TextStyle(height: 1.4),
-                                      ),
-                                      TextSpan(
-                                        text: ' "Table Setup"',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          height: 1.4,
-                                        ),
-                                      ),
-                                      TextSpan(
-                                        text:
-                                            ' button to create and arrange your tables.',
-                                        style: TextStyle(height: 1.4),
-                                      ),
-                                    ],
-                                  ),
+                              TextSpan(
+                                text:
+                                'No tables have been added in this area yet.\n Click the',
+                                style: TextStyle(height: 1.4),
+                              ),
+                              TextSpan(
+                                text: ' "Table Setup"',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  height: 1.4,
                                 ),
+                              ),
+                              TextSpan(
+                                text:
+                                ' button to create and arrange your tables.',
+                                style: TextStyle(height: 1.4),
                               ),
                             ],
-                          )
-                          : Scrollbar(
-                            controller: gridScrollController,
-                            thumbVisibility: true,
-                            thickness: 10,
-                            radius: const Radius.circular(8),
-                            child: Transform.scale(
-                              scale: _scale,
-                              alignment: Alignment.topLeft,
-                              child: GridView.builder(
-                                controller: gridScrollController,
-                                itemCount: _sortedFilteredTables.length,
-                                padding: const EdgeInsets.all(10),
-                                gridDelegate: _currentViewMode == ViewMode.gridShapeBased
-                                    ? const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 10,
-                                  crossAxisSpacing: 20,
-                                  mainAxisSpacing: 20,
-                                  childAspectRatio: 0.9,
-                                )
-                                    : const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 11,
-                                  crossAxisSpacing: 18,
-                                  mainAxisSpacing: 18,
-                                  childAspectRatio: 1.0,
-                                ),
-                                itemBuilder: (context, index) {
-                                  final table = _sortedFilteredTables[index];
-                                  return _currentViewMode == ViewMode.gridShapeBased
-                                      ? _buildShapeBasedGridItem(table, index)
-                                      : _buildCommonGridItem(table, index);
-                                },
-                              ),
-                            ),
                           ),
+                        ),
+                      ),
+                    ],
+                  )
+                      : Scrollbar(
+                    controller: gridScrollController,
+                    thumbVisibility: true,
+                    thickness: 10,
+                    radius: const Radius.circular(8),
+                    child: Transform.scale(
+                      scale: _scale,
+                      alignment: Alignment.topLeft,
+                      child: GridView.builder(
+                        controller: gridScrollController,
+                        itemCount: _sortedFilteredTables.length,
+                        padding: const EdgeInsets.all(10),
+                        gridDelegate: _currentViewMode == ViewMode.gridShapeBased
+                            ? const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 10,
+                          crossAxisSpacing: 20,
+                          mainAxisSpacing: 20,
+                          childAspectRatio: 0.9,
+                        )
+                            : const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 11,
+                          crossAxisSpacing: 18,
+                          mainAxisSpacing: 18,
+                          childAspectRatio: 1.0,
+                        ),
+                        itemBuilder: (context, index) {
+                          final table = _sortedFilteredTables[index];
+                          return _currentViewMode == ViewMode.gridShapeBased
+                              ? _buildShapeBasedGridItem(table, index)
+                              : _buildCommonGridItem(table, index);
+                        },
+                      ),
+                    ),
+                  ),
                 ),
               ),
 
@@ -1894,20 +2298,20 @@ class _TablesScreenState extends State<TablesScreen> {
                         child: PlacedTableBuilder.buildPlacedTableWidget(
                           name: placedTables[_selectedTableIndex!]['tableName'],
                           capacity:
-                              placedTables[_selectedTableIndex!]['capacity'],
+                          placedTables[_selectedTableIndex!]['capacity'],
                           area: placedTables[_selectedTableIndex!]['areaName'],
                           shape: placedTables[_selectedTableIndex!]['shape'],
                           size:
-                              TableHelpers.getPlacedTableSize(
-                                placedTables[_selectedTableIndex!]['capacity'],
-                                placedTables[_selectedTableIndex!]['shape'],
-                              ) *
+                          TableHelpers.getPlacedTableSize(
+                            placedTables[_selectedTableIndex!]['capacity'],
+                            placedTables[_selectedTableIndex!]['shape'],
+                          ) *
                               0.8,
                           rotation:
-                              placedTables[_selectedTableIndex!]['rotation'] ??
+                          placedTables[_selectedTableIndex!]['rotation'] ??
                               0.0,
                           status:
-                              placedTables[_selectedTableIndex!]['status'] ??
+                          placedTables[_selectedTableIndex!]['status'] ??
                               'Available',
                         ),
                       ),
@@ -1978,16 +2382,16 @@ class _TablesScreenState extends State<TablesScreen> {
                     builder: (context) {
                       final hasPermission =
                           areaNames.isNotEmpty &&
-                          !_showPopup &&
-                          _userPermissions != null &&
-                          _userPermissions!.canSetupTables;
+                              !_showPopup &&
+                              _userPermissions != null &&
+                              _userPermissions!.canSetupTables;
 
                       return Container(
                         decoration: BoxDecoration(
                           color:
-                              hasPermission
-                                  ? const Color(0xFF15315E)
-                                  : Colors.grey.shade400,
+                          hasPermission
+                              ? const Color(0xFF15315E)
+                              : Colors.grey.shade400,
                           borderRadius: BorderRadius.circular(6),
                           boxShadow: [
                             BoxShadow(
@@ -2016,7 +2420,7 @@ class _TablesScreenState extends State<TablesScreen> {
                                 toArea: '',
                                 tableName: 'Table Setup',
                                 customMessage:
-                                    "No permission to access Table Setup",
+                                "No permission to access Table Setup",
                               );
                             }
                           },
@@ -2028,9 +2432,9 @@ class _TablesScreenState extends State<TablesScreen> {
                                 'Table Setup',
                                 style: TextStyle(
                                   color:
-                                      hasPermission
-                                          ? Colors.white
-                                          : Colors.grey.shade200,
+                                  hasPermission
+                                      ? Colors.white
+                                      : Colors.grey.shade200,
                                   fontSize: 14,
                                 ),
                               ),
@@ -2038,9 +2442,9 @@ class _TablesScreenState extends State<TablesScreen> {
                               Icon(
                                 Icons.edit,
                                 color:
-                                    hasPermission
-                                        ? Colors.white
-                                        : Colors.grey.shade200,
+                                hasPermission
+                                    ? Colors.white
+                                    : Colors.grey.shade200,
                                 size: 14,
                               ),
                             ],
@@ -2082,7 +2486,7 @@ class _TablesScreenState extends State<TablesScreen> {
                         double.tryParse(
                           updatedData['rotation']?.toString() ?? '',
                         ) ??
-                        oldRotation;
+                            oldRotation;
 
                     final shape = updatedData['shape'];
                     final capacity = updatedData['capacity'];
@@ -2093,12 +2497,12 @@ class _TablesScreenState extends State<TablesScreen> {
 
                     bool needsReposition =
                         newArea != oldArea ||
-                        _isOverlapping(
-                          newPos,
-                          currentSize,
-                          skipIndex: index,
-                          areaName: newArea,
-                        );
+                            _isOverlapping(
+                              newPos,
+                              currentSize,
+                              skipIndex: index,
+                              areaName: newArea,
+                            );
 
                     Offset finalPos = newPos;
                     if (needsReposition) {
