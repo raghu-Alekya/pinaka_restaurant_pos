@@ -490,7 +490,7 @@ class _TopBarState extends State<TopBar> {
     );
   }
 }
-  class TrianglePainter extends CustomPainter {
+class TrianglePainter extends CustomPainter {
   final bool isLeft;
   final Color fillColor;
   final Color borderColor;
