@@ -37,8 +37,9 @@ class OrderState {
     List<OrderItems>? orderItems,
     List<KotModel>? kotList,
     bool? showKOTDropdown,
-    Guestcount? guestDetails, // ✅ single guest
+    Guestcount? guestDetails,
     Map<String, double>? addonPrices,
+    int? guestCount, // ✅ add this
     int? orderId,
     int? tableId,
     int? zoneId,
@@ -51,7 +52,7 @@ class OrderState {
       kotList: kotList ?? this.kotList,
       showKOTDropdown: showKOTDropdown ?? this.showKOTDropdown,
       guestDetails: guestDetails ?? this.guestDetails,
-      guestCount: guestCount ?? this.guestCount,
+      guestCount: guestCount ?? this.guestCount, // ✅ now updates correctly
       addonPrices: addonPrices ?? this.addonPrices,
       orderId: orderId ?? this.orderId,
       tableId: tableId ?? this.tableId,
@@ -61,4 +62,5 @@ class OrderState {
       restaurantId: restaurantId ?? this.restaurantId,
     );
   }
+
 }

@@ -43,6 +43,7 @@ class NavigationHelper {
             pin: pin,
             token: token,
             restaurantId: restaurantId,
+            // userPermissions: userPermissions,
             restaurantName: restaurantName,
           ),
         ),

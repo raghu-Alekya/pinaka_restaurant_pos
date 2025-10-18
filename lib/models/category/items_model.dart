@@ -86,6 +86,15 @@ class Product {
       else if (val == 'false' || val == '0' || val == 'nonveg')
         parsedIsVeg = false;
     }
+    // // parse image safely
+    // String parsedImage;
+    // final rawImage = json['image'];
+    // if (rawImage == null) {
+    //   parsedImage = images.isNotEmpty ? images.first : '';
+    // } else {
+    //   parsedImage = rawImage.toString(); // works even if bool
+    // }
+
 
 
     // Parse variants safely, fallback if API uses a different field

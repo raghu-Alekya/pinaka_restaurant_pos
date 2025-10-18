@@ -46,6 +46,7 @@ dependencies:
   fl_chart: ^0.68.0
   pie_chart: ^5.4.0
   image_picker: ^0.8.7+5
+  dotted_line: ^3.2.2
 
 dev_dependencies:
   flutter_test:

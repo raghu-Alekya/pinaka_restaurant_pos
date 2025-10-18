@@ -58,6 +58,8 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
             widget.tableData['zoneName'] ??
             widget.tableData['areaName'] ??
             'Unknown Zone';
+    final int? reservationId = widget.tableData['reservation_id'] as int?;
+
     return Material(
       type: MaterialType.transparency,
       child: Center(
@@ -145,7 +147,11 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                             ),
                           );
                           return;
+
                         }
+                        // 🧹 Clear old order items before creating new one
+                        context.read<OrderBloc>().add(ClearOrder());
+
                         context.read<OrderBloc>().add(
                           SelectTable(
                             tableId: tableId,
@@ -173,6 +179,7 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                             guests: [guestDetails],
                             token: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvbWVyY2hhbnRyZXN0YXVyYW50LmFsZWt0YXNvbHV0aW9ucy5jb20iLCJpYXQiOjE3NTgyNjk5NDcsIm5iZiI6MTc1ODI2OTk0NywiZXhwIjoxNzYwODYxOTQ3LCJkYXRhIjp7InVzZXIiOnsiaWQiOjUsImRldmljZSI6IiIsInBhc3MiOiIyYjhlMjJlOTM2ZTY0N2JhNDRmOWJhMmY3Y2Q1ZmFjNiJ9fX0.WxZtMoMWv6NRDmaLd4Gt1N4_gIW9x25WyGTWIuWVre4",
                             guestCount: selectedGuests.length,
+                            reservationId: reservationId,
                           );
 
                           // Dispatch CreateOrder event to Bloc
