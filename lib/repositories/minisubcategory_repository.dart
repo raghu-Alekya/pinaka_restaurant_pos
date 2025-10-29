@@ -18,7 +18,7 @@ class MiniSubCategoryRepository {
     final response = await http.get(
       url,
       headers: {
-        'Authorization': 'Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvbWVyY2hhbnRyZXN0YXVyYW50LmFsZWt0YXNvbHV0aW9ucy5jb20iLCJpYXQiOjE3NTgyNjk5NDcsIm5iZiI6MTc1ODI2OTk0NywiZXhwIjoxNzYwODYxOTQ3LCJkYXRhIjp7InVzZXIiOnsiaWQiOjUsImRldmljZSI6IiIsInBhc3MiOiIyYjhlMjJlOTM2ZTY0N2JhNDRmOWJhMmY3Y2Q1ZmFjNiJ9fX0.WxZtMoMWv6NRDmaLd4Gt1N4_gIW9x25WyGTWIuWVre4',
+        'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
       },
     );

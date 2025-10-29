@@ -1,6 +1,4 @@
-// import 'package:dotted_line/dotted_line.dart';
 import 'package:dotted_line/dotted_line.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -11,793 +9,319 @@ class Sidebarwidgets extends StatefulWidget {
   State<Sidebarwidgets> createState() => _SidebarwidgetsState();
 }
 
-class _SidebarwidgetsState extends State<Sidebarwidgets> {
-  bool isSelected = false;
+class _SidebarwidgetsState extends State<Sidebarwidgets>
+    with SingleTickerProviderStateMixin {
+  bool _isExpanded = false;
+  late AnimationController _controller;
+  late Animation<double> _heightAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller =
+        AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
+    _heightAnimation = Tween<double>(begin: 60, end: 260).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  void _toggleExpand() {
+    setState(() {
+      _isExpanded = !_isExpanded;
+      if (_isExpanded) {
+        _controller.forward();
+      } else {
+        _controller.reverse();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     DateTime now = DateTime.now();
     String formattedDate = DateFormat("EEEE, dd MMM yyyy").format(now);
     String formattedTime = DateFormat("hh:mm a").format(now);
+
     return Scaffold(
-      backgroundColor: Color(0xFFF5F5F6),
-      body: Row(
+      backgroundColor: const Color(0xFFF5F5F6),
+      body: Stack(
         children: [
           Padding(
-            padding: EdgeInsets.only(left: 12, top: 16),
+            padding: const EdgeInsets.only(left: 12, top: 16, right: 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  height: MediaQuery.of(context).size.height * 0.85,
+                // ---------- Header Section ----------
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      width: 90,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDEE8FF),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Image.asset("assets/icon/-01.png",
+                              width: 18, height: 18),
+                          const SizedBox(width: 10),
+                          const Text(
+                            "Back",
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF585A5C),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Image.asset("assets/icon/calender.png",
+                            width: 18, height: 18),
+                        const SizedBox(width: 3),
+                        Text(
+                          formattedDate,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                            color: Color(0xFF656161),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Image.asset("assets/icon/clock.png",
+                            width: 18, height: 18),
+                        const SizedBox(width: 3),
+                        Text(
+                          formattedTime,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                            color: Color(0xFF656161),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: const [
+                    Text(
+                      "Order ID #3245",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF111827),
+                      ),
+                    ),
+                    Text(
+                      "Payment Summary",
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: Color(0xFF656161),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                // ---------- Items Container ----------
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDEE8FF),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: const EdgeInsets.all(10),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFFFFF),
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      child: ListView.builder(
+                        itemCount: 6,
+                        itemBuilder: (context, index) {
+                          final items = [
+                            ["322", "Mutton Fry Biryani", "1", "300.00"],
+                            ["524", "Chicken Biryani", "1", "200.00"],
+                            ["325", "Paneer Tikka", "1", "180.00"],
+                            ["954", "Butter Naan", "5", "200.00"],
+                            ["156", "Butter Masala", "1", "220.00"],
+                            ["231", "Chicken 65", "1", "210.00"],
+                          ];
+                          final item = items[index];
+                          return Column(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 6),
+                                child: Row(
+                                  mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(item[0],
+                                        style: const TextStyle(fontSize: 12)),
+                                    Text(item[1],
+                                        style: const TextStyle(fontSize: 12)),
+                                    Text(item[2],
+                                        style: const TextStyle(fontSize: 12)),
+                                    Text(item[3],
+                                        style: const TextStyle(fontSize: 12)),
+                                  ],
+                                ),
+                              ),
+                              const Divider(color: Color(0xFFE6E7E8), thickness: 1),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 60), // space for bottom toggle container
+              ],
+            ),
+          ),
+
+          // ---------- Fixed Bottom Toggle Container ----------
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: AnimatedBuilder(
+              animation: _controller,
+              builder: (context, child) {
+                return Container(
                   width: MediaQuery.of(context).size.width * 0.315,
+                  height: _heightAnimation.value,
+                  margin: const EdgeInsets.only(left: 12, bottom: 8),
                   decoration: BoxDecoration(
-                    color: Color(0xFFFFFFFF),
-                    borderRadius: BorderRadius.circular(8),
+                    color: const Color(0xFFFFFFFF),
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 6,
+                        offset: const Offset(0, -2),
+                      ),
+                    ],
                   ),
                   child: Column(
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.all(10.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Container(
-                              width: 90,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: Color(0xFFDEE8FF),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 8,
-                              ), // padding inside container
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Image.asset(
-                                    "assets/icon/-01.png",
-                                    width: 18,
-                                    height: 18,
-                                  ),
-                                  SizedBox(
-                                    width: 10,
-                                  ), // space between icon & text
-                                  Text(
-                                    "Back",
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF585A5C),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Row(
-                              children: [
-                                Image.asset(
-                                  "assets/icon/calender.png",
-                                  width: 18,
-                                  height: 18,
-                                ),
-                                SizedBox(width: 3),
-                                Text(
-                                  formattedDate,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w400,
-                                    color: Color(0xFF656161),
-                                  ),
-                                ),
-                                SizedBox(width: 3),
-                                Image.asset(
-                                  "assets/icon/clock.png",
-                                  width: 18,
-                                  height: 18,
-                                ),
-                                SizedBox(width: 3),
-                                Text(
-                                  formattedTime,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w400,
-                                    color: Color(0xFF656161),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 10, right: 10),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              "Order ID #3245",
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF111827),
-                              ),
-                            ),
-                            Text(
-                              "Payment Summery",
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w400,
-                                color: Color(0xFF656161),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        height: MediaQuery.of(context).size.height * 0.37,
-                        width: MediaQuery.of(context).size.width * 0.300,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFDEE8FF),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        padding: const EdgeInsets.all(10),
+                      GestureDetector(
+                        onTap: _toggleExpand,
                         child: Container(
+                          height: 50,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFFFFFF),
-                            borderRadius: BorderRadius.circular(5),
+                            color: const Color(0xFFDEE8FF),
+                            borderRadius: BorderRadius.circular(10),
                           ),
-                          child: SingleChildScrollView(
-                            child: Column(
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.all(10),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        "322",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF000000),
-                                        ),
-                                      ),
-                                      Text(
-                                        "Mutton Fry Biryani",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF000000),
-                                        ),
-                                      ),
-                                      Text(
-                                        "1",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF000000),
-                                        ),
-                                      ),
-                                      Text(
-                                        "300.00",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF000000),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Divider(color: Color(0xFFE6E7E8), thickness: 1),
-                                Padding(
-                                  padding: const EdgeInsets.all(10),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        "524",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF000000),
-                                        ),
-                                      ),
-                                      Text(
-                                        "Chicken Biryani",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF000000),
-                                        ),
-                                      ),
-                                      Text(
-                                        "1",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF000000),
-                                        ),
-                                      ),
-                                      Text(
-                                        "200.00",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF000000),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Divider(color: Color(0xFFE6E7E8), thickness: 1),
-                                Padding(
-                                  padding: const EdgeInsets.all(10),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        "325",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF000000),
-                                        ),
-                                      ),
-                                      Text(
-                                        "Paneer Tikka",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF000000),
-                                        ),
-                                      ),
-                                      Text(
-                                        "1",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF000000),
-                                        ),
-                                      ),
-                                      Text(
-                                        "180.00",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF000000),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Divider(color: Color(0xFFE6E7E8), thickness: 1),
-                                Padding(
-                                  padding: const EdgeInsets.all(10),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        "954",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF000000),
-                                        ),
-                                      ),
-                                      Text(
-                                        "Butter Naan",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF000000),
-                                        ),
-                                      ),
-                                      Text(
-                                        "5",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF000000),
-                                        ),
-                                      ),
-                                      Text(
-                                        "200.00",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF000000),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Divider(color: Color(0xFFE6E7E8), thickness: 1),
-                                Padding(
-                                  padding: const EdgeInsets.all(10),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        "156",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF000000),
-                                        ),
-                                      ),
-                                      Text(
-                                        "Butter Masala",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF000000),
-                                        ),
-                                      ),
-                                      Text(
-                                        "1",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF000000),
-                                        ),
-                                      ),
-                                      Text(
-                                        "220.00",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF000000),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Divider(color: Color(0xFFE6E7E8), thickness: 1),
-                                Padding(
-                                  padding: const EdgeInsets.all(10),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        "897",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF000000),
-                                        ),
-                                      ),
-                                      Text(
-                                        "Fish Fry Biryani",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF000000),
-                                        ),
-                                      ),
-                                      Text(
-                                        "1",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF000000),
-                                        ),
-                                      ),
-                                      Text(
-                                        "280.00",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF000000),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Divider(color: Color(0xFFE6E7E8), thickness: 1),
-                                Padding(
-                                  padding: const EdgeInsets.all(10),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        "231",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF000000),
-                                        ),
-                                      ),
-                                      Text(
-                                        "Chicken 65",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF000000),
-                                        ),
-                                      ),
-                                      Text(
-                                        "1",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF000000),
-                                        ),
-                                      ),
-                                      Text(
-                                        "210.00",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF000000),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Divider(color: Color(0xFFE6E7E8), thickness: 1),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Container(
-                        height: MediaQuery.of(context).size.height * 0.34,
-                        width: MediaQuery.of(context).size.width * 0.300,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFDEE8FF),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        padding: const EdgeInsets.all(10),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFFFFF),
-                            borderRadius: BorderRadius.circular(5),
-                          ),
-                          child: Column(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                  left: 10,
-                                  right: 10,
-                                  bottom: 3,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      "Sub total",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF000000),
-                                      ),
-                                    ),
-                                    Text(
-                                      "2210.00",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF000000),
-                                      ),
-                                    ),
-                                  ],
+                              Text(
+                                "Gross Total",
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: _isExpanded
+                                      ? Colors.blueAccent
+                                      : Colors.black,
                                 ),
                               ),
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                  left: 10,
-                                  right: 10,
-                                  bottom: 3,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      "Tax",
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF000000),
-                                      ),
-                                    ),
-                                    Text(
-                                      "-00.00",
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF000000),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                  left: 10,
-                                  right: 10,
-                                  bottom: 3,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Image.asset(
-                                          "assets/icon/discount.png",
-                                          width: 15,
-                                          height: 15,
-                                          color: Color(0xFF007BFF),
-                                        ),
-                                        const SizedBox(width: 5),
-                                        Text(
-                                          "Discount(10% Applied)",
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w500,
-                                            color: Color(0xFF007BFF),
-                                          ),
-                                        ),
-                                      ],
-                                    ), // space between texts
-                                    Text(
-                                      "220.00",
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF007BFF),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                  left: 10,
-                                  right: 10,
-                                  bottom: 3,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Image.asset(
-                                          "assets/images/cash.png",
-                                          width: 15,
-                                          height: 15,
-                                          color: Color(0xFF4CAF50),
-                                        ),
-                                        const SizedBox(width: 5),
-                                        Text(
-                                          "Coupon(WELCOME 50 Applied)",
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w500,
-                                            color: Color(0xFF4CAF50),
-                                          ),
-                                        ),
-                                      ],
-                                    ), // space between texts
-                                    Text(
-                                      "-200.00",
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF4CAF50),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              SizedBox(height: 3),
-                              DottedLine(
-                                dashLength: 4,
-                                dashGapLength: 4,
-                                lineThickness: 1,
-                                dashColor: Color(0x66666626),
-                              ),
-                              SizedBox(height: 3),
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                  left: 10,
-                                  right: 10,
-                                  bottom: 3,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      "Total",
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF000000),
-                                      ),
-                                    ),
-                                    Text(
-                                      "2230.00",
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF000000),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                  left: 10,
-                                  right: 10,
-                                  bottom: 3,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      "Pay By cash",
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF000000),
-                                      ),
-                                    ),
-                                    Text(
-                                      "00.00",
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF000000),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                  left: 10,
-                                  right: 10,
-                                  bottom: 3,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      "Pay By Other",
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF000000),
-                                      ),
-                                    ),
-                                    Text(
-                                      "00.00",
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF000000),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                  left: 10,
-                                  right: 10,
-                                  bottom: 3,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      "Tender Amount.",
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF000000),
-                                      ),
-                                    ),
-                                    Text(
-                                      "00.00",
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF000000),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                  left: 10,
-                                  right: 10,
-                                  bottom: 3,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      "Change",
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF000000),
-                                      ),
-                                    ),
-                                    Text(
-                                      "00.00",
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF000000),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                              const SizedBox(width: 8),
+                              Icon(
+                                _isExpanded
+                                    ? Icons.keyboard_arrow_down
+                                    : Icons.keyboard_arrow_up,
+                                color: Colors.black,
                               ),
                             ],
                           ),
                         ),
                       ),
+                      if (_isExpanded) const Divider(height: 1),
+
+                      // Expanded Details (Gross total section)
+                      if (_isExpanded)
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: const [
+                                Row(
+                                  mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text("Sub Total"),
+                                    Text("2210.00"),
+                                  ],
+                                ),
+                                Row(
+                                  mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text("Tax"),
+                                    Text("00.00"),
+                                  ],
+                                ),
+                                Row(
+                                  mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text("Discount (10%)",
+                                        style: TextStyle(color: Colors.blue)),
+                                    Text("-220.00",
+                                        style: TextStyle(color: Colors.blue)),
+                                  ],
+                                ),
+                                Row(
+                                  mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text("Coupon (WELCOME50)",
+                                        style:
+                                        TextStyle(color: Colors.green)),
+                                    Text("-200.00",
+                                        style: TextStyle(color: Colors.green)),
+                                  ],
+                                ),
+                                DottedLine(
+                                    dashLength: 4,
+                                    dashGapLength: 4,
+                                    lineThickness: 1,
+                                    dashColor: Color(0x66666626)),
+                                Row(
+                                  mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text("Total",
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.bold)),
+                                    Text("1790.00",
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                     ],
                   ),
-                ),
-              ],
+                );
+              },
             ),
           ),
         ],
       ),
-    );
-  }
-}
-
-class DottedDivider extends StatelessWidget {
-  final double height;
-  final Color color;
-
-  const DottedDivider({this.height = 1, this.color = Colors.black, super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final boxWidth = constraints.constrainWidth();
-        const dashWidth = 4.0;
-        const dashSpace = 4.0;
-        final dashCount = (boxWidth / (dashWidth + dashSpace)).floor();
-
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: List.generate(dashCount, (_) {
-            return SizedBox(
-              width: dashWidth,
-              height: height,
-              child: DecoratedBox(decoration: BoxDecoration(color: color)),
-            );
-          }),
-        );
-      },
     );
   }
 }

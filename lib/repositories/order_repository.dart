@@ -47,10 +47,14 @@ class OrderRepository {
       url,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
+        'Authorization': token.startsWith("Bearer ")
+            ? token
+            : "Bearer $token",
       },
       body: jsonEncode(body),
     );
+    AppLogger.info('🪪 Using Token: $token');
+
 
     AppLogger.info('Order API response: ${response.statusCode} ${response.body}');
 

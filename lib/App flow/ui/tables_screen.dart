@@ -926,7 +926,7 @@ class _TablesScreenState extends State<TablesScreen> {
               onOk: () {
                 Navigator.of(context).pop();
                 if (!_showPopup) {
-                  _showGuestDetailsPopup(context, index, tableData);
+                  _showGuestDetailsPopup(context, index, tableData, widget.token,);
                 }
               },
             ),
@@ -935,7 +935,7 @@ class _TablesScreenState extends State<TablesScreen> {
         }
         if (statusLower == 'available') {
           if (!_showPopup) {
-            _showGuestDetailsPopup(context, index, tableData);
+            _showGuestDetailsPopup(context, index, tableData, widget.token,);
           }
           return;
         }
@@ -1164,7 +1164,7 @@ class _TablesScreenState extends State<TablesScreen> {
               onOk: () {
                 Navigator.of(context).pop();
                 if (!_showPopup) {
-                  _showGuestDetailsPopup(context, actualIndex, tableData);
+                  _showGuestDetailsPopup(context, actualIndex, tableData, widget.token,);
                 }
               },
             ),
@@ -1173,7 +1173,7 @@ class _TablesScreenState extends State<TablesScreen> {
         }
         if (status == 'available') {
           if (!_showPopup) {
-            _showGuestDetailsPopup(context, actualIndex, tableData);
+            _showGuestDetailsPopup(context, actualIndex, tableData, widget.token,);
           }
           return;
         }
@@ -1315,7 +1315,7 @@ class _TablesScreenState extends State<TablesScreen> {
                   onOk: () {
                     Navigator.of(context).pop();
                     if (!_showPopup) {
-                      _showGuestDetailsPopup(context, actualIndex, tableData);
+                      _showGuestDetailsPopup(context, actualIndex, tableData, widget.token,);
                     }
                   },
                 ),
@@ -1324,7 +1324,7 @@ class _TablesScreenState extends State<TablesScreen> {
         }
         if (status == 'available') {
           if (!_showPopup) {
-            _showGuestDetailsPopup(context, actualIndex, tableData);
+            _showGuestDetailsPopup(context, actualIndex, tableData, widget.token,);
           }
           return;
         }
@@ -1602,6 +1602,7 @@ class _TablesScreenState extends State<TablesScreen> {
       BuildContext context,
       int index,
       Map<String, dynamic> tableData,
+      String token, // ✅ Added token parameter
       ) async {
     final tableStatus = (tableData['status'] ?? '').toString().toLowerCase().trim();
     final tableId = tableData['id'] ?? 0;
@@ -1610,6 +1611,7 @@ class _TablesScreenState extends State<TablesScreen> {
     final zoneName = tableData['zone_name'] ?? 'Main Zone';
 
     final orderRepo = OrderRepository(baseUrl: 'https://merchantrestaurant.alektasolutions.com');
+
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -1622,17 +1624,22 @@ class _TablesScreenState extends State<TablesScreen> {
             index: index,
             tableData: tableData,
             placedTables: placedTables,
+            token: token, // ✅ Pass actual token
+            restaurantId: '1',
+            pin: widget.pin,
             onGuestSaved: (guestDetails) async {
               try {
+                AppLogger.info("🪪 Creating order using token: $token"); // ✅ Log token
+
                 final orderModel = await orderRepo.createOrder(
                   restaurantId: '1',
                   tableId: tableId,
                   zoneId: zoneId,
                   guests: [guestDetails],
                   guestCount: guestDetails.guestCount,
-                  token: 'YOUR_VALID_TOKEN_HERE',
+                  token: token, // ✅ Use login token here
                   zoneName: zoneName,
-                  restaurantName: 'My Restaurant',
+                  restaurantName: widget.restaurantName ?? 'My Restaurant',
                   tableName: tableName,
                 );
 
@@ -1647,29 +1654,31 @@ class _TablesScreenState extends State<TablesScreen> {
                       value: context.read<OrderBloc>(),
                       child: DashboardScreen(
                         guestDetails: guestDetails,
-                        token: "YOUR_VALID_TOKEN_HERE",
+                        token: token, // ✅ Pass token to dashboard
                         restaurantId: '1',
                         orderId: orderModel.orderId,
                         tableId: tableId,
                         zoneId: zoneId,
                         zoneName: zoneName,
-                        tableName: tableName, kotList: [],
+                        tableName: tableName,
+                        kotList: [],
                         pin: widget.pin,
                         restaurantName: widget.restaurantName,
-                        userPermissions: null, tableData: {},
+                        userPermissions: null,
+                        tableData: {},
                       ),
                     ),
                   ),
                 );
               } catch (e) {
-                AppLogger.error("Failed to create order: $e");
+                AppLogger.error("❌ Failed to create order: $e");
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Failed to create order, please try again.")),
+                  const SnackBar(
+                    content: Text("Failed to create order, please try again."),
+                  ),
                 );
               }
             },
-            token: '',
-            restaurantId: '1', pin: widget.pin,
           ),
         );
       },

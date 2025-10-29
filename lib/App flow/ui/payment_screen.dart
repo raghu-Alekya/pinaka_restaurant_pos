@@ -55,7 +55,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           // Left Sidebar
           Expanded(
             flex: 25,
-            child: Sidebarwidgets(
+            child:  Sidebarwidgets (
               userPermissions: _userPermissions,
               selectedUser: _selectedUser,
             ),

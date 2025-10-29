@@ -177,7 +177,7 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                             restaurantId: widget.restaurantId,
                             restaurantName: 'My Restaurant',
                             guests: [guestDetails],
-                            token: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvbWVyY2hhbnRyZXN0YXVyYW50LmFsZWt0YXNvbHV0aW9ucy5jb20iLCJpYXQiOjE3NTgyNjk5NDcsIm5iZiI6MTc1ODI2OTk0NywiZXhwIjoxNzYwODYxOTQ3LCJkYXRhIjp7InVzZXIiOnsiaWQiOjUsImRldmljZSI6IiIsInBhc3MiOiIyYjhlMjJlOTM2ZTY0N2JhNDRmOWJhMmY3Y2Q1ZmFjNiJ9fX0.WxZtMoMWv6NRDmaLd4Gt1N4_gIW9x25WyGTWIuWVre4",
+                            token: widget.token,
                             guestCount: selectedGuests.length,
                             reservationId: reservationId,
                           );
@@ -203,7 +203,7 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                             MaterialPageRoute(
                               builder: (_) => DashboardScreen(
                                 guestDetails: guestDetails,
-                                token: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvbWVyY2hhbnRyZXN0YXVyYW50LmFsZWt0YXNvbHV0aW9ucy5jb20iLCJpYXQiOjE3NTgyNjk5NDcsIm5iZiI6MTc1ODI2OTk0NywiZXhwIjoxNzYwODYxOTQ3LCJkYXRhIjp7InVzZXIiOnsiaWQiOjUsImRldmljZSI6IiIsInBhc3MiOiIyYjhlMjJlOTM2ZTY0N2JhNDRmOWJhMmY3Y2Q1ZmFjNiJ9fX0.WxZtMoMWv6NRDmaLd4Gt1N4_gIW9x25WyGTWIuWVre4",
+                                token: widget.token,
                                 restaurantId: widget.restaurantId,
                                 orderId: orderData.orderId,
                                 tableId: tableId,

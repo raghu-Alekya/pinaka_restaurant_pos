@@ -2,7 +2,9 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class DiscountPopup extends StatefulWidget {
-  const DiscountPopup({super.key});
+  final VoidCallback? onApply; // ✅ Callback to notify discount applied
+
+  const DiscountPopup({super.key, this.onApply});
 
   @override
   State<DiscountPopup> createState() => _DiscountPopupState();
@@ -49,11 +51,10 @@ class _DiscountPopupState extends State<DiscountPopup> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      //insetPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: SizedBox(
         width: MediaQuery.of(context).size.width * 0.95,
-        height: MediaQuery.of(context).size.height * 0.65,
+        height: MediaQuery.of(context).size.height * 0.55,
         child: Padding(
           padding: EdgeInsets.all(0),
           child: Column(
@@ -238,7 +239,11 @@ class _DiscountPopupState extends State<DiscountPopup> {
                                   elevation: 3,
                                 ),
                                 onPressed: () {
-                                  Navigator.of(context).pop();
+                                  // ✅ Call the onApply callback when discount is applied
+                                  if (widget.onApply != null) {
+                                    widget.onApply!();
+                                  }
+                                  Navigator.of(context).pop(true);
                                 },
                                 child: Text(
                                   "Save & Continue",
@@ -259,7 +264,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
                       flex: 1,
                       child: Padding(
                         padding: EdgeInsets.all(12),
-                        child: NumberPad(onKeyPressed: _handleKeyPress),
+                        child: NumberPad(onKeyPressed: _handleKeyPress, selectedPaymentMode: '',),
                       ),
                     ),
                   ],
@@ -291,7 +296,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
 class NumberPad extends StatelessWidget {
   final Function(String) onKeyPressed;
 
-  NumberPad({super.key, required this.onKeyPressed});
+  NumberPad({super.key, required this.onKeyPressed, required String selectedPaymentMode});
 
   @override
   Widget build(BuildContext context) {
@@ -327,7 +332,7 @@ class NumberPad extends StatelessWidget {
           child: Container(
             height: 60,
             decoration: BoxDecoration(
-              color: backgroundColor ?? Colors.white,
+              color: backgroundColor ?? Color(0xFFF3F5FF),
               borderRadius: BorderRadius.circular(10),
               border: border,
               boxShadow: [
@@ -345,8 +350,7 @@ class NumberPad extends StatelessWidget {
                 fontSize: isNumber ? 24 : 18,
                 fontWeight: isNumber ? FontWeight.w600 : FontWeight.bold,
                 color:
-                textColor ??
-                    (isNumber ? Color(0xFF4C5F7D) : Color(0xFFE64646)),
+                textColor ?? (isNumber ? Color(0xFF4C5F7D) : Color(0xFFE64646)),
               ),
             ),
           ),
@@ -359,17 +363,9 @@ class NumberPad extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        _buildButton(
-          "Clear",
-          // Optional styling overrides if needed
-          // backgroundColor: Colors.red[50],
-          // textColor: Colors.red,
-        ),
+        _buildButton("Clear"),
         _buildButton("0"),
-        _buildButton(
-          "⌫",
-          // textColor: Colors.red,
-        ),
+        _buildButton("⌫"),
       ],
     );
   }

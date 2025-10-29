@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/widgets/paymentsucess.dart';
+import 'package:pinaka_restaurant_pos/App%20flow/widgets/tip_widget.dart';
 import '../../services/app_database.dart';
 import 'coupon_widget.dart';
 import 'discount_screen.dart';
@@ -19,6 +20,18 @@ class _NumberpadState extends State<Numberpad> {
   double? calculatedChange;
   String selectedPaymentMode = "Cash";
   bool isCashSelected = true;
+  // ✅ Declare this variable
+  bool _isDiscountApplied = false;
+  bool _isCouponApplied = false;
+  bool _isTipApplied = false;
+  String _appliedCoupon = "";
+
+  // / Delete button enabled if any of the above are applied
+  bool get isDeleteEnabled =>
+      _isTipApplied || _isDiscountApplied || _isCouponApplied;
+
+
+
 
   void handleKeyPress(String key) {
     if (key == "C") {
@@ -297,8 +310,10 @@ class _NumberpadState extends State<Numberpad> {
                               amount,
                               "Transaction Overview :",
                             ),
+
+                            const SizedBox(height: 20),
                             Text(
-                              "Coupons & Discounts :",
+                              "Action:",
                               style: TextStyle(
                                 color: Color(0xFF212121),
                                 fontSize: 15,
@@ -308,7 +323,38 @@ class _NumberpadState extends State<Numberpad> {
                               ),
                               textAlign: TextAlign.start,
                             ),
-                            _buildPaymentDiscountItem(context),
+                            _buildPaymentDiscountItem(
+                              context,
+                              onDiscountApplied: () {
+                                setState(() => _isDiscountApplied = true);
+                              },
+                              onCouponApplied: (String coupon) {
+                                setState(() {
+                                  _isCouponApplied = true;
+                                  _appliedCoupon = coupon; // store applied coupon
+                                });
+                              },
+                              onTipApplied: () {
+                                setState(() => _isTipApplied = true);
+                              },
+                              isDiscountApplied: _isDiscountApplied,
+                              isCouponApplied: _isCouponApplied,
+                              isTipApplied: _isTipApplied,
+                              appliedCoupon: _appliedCoupon,
+
+                              // ✅ pass proper delete logic and delete enable flag
+                              isDeleteEnabled: _isDiscountApplied || _isCouponApplied || _isTipApplied,
+                              onDelete: () {
+                                setState(() {
+                                  _isDiscountApplied = false;
+                                  _isCouponApplied = false;
+                                  _isTipApplied = false;
+                                  _appliedCoupon = "";
+                                });
+                              },
+                            ),
+
+
                           ],
                         ),
                       ],
@@ -551,220 +597,198 @@ class NumberPad extends StatelessWidget {
     );
   }
 }
+bool _isDiscountApplied = false;
+bool _isCouponApplied = false;
+bool _isTipApplied = false;
+String _appliedCoupon = "";
 
-Widget _buildPaymentDiscountItem(BuildContext context) {
+
+
+Widget _buildPaymentDiscountItem(
+    BuildContext context, {
+      required VoidCallback onDiscountApplied,
+      required Function(String) onCouponApplied,
+      required VoidCallback onTipApplied,
+      required bool isDiscountApplied,
+      required bool isCouponApplied,
+      required bool isTipApplied,
+      required bool isDeleteEnabled, // ✅ pass this
+      required VoidCallback onDelete,
+      String appliedCoupon = "",
+    }) {
+  final screenWidth = MediaQuery.of(context).size.width;
+  final screenHeight = MediaQuery.of(context).size.height;
+  Color appliedColor = Colors.grey.shade400;
+
   return Column(
     children: [
       Container(
-        height: MediaQuery.of(context).size.height * 0.37,
-        width: MediaQuery.of(context).size.width * 0.20,
+        height: screenHeight * 0.35,
+        width: screenWidth * 0.20,
         decoration: BoxDecoration(
-          color: Color(0xFFDEE8FF),
+          color: const Color(0xFFDEE8FF),
           borderRadius: BorderRadius.circular(5),
           border: Border.all(color: Colors.white.withOpacity(0.5), width: 0.8),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(10), // 👈 space inside container
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start, // 👈 align text left
-            children: [
-              Text(
-                "Discount :",
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF676C7D),
-                ),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  GestureDetector(
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (BuildContext context) {
-                          return Dialog(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            insetPadding: EdgeInsets.symmetric(
-                              horizontal: 50,
-                              vertical: 50,
-                            ),
-                            child: SizedBox(
-                              width: 900,
-                              height: 600,
-                              child: DiscountPopup(),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                    child: Container(
-                      height: 50,
-                      width: 180,
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: Colors.grey.shade300,
-                          width: 1,
-                        ),
-                      ),
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            // DISCOUNT BUTTON
+            _buildActionRow(
+              context,
+              color: isDiscountApplied ? appliedColor : const Color(0xFF3DA540),
+              ellipse: "assets/icon/green .png",
+              icon: "assets/icon/discount.png",
+              label: isDiscountApplied ? "Discount Applied" : "Discount",
+              onTap: isDiscountApplied
+                  ? null
+                  : () async {
+                final result = await showDialog<bool>(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) => const DiscountPopup(),
+                );
+                if (result == true) onDiscountApplied();
+              },
+            ),
 
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              decoration: InputDecoration(
-                                hintText: "Enter your discount ",
-                                hintStyle: TextStyle(
-                                  fontSize: 13,
-                                  color: Color(0xFF636363),
-                                ),
-                                border:
-                                InputBorder.none, // remove default border
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  Container(
-                    height: 40,
-                    width: 40,
-                    decoration: BoxDecoration(
-                      color: Color(0xFFFFFFFF), // 👈 background color
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Color(0xFFFFFFFF), width: 1),
-                    ),
-                    child: Center(
-                      child: Image.asset(
-                        "assets/images/delete_icon.png",
-                        width: 20,
-                        height: 20,
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              Text(
-                "Coupon :",
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF676C7D),
-                ),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  GestureDetector(
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (BuildContext context) {
-                          return Dialog(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            insetPadding: EdgeInsets.symmetric(
-                              horizontal: 50,
-                              vertical: 50,
-                            ),
-                            child: SizedBox(
-                              width: 900,
-                              height: 600,
-                              child: Couponscreen(),
-                            ),
-                          );
-                        },
-                      );
+            const SizedBox(height: 15),
+
+            // COUPON BUTTON
+            _buildActionRow(
+              context,
+              color: isCouponApplied ? Colors.grey : const Color(0xFFEB4D4D),
+              ellipse: "assets/icon/REDellipse.png",
+              icon: "assets/coupon.png",
+              label: isCouponApplied
+                  ? "Coupon Applied: $appliedCoupon"
+                  : "Coupon",
+              onTap: isCouponApplied
+                  ? null
+                  : () {
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) => Couponscreen(
+                    onCouponApplied: (String coupon) {
+                      onCouponApplied(coupon); // ✅ update parent state
+                      Navigator.of(context).pop(); // close popup only
                     },
-                    child: Container(
-                      height: 50,
-                      width: 180,
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: Colors.grey.shade300,
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              decoration: InputDecoration(
-                                hintText: "Enter your coupon code",
-                                hintStyle: TextStyle(
-                                  fontSize: 13,
-                                  color: Color(0xFF636363),
-                                ),
-                                border:
-                                InputBorder.none, // remove default border
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
-                  SizedBox(width: 8),
-                  Container(
-                    height: 40,
-                    width: 40,
-                    decoration: BoxDecoration(
-                      color: Color(0xFFFFFFFF),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Color(0xFFFFFFFF), width: 1),
-                    ),
-                    child: Center(
-                      child: Image.asset(
-                        "assets/images/delete_icon.png",
-                        width: 20,
-                        height: 20,
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 10),
-              SizedBox(
-                width: 230,
-                height: 55,
-                child: ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFF1180A4),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
+                );
+              },
+            ),
+
+            const SizedBox(height: 15),
+
+            // TIP BUTTON
+            _buildActionRow(
+              context,
+              color: isTipApplied ? Colors.grey : const Color(0xFF4C81F1),
+              ellipse: "assets/icon/Ellipse 1934.png",
+              icon: "assets/icon/tip.png",
+              label: isTipApplied ? "Tip Added" : "Add Tip",
+              onTap: isTipApplied
+                  ? null
+                  : () async {
+                final result = await showDialog<bool>(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) => const TipPopup(),
+                );
+                if (result == true) onTipApplied();
+              },
+              isDeleteEnabled: isDeleteEnabled, // enable if any applied
+              // onDelete: () {
+              //   // Reset all applied states
+              //   setState(() {
+              //     isDiscountApplied = false;
+              //     isCouponApplied = false;
+              //     isTipApplied = false;
+              //   });
+              // },
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
+}
+
+Widget _buildActionRow(
+    BuildContext context, {
+      required Color color,
+      required String ellipse,
+      required String icon,
+      required String label,
+      VoidCallback? onTap, // nullable for disabling main button
+      bool isDeleteEnabled = false, // new flag
+      VoidCallback? onDelete, // callback for delete action
+    }) {
+  return Row(
+    children: [
+      Expanded(
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            height: 65,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade300, width: 1),
+            ),
+            child: Row(
+              children: [
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Image.asset(ellipse, width: 44, height: 44),
+                    Image.asset(icon, width: 24, height: 24),
+                  ],
+                ),
+                const SizedBox(width: 18),
+                Expanded(
                   child: Text(
-                    "Apply",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                    label,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
+          ),
+        ),
+      ),
+      const SizedBox(width: 8),
+      InkWell(
+        onTap: isDeleteEnabled ? onDelete : null, // disable if false
+        child: Container(
+          height: 55,
+          width: 55,
+          decoration: BoxDecoration(
+            color: isDeleteEnabled ? Colors.white : Colors.grey.shade300,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: Center(
+            child: Image.asset(
+              "assets/icon/delete.png",
+              width: 25,
+              height: 25,
+              fit: BoxFit.contain,
+              color: isDeleteEnabled ? null : Colors.grey, // gray icon if disabled
+            ),
           ),
         ),
       ),
     ],
   );
 }
+
 
 Widget _buildPaymentModeItem(
     String label,
@@ -773,8 +797,8 @@ Widget _buildPaymentModeItem(
     Function(String) onSelect,
     ) {
   final List<Map<String, String>> options = [
-    {"label": "Cash", "image": "assets/icon/cash-01.png"},
-    {"label": "Card", "image": "assets/icon/card-02(1).png"},
+    {"label": "Cash", "image": "assets/icon/cash.png"},
+    {"label": "Card", "image": "assets/icon/card.png"},
     {"label": "UPI", "image": "assets/icon/upi.png"},
     //{"label": "EBT", "image": "assets/images/EDA.png"},
   ];
@@ -838,8 +862,8 @@ Widget _buildPaymentModeItem(
                   children: [
                     Image.asset(
                       option['image']!,
-                      width: 40,
-                      height: 40,
+                      width: 30,
+                      height: 30,
                       color:
                       isSelected
                           ? Color(0xFFFE6464)
