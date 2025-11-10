@@ -756,12 +756,6 @@ class _TablesScreenState extends State<TablesScreen> {
                                     customMessage: 'Table unmerged successfully',
                                   );
 
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Table ${data['tableName']} unmerged'),
-                                    ),
-                                  );
-
                                   context.read<TableBloc>().add(LoadTablesEvent(widget.token));
                                 },
                               ),
@@ -780,7 +774,6 @@ class _TablesScreenState extends State<TablesScreen> {
                       ),
 
                       const SizedBox(width: 30),
-
                       /// Merge/Edit Button
                       SizedBox(
                         width: 170,
@@ -804,13 +797,6 @@ class _TablesScreenState extends State<TablesScreen> {
                                   setState(() {
                                     placedTables[i]['is_merged'] = true;
                                   });
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                          'Table ${data['table_name']} merged/edited'),
-                                    ),
-                                  );
-
                                   context
                                       .read<TableBloc>()
                                       .add(LoadTablesEvent(widget.token));

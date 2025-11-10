@@ -150,12 +150,19 @@ class _TopBarState extends State<TopBar> {
               _buildIconButton(
                 Icons.settings,
                 onPressed: () {
+                  final userId = widget.userPermissions?.userId ?? '';
+                  final displayName = widget.userPermissions?.displayName ?? '';
+                  final role = widget.userPermissions?.role ?? '';
+
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) => SettingsScreen(
                         token: widget.token,
                         pin: widget.pin,
+                        userId: userId,
+                        displayName: displayName,
+                        role: role,
                       ),
                     ),
                   );
@@ -448,8 +455,10 @@ class _TopBarState extends State<TopBar> {
   }
 
   Widget _buildProfileSection() {
+    final avatarUrl = widget.userPermissions?.avatar;
+
     return Container(
-      width: 165,
+      width: 180,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -460,9 +469,14 @@ class _TopBarState extends State<TopBar> {
       ),
       child: Row(
         children: [
-          const CircleAvatar(
-            backgroundImage: AssetImage('assets/loginname.png'),
+          CircleAvatar(
             radius: 14,
+            backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
+                ? NetworkImage(avatarUrl)
+                : const AssetImage('assets/loginname.png') as ImageProvider,
+            onBackgroundImageError: (_, __) {
+              debugPrint("⚠️ Failed to load avatar image");
+            },
           ),
           const SizedBox(width: 8),
           Column(
