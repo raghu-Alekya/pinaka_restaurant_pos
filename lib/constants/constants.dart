@@ -61,6 +61,9 @@ class AppConstants {
   static const String getAllOrdersEndpoint = '$baseApiPath/kot/order-filters-api';
   static const String getParentKotOrdersEndpoint = '$baseApiPath/kot/get-parent-kot-orders';
 
+  // Settings
+  static const String getGeneralSettingsEndpoint = '$baseApiPath/settings/get-general-settings';
+
   // Slots
   static String getAllSlotsByDate(String formattedDate) => '$baseApiPath/slots/get-all-slots?reservation_date=$formattedDate';
 }

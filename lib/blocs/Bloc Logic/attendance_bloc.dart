@@ -15,9 +15,14 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
       try {
         final employeeData = await employeeRepo.getAllEmployees(event.token);
 
-        final employees = employeeData
-            .map((e) => Employee(id: e['ID'].toString(), name: e['name'] ?? ''))
-            .toList();
+        final employees = employeeData.map((e) {
+          final isPresent = e['ispresent'] ?? false;
+          return Employee(
+            id: e['ID'].toString(),
+            name: e['name'] ?? '',
+            status: isPresent ? 'Present' : '',
+          );
+        }).toList();
 
         emit(AttendancePopupReady(employees));
       } catch (e) {

@@ -1,455 +1,1244 @@
-// settings_screen.dart
+// import 'dart:convert';
+// import 'dart:typed_data';
+// import 'package:dotted_border/dotted_border.dart';
+// import 'package:flutter/material.dart';
+// import 'package:http/http.dart' as http;
+// import 'package:image_picker/image_picker.dart';
+// import 'package:package_info_plus/package_info_plus.dart';
+// import 'package:shared_preferences/shared_preferences.dart';
+// import '../../repositories/settings_repository.dart';
+// import '../../utils/logger.dart';
+//
+// class SettingsScreen extends StatefulWidget {
+//   final String token;
+//   final String pin;
+//   final String userId;
+//   final String displayName;
+//   final String role;
+//
+//   const SettingsScreen({
+//     super.key,
+//     required this.token,
+//     required this.pin,
+//     required this.userId,
+//     required this.displayName,
+//     required this.role,
+//   });
+//
+//   @override
+//   State<SettingsScreen> createState() => _SettingsScreenState();
+// }
+//
+// class _SettingsScreenState extends State<SettingsScreen> {
+//   final _formKey = GlobalKey<FormState>();
+//
+//   final TextEditingController _fullNameController = TextEditingController();
+//   final TextEditingController _contactController = TextEditingController();
+//   final TextEditingController _emailController = TextEditingController();
+//   final TextEditingController _deviceIdController = TextEditingController();
+//   final TextEditingController _companyController = TextEditingController();
+//   final TextEditingController _gstinController = TextEditingController();
+//   final TextEditingController _headerController = TextEditingController();
+//   final TextEditingController _footerController = TextEditingController();
+//
+//   Uint8List? _photoBytes;
+//   Uint8List? _logoBytes;
+//   String? _photoBase64;
+//   String? _logoBase64;
+//   String? _selectedDefaultMethod;
+//   Map<String, bool> _paymentSelections = {
+//     "Cash": true,
+//     "Card": true,
+//     "UPI": true,
+//     "Wallets": true,
+//   };
+//   Map<String, bool> _otherSelections = {
+//     "Coupons": true,
+//     "Tips": true,
+//     "Payouts": true,
+//   };
+//   Map<String, bool> _orderTypeSelections = {
+//     "Dine-in": true,
+//     "Takeaway": true,
+//   };
+//   final ImagePicker _picker = ImagePicker();
+//   String _selectedLabel = "General";
+//   bool _isLoading = true;
+//   final _settingsRepo = SettingsRepository();
+//
+//   @override
+//   void initState() {
+//     super.initState();
+//     print("SettingsScreen initialized with:");
+//     print("User ID: ${widget.userId}");
+//     print("Display Name: ${widget.displayName}");
+//     print("Role: ${widget.role}");
+//     _fetchGeneralSettings();
+//   }
+//   Future<void> _fetchGeneralSettings() async {
+//     AppLogger.info("🔹 Fetching General Settings for User ID: ${widget.userId}");
+//
+//     setState(() => _isLoading = true);
+//
+//     final result = await _settingsRepo.fetchGeneralSettings(
+//       token: widget.token,
+//       userId: widget.userId,
+//     );
+//
+//     if (result["success"] == true) {
+//       final userData = result["data"];
+//
+//       setState(() {
+//         _fullNameController.text = userData["full_name"] ?? '';
+//         _emailController.text = userData["email"] ?? '';
+//         _contactController.text = userData["phone_number"] ?? '';
+//         _deviceIdController.text = userData["user_device_id"] ?? '';
+//         _companyController.text = userData["company_name"] ?? '';
+//         _gstinController.text = userData["gstin"] ?? '';
+//
+//         if (userData["profile_url"] != null &&
+//             userData["profile_url"].toString().isNotEmpty) {
+//           _loadImageFromUrl(userData["profile_url"], isProfile: true);
+//         }
+//
+//         if (userData["receipt_logo"] != null &&
+//             userData["receipt_logo"].toString().isNotEmpty) {
+//           _loadImageFromUrl(userData["receipt_logo"], isProfile: false);
+//         }
+//
+//         _isLoading = false;
+//       });
+//     } else {
+//       setState(() => _isLoading = false);
+//     }
+//   }
+//
+//   /// 🔹 Load image from URL into memory
+//   Future<void> _loadImageFromUrl(String url, {required bool isProfile}) async {
+//     try {
+//       final response = await http.get(Uri.parse(url));
+//       if (response.statusCode == 200) {
+//         final bytes = response.bodyBytes;
+//         setState(() {
+//           if (isProfile) {
+//             _photoBytes = bytes;
+//             _photoBase64 = base64Encode(bytes);
+//           } else {
+//             _logoBytes = bytes;
+//             _logoBase64 = base64Encode(bytes);
+//           }
+//         });
+//       }
+//     } catch (e) {
+//       print("Failed to load image: $e");
+//     }
+//   }
+//
+//   Future<void> _pickImage(bool isProfile) async {
+//     try {
+//       final XFile? picked = await _picker.pickImage(
+//         source: ImageSource.gallery,
+//         imageQuality: 80,
+//       );
+//       if (picked == null) return;
+//       final bytes = await picked.readAsBytes();
+//       final base64Str = base64Encode(bytes);
+//       setState(() {
+//         if (isProfile) {
+//           _photoBytes = bytes;
+//           _photoBase64 = base64Str;
+//         } else {
+//           _logoBytes = bytes;
+//           _logoBase64 = base64Str;
+//         }
+//       });
+//     } catch (e) {
+//       ScaffoldMessenger.of(
+//         context,
+//       ).showSnackBar(const SnackBar(content: Text('Image selection failed')));
+//     }
+//   }
+//
+//   Future<void> _saveSettings() async {
+//     final prefs = await SharedPreferences.getInstance();
+//     await prefs.setString('header', _headerController.text);
+//     await prefs.setString('footer', _footerController.text);
+//     if (_logoBase64 != null) await prefs.setString('logoBase64', _logoBase64!);
+//     await prefs.setString(
+//       'selectedDefaultMethod',
+//       _selectedDefaultMethod ?? '',
+//     );
+//     await prefs.setString('paymentSelections', jsonEncode(_paymentSelections));
+//     await prefs.setString('otherSelections', jsonEncode(_otherSelections));
+//     await prefs.setString('orderTypeSelections', jsonEncode(_orderTypeSelections));
+//
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       const SnackBar(content: Text('Settings saved successfully')),
+//     );
+//   }
+//
+//   Widget _photoBox(Uint8List? bytes) {
+//     return DottedBorder(
+//       color: Colors.black,
+//       strokeWidth: 1.5,
+//       dashPattern: const [6, 5],
+//       borderType: BorderType.RRect,
+//       radius: const Radius.circular(12),
+//       child: Container(
+//         width: 90,
+//         height: 90,
+//         decoration: BoxDecoration(
+//           borderRadius: BorderRadius.circular(12),
+//           color: Colors.white,
+//         ),
+//         child: bytes == null
+//             ? const Center(
+//           child: Icon(
+//             Icons.image_outlined,
+//             size: 28,
+//             color: Colors.black54,
+//           ),
+//         )
+//             : ClipRRect(
+//           borderRadius: BorderRadius.circular(12),
+//           child: Image.memory(bytes, fit: BoxFit.cover),
+//         ),
+//       ),
+//     );
+//   }
+//
+//   Widget _logoBox(Uint8List? bytes) {
+//     return Row(
+//       crossAxisAlignment: CrossAxisAlignment.center,
+//       children: [
+//         GestureDetector(
+//           onTap: () => _pickImage(false),
+//           child: DottedBorder(
+//             color: Colors.black,
+//             strokeWidth: 1.5,
+//             dashPattern: const [6, 5],
+//             borderType: BorderType.RRect,
+//             radius: const Radius.circular(12),
+//             child: Container(
+//               width: 90,
+//               height: 90,
+//               decoration: BoxDecoration(
+//                 borderRadius: BorderRadius.circular(12),
+//                 color: Colors.white,
+//               ),
+//               child:
+//               bytes == null
+//                   ? const Center(
+//                 child: Icon(
+//                   Icons.add_photo_alternate_outlined,
+//                   size: 28,
+//                   color: Colors.black,
+//                 ),
+//               )
+//                   : ClipRRect(
+//                 borderRadius: BorderRadius.circular(12),
+//                 child: Image.memory(bytes, fit: BoxFit.cover),
+//               ),
+//             ),
+//           ),
+//         ),
+//         if (bytes != null) ...[
+//           const SizedBox(width: 12),
+//           Column(
+//             children: [
+//               // Edit button
+//               InkWell(
+//                 onTap: () => _pickImage(false),
+//                 borderRadius: BorderRadius.circular(6),
+//                 child: Container(
+//                   padding: const EdgeInsets.all(6),
+//                   decoration: BoxDecoration(
+//                     color: Colors.white,
+//                     border: Border.all(color: Colors.grey.shade300),
+//                     borderRadius: BorderRadius.circular(6),
+//                   ),
+//                   child: const Icon(
+//                     Icons.edit,
+//                     color: Colors.black54,
+//                     size: 20,
+//                   ),
+//                 ),
+//               ),
+//               const SizedBox(height: 8),
+//               // Delete button
+//               InkWell(
+//                 onTap: () {
+//                   setState(() {
+//                     _logoBytes = null;
+//                     _logoBase64 = null;
+//                   });
+//                 },
+//                 borderRadius: BorderRadius.circular(6),
+//                 child: Container(
+//                   padding: const EdgeInsets.all(6),
+//                   decoration: BoxDecoration(
+//                     color: Colors.white,
+//                     border: Border.all(color: Colors.grey.shade300),
+//                     borderRadius: BorderRadius.circular(6),
+//                   ),
+//                   child: const Icon(
+//                     Icons.delete,
+//                     color: Colors.redAccent,
+//                     size: 20,
+//                   ),
+//                 ),
+//               ),
+//             ],
+//           ),
+//         ],
+//       ],
+//     );
+//   }
+//
+//   Widget _buildTabs() {
+//     final List<String> labels = ["General", "Payment", "Advanced"];
+//
+//     return Row(
+//       children:
+//       labels.map((label) {
+//         final bool selected = label == _selectedLabel;
+//         return Padding(
+//           padding: const EdgeInsets.only(right: 12),
+//           child: GestureDetector(
+//             onTap: () {
+//               setState(() {
+//                 _selectedLabel = label;
+//               });
+//             },
+//             child: Container(
+//               padding: const EdgeInsets.symmetric(
+//                 horizontal: 14,
+//                 vertical: 7,
+//               ),
+//               decoration: BoxDecoration(
+//                 gradient:
+//                 selected
+//                     ? const LinearGradient(
+//                   begin: Alignment.topCenter,
+//                   end: Alignment.bottomCenter,
+//                   colors: [Color(0xFF002E63), Color(0xFF005DC9)],
+//                 )
+//                     : null,
+//                 color: selected ? null : Colors.transparent,
+//                 borderRadius: BorderRadius.circular(6),
+//                 boxShadow:
+//                 selected
+//                     ? [
+//                   const BoxShadow(
+//                     color: Color(0x3F000000),
+//                     blurRadius: 4,
+//                     offset: Offset(1, 1),
+//                   ),
+//                 ]
+//                     : [],
+//               ),
+//               child: Text(
+//                 label,
+//                 style: TextStyle(
+//                   color: selected ? Colors.white : Colors.black,
+//                   fontSize: 14,
+//                   fontFamily: 'Manrope',
+//                   fontWeight:
+//                   selected ? FontWeight.w700 : FontWeight.normal,
+//                 ),
+//               ),
+//             ),
+//           ),
+//         );
+//       }).toList(),
+//     );
+//   }
+//
+//   Widget _buildField(
+//       String label,
+//       TextEditingController controller, {
+//         String? hint,
+//         bool readOnly = false,
+//       }) {
+//     return Column(
+//       crossAxisAlignment: CrossAxisAlignment.start,
+//       children: [
+//         Text(
+//           label,
+//           style: const TextStyle(
+//             fontWeight: FontWeight.w600,
+//             color: Colors.black87,
+//             fontSize: 15,
+//           ),
+//         ),
+//         const SizedBox(height: 5),
+//         TextFormField(
+//           controller: controller,
+//           readOnly: readOnly,
+//           decoration: InputDecoration(
+//             filled: true,
+//             fillColor: const Color(0xFFEDF2F6),
+//             border: OutlineInputBorder(
+//               borderRadius: BorderRadius.circular(6),
+//               borderSide: const BorderSide(color: Color(0xFFE0E4EC)),
+//             ),
+//             enabledBorder: OutlineInputBorder(
+//               borderRadius: BorderRadius.circular(6),
+//               borderSide: const BorderSide(color: Color(0xFFE0E4EC)),
+//             ),
+//             focusedBorder: OutlineInputBorder(
+//               borderRadius: BorderRadius.circular(6),
+//               borderSide: const BorderSide(
+//                 color: Color(0xFFE0E4EC),
+//                 width: 1.5,
+//               ),
+//             ),
+//             contentPadding: const EdgeInsets.symmetric(
+//               horizontal: 14,
+//               vertical: 12,
+//             ),
+//             hintText: hint,
+//           ),
+//           style: TextStyle(
+//             color: readOnly ? Colors.grey[700] : Colors.black,
+//           ),
+//         ),
+//       ],
+//     );
+//   }
+//
+//   // =================== MAIN BUILD ===================
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       backgroundColor: const Color(0xFFF4F6FC),
+//       body: SafeArea(
+//         child: Padding(
+//           padding: const EdgeInsets.all(22.0),
+//           child: LayoutBuilder(
+//             builder: (context, constraints) {
+//               return SingleChildScrollView(
+//                 child: ConstrainedBox(
+//                   constraints: BoxConstraints(minHeight: constraints.maxHeight),
+//                   child: IntrinsicHeight(
+//                     child: Container(
+//                       padding: const EdgeInsets.all(27),
+//                       decoration: BoxDecoration(
+//                         color: Colors.white,
+//                         borderRadius: BorderRadius.circular(14),
+//                       ),
+//                       child: Column(
+//                         crossAxisAlignment: CrossAxisAlignment.start,
+//                         children: [
+//                           // ===== Header =====
+//                           Container(
+//                             padding: const EdgeInsets.symmetric(
+//                               horizontal: 16,
+//                               vertical: 8,
+//                             ),
+//                             decoration: BoxDecoration(
+//                               color: const Color(0xFFF4F6FB),
+//                               borderRadius: BorderRadius.circular(8),
+//                             ),
+//                             child: Row(
+//                               children: [
+//                                 // back button
+//                                 Container(
+//                                   height: 40,
+//                                   padding: const EdgeInsets.symmetric(
+//                                     horizontal: 10,
+//                                   ),
+//                                   decoration: BoxDecoration(
+//                                     color: Colors.white,
+//                                     border: Border.all(
+//                                       color: Colors.grey.shade300,
+//                                     ),
+//                                     borderRadius: BorderRadius.circular(10),
+//                                   ),
+//                                   child: InkWell(
+//                                     onTap: () => Navigator.pop(context),
+//                                     borderRadius: BorderRadius.circular(10),
+//                                     child: const Row(
+//                                       mainAxisSize: MainAxisSize.min,
+//                                       children: [
+//                                         Icon(Icons.arrow_back, size: 18),
+//                                         SizedBox(width: 5),
+//                                         Text(
+//                                           'Back',
+//                                           style: TextStyle(
+//                                             fontSize: 16,
+//                                             fontWeight: FontWeight.w500,
+//                                           ),
+//                                         ),
+//                                       ],
+//                                     ),
+//                                   ),
+//                                 ),
+//                                 const SizedBox(width: 16),
+//                                 _buildTabs(),
+//                                 const Spacer(),
+//                                 ElevatedButton(
+//                                   style: ElevatedButton.styleFrom(
+//                                     backgroundColor: Colors.redAccent,
+//                                     foregroundColor: Colors.white,
+//                                     padding: const EdgeInsets.symmetric(
+//                                       horizontal: 30,
+//                                       vertical: 10,
+//                                     ),
+//                                     shape: RoundedRectangleBorder(
+//                                       borderRadius: BorderRadius.circular(8),
+//                                     ),
+//                                   ),
+//                                   onPressed: _saveSettings,
+//                                   child: const Text("Save Changes"),
+//                                 ),
+//                               ],
+//                             ),
+//                           ),
+//                           const SizedBox(height: 22),
+//
+//                           // ===== Tab Content =====
+//                           if (_selectedLabel == "General")
+//                             _buildGeneralSection(),
+//                           if (_selectedLabel == "Payment")
+//                             _buildPaymentSection(),
+//                           if (_selectedLabel == "Advanced")
+//                             _buildAdvancedSection(),
+//                         ],
+//                       ),
+//                     ),
+//                   ),
+//                 ),
+//               );
+//             },
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+//
+//   Widget _buildGeneralSection() {
+//     return Row(
+//       crossAxisAlignment: CrossAxisAlignment.start,
+//       children: [
+//         // LEFT COLUMN
+//         Expanded(
+//           child: Column(
+//             crossAxisAlignment: CrossAxisAlignment.start,
+//             children: [
+//               const Text(
+//                 "Personal Information",
+//                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+//               ),
+//               const SizedBox(height: 6),
+//               const Text(
+//                 "Change your personal information",
+//                 style: TextStyle(color: Colors.grey, fontSize: 13),
+//               ),
+//               const SizedBox(height: 20),
+//               Row(
+//                 children: [
+//                   _photoBox(_photoBytes),
+//                   const SizedBox(width: 20),
+//                   Expanded(
+//                     child: Column(
+//                       crossAxisAlignment: CrossAxisAlignment.start,
+//                       children: [
+//                         Text(
+//                           "User",
+//                           style: const TextStyle(
+//                             fontSize: 14,
+//                             color: Colors.black,
+//                             fontWeight: FontWeight.bold,
+//                           ),
+//                         ),
+//                         const SizedBox(height: 2),
+//                         Text(
+//                           widget.role.isNotEmpty ? widget.role : "Role",
+//                           style: const TextStyle(
+//                             fontSize: 16,
+//                             color: const Color(0xFF002E63),
+//                             fontWeight: FontWeight.w400,
+//                           ),
+//                         ),
+//                       ],
+//                     ),
+//                   ),
+//                 ],
+//               ),
+//               const SizedBox(height: 25),
+//               _buildField("Full Name", _fullNameController, readOnly: true),
+//               const SizedBox(height: 18),
+//               _buildField("Contact No.", _contactController, readOnly: true),
+//               const SizedBox(height: 18),
+//               _buildField("Email Address", _emailController, readOnly: true),
+//               const SizedBox(height: 18),
+//               _buildField("Device ID :", _deviceIdController, readOnly: true),
+//               const SizedBox(height: 18),
+//               FutureBuilder<PackageInfo>(
+//                 future: PackageInfo.fromPlatform(),
+//                 builder: (context, snapshot) {
+//                   if (snapshot.connectionState == ConnectionState.waiting) {
+//                     return const Text(
+//                       "Loading version...",
+//                       style: TextStyle(
+//                         fontWeight: FontWeight.w600,
+//                         color: Colors.black54,
+//                         fontSize: 15,
+//                       ),
+//                     );
+//                   } else if (snapshot.hasError) {
+//                     return const Text(
+//                       "Version info not available",
+//                       style: TextStyle(
+//                         fontWeight: FontWeight.w600,
+//                         color: Colors.black54,
+//                         fontSize: 15,
+//                       ),
+//                     );
+//                   } else if (snapshot.hasData) {
+//                     final packageInfo = snapshot.data!;
+//                     final version = '${packageInfo.version}+${packageInfo.buildNumber}';
+//                     return Text(
+//                       "App Version $version",
+//                       style: const TextStyle(
+//                         fontWeight: FontWeight.w600,
+//                         color: Colors.black87,
+//                         fontSize: 15,
+//                       ),
+//                     );
+//                   } else {
+//                     return const SizedBox();
+//                   }
+//                 },
+//               ),
+//             ],
+//           ),
+//         ),
+//         const SizedBox(width: 50),
+//
+//         // RIGHT COLUMN
+//         Expanded(
+//           child: Column(
+//             crossAxisAlignment: CrossAxisAlignment.start,
+//             children: [
+//               const Text(
+//                 "Receipt Settings",
+//                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+//               ),
+//               const SizedBox(height: 6),
+//               const Text(
+//                 "Customise your own receipt",
+//                 style: TextStyle(color: Colors.grey, fontSize: 14),
+//               ),
+//               const SizedBox(height: 20),
+//               Row(
+//                 children: [
+//                   _logoBox(_logoBytes),
+//                   const SizedBox(width: 16),
+//                   Expanded(
+//                     child: _buildField("Company Name", _companyController,readOnly: true),
+//                   ),
+//                 ],
+//               ),
+//               const SizedBox(height: 20),
+//               _buildField("GSTIN", _gstinController,readOnly: true),
+//               const SizedBox(height: 20),
+//               _buildField("Header", _headerController),
+//               const SizedBox(height: 20),
+//               _buildField("Footer", _footerController),
+//               const SizedBox(height: 20),
+//               Row(
+//                 crossAxisAlignment: CrossAxisAlignment.center,
+//                 children: [
+//                   Expanded(
+//                     child: Column(
+//                       crossAxisAlignment: CrossAxisAlignment.start,
+//                       children: const [
+//                         Text(
+//                           "Printer Settings",
+//                           style: TextStyle(
+//                             fontSize: 15,
+//                             fontWeight: FontWeight.w600,
+//                           ),
+//                         ),
+//                         SizedBox(height: 4),
+//                         Text(
+//                           "Connected Printer",
+//                           style: TextStyle(color: Colors.black54),
+//                         ),
+//                       ],
+//                     ),
+//                   ),
+//                   ElevatedButton(
+//                     onPressed: () {},
+//                     style: ElevatedButton.styleFrom(
+//                       backgroundColor: const Color(0xFF007BFF),
+//                       padding: const EdgeInsets.symmetric(
+//                         horizontal: 30,
+//                         vertical: 8,
+//                       ),
+//                       shape: RoundedRectangleBorder(
+//                         borderRadius: BorderRadius.circular(8),
+//                       ),
+//                     ),
+//                     child: const Text(
+//                       "+ Add",
+//                       style: TextStyle(color: Colors.white, fontSize: 14),
+//                     ),
+//                   ),
+//                 ],
+//               ),
+//             ],
+//           ),
+//         ),
+//       ],
+//     );
+//   }
+//
+//   Widget _buildPaymentSection() {
+//     return Padding(
+//       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+//       child: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           const Text(
+//             "Payment Settings",
+//             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+//           ),
+//           const SizedBox(height: 24),
+//
+//           const Text(
+//             "Default Payment Method",
+//             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+//           ),
+//           const SizedBox(height: 6),
+//
+//           DropdownButtonFormField<String>(
+//             value: _selectedDefaultMethod != null &&
+//                 _paymentSelections.containsKey(_selectedDefaultMethod)
+//                 ? _selectedDefaultMethod
+//                 : null,
+//             items: _paymentSelections.keys
+//                 .map((method) => DropdownMenuItem(
+//               value: method,
+//               child: Text(method),
+//             ))
+//                 .toList(),
+//             onChanged: (val) {
+//               setState(() {
+//                 _selectedDefaultMethod = val;
+//               });
+//             },
+//             decoration: InputDecoration(
+//               hintText: "Select Payment Method",
+//               filled: true,
+//               fillColor: const Color(0xFFF4F6FB),
+//               contentPadding:
+//               const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+//               border: OutlineInputBorder(
+//                 borderRadius: BorderRadius.circular(12),
+//                 borderSide: BorderSide.none,
+//               ),
+//               enabledBorder: OutlineInputBorder(
+//                 borderRadius: BorderRadius.circular(12),
+//                 borderSide: BorderSide.none,
+//               ),
+//               focusedBorder: OutlineInputBorder(
+//                 borderRadius: BorderRadius.circular(12),
+//                 borderSide: BorderSide.none,
+//               ),
+//             ),
+//           ),
+//
+//           const SizedBox(height: 26),
+//           const Text(
+//             "Payment Methods",
+//             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+//           ),
+//           const SizedBox(height: 10),
+//
+//           Wrap(
+//             spacing: 20,
+//             runSpacing: 8,
+//             children: [
+//               for (var method in _paymentSelections.keys)
+//                 Row(
+//                   mainAxisSize: MainAxisSize.min,
+//                   children: [
+//                     Checkbox(
+//                       value: _paymentSelections[method],
+//                       onChanged:
+//                           (val) =>
+//                           setState(() => _paymentSelections[method] = val!),
+//                       activeColor: Colors.black,
+//                     ),
+//                     Text(method, style: const TextStyle(fontSize: 14)),
+//                   ],
+//                 ),
+//             ],
+//           ),
+//
+//           const SizedBox(height: 30),
+//           const Text(
+//             "Other Options",
+//             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+//           ),
+//           const SizedBox(height: 10),
+//
+//           Wrap(
+//             spacing: 20,
+//             runSpacing: 8,
+//             children: [
+//               for (var opt in _otherSelections.keys)
+//                 Row(
+//                   mainAxisSize: MainAxisSize.min,
+//                   children: [
+//                     Checkbox(
+//                       value: _otherSelections[opt],
+//                       onChanged:
+//                           (val) => setState(() => _otherSelections[opt] = val!),
+//                       activeColor: Colors.black,
+//                     ),
+//                     Text(opt, style: const TextStyle(fontSize: 14)),
+//                   ],
+//                 ),
+//             ],
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+//
+//   Widget _buildAdvancedSection() {
+//     return Padding(
+//       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+//       child: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           const Text(
+//             "Advanced Settings",
+//             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+//           ),
+//           const SizedBox(height: 24),
+//           const Text(
+//             "Order Type",
+//             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+//           ),
+//           const SizedBox(height: 10),
+//           Wrap(
+//             spacing: 20,
+//             runSpacing: 8,
+//             children: [
+//               for (var opt in _orderTypeSelections.keys)
+//                 Row(
+//                   mainAxisSize: MainAxisSize.min,
+//                   children: [
+//                     Checkbox(
+//                       value: _orderTypeSelections[opt],
+//                       onChanged: (val) {
+//                         setState(() => _orderTypeSelections[opt] = val!);
+//                       },
+//                       activeColor: Colors.black,
+//                     ),
+//                     Text(opt, style: const TextStyle(fontSize: 14)),
+//                   ],
+//                 ),
+//             ],
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
+
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../models/UserPermissions.dart';
-import '../../utils/SessionManager.dart';
-import '../widgets/top_bar.dart';
 
 class SettingsScreen extends StatefulWidget {
   final String token;
   final String pin;
+  final String userId;
+  final String displayName;
+  final String role;
 
-  const SettingsScreen({super.key, required this.token, required this.pin});
+  const SettingsScreen({
+    super.key,
+    required this.token,
+    required this.pin,
+    required this.userId,
+    required this.displayName,
+    required this.role,
+  });
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  UserPermissions? _userPermissions;
-
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _businessNameController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
+
+  final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _contactController = TextEditingController();
-  final TextEditingController _addressController = TextEditingController();
-  String? _language;
-  String? _currency;
-  String? _timeZone;
-  bool _emailNotification = false;
-  bool _soundNotification = true;
-  String? _photoBase64;
-  String? _logoBase64;
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _deviceIdController = TextEditingController();
+  final TextEditingController _companyController = TextEditingController();
+  final TextEditingController _gstinController = TextEditingController();
+  final TextEditingController _headerController = TextEditingController();
+  final TextEditingController _footerController = TextEditingController();
+
   Uint8List? _photoBytes;
   Uint8List? _logoBytes;
-
+  String? _photoBase64;
+  String? _logoBase64;
+  String? _selectedDefaultMethod;
+  Map<String, bool> _paymentSelections = {
+    "Cash": true,
+    "Card": true,
+    "UPI": true,
+    "Wallets": true,
+  };
+  Map<String, bool> _otherSelections = {
+    "Coupons": true,
+    "Tips": true,
+    "Payouts": true,
+  };
+  Map<String, bool> _orderTypeSelections = {
+    "Dine-in": true,
+    "Takeaway": true,
+  };
   final ImagePicker _picker = ImagePicker();
+  String _selectedLabel = "General";
 
   @override
   void initState() {
     super.initState();
-    _loadPermissions();
+    print("SettingsScreen initialized with:");
+    print("User ID: ${widget.userId}");
+    print("Display Name: ${widget.displayName}");
     _loadSavedSettings();
-  }
-
-  Future<void> _loadPermissions() async {
-    final savedPermissions = await SessionManager.loadPermissions();
-    if (savedPermissions != null) {
-      setState(() {
-        _userPermissions = savedPermissions;
-      });
-    }
   }
 
   Future<void> _loadSavedSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    final photoB64 = prefs.getString('photoBase64');
-    final logoB64 = prefs.getString('logoBase64');
-
     setState(() {
-      _businessNameController.text = prefs.getString('businessName') ?? '';
+      _fullNameController.text = prefs.getString('fullName') ?? '';
+      _contactController.text = prefs.getString('contactNo') ?? '';
       _emailController.text = prefs.getString('email') ?? '';
-      _contactController.text = prefs.getString('contact') ?? '';
-      _addressController.text = prefs.getString('address') ?? '';
-      _language = prefs.getString('language');
-      _currency = prefs.getString('currency');
-      _timeZone = prefs.getString('timeZone');
-      _emailNotification = prefs.getBool('emailNotification') ?? false;
-      _soundNotification = prefs.getBool('soundNotification') ?? true;
-      _photoBase64 = photoB64;
-      _logoBase64 = logoB64;
-      _photoBytes = photoB64 != null ? base64Decode(photoB64) : null;
-      _logoBytes = logoB64 != null ? base64Decode(logoB64) : null;
+      _deviceIdController.text = prefs.getString('deviceId') ?? '';
+      _companyController.text = prefs.getString('companyName') ?? '';
+      _gstinController.text = prefs.getString('gstin') ?? '';
+      _headerController.text = prefs.getString('header') ?? '';
+      _footerController.text = prefs.getString('footer') ?? '';
+      _photoBase64 = prefs.getString('photoBase64');
+      _logoBase64 = prefs.getString('logoBase64');
+      _photoBytes = _photoBase64 != null ? base64Decode(_photoBase64!) : null;
+      _logoBytes = _logoBase64 != null ? base64Decode(_logoBase64!) : null;
+      _selectedDefaultMethod = prefs.getString('selectedDefaultMethod');
+
+      final paymentSelectionsString = prefs.getString('paymentSelections');
+      if (paymentSelectionsString != null) {
+        _paymentSelections = Map<String, bool>.from(
+          jsonDecode(paymentSelectionsString),
+        );
+      }
+
+      final otherSelectionsString = prefs.getString('otherSelections');
+      if (otherSelectionsString != null) {
+        _otherSelections = Map<String, bool>.from(
+          jsonDecode(otherSelectionsString),
+        );
+      }
+      final orderTypeString = prefs.getString('orderTypeSelections');
+      if (orderTypeString != null) {
+        _orderTypeSelections = Map<String, bool>.from(
+          jsonDecode(orderTypeString),
+        );
+      }
     });
   }
 
-  Future<void> _pickImage(bool isPhoto) async {
+  Future<void> _pickImage(bool isProfile) async {
     try {
-      final XFile? picked =
-      await _picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+      final XFile? picked = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+      );
       if (picked == null) return;
-
       final bytes = await picked.readAsBytes();
       final base64Str = base64Encode(bytes);
-
       setState(() {
-        if (isPhoto) {
-          _photoBase64 = base64Str;
+        if (isProfile) {
           _photoBytes = bytes;
+          _photoBase64 = base64Str;
         } else {
-          _logoBase64 = base64Str;
           _logoBytes = bytes;
+          _logoBase64 = base64Str;
         }
       });
     } catch (e) {
-      debugPrint('Image pick error: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to pick image')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Image selection failed')));
     }
-  }
-
-  Widget _imageFromBytes(Uint8List? bytes, double width, double height,
-      {IconData placeholder = Icons.add_a_photo_outlined}) {
-    if (bytes == null) {
-      return Center(
-        child: Icon(placeholder, color: Colors.grey, size: 40),
-      );
-    }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
-      child: Image.memory(bytes, width: width, height: height, fit: BoxFit.cover),
-    );
   }
 
   Future<void> _saveSettings() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('businessName', _businessNameController.text);
+    await prefs.setString('fullName', _fullNameController.text);
+    await prefs.setString('contactNo', _contactController.text);
     await prefs.setString('email', _emailController.text);
-    await prefs.setString('contact', _contactController.text);
-    await prefs.setString('address', _addressController.text);
-    if (_language != null) await prefs.setString('language', _language!);
-    if (_currency != null) await prefs.setString('currency', _currency!);
-    if (_timeZone != null) await prefs.setString('timeZone', _timeZone!);
-    await prefs.setBool('emailNotification', _emailNotification);
-    await prefs.setBool('soundNotification', _soundNotification);
-    if (_photoBase64 != null) await prefs.setString('photoBase64', _photoBase64!);
+    await prefs.setString('deviceId', _deviceIdController.text);
+    await prefs.setString('companyName', _companyController.text);
+    await prefs.setString('gstin', _gstinController.text);
+    await prefs.setString('header', _headerController.text);
+    await prefs.setString('footer', _footerController.text);
+    if (_photoBase64 != null)
+      await prefs.setString('photoBase64', _photoBase64!);
     if (_logoBase64 != null) await prefs.setString('logoBase64', _logoBase64!);
+    await prefs.setString(
+      'selectedDefaultMethod',
+      _selectedDefaultMethod ?? '',
+    );
+    await prefs.setString('paymentSelections', jsonEncode(_paymentSelections));
+    await prefs.setString('otherSelections', jsonEncode(_otherSelections));
+    await prefs.setString('orderTypeSelections', jsonEncode(_orderTypeSelections));
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Settings saved successfully')),
     );
   }
 
-  @override
-  void dispose() {
-    _businessNameController.dispose();
-    _emailController.dispose();
-    _contactController.dispose();
-    _addressController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final contentMaxWidth = screenWidth > 1100 ? 1500.0 : screenWidth - 40.0;
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFF0F3FC),
-      appBar: TopBar(
-        token: widget.token,
-        pin: widget.pin,
-        userPermissions: _userPermissions,
-        onPermissionsReceived: (permissions) {
-          setState(() => _userPermissions = permissions);
-        },
-      ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Container(
-            width: contentMaxWidth,
-            padding: const EdgeInsets.all(22),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x11000000),
-                  blurRadius: 10,
-                  offset: Offset(0, 6),
-                )
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Container(
-                      height: 40,
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(color: Colors.grey.shade300),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: InkWell(
-                        onTap: () => Navigator.pop(context),
-                        borderRadius: BorderRadius.circular(10),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            Icon(Icons.arrow_back, size: 18),
-                            SizedBox(width: 5),
-                            Text(
-                              'Back',
-                              style:
-                              TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-
-                    // Tabs
-                    _buildTabs(),
-
-                    const Spacer(),
-
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.redAccent,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      onPressed: _saveSettings,
-                      child: const Text("Save Changes"),
-                    ),
-                  ],
+  Widget _photoBox(Uint8List? bytes) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        GestureDetector(
+          onTap: () => _pickImage(true),
+          child: DottedBorder(
+            color: Colors.black,
+            strokeWidth: 1.5,
+            dashPattern: const [6, 5],
+            borderType: BorderType.RRect,
+            radius: const Radius.circular(12),
+            child: Container(
+              width: 90,
+              height: 90,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: Colors.white,
+              ),
+              child:
+              bytes == null
+                  ? const Center(
+                child: Icon(
+                  Icons.add_a_photo_outlined,
+                  size: 28,
+                  color: Colors.black,
                 ),
-
-                const SizedBox(height: 28),
-                Form(
-                  key: _formKey,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Left column (fixed width)
-                      SizedBox(
-                        width: 240,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            // Upload photo box
-                            GestureDetector(
-                              onTap: () => _pickImage(true),
-                              child: DottedBorder(
-                                color: Colors.grey.shade300,
-                                strokeWidth: 1.6,
-                                dashPattern: const [6, 5],
-                                borderType: BorderType.RRect,
-                                radius: const Radius.circular(10),
-                                child: Container(
-                                  width: 120,
-                                  height: 120,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(10),
-                                    color: Colors.white,
-                                  ),
-                                  child: _imageFromBytes(_photoBytes, 120, 120),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            const Text(
-                              "Upload",
-                              style:
-                              TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                            ),
-                            const SizedBox(height: 10),
-                            const Text(
-                              "Please Upload a Clear Photo\nAccepted formats: JPG, PNG · Max size: 5MB",
-                              textAlign: TextAlign.center,
-                              style: TextStyle(color: Colors.grey, fontSize: 12),
-                            ),
-                            const SizedBox(height: 22),
-
-                            // Logo Upload
-                            GestureDetector(
-                              onTap: () => _pickImage(false),
-                              child: Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF2F6F9),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.grey.shade200),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 38,
-                                      height: 38,
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(6),
-                                        border:
-                                        Border.all(color: Colors.grey.shade300),
-                                      ),
-                                      child: _imageFromBytes(_logoBytes, 38, 38,
-                                          placeholder: Icons.image),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    const Expanded(
-                                      child: Text(
-                                        "Please Upload your logo here",
-                                        style: TextStyle(color: Colors.black54),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(width: 40),
-
-                      // Right column (expands)
-                      Expanded(
-                        child: Column(
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(child: _buildTextField(_businessNameController, "Business Name")),
-                                const SizedBox(width: 20),
-                                Expanded(child: _buildTextField(_contactController, "Contact Info")),
-                              ],
-                            ),
-                            const SizedBox(height: 23),
-
-                            Row(
-                              children: [
-                                Expanded(child: _buildTextField(_emailController, "Email")),
-                                const SizedBox(width: 20),
-                                Expanded(child: _buildTextField(_addressController, "Address")),
-                              ],
-                            ),
-                            const SizedBox(height: 23),
-
-                            Row(
-                              children: [
-                                Expanded(child: _buildDropdown("Language", _language, (v) => setState(() => _language = v))),
-                                const SizedBox(width: 20),
-                                Expanded(child: _buildDropdown("Currency", _currency, (v) => setState(() => _currency = v))),
-                              ],
-                            ),
-                            const SizedBox(height: 23),
-
-                            Row(
-                              children: [
-                                Expanded(child: _buildDropdown("Time Zone", _timeZone, (v) => setState(() => _timeZone = v))),
-                              ],
-                            ),
-                            const SizedBox(height: 33),
-
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text("Notification",
-                                      style: TextStyle(fontWeight: FontWeight.bold)),
-                                  const SizedBox(height: 8),
-                                  CheckboxListTile(
-                                    controlAffinity: ListTileControlAffinity.leading,
-                                    contentPadding: EdgeInsets.zero,
-                                    title: const Text("Email Notification"),
-                                    subtitle: const Text(
-                                        "You will be notified when a new email arrives."),
-                                    value: _emailNotification,
-                                    onChanged: (val) =>
-                                        setState(() => _emailNotification = val ?? false),
-                                  ),
-                                  CheckboxListTile(
-                                    controlAffinity: ListTileControlAffinity.leading,
-                                    contentPadding: EdgeInsets.zero,
-                                    title: const Text("Sound Notification"),
-                                    subtitle: const Text(
-                                        "You will be notified with sound when someone messages you."),
-                                    value: _soundNotification,
-                                    onChanged: (val) =>
-                                        setState(() => _soundNotification = val ?? false),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            const SizedBox(height: 26),
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                "App Version 1.0.417+1",
-                                style: TextStyle(color: Colors.grey.shade600),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    ],
-                  ),
-                ),
-              ],
+              )
+                  : ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.memory(bytes, fit: BoxFit.cover),
+              ),
             ),
           ),
         ),
-      ),
+        if (bytes != null) ...[
+          const SizedBox(width: 12),
+          Column(
+            children: [
+              InkWell(
+                onTap: () => _pickImage(true),
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Icon(
+                    Icons.edit,
+                    color: Colors.black54,
+                    size: 20,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    _photoBytes = null;
+                    _photoBase64 = null;
+                  });
+                },
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Icon(
+                    Icons.delete,
+                    color: Colors.redAccent,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _logoBox(Uint8List? bytes) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        GestureDetector(
+          onTap: () => _pickImage(false),
+          child: DottedBorder(
+            color: Colors.black,
+            strokeWidth: 1.5,
+            dashPattern: const [6, 5],
+            borderType: BorderType.RRect,
+            radius: const Radius.circular(12),
+            child: Container(
+              width: 90,
+              height: 90,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: Colors.white,
+              ),
+              child:
+              bytes == null
+                  ? const Center(
+                child: Icon(
+                  Icons.add_photo_alternate_outlined,
+                  size: 28,
+                  color: Colors.black,
+                ),
+              )
+                  : ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.memory(bytes, fit: BoxFit.cover),
+              ),
+            ),
+          ),
+        ),
+        if (bytes != null) ...[
+          const SizedBox(width: 12),
+          Column(
+            children: [
+              // Edit button
+              InkWell(
+                onTap: () => _pickImage(false),
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Icon(
+                    Icons.edit,
+                    color: Colors.black54,
+                    size: 20,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Delete button
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    _logoBytes = null;
+                    _logoBase64 = null;
+                  });
+                },
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Icon(
+                    Icons.delete,
+                    color: Colors.redAccent,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
     );
   }
 
   Widget _buildTabs() {
-    final List<String> labels = ["General", "Payment", "Devices", "Advanced"];
-    final String selectedLabel = "General";
+    final List<String> labels = ["General", "Payment", "Advanced"];
 
     return Row(
-      children: labels.map((label) {
-        final bool selected = label == selectedLabel;
+      children:
+      labels.map((label) {
+        final bool selected = label == _selectedLabel;
         return Padding(
           padding: const EdgeInsets.only(right: 12),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-            decoration: BoxDecoration(
-              gradient: selected
-                  ? LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF002E63), Color(0xFF005DC9)],
-              )
-                  : null,
-              color: selected ? null : Colors.transparent,
-              borderRadius: BorderRadius.circular(6),
-              boxShadow: selected
-                  ? [
-                BoxShadow(
-                  color: Color(0x3F000000),
-                  blurRadius: 4,
-                  offset: Offset(1, 1),
-                  spreadRadius: 0,
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedLabel = label;
+              });
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 7,
+              ),
+              decoration: BoxDecoration(
+                gradient:
+                selected
+                    ? const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFF002E63), Color(0xFF005DC9)],
                 )
-              ]
-                  : [],
-            ),
-            child: Text(
-              label,
-              style: TextStyle(
-                color: selected ? Colors.white : Colors.black,
-                fontSize: 15,
-                fontFamily: 'Manrope',
-                fontWeight: selected ? FontWeight.w700 : FontWeight.normal,
+                    : null,
+                color: selected ? null : Colors.transparent,
+                borderRadius: BorderRadius.circular(6),
+                boxShadow:
+                selected
+                    ? [
+                  const BoxShadow(
+                    color: Color(0x3F000000),
+                    blurRadius: 4,
+                    offset: Offset(1, 1),
+                  ),
+                ]
+                    : [],
+              ),
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: selected ? Colors.white : Colors.black,
+                  fontSize: 14,
+                  fontFamily: 'Manrope',
+                  fontWeight:
+                  selected ? FontWeight.w700 : FontWeight.normal,
+                ),
               ),
             ),
           ),
@@ -458,61 +1247,477 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Widget _buildField(
+      String label,
+      TextEditingController controller, {
+        String? hint,
+      }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+            fontSize: 15,
+          ),
+        ),
+        const SizedBox(height: 5),
+        TextFormField(
+          controller: controller,
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: const Color(0xFFEDF2F6),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: const BorderSide(color: Color(0xFFE0E4EC)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: const BorderSide(color: Color(0xFFE0E4EC)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+              borderSide: const BorderSide(
+                color: Color(0xFFE0E4EC),
+                width: 1.5,
+              ),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 12,
+            ),
+            hintText: hint,
+          ),
+        ),
+      ],
+    );
+  }
 
-  Widget _buildTextField(TextEditingController controller, String label) {
-    return TextFormField(
-      controller: controller,
-      validator: (val) {
-        if (label == "Business Name" && (val == null || val.trim().isEmpty)) {
-          return 'Please enter your full name';
-        }
-        if (label == "Email" && val != null && val.isNotEmpty) {
-          final emailRegex = RegExp(r'^\S+@\S+\.\S+$');
-          if (!emailRegex.hasMatch(val)) return 'Please enter a valid email';
-        }
-        return null;
-      },
-      decoration: InputDecoration(
-        labelText: label,
-        filled: true,
-        fillColor: Colors.grey.shade50,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        contentPadding:
-        const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+  // =================== MAIN BUILD ===================
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F6FC),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(22.0),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: IntrinsicHeight(
+                    child: Container(
+                      padding: const EdgeInsets.all(27),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // ===== Header =====
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF4F6FB),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                // back button
+                                Container(
+                                  height: 40,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    border: Border.all(
+                                      color: Colors.grey.shade300,
+                                    ),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: InkWell(
+                                    onTap: () => Navigator.pop(context),
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.arrow_back, size: 18),
+                                        SizedBox(width: 5),
+                                        Text(
+                                          'Back',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                _buildTabs(),
+                                const Spacer(),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.redAccent,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 30,
+                                      vertical: 10,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  onPressed: _saveSettings,
+                                  child: const Text("Save Changes"),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 22),
+
+                          // ===== Tab Content =====
+                          if (_selectedLabel == "General")
+                            _buildGeneralSection(),
+                          if (_selectedLabel == "Payment")
+                            _buildPaymentSection(),
+                          if (_selectedLabel == "Advanced")
+                            _buildAdvancedSection(),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildDropdown(
-      String label, String? value, ValueChanged<String?> onChanged) {
-    final options = _getOptionsForLabel(label);
-    return DropdownButtonFormField<String>(
-      value: value,
-      decoration: InputDecoration(
-        labelText: label,
-        filled: true,
-        fillColor: Colors.grey.shade50,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        contentPadding:
-        const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      ),
-      items: options
-          .map((o) => DropdownMenuItem<String>(value: o, child: Text(o)))
-          .toList(),
-      onChanged: onChanged,
+  Widget _buildGeneralSection() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // LEFT COLUMN
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Personal Information",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                "Change your personal information",
+                style: TextStyle(color: Colors.grey, fontSize: 13),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  _photoBox(_photoBytes),
+                  const SizedBox(width: 20),
+                  const Expanded(
+                    child: Text(
+                      "Upload\nPlease Upload a Clear Photo\nAccepted formats: JPG, PNG · Max size: 5MB",
+                      style: TextStyle(fontSize: 13, color: Colors.black54),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 25),
+              _buildField("Full Name", _fullNameController),
+              const SizedBox(height: 18),
+              _buildField("Contact No.", _contactController),
+              const SizedBox(height: 18),
+              _buildField("Email Address", _emailController),
+              const SizedBox(height: 18),
+              _buildField("Device ID :", _deviceIdController),
+              const SizedBox(height: 18),
+              FutureBuilder<PackageInfo>(
+                future: PackageInfo.fromPlatform(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Text(
+                      "Loading version...",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black54,
+                        fontSize: 15,
+                      ),
+                    );
+                  } else if (snapshot.hasError) {
+                    return const Text(
+                      "Version info not available",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black54,
+                        fontSize: 15,
+                      ),
+                    );
+                  } else if (snapshot.hasData) {
+                    final packageInfo = snapshot.data!;
+                    final version = '${packageInfo.version}+${packageInfo.buildNumber}';
+                    return Text(
+                      "App Version $version",
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                        fontSize: 15,
+                      ),
+                    );
+                  } else {
+                    return const SizedBox();
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 50),
+
+        // RIGHT COLUMN
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Receipt Settings",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                "Customise your own receipt",
+                style: TextStyle(color: Colors.grey, fontSize: 14),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  _logoBox(_logoBytes),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildField("Company Name", _companyController),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              _buildField("GSTIN", _gstinController),
+              const SizedBox(height: 20),
+              _buildField("Header", _headerController),
+              const SizedBox(height: 20),
+              _buildField("Footer", _footerController),
+              const SizedBox(height: 20),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text(
+                          "Printer Settings",
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          "Connected Printer",
+                          style: TextStyle(color: Colors.black54),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {},
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF007BFF),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 30,
+                        vertical: 8,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      "+ Add",
+                      style: TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
-  List<String> _getOptionsForLabel(String label) {
-    switch (label) {
-      case "Language":
-        return ["English", "Spanish", "French", "Hindi"];
-      case "Currency":
-        return ["USD", "EUR", "INR", "GBP"];
-      case "Time Zone":
-        return ["UTC", "GMT+5:30", "EST", "PST"];
-      default:
-        return ["Option 1", "Option 2"];
-    }
+  Widget _buildPaymentSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Payment Settings",
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 24),
+
+          const Text(
+            "Default Payment Method",
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 6),
+
+          DropdownButtonFormField<String>(
+            value: _selectedDefaultMethod != null &&
+                _paymentSelections.containsKey(_selectedDefaultMethod)
+                ? _selectedDefaultMethod
+                : null,
+            items: _paymentSelections.keys
+                .map((method) => DropdownMenuItem(
+              value: method,
+              child: Text(method),
+            ))
+                .toList(),
+            onChanged: (val) {
+              setState(() {
+                _selectedDefaultMethod = val;
+              });
+            },
+            decoration: InputDecoration(
+              hintText: "Select Payment Method",
+              filled: true,
+              fillColor: const Color(0xFFF4F6FB),
+              contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 26),
+          const Text(
+            "Payment Methods",
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 10),
+
+          Wrap(
+            spacing: 20,
+            runSpacing: 8,
+            children: [
+              for (var method in _paymentSelections.keys)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Checkbox(
+                      value: _paymentSelections[method],
+                      onChanged:
+                          (val) =>
+                          setState(() => _paymentSelections[method] = val!),
+                      activeColor: Colors.black,
+                    ),
+                    Text(method, style: const TextStyle(fontSize: 14)),
+                  ],
+                ),
+            ],
+          ),
+
+          const SizedBox(height: 30),
+          const Text(
+            "Other Options",
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 10),
+
+          Wrap(
+            spacing: 20,
+            runSpacing: 8,
+            children: [
+              for (var opt in _otherSelections.keys)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Checkbox(
+                      value: _otherSelections[opt],
+                      onChanged:
+                          (val) => setState(() => _otherSelections[opt] = val!),
+                      activeColor: Colors.black,
+                    ),
+                    Text(opt, style: const TextStyle(fontSize: 14)),
+                  ],
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAdvancedSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Advanced Settings",
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            "Order Type",
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 20,
+            runSpacing: 8,
+            children: [
+              for (var opt in _orderTypeSelections.keys)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Checkbox(
+                      value: _orderTypeSelections[opt],
+                      onChanged: (val) {
+                        setState(() => _orderTypeSelections[opt] = val!);
+                      },
+                      activeColor: Colors.black,
+                    ),
+                    Text(opt, style: const TextStyle(fontSize: 14)),
+                  ],
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }

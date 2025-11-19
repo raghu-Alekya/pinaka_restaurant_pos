@@ -95,6 +95,7 @@ class _CheckinpopupState extends State<Checkinpopup> {
     rawPermissions['displayName'] = fullData['displayName'] ?? '';
     rawPermissions['role'] = fullData['role'] ?? '';
     rawPermissions['user_id'] = fullData['id']?.toString() ?? '';
+    rawPermissions['avatar'] = fullData['avatar'];
     final permissions = UserPermissions.fromJson(rawPermissions);
     await SessionManager.savePermissions(permissions);
 

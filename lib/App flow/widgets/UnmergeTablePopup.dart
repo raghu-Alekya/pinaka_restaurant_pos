@@ -33,25 +33,9 @@ class UnmergeTablePopup extends StatelessWidget {
       if (resData['success'] == true) {
         Navigator.of(context).pop();
         onUnmerge(index, tableData);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                'Table ${tableData['tableName']} unmerged successfully.'),
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(resData['message'] ?? 'Unmerge failed'),
-          ),
-        );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error unmerging table: $e'),
-        ),
-      );
+      debugPrint('Error unmerging table: $e');
     }
   }
 
