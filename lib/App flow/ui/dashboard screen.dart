@@ -462,7 +462,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     return OrderPanel(
                       token: widget.token,
                       restaurantId: widget.restaurantId,
-                      guestcount: widget.guestDetails,
+                      guestcount: state.guestDetails,
+
                       orderId: widget.orderId,
                       addonPrices: state.addonPrices,
                       onGuestSaved: (int value) {},

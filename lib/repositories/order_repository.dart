@@ -17,7 +17,7 @@ class OrderRepository {
     required String restaurantId,
     required int guestCount,
     required String token,
-    String? reservationId,
+    int? reservationId,
     required String zoneName,
     required String restaurantName,
     required List<Guestcount> guests,
@@ -36,6 +36,7 @@ class OrderRepository {
       "restaurant_name": restaurantName,
       "guest_count": guestCount,
       "guest_details": guests.map((g) => g.toJson()).toList(),
+      "reservation_id": reservationId
     };
 
     if (reservationId != null) body["reservation_id"] = reservationId;
@@ -46,10 +47,14 @@ class OrderRepository {
       url,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
+        'Authorization': token.startsWith("Bearer ")
+            ? token
+            : "Bearer $token",
       },
       body: jsonEncode(body),
     );
+    AppLogger.info('🪪 Using Token: $token');
+
 
     AppLogger.info('Order API response: ${response.statusCode} ${response.body}');
 
@@ -323,7 +328,6 @@ class OrderRepository {
 
 
 }
-
 
 
 

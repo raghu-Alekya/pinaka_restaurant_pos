@@ -18,7 +18,7 @@ class MiniSubCategoryRepository {
     final response = await http.get(
       url,
       headers: {
-        'Authorization': 'Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvbWVyY2hhbnRyZXN0YXVyYW50LmFsZWt0YXNvbHV0aW9ucy5jb20iLCJpYXQiOjE3NTgyNjk5NDcsIm5iZiI6MTc1ODI2OTk0NywiZXhwIjoxNzYwODYxOTQ3LCJkYXRhIjp7InVzZXIiOnsiaWQiOjUsImRldmljZSI6IiIsInBhc3MiOiIyYjhlMjJlOTM2ZTY0N2JhNDRmOWJhMmY3Y2Q1ZmFjNiJ9fX0.WxZtMoMWv6NRDmaLd4Gt1N4_gIW9x25WyGTWIuWVre4',
+        'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
       },
     );
@@ -42,31 +42,31 @@ class MiniSubCategoryRepository {
       throw Exception("HTTP error: ${response.statusCode}");
     }
   }
-  // Future<List<Product>> fetchProducts(int subCategoryId) async {
-  //   final id = subCategoryId is int
-  //       ? subCategoryId
-  //       : int.tryParse(subCategoryId.toString()) ?? 0;
-  //
-  //   final url = "$baseUrl/wp-json/pinaka-restaurant-pos/v1/products-by-category/$subCategoryId";
-  //   final response = await http.get(Uri.parse(url), headers: {"Authorization": "Bearer $token"});
-  //
-  //   if (response.statusCode == 200) {
-  //     final data = jsonDecode(response.body);
-  //     List<Product> products = (data['products'] as List)
-  //         .map((json) => Product(
-  //       id: int.tryParse(json['id'].toString()) ?? 0,
-  //       name: json['name'],
-  //       price: double.tryParse(json['price'].toString()) ?? 0.0,
-  //       image: json['image'] ?? '',
-  //       isVeg: json['isVeg'] ?? true,
-  //       variants: [], // handle variants if needed
-  //     ))
-  //         .toList();
-  //
-  //     return products;
-  //   } else {
-  //     throw Exception("Failed to load products");
-  //   }
-  // }
+// Future<List<Product>> fetchProducts(int subCategoryId) async {
+//   final id = subCategoryId is int
+//       ? subCategoryId
+//       : int.tryParse(subCategoryId.toString()) ?? 0;
+//
+//   final url = "$baseUrl/wp-json/pinaka-restaurant-pos/v1/products-by-category/$subCategoryId";
+//   final response = await http.get(Uri.parse(url), headers: {"Authorization": "Bearer $token"});
+//
+//   if (response.statusCode == 200) {
+//     final data = jsonDecode(response.body);
+//     List<Product> products = (data['products'] as List)
+//         .map((json) => Product(
+//       id: int.tryParse(json['id'].toString()) ?? 0,
+//       name: json['name'],
+//       price: double.tryParse(json['price'].toString()) ?? 0.0,
+//       image: json['image'] ?? '',
+//       isVeg: json['isVeg'] ?? true,
+//       variants: [], // handle variants if needed
+//     ))
+//         .toList();
+//
+//     return products;
+//   } else {
+//     throw Exception("Failed to load products");
+//   }
+// }
 
 }
