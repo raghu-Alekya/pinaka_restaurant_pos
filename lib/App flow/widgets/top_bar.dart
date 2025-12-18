@@ -129,7 +129,7 @@ class _TopBarState extends State<TopBar> {
                 ),
               ),
 
-              SizedBox(width: 120),
+              SizedBox(width: 110),
 
               /// Icon Buttons
               _buildModeToggle(),
@@ -206,7 +206,7 @@ class _TopBarState extends State<TopBar> {
 
               /// Profile Info
               _buildProfileSection(),
-              SizedBox(width: 20),
+              SizedBox(width: 15),
             ],
           ),
         ),
@@ -458,7 +458,7 @@ class _TopBarState extends State<TopBar> {
     final avatarUrl = widget.userPermissions?.avatar;
 
     return Container(
-      width: 150,
+      width: 160,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.white,
