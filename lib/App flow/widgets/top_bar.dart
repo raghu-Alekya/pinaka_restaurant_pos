@@ -202,7 +202,7 @@ class _TopBarState extends State<TopBar> {
                   }
                 }
               }),
-              SizedBox(width: 25),
+              SizedBox(width: 10),
 
               /// Profile Info
               _buildProfileSection(),
@@ -458,7 +458,7 @@ class _TopBarState extends State<TopBar> {
     final avatarUrl = widget.userPermissions?.avatar;
 
     return Container(
-      width: 180,
+      width: 150,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.white,

@@ -731,7 +731,7 @@ Widget _buildActionRow(
         child: InkWell(
           onTap: onTap,
           child: Container(
-            height: 65,
+            height: 70,
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
               color: color,
@@ -740,13 +740,13 @@ Widget _buildActionRow(
             ),
             child: Row(
               children: [
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Image.asset(ellipse, width: 44, height: 44),
-                    Image.asset(icon, width: 24, height: 24),
-                  ],
-                ),
+                // Stack(
+                //   alignment: Alignment.center,
+                //   children: [
+                //     Image.asset(ellipse, width: 44, height: 44),
+                //     Image.asset(icon, width: 24, height: 24),
+                //   ],
+                // ),
                 const SizedBox(width: 18),
                 Expanded(
                   child: Text(
@@ -797,8 +797,8 @@ Widget _buildPaymentModeItem(
     Function(String) onSelect,
     ) {
   final List<Map<String, String>> options = [
-    {"label": "Cash", "image": "assets/icon/cash.png"},
-    {"label": "Card", "image": "assets/icon/card.png"},
+    {"label": "Cash", "image": "assets/cash.png"},
+    {"label": "Card", "image": "assets/card.png"},
     {"label": "UPI", "image": "assets/icon/upi.png"},
     //{"label": "EBT", "image": "assets/images/EDA.png"},
   ];
@@ -864,10 +864,6 @@ Widget _buildPaymentModeItem(
                       option['image']!,
                       width: 30,
                       height: 30,
-                      color:
-                      isSelected
-                          ? Color(0xFFFE6464)
-                          : Color(0xFF4147D5),
                     ),
                     SizedBox(width: 0),
                     Text(
