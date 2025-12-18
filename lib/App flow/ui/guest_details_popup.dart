@@ -15,6 +15,7 @@ class GuestDetailsPopup extends StatefulWidget {
   final void Function(Guestcount) onGuestSaved;
   final String token;
   final String restaurantId;
+  final List<Map<String, dynamic>> loadedTables;
 
   const GuestDetailsPopup({
     Key? key,
@@ -25,6 +26,7 @@ class GuestDetailsPopup extends StatefulWidget {
     required this.onGuestSaved,
     required this.token,
     required this.restaurantId,
+    required this.loadedTables,
   }) : super(key: key);
 
   @override
@@ -206,6 +208,7 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                                 token: widget.token,
                                 restaurantId: widget.restaurantId,
                                 orderId: orderData.orderId,
+                                loadedTables: widget.loadedTables,
                                 tableId: tableId,
                                 tableName: tableName,
                                 zoneId: zoneId,

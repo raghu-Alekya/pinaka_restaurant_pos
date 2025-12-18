@@ -2,12 +2,30 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../ui/tables_screen.dart';
+
 class PrintRecipt extends StatefulWidget {
-  PrintRecipt({Key? key}) : super(key: key);
+  final String pin;
+  final String token;
+  final String restaurantId;
+  final String restaurantName;
+  final List<Map<String, dynamic>> loadedTables;
+  final int? zoneId;
+
+  const PrintRecipt({
+    Key? key,
+    required this.pin,
+    required this.token,
+    required this.restaurantId,
+    required this.restaurantName,
+    required this.loadedTables,
+    this.zoneId,
+  }) : super(key: key);
 
   @override
   State<PrintRecipt> createState() => _PrintReciptState();
 }
+
 
 class _PrintReciptState extends State<PrintRecipt> {
   String _selectedOption = '';
@@ -18,31 +36,46 @@ class _PrintReciptState extends State<PrintRecipt> {
   void _onDonePressed() {
     if (_selectedOption == 'Email') {
       final email = _emailController.text.trim();
-      if (email.isNotEmpty && email.contains("@")) {
-        Navigator.pop(context);
+      if (email.isEmpty || !email.contains("@")) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Payment details sent to $email")),
+          const SnackBar(content: Text("Please enter a valid email address")),
         );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Please enter a valid email address")),
-        );
+        return;
       }
     }
+
     if (_selectedOption == 'SMS') {
       final sms = _smsController.text.trim();
-      if (sms.isNotEmpty && (sms.length == 10)) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Payment details sent to $sms")));
-      } else {
+      if (sms.isEmpty || sms.length != 10) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Please enter a valid phone number")),
+          const SnackBar(content: Text("Please enter a valid phone number")),
         );
+        return;
       }
     }
+
+    // ✅ STEP 1: Close the dialog
+    Navigator.of(context).pop();
+
+    // ✅ STEP 2: Navigate to TablesScreen AFTER dialog closes
+    Future.microtask(() {
+      Navigator.of(context, rootNavigator: true)
+          .pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => TablesScreen(
+            loadedTables: widget.loadedTables,
+            pin: widget.pin,
+            token: widget.token,
+            restaurantId: widget.restaurantId,
+            restaurantName: widget.restaurantName,
+            zoneId: widget.zoneId,
+          ),
+        ),
+            (route) => false, // removes previous screens
+      );
+    });
   }
+
 
   @override
   Widget build(BuildContext context) {

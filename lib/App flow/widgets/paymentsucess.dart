@@ -7,12 +7,27 @@ class Paymentsucess extends StatelessWidget {
   final String? paymentMode;
   final String? changeAmount;
 
+  // ✅ ADD THESE
+  final List<Map<String, dynamic>> loadedTables;
+  final String pin;
+  final String token;
+  final String restaurantId;
+  final String restaurantName;
+  final int? zoneId;
+
   const Paymentsucess({
     Key? key,
     this.amount,
     this.paymentMode,
     this.changeAmount,
+    required this.loadedTables,
+    required this.pin,
+    required this.token,
+    required this.restaurantId,
+    required this.restaurantName,
+    this.zoneId,
   }) : super(key: key);
+
 
   @override
   Widget build(BuildContext context) {
@@ -91,20 +106,26 @@ class Paymentsucess extends StatelessWidget {
                           backgroundColor: Colors.transparent,
                           insetPadding:
                           EdgeInsets.zero, // Remove default margin
-                          child: Align(
-                            alignment:
-                            Alignment.centerLeft, // Align to left
-                            child: Padding(
-                              padding: EdgeInsets.only(
-                                left: 330,
-                                top: 60,
-                                bottom: 60,
-                              ), // Optional spacing from edges
-                              child:
-                              PrintRecipt(), // This is now your popup content
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(
+                                    left: 330,
+                                    top: 60,
+                                    bottom: 60,
+                                  ),
+                                  child: PrintRecipt(
+                                    loadedTables: loadedTables,
+                                    pin: pin,
+                                    token: token,
+                                    restaurantId: restaurantId,
+                                    restaurantName: restaurantName,
+                                    zoneId: zoneId,
+                                  ),
+
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
                       );
                     },
                   ),

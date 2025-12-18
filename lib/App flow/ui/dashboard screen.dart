@@ -44,6 +44,7 @@ class DashboardScreen extends StatefulWidget {
   final String zoneName;
   final String tableName;
   final UserPermissions? userPermissions;
+  final List<Map<String, dynamic>> loadedTables;
 
   const DashboardScreen({
     super.key,
@@ -60,7 +61,10 @@ class DashboardScreen extends StatefulWidget {
     required Map<String, dynamic> tableData,
     required int zoneId,
     required kotList,
+    required this.loadedTables,
+
   });
+
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -461,6 +465,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   builder: (context, state) {
                     return OrderPanel(
                       token: widget.token,
+                      loadedTables: widget.loadedTables,
                       restaurantId: widget.restaurantId,
                       guestcount: state.guestDetails,
 

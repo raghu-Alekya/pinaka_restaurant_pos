@@ -305,7 +305,7 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                                     Text("Total",
                                         style: TextStyle(
                                             fontWeight: FontWeight.bold)),
-                                    Text("1790.00",
+                                    Text("179.00",
                                         style: TextStyle(
                                             fontWeight: FontWeight.bold)),
                                   ],

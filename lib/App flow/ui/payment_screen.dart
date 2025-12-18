@@ -6,8 +6,22 @@ import '../widgets/top_bar.dart';
 // import '../utils/session_manager.dart'; // make sure this import is correct
 
 class PaymentScreen extends StatefulWidget {
-  const PaymentScreen({super.key});
+  final List<Map<String, dynamic>> loadedTables;
+  final String pin;
+  final String token;
+  final String restaurantId;
+  final String restaurantName;
+  final int? zoneId;
 
+  const PaymentScreen({
+    super.key,
+    required this.loadedTables,
+    required this.pin,
+    required this.token,
+    required this.restaurantId,
+    required this.restaurantName,
+    this.zoneId,
+  });
   @override
   State<PaymentScreen> createState() => _PaymentScreenState();
 }
@@ -62,10 +76,18 @@ class _PaymentScreenState extends State<PaymentScreen> {
           ),
 
           // Middle Number Pad Section
-          const Expanded(
+          Expanded(
             flex: 50,
-            child: Numberpad(),
+            child: Numberpad(
+              loadedTables: widget.loadedTables,
+              pin: widget.pin,
+              token: widget.token,
+              restaurantId: widget.restaurantId,
+              restaurantName: widget.restaurantName,
+              zoneId: widget.zoneId,
+            ),
           ),
+
         ],
       ),
     );

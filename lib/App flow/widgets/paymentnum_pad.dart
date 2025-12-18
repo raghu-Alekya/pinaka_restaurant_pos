@@ -7,7 +7,23 @@ import 'coupon_widget.dart';
 import 'discount_screen.dart';
 
 class Numberpad extends StatefulWidget {
-  const Numberpad({super.key});
+  final List<Map<String, dynamic>> loadedTables;
+  final String pin;
+  final String token;
+  final String restaurantId;
+  final String restaurantName;
+  final int? zoneId;
+
+  const Numberpad({
+    Key? key,
+    required this.loadedTables,
+    required this.pin,
+    required this.token,
+    required this.restaurantId,
+    required this.restaurantName,
+    this.zoneId,
+  }) : super(key: key);
+
 
   @override
   State<Numberpad> createState() => _NumberpadState();
@@ -76,7 +92,14 @@ class _NumberpadState extends State<Numberpad> {
                   amount: amount,
                   paymentMode: selectedPaymentMode,
                   changeAmount: calculatedChange?.toStringAsFixed(2),
+                  loadedTables: widget.loadedTables,
+                  pin: widget.pin,
+                  token: widget.token,
+                  restaurantId: widget.restaurantId,
+                  restaurantName: widget.restaurantName,
+                  zoneId: widget.zoneId,
                 ),
+
               ),
             ),
           );
@@ -234,13 +257,13 @@ class _NumberpadState extends State<Numberpad> {
                                         MainAxisAlignment.spaceBetween,
                                         children: [
                                           for (String val in [
-                                            '\$38.00',
-                                            '\$40.00',
-                                            '\$50.00',
-                                            '\$100.00',
-                                            '\$500.00',
+                                            '179.00',
+                                            '180.00',
+                                            '200.00',
+                                            '250.00',
+                                            '300.00',
                                           ])
-                                            GestureDetector(
+                                          GestureDetector(
                                               onTap:
                                                   () => _onPresetAmountTap(val),
                                               child: Container(

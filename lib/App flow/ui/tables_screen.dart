@@ -986,6 +986,7 @@ class _TablesScreenState extends State<TablesScreen> {
                     tableName: orderBloc.state.tableName,
                     kotList: orderBloc.state.kotList,
                     restaurantName: widget.restaurantName,
+                    loadedTables: widget.loadedTables,
                     userPermissions: null,
                     guestDetails: orderBloc.state.guestDetails
 
@@ -1228,6 +1229,7 @@ class _TablesScreenState extends State<TablesScreen> {
                   restaurantName: widget.restaurantName,
                   userPermissions: null,
                   guestDetails: tableData['guestDetails'] ?? guestDetails,
+                  loadedTables: widget.loadedTables,
                 ),
               ),
             ),
@@ -1376,6 +1378,7 @@ class _TablesScreenState extends State<TablesScreen> {
                   tableName: orderBloc.state.tableName,
                   kotList: orderBloc.state.kotList,
                   restaurantName: widget.restaurantName,
+                  loadedTables: widget.loadedTables,
                   userPermissions: null,
                   guestDetails: tableData['guestDetails'] ?? guestDetails,
                 ),
@@ -1607,6 +1610,7 @@ class _TablesScreenState extends State<TablesScreen> {
           child: GuestDetailsPopup(
             index: index,
             tableData: tableData,
+            loadedTables: widget.loadedTables,
             placedTables: placedTables,
             token: token, // ✅ Pass actual token
             restaurantId: '1',
@@ -1650,6 +1654,7 @@ class _TablesScreenState extends State<TablesScreen> {
                         restaurantName: widget.restaurantName,
                         userPermissions: null,
                         tableData: {},
+                        loadedTables: widget.loadedTables,
                       ),
                     ),
                   ),

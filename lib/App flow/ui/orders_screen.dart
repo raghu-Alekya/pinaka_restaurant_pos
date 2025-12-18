@@ -46,6 +46,7 @@ class OrderPanel extends StatelessWidget {
   final List<OrderItems>? existingOrderItems;
   final List<KotModel>? existingKots;
   final String userId;
+  final List<Map<String, dynamic>> loadedTables;
 
   const OrderPanel({
     super.key,
@@ -65,6 +66,7 @@ class OrderPanel extends StatelessWidget {
     this.existingOrderItems, // ✅ optional
     this.existingKots,
     required this.userId,
+    required this.loadedTables,
   });
 
   @override
@@ -587,15 +589,19 @@ class OrderPanel extends StatelessWidget {
 
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Center(
+                              content: SizedBox(
+                                width: 400, // ✅ increase KOT width here
                                 child: Row(
-                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    const Icon(Icons.check_circle, color: Colors.white, size: 20), // ✅ Tick icon
-                                    const SizedBox(width: 14),
+                                    const Icon(
+                                      Icons.check_circle,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
                                     Text(
                                       'KOT Created: ${kot.kotNumber}',
-                                      textAlign: TextAlign.center,
                                       style: const TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w500,
@@ -605,22 +611,20 @@ class OrderPanel extends StatelessWidget {
                                   ],
                                 ),
                               ),
-                              duration: const Duration(seconds: 4), // Show for 1 second
-                              behavior: SnackBarBehavior.floating,  // Floating snackbar
+                              duration: const Duration(seconds: 4),
+                              behavior: SnackBarBehavior.floating,
                               margin: EdgeInsets.only(
-                                left: 550,
-                                right: 550,
-                                bottom: MediaQuery.of(context).size.height * 0.94, // Pushes it to middle
+                                left: 400,
+                                right: 400,
+                                bottom: MediaQuery.of(context).size.height * 0.90,
                               ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              backgroundColor: Colors.green.withOpacity(1),
+                              backgroundColor: Colors.green,
                               elevation: 6,
                             ),
                           );
-
-
 
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -737,10 +741,15 @@ class OrderPanel extends StatelessWidget {
                       context,
                       MaterialPageRoute(
                         builder: (context) => PaymentScreen(
-                          // orderId: state.orderId,          // pass from your OrderState
-                          // totalAmount: _calculateTotal(),  // replace with your total calc logic
+                          loadedTables: loadedTables,          // from TablesScreen or state
+                          pin: pin,                     // current login pin
+                          token: token,                 // auth token
+                          restaurantId: restaurantId,   // restaurant id
+                          restaurantName: restaurantName,
+                          zoneId: zoneId,
                         ),
                       ),
+
                     );
                   }),
 
