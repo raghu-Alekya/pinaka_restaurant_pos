@@ -20,7 +20,7 @@ class TopBar extends StatefulWidget implements PreferredSizeWidget {
     required this.token,
     required this.pin,
     this.userPermissions,
-    this.onPermissionsReceived,
+    this.onPermissionsReceived, Map<String, dynamic>? selectedUser,
   }) : super(key: key);
 
   @override
@@ -129,7 +129,7 @@ class _TopBarState extends State<TopBar> {
                 ),
               ),
 
-              SizedBox(width: 120),
+              SizedBox(width: 110),
 
               /// Icon Buttons
               _buildModeToggle(),
@@ -202,11 +202,11 @@ class _TopBarState extends State<TopBar> {
                   }
                 }
               }),
-              SizedBox(width: 25),
+              SizedBox(width: 10),
 
               /// Profile Info
               _buildProfileSection(),
-              SizedBox(width: 20),
+              SizedBox(width: 15),
             ],
           ),
         ),
@@ -458,7 +458,7 @@ class _TopBarState extends State<TopBar> {
     final avatarUrl = widget.userPermissions?.avatar;
 
     return Container(
-      width: 180,
+      width: 160,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.white,

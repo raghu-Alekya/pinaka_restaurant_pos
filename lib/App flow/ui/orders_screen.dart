@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:pinaka_restaurant_pos/App%20flow/ui/payment_screen.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/ui/tables_screen.dart';
 
 import '../../blocs/Bloc Event/kot_event.dart';
@@ -45,6 +46,7 @@ class OrderPanel extends StatelessWidget {
   final List<OrderItems>? existingOrderItems;
   final List<KotModel>? existingKots;
   final String userId;
+  final List<Map<String, dynamic>> loadedTables;
 
   const OrderPanel({
     super.key,
@@ -64,6 +66,7 @@ class OrderPanel extends StatelessWidget {
     this.existingOrderItems, // ✅ optional
     this.existingKots,
     required this.userId,
+    required this.loadedTables,
   });
 
   @override
@@ -264,108 +267,128 @@ class OrderPanel extends StatelessWidget {
                     ),
                     child: Row(
                       children: [
-                        avatarName(
-                          'assets/icon/person.png',
-                          'Guests: ${state.guestDetails.guestCount}',
-                        ),
-
-                        const SizedBox(width: 1),
-                        IconButton(
-                          onPressed: () async {
-                            AppLogger.info("👤 Add Guest clicked");
-
-                            await showDialog(
-                              context: context,
-                              builder: (_) => GuestDetailsPopup(
-                                index: 0,
-                                tableData: {
-                                  'id': tableId,
-                                  'zoneId': zoneId,
-                                  'zoneName': zoneName,
-                                  'name': tableName,
-                                  'capacity': 6,
-                                },
-                                placedTables: [],
-                                token: token,
-                                restaurantId: restaurantId,
-                                pin: pin,
-                                onGuestSaved: (Guestcount guest) async {
-                                  AppLogger.info("💾 Guest saved → count: ${guest.guestCount}");
-
-                                  try {
-                                    final orderRepository = OrderRepository(
-                                      baseUrl: 'https://merchantrestaurant.alektasolutions.com',
-                                    );
-
-                                    // ✅ Create order via API
-                                    final order = await orderRepository.createOrder(
-                                      tableId: tableId,
-                                      zoneId: zoneId,
-                                      restaurantId: restaurantId,
-                                      guestCount: guest.guestCount,
-                                      token: token,
-                                      tableName: tableName,
-                                      zoneName: zoneName,
-                                      restaurantName: restaurantName,
-                                      guests: [guest],
-                                    );
-
-                                    if (order != null) {
-                                      AppLogger.info(
-                                          "✅ Order created successfully → ID=${order.orderId}, Guests=${guest.guestCount}");
-
-                                      // ✅ Update BLoC with order and guest info
-                                      context.read<OrderBloc>().add(CreateOrder(
-                                        restaurantId: restaurantId,
-                                        orderId: order.orderId,
-                                        tableId: tableId,
-                                        zoneId: zoneId,
-                                        tableName: tableName,
-                                        zoneName: zoneName,
-                                        guestDetails: Guestcount(guestCount: order.guestCount),
-                                      ));
-
-                                      // ✅ Update parent widget (e.g., Table grid UI)
-                                      onGuestSaved(guest.guestCount);
-
-                                      // ✅ Optional: User feedback
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                              "Order created successfully for ${guest.guestCount} guest(s)!"),
-                                          backgroundColor: Colors.green,
-                                          duration: Duration(seconds: 2),
-                                        ),
-                                      );
-                                    } else {
-                                      AppLogger.error("❌ Order creation failed or returned null");
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text("Failed to create order. Please try again."),
-                                          backgroundColor: Colors.red,
-                                        ),
-                                      );
-                                    }
-                                  } catch (e, st) {
-                                    AppLogger.error("🚨 Failed to create order: $e\n$st");
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text("Error: $e"),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                },
-                              ),
+                        BlocBuilder<OrderBloc, OrderState>(
+                          builder: (context, state) {
+                            return avatarName(
+                              'assets/icon/person.png',
+                              'Guests: ${state.guestDetails.guestCount}',
                             );
                           },
-                          icon: Image.asset(
-                            'assets/icon/add_icon.png',
-                            width: 18,
-                            height: 18,
-                          ),
-                          tooltip: 'Add Guest',
                         ),
+
+
+                        const SizedBox(width: 1),
+                        // IconButton(
+                        //   onPressed: () async {
+                        //     AppLogger.info("👤 Add Guest clicked");
+                        //
+                        //     await showDialog(
+                        //       context: context,
+                        //       builder: (_) => GuestDetailsPopup(
+                        //         index: 0,
+                        //         tableData: {
+                        //           'id': tableId,
+                        //           'zoneId': zoneId,
+                        //           'zoneName': zoneName,
+                        //           'name': tableName,
+                        //           'capacity': 6,
+                        //         },
+                        //         placedTables: [],
+                        //         token: token,
+                        //         restaurantId: restaurantId,
+                        //         pin: pin,
+                        //         onGuestSaved: (Guestcount guest) async {
+                        //           AppLogger.info("💾 Guest saved → count: ${guest.guestCount}");
+                        //
+                        //           try {
+                        //             final orderRepository = OrderRepository(
+                        //               baseUrl: 'https://merchantrestaurant.alektasolutions.com',
+                        //             );
+                        //
+                        //             // Check if order already exists
+                        //             final existingOrderId = context.read<OrderBloc>().state.orderId;
+                        //
+                        //             if (existingOrderId == 0) {
+                        //               // ✅ Create new order via API
+                        //               final order = await orderRepository.createOrder(
+                        //                 tableId: tableId,
+                        //                 zoneId: zoneId,
+                        //                 restaurantId: restaurantId,
+                        //                 guestCount: guest.guestCount,
+                        //                 token: token,
+                        //                 tableName: tableName,
+                        //                 zoneName: zoneName,
+                        //                 restaurantName: restaurantName,
+                        //                 guests: [guest],
+                        //               );
+                        //
+                        //               if (order != null) {
+                        //                 AppLogger.info(
+                        //                     "✅ New order created → ID=${order.orderId}, Guests=${guest.guestCount}");
+                        //
+                        //                 // ✅ Add new order to Bloc
+                        //                 context.read<OrderBloc>().add(CreateOrder(
+                        //                   restaurantId: restaurantId,
+                        //                   orderId: order.orderId,
+                        //                   tableId: tableId,
+                        //                   zoneId: zoneId,
+                        //                   tableName: tableName,
+                        //                   zoneName: zoneName,
+                        //                   guestDetails: Guestcount(guestCount: order.guestCount),
+                        //                 ));
+                        //
+                        //                 onGuestSaved(order.guestCount);
+                        //               } else {
+                        //                 AppLogger.error("❌ Order creation failed");
+                        //                 ScaffoldMessenger.of(context).showSnackBar(
+                        //                   const SnackBar(
+                        //                     content: Text("Failed to create order. Please try again."),
+                        //                     backgroundColor: Colors.red,
+                        //                   ),
+                        //                 );
+                        //               }
+                        //             } else {
+                        //               // ✅ Just update guest count for existing order
+                        //               context.read<OrderBloc>().add(UpdateGuestCount(
+                        //                 guestDetails: Guestcount(guestCount: guest.guestCount),
+                        //                 guestCount: guest.guestCount,
+                        //               ));
+                        //
+                        //               onGuestSaved(guest.guestCount);
+                        //               AppLogger.info(
+                        //                   "✅ Updated guest count → ${guest.guestCount} for existing order");
+                        //             }
+                        //
+                        //             ScaffoldMessenger.of(context).showSnackBar(
+                        //               SnackBar(
+                        //                 content: Text(
+                        //                     "Guest count set to ${guest.guestCount} successfully!"),
+                        //                 backgroundColor: Colors.green,
+                        //                 duration: const Duration(seconds: 2),
+                        //               ),
+                        //             );
+                        //           } catch (e, st) {
+                        //             AppLogger.error("🚨 Failed to save guest: $e\n$st");
+                        //             ScaffoldMessenger.of(context).showSnackBar(
+                        //               SnackBar(
+                        //                 content: Text("Error: $e"),
+                        //                 backgroundColor: Colors.red,
+                        //               ),
+                        //             );
+                        //           }
+                        //         },
+                        //       ),
+                        //     );
+                        //   },
+                        //   icon: Image.asset(
+                        //     'assets/icon/add_icon.png',
+                        //     width: 18,
+                        //     height: 18,
+                        //   ),
+                        //   tooltip: 'Add customer',
+                        // ),
+
+
 
 
                       ],
@@ -449,10 +472,10 @@ class OrderPanel extends StatelessWidget {
                     const SizedBox(height:2),
 
                     // 2️⃣ Overlay: ViewAllKOTDropdown
-                    BlocBuilder<KotBloc, KotState>(
-                      builder: (context, kotState) {
-                        final kots = kotState is KotLoaded ? kotState.kots : <KotModel>[];
-                        final isExpanded = kotState is KotLoaded ? kotState.isExpanded : false;
+                    BlocBuilder<OrderBloc, OrderState>(
+                      builder: (context, orderState) {
+                        final kots = orderState.kotList; // always from OrderBloc
+                        final isExpanded = orderState.showKOTDropdown;
 
                         return Positioned(
                           top: 0,
@@ -460,15 +483,10 @@ class OrderPanel extends StatelessWidget {
                           right: 0,
                           child: ViewAllKOTDropdown(
                             kots: kots,
-                            parentOrderId: state.orderId,
+                            parentOrderId: orderState.orderId,
                             restaurantId: int.parse(restaurantId),
-                            zoneId: state.zoneId,
+                            zoneId: orderState.zoneId,
                             token: token,
-                            isExpanded: isExpanded,
-                            onToggle: () {
-                              // Dispatch event correctly
-                              context.read<KotBloc>().add(kot_evt.ToggleKOTDropdown());
-                            },
                           ),
                         );
                       },
@@ -570,8 +588,44 @@ class OrderPanel extends StatelessWidget {
                           orderBloc.add(ClearOrder());
 
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('KOT Created: ${kot.kotNumber}')),
+                            SnackBar(
+                              content: SizedBox(
+                                width: 400, // ✅ increase KOT width here
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(
+                                      Icons.check_circle,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'KOT Created: ${kot.kotNumber}',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              duration: const Duration(seconds: 4),
+                              behavior: SnackBarBehavior.floating,
+                              margin: EdgeInsets.only(
+                                left: 400,
+                                right: 400,
+                                bottom: MediaQuery.of(context).size.height * 0.90,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              backgroundColor: Colors.green,
+                              elevation: 6,
+                            ),
                           );
+
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Failed to create KOT')),
@@ -682,7 +736,23 @@ class OrderPanel extends StatelessWidget {
                   }),
                   orderButton('Pay', const Color(0xFF086888), onPressed: () {
                     AppLogger.info("Pay clicked");
+
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PaymentScreen(
+                          loadedTables: loadedTables,          // from TablesScreen or state
+                          pin: pin,                     // current login pin
+                          token: token,                 // auth token
+                          restaurantId: restaurantId,   // restaurant id
+                          restaurantName: restaurantName,
+                          zoneId: zoneId,
+                        ),
+                      ),
+
+                    );
                   }),
+
                 ],
               ),
             ],

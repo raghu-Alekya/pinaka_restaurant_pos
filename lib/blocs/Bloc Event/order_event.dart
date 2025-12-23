@@ -184,6 +184,14 @@ class LoadExistingOrder extends OrderEvent {
     required this.guestDetails, // ✅ must pass single Guestcount
   });
 
+
+}
+/// 🔹 Update guest count (single Guestcount object)
+class UpdateGuestCount extends OrderEvent {
+  final Guestcount guestDetails; // full guest object
+  final int guestCount; // numeric value
+
+  UpdateGuestCount({required this.guestDetails, required this.guestCount});
 }
 
 
