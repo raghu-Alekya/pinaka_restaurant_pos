@@ -10,6 +10,7 @@ import '../../blocs/Bloc Event/order_event.dart';
 import '../../blocs/Bloc Logic/checkin_bloc.dart';
 import '../../blocs/Bloc Logic/kot_bloc.dart';
 import '../../blocs/Bloc Logic/order_bloc.dart';
+import '../../blocs/Bloc Logic/payment_bloc.dart';
 import '../../blocs/Bloc State/checkin_state.dart';
 import '../../blocs/Bloc State/kot_state.dart';
 import '../../blocs/Bloc State/order_state.dart';
@@ -21,6 +22,7 @@ import '../../models/order/guest_details.dart';
 import '../../repositories/checkin_repository.dart';
 import '../../repositories/kot_repository.dart';
 import '../../repositories/order_repository.dart';
+import '../../repositories/payment_summary_repository.dart';
 import '../../utils/logger.dart';
 import '../widgets/orderlist_widget.dart';
 import '../widgets/view_all_kots.dart';
@@ -740,17 +742,36 @@ class OrderPanel extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => PaymentScreen(
-                          loadedTables: loadedTables,          // from TablesScreen or state
-                          pin: pin,                     // current login pin
-                          token: token,                 // auth token
-                          restaurantId: restaurantId,   // restaurant id
-                          restaurantName: restaurantName,
-                          zoneId: zoneId,
+                        builder: (_) => MultiBlocProvider(
+                          providers: [
+                            // 🔥 PASS EXISTING OrderBloc
+                            BlocProvider.value(
+                              value: context.read<OrderBloc>(),
+                            ),
+
+                            // ✅ Create PaymentBloc (new instance is fine)
+                            BlocProvider(
+                              create: (_) => PaymentBloc(
+                                PaymentRepository(
+                                  baseUrl: "https://merchantrestaurant.alektasolutions.com",
+                                  token: token,
+                                ),
+                              ),
+                            ),
+                          ],
+                          child: PaymentScreen(
+                            loadedTables: loadedTables,
+                            pin: pin,
+                            token: token,
+                            restaurantId: restaurantId,
+                            restaurantName: restaurantName,
+                            zoneId: zoneId,
+                          ),
                         ),
                       ),
-
                     );
+
+
                   }),
 
                 ],

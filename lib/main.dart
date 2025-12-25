@@ -103,7 +103,7 @@ class MyApp extends StatelessWidget {
             create: (_) => MiniSubCategoryBloc(
               repository: MiniSubCategoryRepository(
                 baseUrl: "https://merchantrestaurant.alektasolutions.com",
-                token: token, // use your actual token
+                // token: token, // use your actual token
               ),
             ),
           ),
@@ -126,9 +126,18 @@ class MyApp extends StatelessWidget {
               ),
             ),
           ),
+          // BlocProvider<ProductBloc>(
+          //   create: (_) => ProductBloc(ProductRepository as ProductRepository),
+          // ),
           BlocProvider<ProductBloc>(
-            create: (_) => ProductBloc(ProductRepository as ProductRepository),
+            create: (_) => ProductBloc(
+              ProductRepository(
+                baseUrl: "https://merchantrestaurant.alektasolutions.com",
+                // token: token,
+              ),
+            ),
           ),
+
           BlocProvider<OrderBloc>(
             create: (context) => OrderBloc(orderRepo, token),
           ),

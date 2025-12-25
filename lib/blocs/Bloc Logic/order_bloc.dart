@@ -118,29 +118,37 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
       AppLogger.info("✅ Order created successfully with ID: ${event.orderId}");
       emit(state.copyWith(orderId: event.orderId));
     });
-
     /// Add order item
     on<AddOrderItem>((event, emit) {
       final updatedItems = List<OrderItems>.from(state.orderItems);
+
       final index = updatedItems.indexWhere(
-            (item) => item.productId == event.item.productId && item.name == event.item.name,
+            (item) =>
+        item.productId == event.item.productId &&
+            item.name == event.item.name, // ✅ name-based match
       );
 
       if (index != -1) {
         final updatedItem = updatedItems[index].copyWith(
-          quantity: updatedItems[index].quantity + 1,
+          quantity:
+          updatedItems[index].quantity + event.item.quantity, // ✅ popup qty
         );
         updatedItems[index] = updatedItem;
-        AppLogger.info("Incremented '${event.item.name}' → qty: ${updatedItem.quantity}");
+
+        AppLogger.info(
+          "Incremented '${event.item.name}' → +${event.item.quantity}, total=${updatedItem.quantity}",
+        );
       } else {
-        updatedItems.add(event.item.copyWith(quantity: 1));
-        AppLogger.info("Added new item '${event.item.name}' qty=1");
+        updatedItems.add(event.item); // ✅ KEEP popup quantity
+
+        AppLogger.info(
+          "Added new item '${event.item.name}' qty=${event.item.quantity}",
+        );
       }
 
-      // 🔹 Auto-collapse KOT directly in the same emit
       emit(state.copyWith(
         orderItems: updatedItems,
-        showKOTDropdown: false, // 👈 collapse dropdown immediately
+        showKOTDropdown: false,
       ));
     });
 

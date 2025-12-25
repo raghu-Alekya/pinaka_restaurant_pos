@@ -1,7 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/widgets/paymentsucess.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/widgets/tip_widget.dart';
+import '../../blocs/Bloc Logic/order_bloc.dart';
 import '../../services/app_database.dart';
 import 'coupon_widget.dart';
 import 'discount_screen.dart';
@@ -21,7 +23,7 @@ class Numberpad extends StatefulWidget {
     required this.token,
     required this.restaurantId,
     required this.restaurantName,
-    this.zoneId,
+    this.zoneId,   required PaymentSummary,
   }) : super(key: key);
 
 
@@ -120,9 +122,32 @@ class _NumberpadState extends State<Numberpad> {
       });
     }
   }
+  List<double> buildPresetAmounts(double total) {
+    if (total <= 0) return [];
+
+    final r100 = ((total / 100).ceil()) * 100;
+    final r500 = ((total / 500).ceil()) * 500;
+    final r1000 = ((total / 1000).ceil()) * 1000;
+
+    return {
+      total,
+      r100.toDouble(),
+      r500.toDouble(),
+      r1000.toDouble(),
+    }.toList();
+  }
 
   @override
   Widget build(BuildContext context) {
+    // ✅ 1. Get total from OrderBloc
+    final double totalAmount = context.select(
+          (OrderBloc bloc) => bloc.state.grossTotal,
+    );
+    debugPrint("💰 Payment UI totalAmount = $totalAmount");
+
+    // ✅ 2. Build dynamic presets
+    final List<double> presetAmounts = buildPresetAmounts(totalAmount);
+
     return Scaffold(
       backgroundColor: Color(0xFFF5F5F6),
       body: Row(
@@ -249,64 +274,41 @@ class _NumberpadState extends State<Numberpad> {
                                     ),
                                     SizedBox(height: 5),
                                     Padding(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                      ),
+                                      padding: const EdgeInsets.symmetric(horizontal: 12),
                                       child: Row(
-                                        mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          for (String val in [
-                                            '179.00',
-                                            '180.00',
-                                            '200.00',
-                                            '250.00',
-                                            '300.00',
-                                          ])
-                                          GestureDetector(
-                                              onTap:
-                                                  () => _onPresetAmountTap(val),
-                                              child: Container(
-                                                height:
-                                                MediaQuery.of(
-                                                  context,
-                                                ).size.height *
-                                                    0.05,
-                                                width:
-                                                MediaQuery.of(
-                                                  context,
-                                                ).size.width *
-                                                    0.05,
-                                                decoration: BoxDecoration(
-                                                  color: Color(0xFFE1F9DA),
-                                                  borderRadius:
-                                                  BorderRadius.circular(5),
-                                                  border: Border.all(
-                                                    color: Color(
-                                                      0xFFF2EEEE,
-                                                    ).withOpacity(0.5),
-                                                    width: 0.8,
-                                                  ),
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: presetAmounts.map((amount) {
+                                          return GestureDetector(
+                                            onTap: () => _onPresetAmountTap(amount as String),
+                                            child: Container(
+                                              height: MediaQuery.of(context).size.height * 0.05,
+                                              width: MediaQuery.of(context).size.width * 0.05,
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFE1F9DA),
+                                                borderRadius: BorderRadius.circular(5),
+                                                border: Border.all(
+                                                  color: const Color(0xFFF2EEEE).withOpacity(0.5),
+                                                  width: 0.8,
                                                 ),
-                                                child: Center(
-                                                  child: Text(
-                                                    val,
-                                                    style: TextStyle(
-                                                      color: Color(0xFF318616),
-                                                      fontSize: 15,
-                                                      fontFamily: 'Inter',
-                                                      fontWeight:
-                                                      FontWeight.w500,
-                                                      decoration:
-                                                      TextDecoration.none,
-                                                    ),
+                                              ),
+                                              child: Center(
+                                                child: Text(
+                                                  amount.toStringAsFixed(2),
+                                                  style: const TextStyle(
+                                                    color: Color(0xFF318616),
+                                                    fontSize: 15,
+                                                    fontFamily: 'Inter',
+                                                    fontWeight: FontWeight.w500,
+                                                    decoration: TextDecoration.none,
                                                   ),
                                                 ),
                                               ),
                                             ),
-                                        ],
+                                          );
+                                        }).toList(),
                                       ),
                                     ),
+
                                     Expanded(
                                       flex: 1,
                                       child: Padding(

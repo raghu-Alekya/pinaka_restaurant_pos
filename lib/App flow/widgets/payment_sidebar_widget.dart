@@ -1,19 +1,29 @@
 import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:pinaka_restaurant_pos/models/payment/payment_summary_model.dart';
 
 class Sidebarwidgets extends StatefulWidget {
-  const Sidebarwidgets({super.key, required userPermissions, Map<String, dynamic>? selectedUser});
+  final PaymentSummary paymentSummary;
+
+  const Sidebarwidgets({
+    super.key,
+    required this.paymentSummary,
+    required userPermissions,
+    Map<String, dynamic>? selectedUser,
+  });
 
   @override
   State<Sidebarwidgets> createState() => _SidebarwidgetsState();
 }
+
 
 class _SidebarwidgetsState extends State<Sidebarwidgets>
     with SingleTickerProviderStateMixin {
   bool _isExpanded = false;
   late AnimationController _controller;
   late Animation<double> _heightAnimation;
+
 
   @override
   void initState() {
@@ -55,35 +65,44 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
-                      width: 90,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFDEE8FF),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Image.asset("assets/icon/-01.png",
-                              width: 18, height: 18),
-                          const SizedBox(width: 10),
-                          const Text(
-                            "Back",
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF585A5C),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pop(context); // 👈 Go back to previous screen
+                      },
+                      child: Container(
+                        width: 90,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFDEE8FF),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Image.asset(
+                              "assets/icon/-01.png",
+                              width: 18,
+                              height: 18,
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 10),
+                            const Text(
+                              "Back",
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF585A5C),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
+
+                    // ---- Date & Time ----
                     Row(
                       children: [
-                        Image.asset("assets/icon/calender.png",
-                            width: 18, height: 18),
+                        Image.asset("assets/icon/calender.png", width: 18, height: 18),
                         const SizedBox(width: 3),
                         Text(
                           formattedDate,
@@ -94,8 +113,7 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                           ),
                         ),
                         const SizedBox(width: 6),
-                        Image.asset("assets/icon/clock.png",
-                            width: 18, height: 18),
+                        Image.asset("assets/icon/clock.png", width: 18, height: 18),
                         const SizedBox(width: 3),
                         Text(
                           formattedTime,
@@ -112,16 +130,16 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
+                  children: [
                     Text(
-                      "Order ID #3245",
-                      style: TextStyle(
+                      "Order ID #${widget.paymentSummary.orderId}",
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: Color(0xFF111827),
                       ),
                     ),
-                    Text(
+                    const Text(
                       "Payment Summary",
                       style: TextStyle(
                         fontSize: 14,
@@ -131,9 +149,11 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                     ),
                   ],
                 ),
+
                 const SizedBox(height: 8),
 
                 // ---------- Items Container ----------
+
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
@@ -146,35 +166,37 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                         color: const Color(0xFFFFFFFF),
                         borderRadius: BorderRadius.circular(5),
                       ),
-                      child: ListView.builder(
-                        itemCount: 6,
+                      child:ListView.builder(
+                        itemCount: widget.paymentSummary.lineItems.length,
                         itemBuilder: (context, index) {
-                          final items = [
-                            ["322", "Mutton Fry Biryani", "1", "300.00"],
-                            ["524", "Chicken Biryani", "1", "200.00"],
-                            ["325", "Paneer Tikka", "1", "180.00"],
-                            ["954", "Butter Naan", "5", "200.00"],
-                            ["156", "Butter Masala", "1", "220.00"],
-                            ["231", "Chicken 65", "1", "210.00"],
-                          ];
-                          final item = items[index];
+                          final item = widget.paymentSummary.lineItems[index];
+
                           return Column(
                             children: [
                               Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 6),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                 child: Row(
-                                  mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(item[0],
-                                        style: const TextStyle(fontSize: 12)),
-                                    Text(item[1],
-                                        style: const TextStyle(fontSize: 12)),
-                                    Text(item[2],
-                                        style: const TextStyle(fontSize: 12)),
-                                    Text(item[3],
-                                        style: const TextStyle(fontSize: 12)),
+                                    // Text(item.id.toString(), style: const TextStyle(fontSize: 12)),
+                                    Expanded(
+                                      child: Text(
+                                        item.name,
+                                        style: const TextStyle(fontSize: 12),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    Text(
+                                      '${item.qty} × ${(item.qty > 0 ? item.total / item.qty : 0).toStringAsFixed(0)}',
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                    const SizedBox(width: 108),
+
+
+                                    Text(
+                                      item.total.toStringAsFixed(2),
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -255,65 +277,58 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                             padding: const EdgeInsets.all(12),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.spaceAround,
-                              children: const [
+                              children: [
                                 Row(
-                                  mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text("Sub Total"),
-                                    Text("2210.00"),
+                                    const Text("Sub Total"),
+                                    Text(widget.paymentSummary.grossTotal.toStringAsFixed(2)),
                                   ],
                                 ),
                                 Row(
-                                  mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text("Tax"),
-                                    Text("00.00"),
+                                    const Text("Tax"),
+                                    Text(widget.paymentSummary.tax.toStringAsFixed(2)),
                                   ],
                                 ),
                                 Row(
-                                  mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text("Discount (10%)",
-                                        style: TextStyle(color: Colors.blue)),
-                                    Text("-220.00",
-                                        style: TextStyle(color: Colors.blue)),
+                                    const Text(
+                                      "Discount",
+                                      style: TextStyle(color: Colors.blue),
+                                    ),
+                                    Text(
+                                      "-${widget.paymentSummary.discount.toStringAsFixed(2)}",
+                                      style: const TextStyle(color: Colors.blue),
+                                    ),
                                   ],
                                 ),
-                                Row(
-                                  mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text("Coupon (WELCOME50)",
-                                        style:
-                                        TextStyle(color: Colors.green)),
-                                    Text("-200.00",
-                                        style: TextStyle(color: Colors.green)),
-                                  ],
+                                const DottedLine(
+                                  dashLength: 4,
+                                  dashGapLength: 4,
+                                  lineThickness: 1,
+                                  dashColor: Color(0x66666626),
                                 ),
-                                DottedLine(
-                                    dashLength: 4,
-                                    dashGapLength: 4,
-                                    lineThickness: 1,
-                                    dashColor: Color(0x66666626)),
                                 Row(
-                                  mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text("Total",
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.bold)),
-                                    Text("179.00",
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.bold)),
+                                    const Text(
+                                      "Total",
+                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                    Text(
+                                      widget.paymentSummary.netTotal.toStringAsFixed(2),
+                                      style: const TextStyle(fontWeight: FontWeight.bold),
+                                    ),
                                   ],
                                 ),
                               ],
                             ),
                           ),
                         ),
+
                     ],
                   ),
                 );

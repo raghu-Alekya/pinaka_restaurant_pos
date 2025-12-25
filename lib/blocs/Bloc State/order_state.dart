@@ -61,4 +61,23 @@ class OrderState {
       restaurantId: restaurantId ?? this.restaurantId,
     );
   }
+  /// ✅ Subtotal (price × quantity)
+  double get subTotal {
+    return orderItems.fold(
+      0.0,
+          (sum, item) => sum + (item.price * item.quantity),
+    );
+  }
+
+  /// ✅ Grand total (includes addons)
+  double get grossTotal {
+    return orderItems.fold(
+      0.0,
+          (sum, item) => sum + item.totalWithAddons,
+    );
+  }
+
+  /// ✅ Optional alias if some screens expect this name
+  // double get grossTotal => grandTotal;
+
 }
