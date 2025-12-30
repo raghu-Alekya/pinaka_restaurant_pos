@@ -161,12 +161,12 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                   MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
-                                      kot.kotNumber.isNotEmpty
-                                          ? kot.kotNumber
+                                      (kot.kotNumber?.isNotEmpty ?? false)
+                                          ? kot.kotNumber!
                                           : "KOT #${kot.kotId}",
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.bold),
+                                      style: const TextStyle(fontWeight: FontWeight.bold),
                                     ),
+
                                     Row(
                                       children: [
                                         Text(

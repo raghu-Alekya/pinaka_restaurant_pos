@@ -524,9 +524,36 @@ class OrderPanel extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  orderButton('Repeat order', const Color(0xFFF7C127), onPressed: () {
-                    AppLogger.info("Repeat order clicked");
-                  }),
+                  orderButton(
+                    'Repeat order',
+                    const Color(0xFFF7C127),
+                    onPressed: () {
+                      final bloc = context.read<OrderBloc>();
+
+                      // 🛑 Prevent duplicate taps while loading
+                      if (bloc.state.isLoading) {
+                        AppLogger.info("⏳ Repeat already in progress");
+                        return;
+                      }
+
+                      // ❌ Safety check
+                      if (bloc.state.orderId == 0) {
+                        AppLogger.error("❌ Cannot repeat order: orderId is 0");
+                        return;
+                      }
+
+                      AppLogger.info("🔁 Repeat order clicked");
+
+                      bloc.add(
+                        RepeatKotOrder(
+                          orderId: bloc.state.orderId,
+                          restaurantId: int.parse(bloc.state.restaurantId),
+                          zoneId: bloc.state.zoneId,
+                        ),
+                      );
+                    },
+                  ),
+
                   orderButton(
                     'KOT Print',
                     const Color(0xFFFF4D20),

@@ -173,7 +173,7 @@ class OrderRepository {
           status: 'created',
           items: items,
           parentOrderId: parentOrderId,
-          captainId: captainId,
+          captainId: captainId, kotItems: [],
         );
 
 

@@ -8,6 +8,7 @@ import 'package:pinaka_restaurant_pos/repositories/kot_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/minisubcategory_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/order_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/product_repository.dart';
+import 'package:pinaka_restaurant_pos/repositories/repeat_kot_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/subcategory_repository.dart';
 import 'package:pinaka_restaurant_pos/utils/GlobalReservationMonitor.dart';
 import 'package:pinaka_restaurant_pos/utils/ShiftMonitor.dart';
@@ -139,8 +140,13 @@ class MyApp extends StatelessWidget {
           ),
 
           BlocProvider<OrderBloc>(
-            create: (context) => OrderBloc(orderRepo, token),
+            create: (context) => OrderBloc(
+              OrderRepository(baseUrl: ''),
+              repeatOrderRepository(baseUrl: "https://merchantrestaurant.alektasolutions.com"),
+              token,
+            ),
           ),
+
           BlocProvider<KotBloc>(
             create: (_) => KotBloc(
                 KotRepository(baseUrl: 'https://merchantrestaurant.alektasolutions.com')),

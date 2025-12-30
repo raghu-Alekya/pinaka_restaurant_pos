@@ -2,24 +2,24 @@ import 'package:intl/intl.dart';
 import 'order_items.dart';
 
 class KotModel {
-  final int kotId;
-  final String kotNumber;
+  final int? kotId;
+  final String ?kotNumber;
   final DateTime time;
   final String status;
   final List<OrderItems> items;
   final int parentOrderId;
-  final int captainId;
+  final int? captainId;
   final int? guestCount; // ✅ Add this field
 
   KotModel({
-    required this.kotId,
-    required this.kotNumber,
+    this.kotId,
+    this.kotNumber,
     required this.time,
     required this.status,
     required this.items,
     required this.parentOrderId,
-    required this.captainId,
-    this.guestCount, // ✅ Add to constructor
+     this.captainId,
+    this.guestCount, required List<dynamic> kotItems, // ✅ Add to constructor
   });
 
   /// Safe JSON parsing
@@ -59,7 +59,7 @@ class KotModel {
       items: parseItems(json['line_items']),
       parentOrderId: parseInt(json['parent_order_id']),
       captainId: parseInt(json['captain_id']),
-      guestCount: parseInt(json['guest_count']),// ✅ Correctly parsed
+      guestCount: parseInt(json['guest_count']), kotItems: [],// ✅ Correctly parsed
     );
   }
 

@@ -183,8 +183,17 @@ class LoadExistingOrder extends OrderEvent {
     this.orderItems = const [],
     required this.guestDetails, // ✅ must pass single Guestcount
   });
+}
+class RepeatKotOrder extends OrderEvent {
+  final int orderId;
+  final int restaurantId;
+  final int zoneId;
 
-
+  RepeatKotOrder({
+    required this.orderId,
+    required this.restaurantId,
+    required this.zoneId,
+  });
 }
 /// 🔹 Update guest count (single Guestcount object)
 class UpdateGuestCount extends OrderEvent {
