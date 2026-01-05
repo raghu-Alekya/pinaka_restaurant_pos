@@ -8,6 +8,7 @@ import '../../blocs/Bloc State/payment_state.dart';
 // import '../../blocs/payment/payment_bloc.dart';
 // import '../../blocs/payment/payment_event.dart';
 // import '../../blocs/payment/payment_state.dart';
+import '../../local database/database_helper.dart';
 import '../../utils/SessionManager.dart';
 
 import '../widgets/payment_sidebar_widget.dart';
@@ -38,12 +39,17 @@ class PaymentScreen extends StatefulWidget {
 
 class _PaymentScreenState extends State<PaymentScreen> {
   dynamic _userPermissions;
+  String? token;
+  int? userId;
+  int? shiftId;
+
   Map<String, dynamic>? _selectedUser;
 
   @override
   void initState() {
     super.initState();
     _loadPermissions();
+    _loadSessionData();
 
     /// ✅ Load payment summary ONCE
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -59,6 +65,19 @@ class _PaymentScreenState extends State<PaymentScreen> {
       );
     });
   }
+  Future<void> _loadSessionData() async {
+    final db = DatabaseHelper();
+
+    final user = await db.getLoggedInUser();
+    final shift = await db.getCurrentShiftId();
+
+    setState(() {
+      token = user?['token'];
+      userId = user?['id'];
+      shiftId = shift;
+    });
+  }
+
 
   Future<void> _loadPermissions() async {
     try {
@@ -130,7 +149,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 /// NUMBER PAD
                 Expanded(
                   flex: 50,
-                  child: Numberpad(
+                  child: paymentsummary(
                     loadedTables: widget.loadedTables,
                     pin: widget.pin,
                     token: widget.token,

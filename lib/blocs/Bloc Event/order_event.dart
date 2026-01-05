@@ -74,6 +74,8 @@ class RemoveOrderItem extends OrderEvent {
 
 /// 4️⃣ Clear the entire order
 class ClearOrder extends OrderEvent {}
+class ClearOrderItemsOnly extends OrderEvent {}
+
 
 /// 5️⃣ Cancel the order
 /// 5️⃣ Cancel the order
@@ -188,11 +190,13 @@ class RepeatKotOrder extends OrderEvent {
   final int orderId;
   final int restaurantId;
   final int zoneId;
+  final String token;
 
   RepeatKotOrder({
     required this.orderId,
     required this.restaurantId,
     required this.zoneId,
+    required this.token,
   });
 }
 /// 🔹 Update guest count (single Guestcount object)

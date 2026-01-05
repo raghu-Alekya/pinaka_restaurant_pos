@@ -549,6 +549,7 @@ class OrderPanel extends StatelessWidget {
                           orderId: bloc.state.orderId,
                           restaurantId: int.parse(bloc.state.restaurantId),
                           zoneId: bloc.state.zoneId,
+                          token: token,
                         ),
                       );
                     },

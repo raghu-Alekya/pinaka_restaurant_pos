@@ -2,13 +2,20 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/widgets/paymentsucess.dart';
+import 'package:pinaka_restaurant_pos/App%20flow/widgets/splitpaymentpopup.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/widgets/tip_widget.dart';
+import 'package:pinaka_restaurant_pos/blocs/Bloc%20Event/order_event.dart';
+import '../../blocs/Bloc Event/create_payment_event.dart';
+import '../../blocs/Bloc Logic/create_payment_bloc.dart';
 import '../../blocs/Bloc Logic/order_bloc.dart';
+import '../../blocs/Bloc State/create_payment_state.dart';
+import '../../models/payment/create_payment_model.dart';
 import '../../services/app_database.dart';
+import '../../utils/SessionManager.dart';
 import 'coupon_widget.dart';
 import 'discount_screen.dart';
 
-class Numberpad extends StatefulWidget {
+class paymentsummary extends StatefulWidget {
   final List<Map<String, dynamic>> loadedTables;
   final String pin;
   final String token;
@@ -16,7 +23,7 @@ class Numberpad extends StatefulWidget {
   final String restaurantName;
   final int? zoneId;
 
-  const Numberpad({
+  const paymentsummary({
     Key? key,
     required this.loadedTables,
     required this.pin,
@@ -28,10 +35,10 @@ class Numberpad extends StatefulWidget {
 
 
   @override
-  State<Numberpad> createState() => _NumberpadState();
+  State<paymentsummary> createState() => _paymentsummaryState();
 }
 
-class _NumberpadState extends State<Numberpad> {
+class _paymentsummaryState extends State<paymentsummary> {
   String selectedOption = '';
   String amount = '';
   double balanceAmount = AppDatabase.instance.totalamount ?? 0.0;
@@ -43,75 +50,129 @@ class _NumberpadState extends State<Numberpad> {
   bool _isCouponApplied = false;
   bool _isTipApplied = false;
   String _appliedCoupon = "";
+  bool isSplitApplied = false;
+
 
   // / Delete button enabled if any of the above are applied
   bool get isDeleteEnabled =>
       _isTipApplied || _isDiscountApplied || _isCouponApplied;
 
+  Future<void> _submitPayment() async {
+    debugPrint("🟡 SUBMIT PAYMENT CALLED");
+
+    final orderBloc = context.read<OrderBloc>();
+
+    // ---- DEBUG ALL REQUIRED VALUES ----
+    debugPrint("📦 OrderBloc State: ${orderBloc.state}");
+
+    final orderId = orderBloc.state.orderId;
+    final int? userId = await SessionManager.getUserId();
+    final int? shiftId = await SessionManager.getShiftId();
+
+    debugPrint("➡️ orderId: $orderId");
+    debugPrint("➡️ userId: $userId");
+    debugPrint("➡️ shiftId: $shiftId");
+    debugPrint("➡️ amount: $amount");
+    debugPrint("➡️ paymentMode: $selectedPaymentMode");
+
+    // ---------- VALIDATION ----------
+    if (orderId == null) {
+      debugPrint("❌ ERROR: orderId is NULL");
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("Order not created")));
+      return;
+    }
+
+    if (userId == null) {
+      debugPrint("❌ ERROR: userId is NULL");
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("User not logged in")));
+      return;
+    }
+
+    if (shiftId == null) {
+      debugPrint("❌ ERROR: shiftId is NULL");
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("Shift not started")));
+      return;
+    }
+
+    if (amount.isEmpty) {
+      debugPrint("❌ ERROR: amount is empty");
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("Enter payment amount")));
+      return;
+    }
+
+    debugPrint("✅ ALL VALID — Creating payment...");
+
+    context.read<CreatePaymentBloc>().add(
+      CreatePaymentEvent(
+        token: widget.token,
+        request: CreatePaymentRequest(
+          orderId: orderId,
+          title: "POS Payment",
+          amount: double.parse(amount),
+          paymentMethod: selectedPaymentMode,
+          shiftId: shiftId,
+          userId: userId,
+          restaurantId: widget.restaurantId,
+          notes: {
+            "source": "POS",
+            "device": "ANDROID",
+          },
+        ),
+      ),
+    );
+  }
 
 
 
-  void handleKeyPress(String key) {
+
+
+  Future<void> handleKeyPress(String key) async {
+    // ✅ PAY BUTTON
+    if (key == "Pay") {
+      if (amount.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Please enter amount")),
+        );
+        return;
+      }
+      await _submitPayment();
+      return;
+    }
+
+    // ✅ CLEAR
     if (key == "C") {
-      setState(() {
-        amount = '';
-      });
-    } else if (key == "⌫") {
+      setState(() => amount = '');
+      return;
+    }
+
+    // ✅ BACKSPACE
+    if (key == "⌫") {
       if (amount.isNotEmpty) {
         setState(() {
           amount = amount.substring(0, amount.length - 1);
         });
       }
-    } else if (key == "Pay") {
-      if (amount.isEmpty) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Please enter amount')));
-        return;
-      }
-      if (selectedPaymentMode.isEmpty) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Please select a payment mode')));
-        return;
-      }
-      double tenderAmount = double.tryParse(amount) ?? 0.0;
-      calculatedChange = balanceAmount - tenderAmount;
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext context) {
-          return Dialog(
-            backgroundColor: Colors.transparent,
-            insetPadding: EdgeInsets.zero,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Padding(
-                padding: EdgeInsets.only(left: 330, top: 60, bottom: 60),
-                child:
-                //Kitchenstatus(),
-                Paymentsucess(
-                  amount: amount,
-                  paymentMode: selectedPaymentMode,
-                  changeAmount: calculatedChange?.toStringAsFixed(2),
-                  loadedTables: widget.loadedTables,
-                  pin: widget.pin,
-                  token: widget.token,
-                  restaurantId: widget.restaurantId,
-                  restaurantName: widget.restaurantName,
-                  zoneId: widget.zoneId,
-                ),
-
-              ),
-            ),
-          );
-        },
-      );
-    } else {
-      setState(() {
-        amount += key;
-      });
+      return;
     }
+
+    // ❌ BLOCK NON-NUMERIC INPUT
+    if (!RegExp(r'^[0-9.]$').hasMatch(key)) {
+      return;
+    }
+
+    // ✅ PREVENT MULTIPLE DOTS
+    if (key == "." && amount.contains(".")) {
+      return;
+    }
+
+    // ✅ ADD NUMBER
+    setState(() {
+      amount += key;
+    });
   }
 
   void _onPresetAmountTap(String value) {
@@ -139,16 +200,44 @@ class _NumberpadState extends State<Numberpad> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ 1. Get total from OrderBloc
-    final double totalAmount = context.select(
-          (OrderBloc bloc) => bloc.state.grossTotal,
-    );
-    debugPrint("💰 Payment UI totalAmount = $totalAmount");
+    final double totalAmount =
+    context.select((OrderBloc bloc) => bloc.state.grossTotal);
 
-    // ✅ 2. Build dynamic presets
+    // ✅ DEFINE HERE
     final List<double> presetAmounts = buildPresetAmounts(totalAmount);
+    return BlocListener<CreatePaymentBloc, PaymentState>(
+        listener: (context, state) async {
+          if (state is PaymentLoading) {
+            // Optional loader
+          }
 
-    return Scaffold(
+          if (state is PaymentSuccess) {
+            await showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (_) => Paymentsucess(
+                amount: state.response.paidAmount.toString(),
+                paymentMode: selectedPaymentMode,
+                changeAmount: state.response.remainingAmount.toString(),
+                loadedTables: widget.loadedTables,
+                pin: widget.pin,
+                token: widget.token,
+                restaurantId: widget.restaurantId,
+                zoneId: widget.zoneId,
+                restaurantName: '',
+              ),
+            );
+            // 🔥 Reset order completely
+            context.read<OrderBloc>().add(ClearOrder());
+          }
+
+          if (state is PaymentFailure) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.error)),
+            );
+          }
+        },
+    child:  Scaffold(
       backgroundColor: Color(0xFFF5F5F6),
       body: Row(
         children: [
@@ -391,7 +480,7 @@ class _NumberpadState extends State<Numberpad> {
           ),
         ],
       ),
-    );
+    ));
   }
 }
 
@@ -422,7 +511,7 @@ Widget buildPayment(BuildContext context, String amount, String label) {
       SizedBox(height: 15),
       Container(
         alignment: Alignment.center,
-        height: MediaQuery.of(context).size.height * 0.38,
+        height: MediaQuery.of(context).size.height * 0.28,
         width: MediaQuery.of(context).size.width * 0.20,
         decoration: BoxDecoration(
           color: Color(0xFFDEE8FF),
@@ -447,12 +536,12 @@ Widget buildPayment(BuildContext context, String amount, String label) {
               amount: tenderAmount,
             ),
             SizedBox(width: 20),
-            _buildColumnItem(
-              "Change.",
-              changeAmount.toStringAsFixed(2),
-              context,
-              amount: changeAmount,
-            ),
+            // _buildColumnItem(
+            //   "Change.",
+            //   changeAmount.toStringAsFixed(2),
+            //   context,
+            //   amount: changeAmount,
+            // ),
           ],
         ),
       ),
@@ -626,6 +715,7 @@ bool _isDiscountApplied = false;
 bool _isCouponApplied = false;
 bool _isTipApplied = false;
 String _appliedCoupon = "";
+bool isSplitApplied = false;
 
 
 
@@ -648,7 +738,7 @@ Widget _buildPaymentDiscountItem(
   return Column(
     children: [
       Container(
-        height: screenHeight * 0.35,
+        height: screenHeight * 0.45,
         width: screenWidth * 0.20,
         decoration: BoxDecoration(
           color: const Color(0xFFDEE8FF),
@@ -733,6 +823,32 @@ Widget _buildPaymentDiscountItem(
               //   });
               // },
             ),
+            // _buildActionRow(
+            //   context,
+            //   color: isSplitApplied ? Colors.grey : const Color(0xFF4C81F1),
+            //   ellipse: "assets/icon/Ellipse 1934.png",
+            //   icon: "assets/icon/split.png",
+            //   label: isSplitApplied ? "Split Applied" : "Split Payment",
+            //   onTap: isSplitApplied
+            //       ? null
+            //       : () async {
+            //     final result = await showDialog<bool>(
+            //       context: context,
+            //       barrierDismissible: false,
+            //       builder: (context) => const SplitPaymentPopup(),
+            //     );
+            //
+            //     if (result == true) {
+            //       setState(() {
+            //         isSplitApplied = true;
+            //       });
+            //     }
+            //   },
+            //   isDeleteEnabled: isSplitApplied,
+            // ),
+            //
+
+
           ],
         ),
       ),

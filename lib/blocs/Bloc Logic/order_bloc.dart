@@ -65,10 +65,7 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
     });
 
 
-    /// Select table
-    /// Select table
-    /// Select table
-    /// Select table
+
     /// Select table
     on<SelectTable>((event, emit) async {
       final isDifferentTable = event.tableId != state.tableId;
@@ -266,6 +263,10 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
           "Creating KOT: ${event.kotId} for Order ID: ${event.parentOrderId}");
 
       try {
+        if (event.zoneId == 0 || event.parentOrderId == 0) {
+          AppLogger.error("❌ Missing order context");
+          return;
+        }
         final kot = await repository.createKOT(
           parentOrderId: event.parentOrderId,
           kotId: event.kotId,

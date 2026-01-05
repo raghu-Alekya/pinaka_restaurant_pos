@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../constants/constants.dart';
+import '../utils/SessionManager.dart';
 import '../utils/logger.dart';
 
 class EmployeeRepository {
@@ -48,23 +49,23 @@ class EmployeeRepository {
     );
 
     if (response.statusCode == 200) {
-      if (response.body.isEmpty) {
-        throw FormatException(
-          "Empty response body. Possible open shift not closed.",
-        );
-      }
-
       final body = jsonDecode(response.body);
+
       if (!body.containsKey('shift_id')) {
-        throw FormatException(
-          "No shift_id in response. Possibly an active shift already exists.",
-        );
+        throw Exception("Shift ID missing in response");
       }
 
-      return body['shift_id'];
+      final int shiftId = body['shift_id'];
+
+      // ✅ SAVE SHIFT ID HERE
+      await SessionManager.saveShiftId(shiftId);
+
+      print("✅ SHIFT CREATED & SAVED: $shiftId");
+
+      return shiftId;
     } else {
       throw Exception(
-        "Failed to create shift. Status code: ${response.statusCode}",
+        "Failed to create shift. Status: ${response.statusCode}",
       );
     }
   }
@@ -141,11 +142,22 @@ class EmployeeRepository {
 
     if (response.statusCode == 200 && response.body.isNotEmpty) {
       final Map<String, dynamic> shift = jsonDecode(response.body);
+
+      // ✅ SAVE SHIFT ID HERE
+      if (shift.containsKey('shift_id')) {
+        final int shiftId = shift['shift_id'];
+        await SessionManager.saveShiftId(shiftId);
+        print("✅ Shift ID saved from current shift: $shiftId");
+      } else {
+        print("⚠️ shift_id not found in response");
+      }
+
       return shift;
     }
 
     return null;
   }
+
   Future<void> closeShift({
     required String token,
     required int shiftId,
