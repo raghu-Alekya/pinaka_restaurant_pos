@@ -4,10 +4,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart';
 import 'package:pinaka_restaurant_pos/repositories/category_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/checkin_repository.dart';
+import 'package:pinaka_restaurant_pos/repositories/create_payment_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/kot_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/minisubcategory_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/order_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/product_repository.dart';
+import 'package:pinaka_restaurant_pos/repositories/repeat_kot_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/subcategory_repository.dart';
 import 'package:pinaka_restaurant_pos/utils/GlobalReservationMonitor.dart';
 import 'package:pinaka_restaurant_pos/utils/ShiftMonitor.dart';
@@ -24,6 +26,7 @@ import 'App flow/widgets/view_all_kots.dart';
 import 'blocs/Bloc Event/kot_event.dart';
 import 'blocs/Bloc Logic/auth_bloc.dart';
 import 'blocs/Bloc Logic/category_bloc.dart';
+import 'blocs/Bloc Logic/create_payment_bloc.dart';
 import 'blocs/Bloc Logic/kot_bloc.dart';
 import 'blocs/Bloc Logic/minisubcategory_bloc.dart';
 import 'blocs/Bloc Logic/order_bloc.dart';
@@ -103,7 +106,7 @@ class MyApp extends StatelessWidget {
             create: (_) => MiniSubCategoryBloc(
               repository: MiniSubCategoryRepository(
                 baseUrl: "https://merchantrestaurant.alektasolutions.com",
-                token: token, // use your actual token
+                // token: token, // use your actual token
               ),
             ),
           ),
@@ -126,16 +129,37 @@ class MyApp extends StatelessWidget {
               ),
             ),
           ),
+          // BlocProvider<ProductBloc>(
+          //   create: (_) => ProductBloc(ProductRepository as ProductRepository),
+          // ),
           BlocProvider<ProductBloc>(
-            create: (_) => ProductBloc(ProductRepository as ProductRepository),
+            create: (_) => ProductBloc(
+              ProductRepository(
+                baseUrl: "https://merchantrestaurant.alektasolutions.com",
+                // token: token,
+              ),
+            ),
           ),
+
           BlocProvider<OrderBloc>(
-            create: (context) => OrderBloc(orderRepo, token),
+            create: (context) => OrderBloc(
+              OrderRepository(baseUrl: ''),
+              repeatOrderRepository(baseUrl: "https://merchantrestaurant.alektasolutions.com"),
+              token,
+            ),
           ),
+
           BlocProvider<KotBloc>(
             create: (_) => KotBloc(
                 KotRepository(baseUrl: 'https://merchantrestaurant.alektasolutions.com')),
           ),
+          BlocProvider<CreatePaymentBloc>(
+            create: (_) => CreatePaymentBloc(
+              CreatePaymentRepository(),
+            ),
+          ),
+
+
           BlocProvider<AuthBloc>(
             create: (context) => AuthBloc(
               RepositoryProvider.of<AuthRepository>(context),

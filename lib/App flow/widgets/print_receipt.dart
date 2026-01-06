@@ -1,7 +1,10 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../blocs/Bloc Event/order_event.dart';
+import '../../blocs/Bloc Logic/order_bloc.dart';
 import '../ui/tables_screen.dart';
 
 class PrintRecipt extends StatefulWidget {
@@ -33,7 +36,8 @@ class _PrintReciptState extends State<PrintRecipt> {
   final TextEditingController _smsController = TextEditingController();
   final List<String> options = ['Printer', 'Email', 'SMS'];
 
-  void _onDonePressed() {
+  void _onDonePressed() async {
+    // 1️⃣ Validation
     if (_selectedOption == 'Email') {
       final email = _emailController.text.trim();
       if (email.isEmpty || !email.contains("@")) {
@@ -54,27 +58,31 @@ class _PrintReciptState extends State<PrintRecipt> {
       }
     }
 
-    // ✅ STEP 1: Close the dialog
+    // ✅ STEP 1: CLOSE THE SUCCESS DIALOG
     Navigator.of(context).pop();
 
-    // ✅ STEP 2: Navigate to TablesScreen AFTER dialog closes
-    Future.microtask(() {
-      Navigator.of(context, rootNavigator: true)
-          .pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (_) => TablesScreen(
-            loadedTables: widget.loadedTables,
-            pin: widget.pin,
-            token: widget.token,
-            restaurantId: widget.restaurantId,
-            restaurantName: widget.restaurantName,
-            zoneId: widget.zoneId,
-          ),
+    // ✅ STEP 2: CLEAR ORDER STATE (CRITICAL)
+    context.read<OrderBloc>().add(ClearOrder());
+
+    // ⏳ Small delay ensures Bloc processes event before navigation
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    // ✅ STEP 3: NAVIGATE TO TABLE SCREEN (FRESH STATE)
+    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) => TablesScreen(
+          loadedTables: widget.loadedTables,
+          pin: widget.pin,
+          token: widget.token,
+          restaurantId: widget.restaurantId,
+          restaurantName: widget.restaurantName,
+          zoneId: widget.zoneId,
         ),
-            (route) => false, // removes previous screens
-      );
-    });
+      ),
+          (route) => false,
+    );
   }
+
 
 
   @override

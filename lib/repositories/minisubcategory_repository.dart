@@ -1,17 +1,30 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/category/items_model.dart';
 import '../models/category/minisubcategory_model.dart';
 
 class MiniSubCategoryRepository {
   final String baseUrl;
-  final String token;
+  // final String token;
 
-  MiniSubCategoryRepository({required this.baseUrl, required this.token});
+  MiniSubCategoryRepository({required this.baseUrl});
+
+  /// 🔐 Load token safely (APK + Run mode)
+  Future<String?> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('token');
+  }
+
 
   /// Fetch mini-subcategories by subCategoryId
   Future<List<MiniSubCategory>> fetchMiniSubCategories(int subCategoryId) async {
-    final url = Uri.parse("$baseUrl//wp-json/pinaka-restaurant-pos/v1/categories/mini-subcategories?subcategory_id=$subCategoryId");
+    final token = await _getToken();
+
+    if (token == null || token.isEmpty) {
+      throw Exception("Token not available");
+    }
+    final url = Uri.parse("$baseUrl/wp-json/pinaka-restaurant-pos/v1/categories/mini-subcategories?subcategory_id=$subCategoryId");
 
     print("Fetching mini-subcategories from: $url");
 

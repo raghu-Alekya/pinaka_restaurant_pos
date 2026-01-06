@@ -2,6 +2,8 @@ import '../../models/order/KOT_model.dart' show KotModel;
 import '../../models/order/guest_details.dart' show Guestcount;
 import 'package:pinaka_restaurant_pos/models/order/order_items.dart';
 
+import '../../models/order/repeat_kot_model.dart';
+
 class OrderState {
   final List<OrderItems> orderItems;
   final List<KotModel> kotList;
@@ -17,6 +19,10 @@ class OrderState {
   final String tableName;
   final String zoneName;
   final String restaurantId;
+  final bool isLoading;
+  final RepeatKotModel? repeatKot;
+  final String? error;
+
 
   OrderState({
     required this.orderItems,
@@ -31,6 +37,9 @@ class OrderState {
     required this.tableName,
     required this.zoneName,
     required this.restaurantId,
+    this.isLoading = false,
+    this.repeatKot,
+    this.error,
   });
 
   OrderState copyWith({
@@ -45,6 +54,9 @@ class OrderState {
     String? tableName,
     String? zoneName,
     String? restaurantId,
+    bool? isLoading,
+    RepeatKotModel? repeatKot,
+    String? error,
   }) {
     return OrderState(
       orderItems: orderItems ?? this.orderItems,
@@ -59,6 +71,28 @@ class OrderState {
       tableName: tableName ?? this.tableName,
       zoneName: zoneName ?? this.zoneName,
       restaurantId: restaurantId ?? this.restaurantId,
+      isLoading: isLoading ?? this.isLoading,
+      repeatKot: repeatKot ?? this.repeatKot,
+      error: error,
     );
   }
+  /// ✅ Subtotal (price × quantity)
+  double get subTotal {
+    return orderItems.fold(
+      0.0,
+          (sum, item) => sum + (item.price * item.quantity),
+    );
+  }
+
+  /// ✅ Grand total (includes addons)
+  double get grossTotal {
+    return orderItems.fold(
+      0.0,
+          (sum, item) => sum + item.totalWithAddons,
+    );
+  }
+
+  /// ✅ Optional alias if some screens expect this name
+  // double get grossTotal => grandTotal;
+
 }

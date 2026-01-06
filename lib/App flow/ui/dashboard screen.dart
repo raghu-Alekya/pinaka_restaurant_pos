@@ -92,11 +92,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     miniSubRepo = MiniSubCategoryRepository(
       baseUrl: "https://merchantrestaurant.alektasolutions.com",
-      token: widget.token,
+      // token: widget.token,
     );
     productRepo = ProductRepository(
       baseUrl: "https://merchantrestaurant.alektasolutions.com",
-      token: widget.token,
+      // token: widget.token,
     );
 
     _loadCategories();

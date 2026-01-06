@@ -10,6 +10,7 @@ import '../../blocs/Bloc Event/order_event.dart';
 import '../../blocs/Bloc Logic/checkin_bloc.dart';
 import '../../blocs/Bloc Logic/kot_bloc.dart';
 import '../../blocs/Bloc Logic/order_bloc.dart';
+import '../../blocs/Bloc Logic/payment_bloc.dart';
 import '../../blocs/Bloc State/checkin_state.dart';
 import '../../blocs/Bloc State/kot_state.dart';
 import '../../blocs/Bloc State/order_state.dart';
@@ -21,6 +22,7 @@ import '../../models/order/guest_details.dart';
 import '../../repositories/checkin_repository.dart';
 import '../../repositories/kot_repository.dart';
 import '../../repositories/order_repository.dart';
+import '../../repositories/payment_summary_repository.dart';
 import '../../utils/logger.dart';
 import '../widgets/orderlist_widget.dart';
 import '../widgets/view_all_kots.dart';
@@ -508,12 +510,18 @@ class OrderPanel extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Total Items', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                     Text(
-                      state.orderItems.fold(0.0, (sum, item) => sum + item.totalWithAddons).toStringAsFixed(2),
+                      'Total Items: ${state.orderItems.length}',
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    ),
+                    Text(
+                      state.orderItems
+                          .fold(0.0, (sum, item) => sum + item.totalWithAddons)
+                          .toStringAsFixed(2),
                       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                     ),
                   ],
+
                 ),
               ),
               const SizedBox(height: 6),
@@ -522,9 +530,37 @@ class OrderPanel extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  orderButton('Repeat order', const Color(0xFFF7C127), onPressed: () {
-                    AppLogger.info("Repeat order clicked");
-                  }),
+                  orderButton(
+                    'Repeat order',
+                    const Color(0xFFF7C127),
+                    onPressed: () {
+                      final bloc = context.read<OrderBloc>();
+
+                      // 🛑 Prevent duplicate taps while loading
+                      if (bloc.state.isLoading) {
+                        AppLogger.info("⏳ Repeat already in progress");
+                        return;
+                      }
+
+                      // ❌ Safety check
+                      if (bloc.state.orderId == 0) {
+                        AppLogger.error("❌ Cannot repeat order: orderId is 0");
+                        return;
+                      }
+
+                      AppLogger.info("🔁 Repeat order clicked");
+
+                      bloc.add(
+                        RepeatKotOrder(
+                          orderId: bloc.state.orderId,
+                          restaurantId: int.parse(bloc.state.restaurantId),
+                          zoneId: bloc.state.zoneId,
+                          token: token,
+                        ),
+                      );
+                    },
+                  ),
+
                   orderButton(
                     'KOT Print',
                     const Color(0xFFFF4D20),
@@ -740,17 +776,36 @@ class OrderPanel extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => PaymentScreen(
-                          loadedTables: loadedTables,          // from TablesScreen or state
-                          pin: pin,                     // current login pin
-                          token: token,                 // auth token
-                          restaurantId: restaurantId,   // restaurant id
-                          restaurantName: restaurantName,
-                          zoneId: zoneId,
+                        builder: (_) => MultiBlocProvider(
+                          providers: [
+                            // 🔥 PASS EXISTING OrderBloc
+                            BlocProvider.value(
+                              value: context.read<OrderBloc>(),
+                            ),
+
+                            // ✅ Create PaymentBloc (new instance is fine)
+                            BlocProvider(
+                              create: (_) => PaymentBloc(
+                                PaymentRepository(
+                                  baseUrl: "https://merchantrestaurant.alektasolutions.com",
+                                  token: token,
+                                ),
+                              ),
+                            ),
+                          ],
+                          child: PaymentScreen(
+                            loadedTables: loadedTables,
+                            pin: pin,
+                            token: token,
+                            restaurantId: restaurantId,
+                            restaurantName: restaurantName,
+                            zoneId: zoneId,
+                          ),
                         ),
                       ),
-
                     );
+
+
                   }),
 
                 ],
