@@ -6,6 +6,7 @@ class PaymentResponse {
   final double paidAmount;
   final double totalPaid;
   final double remainingAmount;
+  final double change;
   final double orderTotal;
   final String orderStatus;
   final bool isVoid;
@@ -18,6 +19,7 @@ class PaymentResponse {
     required this.paidAmount,
     required this.totalPaid,
     required this.remainingAmount,
+    required this.change,
     required this.orderTotal,
     required this.orderStatus,
     required this.isVoid,
@@ -32,6 +34,7 @@ class PaymentResponse {
       paidAmount: (json['paid_amount'] ?? 0).toDouble(),
       totalPaid: (json['total_paid'] ?? 0).toDouble(),
       remainingAmount: (json['remaining_amount'] ?? 0).toDouble(),
+      change: (json['change'] ?? 0).toDouble(),
       orderTotal: (json['order_total'] ?? 0).toDouble(),
       orderStatus: json['order_status'],
       isVoid: json['void'],

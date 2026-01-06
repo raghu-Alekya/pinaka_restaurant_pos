@@ -17,7 +17,7 @@ import 'checkin_bloc.dart';
 
 class OrderBloc extends Bloc<OrderEvent, OrderState> {
   final OrderRepository repository;
-  final repeatOrderRepository repeatRepository;
+  final RepeatOrderRepository repeatRepository;
   final String token;
 
 

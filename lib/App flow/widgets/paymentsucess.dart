@@ -32,8 +32,8 @@ class Paymentsucess extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: MediaQuery.of(context).size.width * 0.45,
-      height: MediaQuery.of(context).size.height * 0.60,
+      width: MediaQuery.of(context).size.width * 0.25,
+      height: MediaQuery.of(context).size.height * 0.30,
       decoration: ShapeDecoration(
         color: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -140,8 +140,8 @@ class Paymentsucess extends StatelessWidget {
 
   Widget _buildInfoRow(BuildContext context, String? mode, String? amount) {
     return Container(
-      height: MediaQuery.of(context).size.height * 0.07,
-      width: MediaQuery.of(context).size.width * 0.38,
+      height: MediaQuery.of(context).size.height * 0.25,
+      width: MediaQuery.of(context).size.width * 0.30,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(5),
@@ -180,14 +180,19 @@ class Paymentsucess extends StatelessWidget {
   }
 
   Widget _buildChangeRow(BuildContext context, String? change) {
+    debugPrint("🟢 Change received in UI = $change");
+
+    final double changeAmount = double.tryParse(change ?? '') ?? 0.0;
+    // final double changeAmount = double.tryParse(change ?? '') ?? 0.0;
+
     return Container(
       height: MediaQuery.of(context).size.height * 0.07,
       width: MediaQuery.of(context).size.width * 0.38,
       decoration: BoxDecoration(
-        color: Color(0x101BA672),
+        color: const Color(0x101BA672),
         borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: Color(0x101BA672), width: 0.8),
-        boxShadow: [
+        border: Border.all(color: const Color(0x101BA672), width: 0.8),
+        boxShadow: const [
           BoxShadow(
             color: Color(0x101BA672),
             blurRadius: 10,
@@ -195,11 +200,11 @@ class Paymentsucess extends StatelessWidget {
           ),
         ],
       ),
-      padding: EdgeInsets.symmetric(horizontal: 30),
+      padding: const EdgeInsets.symmetric(horizontal: 30),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
+          const Text(
             "Change:",
             style: TextStyle(
               fontWeight: FontWeight.w500,
@@ -208,8 +213,8 @@ class Paymentsucess extends StatelessWidget {
             ),
           ),
           Text(
-            "₹${(double.tryParse(change ?? '0.00')?.abs() ?? 0.00).toStringAsFixed(2)}",
-            style: TextStyle(
+            "₹${changeAmount.abs().toStringAsFixed(2)}",
+            style: const TextStyle(
               fontWeight: FontWeight.w500,
               fontSize: 20,
               color: Color(0xFF1BA672),
@@ -219,6 +224,7 @@ class Paymentsucess extends StatelessWidget {
       ),
     );
   }
+
 
   Widget _buildActionButton(
       BuildContext context, {

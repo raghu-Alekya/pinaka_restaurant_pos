@@ -43,7 +43,7 @@ class paymentsummary extends StatefulWidget {
 class _paymentsummaryState extends State<paymentsummary> {
   String selectedOption = '';
   String amount = '';
-  double balanceAmount = AppDatabase.instance.totalamount ?? 0.0;
+  // double balanceAmount = AppDatabase.instance.totalamount ?? 0.0;
   double? calculatedChange;
   String selectedPaymentMode = "Cash";
   bool isCashSelected = true;
@@ -190,25 +190,25 @@ class _paymentsummaryState extends State<paymentsummary> {
   List<double> buildPresetAmounts(double total) {
     if (total <= 0) return [];
 
-    double roundDown(double value, int base) =>
-        ((value / base).floor()) * base.toDouble();
+    final Set<double> presets = {};
 
-    double roundUp(double value, int base) =>
-        ((value / base).ceil()) * base.toDouble();
+    // Always include exact total (NO rounding)
+    presets.add(total);
 
-    final amounts = <double>{
-      roundDown(total, 50), // 👈 less than total
-      total,                // 👈 exact
-      roundUp(total, 50),   // 👈 slightly more
-      roundUp(total, 100),  // 👈 higher
-    }
-    // remove zero or negative values
-        .where((v) => v > 0)
-        .toList();
+    final next50 = (total / 50).ceil() * 50;
+    final next100 = (total / 100).ceil() * 100;
+    final next200 = (total / 200).ceil() * 200;
 
-    amounts.sort();
-    return amounts;
+    if (next50 > total) presets.add(next50.toDouble());
+    if (next100 > total) presets.add(next100.toDouble());
+    if (next200 > total) presets.add(next200.toDouble());
+
+    // Convert to sorted list
+    final result = presets.toList()..sort();
+
+    return result;
   }
+
 
 
 
@@ -239,7 +239,8 @@ class _paymentsummaryState extends State<paymentsummary> {
               builder: (_) => Paymentsucess(
                 amount: state.response.paidAmount.toString(),
                 paymentMode: selectedPaymentMode,
-                changeAmount: state.response.remainingAmount.toString(),
+                changeAmount: state.response.change.toStringAsFixed(2),
+
                 loadedTables: widget.loadedTables,
                 pin: widget.pin,
                 token: widget.token,
@@ -451,7 +452,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                               "Transaction Overview :",
                             ),
 
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 25),
                             Text(
                               "Action:",
                               style: TextStyle(
@@ -463,6 +464,8 @@ class _paymentsummaryState extends State<paymentsummary> {
                               ),
                               textAlign: TextAlign.start,
                             ),
+                            const SizedBox(height: 15),
+
                             _buildPaymentDiscountItem(
                               context,
 
@@ -557,16 +560,14 @@ Widget buildPayment(BuildContext context, String amount, String label) {
   print('💰 grossTotal = $grossTotal');
   print('Tender Amount = $tenderAmount');
 
-  if (tenderAmount < balanceAmount) {
+  if (tenderAmount < grossTotal) {
     print('Payment Type: PARTIAL PAYMENT');
-    print('Remaining Balance: ${balanceAmount - tenderAmount}');
-  } else if (tenderAmount > balanceAmount) {
+  } else if (tenderAmount > grossTotal) {
     print('Payment Type: OVER PAYMENT');
-    print('Change Amount: ${tenderAmount - balanceAmount}');
   } else {
     print('Payment Type: FULL PAYMENT');
-    print('No Balance / No Change');
   }
+
   print('-----------------------------------------------');
 
   return Column(
@@ -589,7 +590,7 @@ Widget buildPayment(BuildContext context, String amount, String label) {
       SizedBox(height: 15),
       Container(
         alignment: Alignment.center,
-        height: MediaQuery.of(context).size.height * 0.28,
+        height: MediaQuery.of(context).size.height * 0.30,
         width: MediaQuery.of(context).size.width * 0.20,
         decoration: BoxDecoration(
           color: Color(0xFFDEE8FF),
@@ -599,7 +600,7 @@ Widget buildPayment(BuildContext context, String amount, String label) {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            SizedBox(height: 10),
+            SizedBox(height: 8),
             _buildColumnItem(
               "Balance Amount.",
               balanceAmount.toStringAsFixed(2),
@@ -614,12 +615,12 @@ Widget buildPayment(BuildContext context, String amount, String label) {
               amount: tenderAmount,
             ),
             SizedBox(width: 20),
-            // _buildColumnItem(
-            //   "Change.",
-            //   changeAmount.toStringAsFixed(2),
-            //   context,
-            //   amount: changeAmount,
-            // ),
+            _buildColumnItem(
+              "Change.",
+              changeAmount.toStringAsFixed(2),
+              context,
+              amount: changeAmount,
+            ),
           ],
         ),
       ),
@@ -822,7 +823,7 @@ Widget _buildPaymentDiscountItem(
   final screenHeight = MediaQuery.of(context).size.height;
 
   return Container(
-    height: screenHeight * 0.45,
+    height: screenHeight * 0.40,
     width: screenWidth * 0.20,
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
@@ -1238,9 +1239,9 @@ Widget _buildColumnItem(
             decoration: TextDecoration.none,
           ),
         ),
-        SizedBox(height: 10),
+        SizedBox(height: 7),
         Container(
-          height: MediaQuery.of(context).size.height * 0.07,
+          height: MediaQuery.of(context).size.height * 0.05,
           width: MediaQuery.of(context).size.width * 0.17,
           decoration: BoxDecoration(
             color: Color(0xFFF5F5F6),
