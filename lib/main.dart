@@ -155,7 +155,7 @@ class MyApp extends StatelessWidget {
           ),
           BlocProvider<CreatePaymentBloc>(
             create: (_) => CreatePaymentBloc(
-              CreatePaymentRepository(), CreatePaymentRepository: null,
+              CreatePaymentRepository(),
             ),
           ),
 

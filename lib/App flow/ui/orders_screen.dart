@@ -510,12 +510,18 @@ class OrderPanel extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Total Items', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                     Text(
-                      state.orderItems.fold(0.0, (sum, item) => sum + item.totalWithAddons).toStringAsFixed(2),
+                      'Total Items: ${state.orderItems.length}',
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    ),
+                    Text(
+                      state.orderItems
+                          .fold(0.0, (sum, item) => sum + item.totalWithAddons)
+                          .toStringAsFixed(2),
                       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                     ),
                   ],
+
                 ),
               ),
               const SizedBox(height: 6),

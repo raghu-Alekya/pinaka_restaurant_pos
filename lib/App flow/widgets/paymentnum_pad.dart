@@ -8,7 +8,9 @@ import 'package:pinaka_restaurant_pos/blocs/Bloc%20Event/order_event.dart';
 import '../../blocs/Bloc Event/create_payment_event.dart';
 import '../../blocs/Bloc Logic/create_payment_bloc.dart';
 import '../../blocs/Bloc Logic/order_bloc.dart';
+import '../../blocs/Bloc Logic/payment_bloc.dart';
 import '../../blocs/Bloc State/create_payment_state.dart';
+import '../../blocs/Bloc State/payment_state.dart';
 import '../../models/payment/create_payment_model.dart';
 import '../../services/app_database.dart';
 import '../../utils/SessionManager.dart';
@@ -50,7 +52,8 @@ class _paymentsummaryState extends State<paymentsummary> {
   bool _isCouponApplied = false;
   bool _isTipApplied = false;
   String _appliedCoupon = "";
-  bool isSplitApplied = false;
+  bool _isSplitApplied = false; // ✅ FIXED
+
 
 
   // / Delete button enabled if any of the above are applied
@@ -107,7 +110,7 @@ class _paymentsummaryState extends State<paymentsummary> {
     debugPrint("✅ ALL VALID — Creating payment...");
 
     context.read<CreatePaymentBloc>().add(
-      CreatePaymentEvent(
+      CreatePaymentRequested(
         token: widget.token,
         request: CreatePaymentRequest(
           orderId: orderId,
@@ -124,6 +127,7 @@ class _paymentsummaryState extends State<paymentsummary> {
         ),
       ),
     );
+
   }
 
 
@@ -160,9 +164,10 @@ class _paymentsummaryState extends State<paymentsummary> {
     }
 
     // ❌ BLOCK NON-NUMERIC INPUT
-    if (!RegExp(r'^[0-9.]$').hasMatch(key)) {
+    if (!RegExp(r'^[0-9.]+$').hasMatch(key)) {
       return;
     }
+
 
     // ✅ PREVENT MULTIPLE DOTS
     if (key == "." && amount.contains(".")) {
@@ -176,42 +181,58 @@ class _paymentsummaryState extends State<paymentsummary> {
   }
 
   void _onPresetAmountTap(String value) {
-    if (amount.isEmpty) {
-      String cleaned = value.replaceAll("\$", "");
-      setState(() {
-        amount = cleaned;
-      });
-    }
+    setState(() {
+      amount = value;
+    });
   }
+
+
   List<double> buildPresetAmounts(double total) {
     if (total <= 0) return [];
 
-    final r100 = ((total / 100).ceil()) * 100;
-    final r500 = ((total / 500).ceil()) * 500;
-    final r1000 = ((total / 1000).ceil()) * 1000;
+    double roundDown(double value, int base) =>
+        ((value / base).floor()) * base.toDouble();
 
-    return {
-      total,
-      r100.toDouble(),
-      r500.toDouble(),
-      r1000.toDouble(),
-    }.toList();
+    double roundUp(double value, int base) =>
+        ((value / base).ceil()) * base.toDouble();
+
+    final amounts = <double>{
+      roundDown(total, 50), // 👈 less than total
+      total,                // 👈 exact
+      roundUp(total, 50),   // 👈 slightly more
+      roundUp(total, 100),  // 👈 higher
+    }
+    // remove zero or negative values
+        .where((v) => v > 0)
+        .toList();
+
+    amounts.sort();
+    return amounts;
   }
+
+
 
   @override
   Widget build(BuildContext context) {
     final double totalAmount =
-    context.select((OrderBloc bloc) => bloc.state.grossTotal);
+    context.select(
+          (PaymentBloc bloc) =>
+      bloc.state is PaymentSummaryLoaded
+          ? (bloc.state as PaymentSummaryLoaded).summary.grossTotal
+          : 0.0,
+    );
+    debugPrint("💰 grossTotal = ${context.read<OrderBloc>().state.grossTotal}");
+
 
     // ✅ DEFINE HERE
     final List<double> presetAmounts = buildPresetAmounts(totalAmount);
-    return BlocListener<CreatePaymentBloc, PaymentState>(
+    return BlocListener<CreatePaymentBloc, CreatePaymentState>(
         listener: (context, state) async {
-          if (state is PaymentLoading) {
+          if (state is CreatePaymentLoading) {
             // Optional loader
           }
 
-          if (state is PaymentSuccess) {
+          if (state is CreatePaymentSuccess) {
             await showDialog(
               context: context,
               barrierDismissible: false,
@@ -231,7 +252,7 @@ class _paymentsummaryState extends State<paymentsummary> {
             context.read<OrderBloc>().add(ClearOrder());
           }
 
-          if (state is PaymentFailure) {
+          if (state is CreatePaymentFailure) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(state.error)),
             );
@@ -364,16 +385,20 @@ class _paymentsummaryState extends State<paymentsummary> {
                                     SizedBox(height: 5),
                                     Padding(
                                       padding: const EdgeInsets.symmetric(horizontal: 12),
-                                      child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: presetAmounts.map((amount) {
+                                      child: Wrap(
+                                        spacing: 10,
+                                        runSpacing: 10,
+                                        children: presetAmounts.map((value) {
                                           return GestureDetector(
-                                            onTap: () => _onPresetAmountTap(amount as String),
+                                            onTap: () => _onPresetAmountTap(value.toStringAsFixed(0)),
+
                                             child: Container(
                                               height: MediaQuery.of(context).size.height * 0.05,
-                                              width: MediaQuery.of(context).size.width * 0.05,
+                                              width: MediaQuery.of(context).size.width * 0.10,
                                               decoration: BoxDecoration(
-                                                color: const Color(0xFFE1F9DA),
+                                                color: amount == value.toStringAsFixed(0)
+                                                    ? const Color(0xFFDFF5E1)
+                                                    : const Color(0xFFE1F9DA),
                                                 borderRadius: BorderRadius.circular(5),
                                                 border: Border.all(
                                                   color: const Color(0xFFF2EEEE).withOpacity(0.5),
@@ -382,7 +407,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                                               ),
                                               child: Center(
                                                 child: Text(
-                                                  amount.toStringAsFixed(2),
+                                                  "₹${value.toStringAsFixed(0)}",
                                                   style: const TextStyle(
                                                     color: Color(0xFF318616),
                                                     fontSize: 15,
@@ -397,6 +422,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                                         }).toList(),
                                       ),
                                     ),
+
 
                                     Expanded(
                                       flex: 1,
@@ -439,32 +465,53 @@ class _paymentsummaryState extends State<paymentsummary> {
                             ),
                             _buildPaymentDiscountItem(
                               context,
-                              onDiscountApplied: () {
-                                setState(() => _isDiscountApplied = true);
-                              },
-                              onCouponApplied: (String coupon) {
-                                setState(() {
-                                  _isCouponApplied = true;
-                                  _appliedCoupon = coupon; // store applied coupon
-                                });
-                              },
-                              onTipApplied: () {
-                                setState(() => _isTipApplied = true);
-                              },
+
+                              // ===== STATE FLAGS =====
                               isDiscountApplied: _isDiscountApplied,
                               isCouponApplied: _isCouponApplied,
                               isTipApplied: _isTipApplied,
+                              isSplitApplied: _isSplitApplied,
+
                               appliedCoupon: _appliedCoupon,
 
-                              // ✅ pass proper delete logic and delete enable flag
-                              isDeleteEnabled: _isDiscountApplied || _isCouponApplied || _isTipApplied,
-                              onDelete: () {
+                              // ===== APPLY CALLBACKS =====
+                              onDiscountApplied: () {
+                                setState(() => _isDiscountApplied = true);
+                              },
+
+                              onCouponApplied: (String coupon) {
                                 setState(() {
-                                  _isDiscountApplied = false;
-                                  _isCouponApplied = false;
-                                  _isTipApplied = false;
-                                  _appliedCoupon = "";
+                                  _isCouponApplied = true;
+                                  _appliedCoupon = coupon;
                                 });
+                              },
+
+                              onTipApplied: () {
+                                setState(() => _isTipApplied = true);
+                              },
+
+                              onSplitApplied: () {
+                                setState(() => _isSplitApplied = true);
+                              },
+
+                              // ===== DELETE CALLBACKS (🔥 KEY FIX) =====
+                              onDiscountDelete: () {
+                                setState(() => _isDiscountApplied = false);
+                              },
+
+                              onCouponDelete: () {
+                                setState(() {
+                                  _isCouponApplied = false;
+                                  _appliedCoupon = '';
+                                });
+                              },
+
+                              onTipDelete: () {
+                                setState(() => _isTipApplied = false);
+                              },
+
+                              onSplitDelete: () {
+                                setState(() => _isSplitApplied = false);
                               },
                             ),
 
@@ -486,10 +533,41 @@ class _paymentsummaryState extends State<paymentsummary> {
 
 @override
 Widget buildPayment(BuildContext context, String amount, String label) {
-  double balanceAmount = AppDatabase.instance.totalamount ?? 0.0;
-  double tenderAmount =
+  final double grossTotal = context.select(
+        (PaymentBloc bloc) =>
+    bloc.state is PaymentSummaryLoaded
+        ? (bloc.state as PaymentSummaryLoaded).summary.grossTotal
+        : 0.0,
+  );
+
+  final double tenderAmount =
   amount.isNotEmpty ? double.tryParse(amount) ?? 0.0 : 0.0;
-  double changeAmount = (balanceAmount - tenderAmount).abs();
+
+  final double balanceAmount =
+  tenderAmount < grossTotal ? (grossTotal - tenderAmount) : 0.0;
+  final bool isPartial = tenderAmount < grossTotal;
+  final bool isOver = tenderAmount > grossTotal;
+
+  final double changeAmount =
+  isOver ? (tenderAmount - grossTotal) : 0.0;
+
+
+
+  /// 🔍 DEBUG
+  print('💰 grossTotal = $grossTotal');
+  print('Tender Amount = $tenderAmount');
+
+  if (tenderAmount < balanceAmount) {
+    print('Payment Type: PARTIAL PAYMENT');
+    print('Remaining Balance: ${balanceAmount - tenderAmount}');
+  } else if (tenderAmount > balanceAmount) {
+    print('Payment Type: OVER PAYMENT');
+    print('Change Amount: ${tenderAmount - balanceAmount}');
+  } else {
+    print('Payment Type: FULL PAYMENT');
+    print('No Balance / No Change');
+  }
+  print('-----------------------------------------------');
 
   return Column(
     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -711,150 +789,242 @@ class NumberPad extends StatelessWidget {
     );
   }
 }
-bool _isDiscountApplied = false;
-bool _isCouponApplied = false;
-bool _isTipApplied = false;
-String _appliedCoupon = "";
+
 bool isSplitApplied = false;
+final TextEditingController splitPayController = TextEditingController();
+
 
 
 
 Widget _buildPaymentDiscountItem(
     BuildContext context, {
       required VoidCallback onDiscountApplied,
+      required VoidCallback onDiscountDelete,
+
       required Function(String) onCouponApplied,
+      required VoidCallback onCouponDelete,
+
       required VoidCallback onTipApplied,
+      required VoidCallback onTipDelete,
+
+      required VoidCallback onSplitApplied,
+      required VoidCallback onSplitDelete,
+
       required bool isDiscountApplied,
       required bool isCouponApplied,
       required bool isTipApplied,
-      required bool isDeleteEnabled, // ✅ pass this
-      required VoidCallback onDelete,
+      required bool isSplitApplied,
+
       String appliedCoupon = "",
     }) {
+
   final screenWidth = MediaQuery.of(context).size.width;
   final screenHeight = MediaQuery.of(context).size.height;
-  Color appliedColor = Colors.grey.shade400;
 
-  return Column(
-    children: [
-      Container(
-        height: screenHeight * 0.45,
-        width: screenWidth * 0.20,
-        decoration: BoxDecoration(
-          color: const Color(0xFFDEE8FF),
-          borderRadius: BorderRadius.circular(5),
-          border: Border.all(color: Colors.white.withOpacity(0.5), width: 0.8),
-        ),
-        padding: const EdgeInsets.all(12),
-        child: Column(
+  return Container(
+    height: screenHeight * 0.45,
+    width: screenWidth * 0.20,
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: const Color(0xFFDEE8FF),
+      borderRadius: BorderRadius.circular(6),
+      border: Border.all(color: Colors.white.withOpacity(0.5), width: 0.8),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+
+        /// 🔻 DISCOUNT
+        const Text('Discount :',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 6),
+        Row(
           children: [
-            // DISCOUNT BUTTON
-            _buildActionRow(
-              context,
-              color: isDiscountApplied ? appliedColor : const Color(0xFF3DA540),
-              ellipse: "assets/icon/green .png",
-              icon: "assets/icon/discount.png",
-              label: isDiscountApplied ? "Discount Applied" : "Discount",
-              onTap: isDiscountApplied
-                  ? null
-                  : () async {
-                final result = await showDialog<bool>(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (context) => const DiscountPopup(),
-                );
-                if (result == true) onDiscountApplied();
-              },
-            ),
-
-            const SizedBox(height: 15),
-
-            // COUPON BUTTON
-            _buildActionRow(
-              context,
-              color: isCouponApplied ? Colors.grey : const Color(0xFFEB4D4D),
-              ellipse: "assets/icon/REDellipse.png",
-              icon: "assets/coupon.png",
-              label: isCouponApplied
-                  ? "Coupon Applied: $appliedCoupon"
-                  : "Coupon",
-              onTap: isCouponApplied
-                  ? null
-                  : () {
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (context) => Couponscreen(
-                    onCouponApplied: (String coupon) {
-                      onCouponApplied(coupon); // ✅ update parent state
-                      Navigator.of(context).pop(); // close popup only
-                    },
+            Expanded(
+              child: GestureDetector(
+                onTap: isDiscountApplied
+                    ? null
+                    : () async {
+                  final result = await showDialog<bool>(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (_) => const DiscountPopup(),
+                  );
+                  if (result == true) onDiscountApplied();
+                },
+                child: AbsorbPointer(
+                  child: _inputField(
+                    hint: '10%',
+                    enabled: !isDiscountApplied,
                   ),
-                );
-              },
+                ),
+              ),
             ),
-
-            const SizedBox(height: 15),
-
-            // TIP BUTTON
-            _buildActionRow(
-              context,
-              color: isTipApplied ? Colors.grey : const Color(0xFF4C81F1),
-              ellipse: "assets/icon/Ellipse 1934.png",
-              icon: "assets/icon/tip.png",
-              label: isTipApplied ? "Tip Added" : "Add Tip",
-              onTap: isTipApplied
-                  ? null
-                  : () async {
-                final result = await showDialog<bool>(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (context) => const TipPopup(),
-                );
-                if (result == true) onTipApplied();
-              },
-              isDeleteEnabled: isDeleteEnabled, // enable if any applied
-              // onDelete: () {
-              //   // Reset all applied states
-              //   setState(() {
-              //     isDiscountApplied = false;
-              //     isCouponApplied = false;
-              //     isTipApplied = false;
-              //   });
-              // },
-            ),
-            // _buildActionRow(
-            //   context,
-            //   color: isSplitApplied ? Colors.grey : const Color(0xFF4C81F1),
-            //   ellipse: "assets/icon/Ellipse 1934.png",
-            //   icon: "assets/icon/split.png",
-            //   label: isSplitApplied ? "Split Applied" : "Split Payment",
-            //   onTap: isSplitApplied
-            //       ? null
-            //       : () async {
-            //     final result = await showDialog<bool>(
-            //       context: context,
-            //       barrierDismissible: false,
-            //       builder: (context) => const SplitPaymentPopup(),
-            //     );
-            //
-            //     if (result == true) {
-            //       setState(() {
-            //         isSplitApplied = true;
-            //       });
-            //     }
-            //   },
-            //   isDeleteEnabled: isSplitApplied,
-            // ),
-            //
-
-
+            const SizedBox(width: 6),
+            if (isDiscountApplied)
+              _deleteButton(onDiscountDelete),
           ],
         ),
-      ),
-    ],
+
+        const SizedBox(height: 14),
+
+        /// 🔻 COUPON
+        const Text('Coupon :',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: isCouponApplied
+                    ? null
+                    : () {
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (_) => Couponscreen(
+                      onCouponApplied: (coupon) {
+                        onCouponApplied(coupon);
+                        Navigator.pop(context);
+                      },
+                    ),
+                  );
+                },
+                child: AbsorbPointer(
+                  child: _inputField(
+                    hint: 'Enter your coupon code',
+                    enabled: !isCouponApplied,
+                    initialValue: appliedCoupon,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            if (isCouponApplied)
+              _deleteButton(onCouponDelete),
+          ],
+        ),
+
+        const SizedBox(height: 14),
+
+        /// 🔻 TIP
+        const Text('Tip :',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: isTipApplied
+                    ? null
+                    : () async {
+                  final result = await showDialog<bool>(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (_) => const TipPopup(),
+                  );
+                  if (result == true) onTipApplied();
+                },
+                child: AbsorbPointer(
+                  child: _inputField(
+                    hint: 'Enter tip amount',
+                    keyboardType: TextInputType.number,
+                    enabled: !isTipApplied,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            if (isTipApplied)
+              _deleteButton(onTipDelete),
+          ],
+        ),
+
+        const SizedBox(height: 14),
+
+        /// 🔻 SPLIT PAY
+        const Text('Split pay :',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: isSplitApplied
+                    ? null
+                    : () async {
+                  final result =
+                  await showDialog<Map<String, String>>(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (_) => const SplitPaymentPopup(),
+                  );
+                  if (result != null) onSplitApplied();
+                },
+                child: AbsorbPointer(
+                  child: _inputField(
+                    hint: 'Enter split amount',
+                    keyboardType: TextInputType.number,
+                    enabled: !isSplitApplied,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            if (isSplitApplied)
+              _deleteButton(onSplitDelete),
+          ],
+        ),
+      ],
+
+
+    ),
   );
 }
+Widget _inputField({
+  required String hint,
+  bool enabled = true,
+  String? initialValue,
+  TextInputType keyboardType = TextInputType.text,
+  Function(String)? onChanged,
+}) {
+  return Container(
+    height: 40,
+    padding: const EdgeInsets.symmetric(horizontal: 12),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(6),
+    ),
+    child: TextFormField(
+      initialValue: initialValue,
+      enabled: enabled,
+      keyboardType: keyboardType,
+      onChanged: onChanged,
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(fontSize: 12),
+        border: InputBorder.none,
+      ),
+    ),
+  );
+}
+
+Widget _deleteButton(VoidCallback onTap) {
+  return GestureDetector(
+    onTap: onTap,
+    child: Container(
+      height: 38,
+      width: 38,
+      decoration: BoxDecoration(
+        color: Colors.red.shade50,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: const Icon( Icons.delete, size: 18, color: Colors.red),
+    ),
+  );
+}
+
+
 
 Widget _buildActionRow(
     BuildContext context, {

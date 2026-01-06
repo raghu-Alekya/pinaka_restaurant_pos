@@ -1,13 +1,13 @@
 import '../../models/payment/create_payment_model.dart';
 
-abstract class PaymentEvent {}
+abstract class CreatePaymentEvent {}
 
-class CreatePaymentEvent extends PaymentEvent {
-  final CreatePaymentRequest request;
+class CreatePaymentRequested extends CreatePaymentEvent {
   final String token;
+  final CreatePaymentRequest request;
 
-  CreatePaymentEvent({
-    required this.request,
+  CreatePaymentRequested({
     required this.token,
+    required this.request,
   });
 }

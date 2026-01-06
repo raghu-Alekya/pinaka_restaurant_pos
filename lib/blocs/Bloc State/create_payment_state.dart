@@ -1,22 +1,22 @@
 import '../../models/payment/payment_response_model.dart';
 
-abstract class PaymentState {}
+abstract class CreatePaymentState{}
 
-class PaymentInitial extends PaymentState {}
+class CreatePaymentInitial extends  CreatePaymentState {}
 
-class PaymentLoading extends PaymentState {}
+class CreatePaymentLoading extends  CreatePaymentState {}
 
-class PaymentSuccess extends PaymentState {
+class CreatePaymentSuccess extends  CreatePaymentState {
   final PaymentResponse response;
   final double orderTotal;
 
-  PaymentSuccess(this.response)
+  CreatePaymentSuccess(this.response)
       : orderTotal = response.orderTotal;
 }
 
 
-class PaymentFailure extends PaymentState {
+class CreatePaymentFailure extends  CreatePaymentState {
   final String error;
 
-  PaymentFailure(this.error);
+  CreatePaymentFailure(this.error);
 }

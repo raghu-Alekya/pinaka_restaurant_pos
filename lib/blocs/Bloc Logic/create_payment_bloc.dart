@@ -4,26 +4,32 @@ import '../../repositories/create_payment_repository.dart';
 import '../Bloc Event/create_payment_event.dart';
 import '../Bloc State/create_payment_state.dart';
 
-class CreatePaymentBloc extends Bloc<PaymentEvent, PaymentState> {
+class CreatePaymentBloc
+    extends Bloc<CreatePaymentEvent, CreatePaymentState> {
+
   final CreatePaymentRepository repository;
 
-  CreatePaymentBloc(this.repository, {required CreatePaymentRepository }) : super(PaymentInitial()) {
-    on<CreatePaymentEvent>(_onCreatePayment);
+  CreatePaymentBloc(this.repository)
+      : super(CreatePaymentInitial()) {
+
+    on<CreatePaymentRequested>(_onCreatePayment);
   }
 
   Future<void> _onCreatePayment(
-      CreatePaymentEvent event,
-      Emitter<PaymentState> emit,
+      CreatePaymentRequested event,
+      Emitter<CreatePaymentState> emit,
       ) async {
-    emit(PaymentLoading());
+    emit(CreatePaymentLoading());
+
     try {
       final response = await repository.createPayment(
         token: event.token,
         request: event.request,
       );
-      emit(PaymentSuccess(response));
+
+      emit(CreatePaymentSuccess(response));
     } catch (e) {
-      emit(PaymentFailure(e.toString()));
+      emit(CreatePaymentFailure(e.toString()));
     }
   }
 }
