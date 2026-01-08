@@ -236,19 +236,28 @@ class _paymentsummaryState extends State<paymentsummary> {
             await showDialog(
               context: context,
               barrierDismissible: false,
-              builder: (_) => Paymentsucess(
-                amount: state.response.paidAmount.toString(),
-                paymentMode: selectedPaymentMode,
-                changeAmount: state.response.change.toStringAsFixed(2),
-
-                loadedTables: widget.loadedTables,
-                pin: widget.pin,
-                token: widget.token,
-                restaurantId: widget.restaurantId,
-                zoneId: widget.zoneId,
-                restaurantName: '',
-              ),
+              barrierColor: Colors.black.withOpacity(0.4), // optional dim
+              builder: (_) {
+                return Dialog(
+                  backgroundColor: Colors.transparent, // 🔥 remove dialog frame
+                  insetPadding: EdgeInsets.zero,         // 🔥 remove default margin
+                  child: Center(
+                    child: Paymentsucess(
+                      amount: state.response.paidAmount.toString(),
+                      paymentMode: selectedPaymentMode,
+                      changeAmount: state.response.change.toStringAsFixed(2),
+                      loadedTables: widget.loadedTables,
+                      pin: widget.pin,
+                      token: widget.token,
+                      restaurantId: widget.restaurantId,
+                      zoneId: widget.zoneId,
+                      restaurantName: '',
+                    ),
+                  ),
+                );
+              },
             );
+
             // 🔥 Reset order completely
             context.read<OrderBloc>().add(ClearOrder());
           }
@@ -793,6 +802,8 @@ class NumberPad extends StatelessWidget {
 
 bool isSplitApplied = false;
 final TextEditingController splitPayController = TextEditingController();
+final TextEditingController _discountController = TextEditingController();
+
 
 
 

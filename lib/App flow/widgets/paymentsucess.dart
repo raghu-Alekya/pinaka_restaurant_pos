@@ -32,8 +32,8 @@ class Paymentsucess extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: MediaQuery.of(context).size.width * 0.25,
-      height: MediaQuery.of(context).size.height * 0.30,
+      width: MediaQuery.of(context).size.width * 0.45,
+      height: MediaQuery.of(context).size.height * 0.60,
       decoration: ShapeDecoration(
         color: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -106,29 +106,30 @@ class Paymentsucess extends StatelessWidget {
                           backgroundColor: Colors.transparent,
                           insetPadding:
                           EdgeInsets.zero, // Remove default margin
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: Padding(
-                                  padding: const EdgeInsets.only(
-                                    left: 330,
-                                    top: 60,
-                                    bottom: 60,
-                                  ),
-                                  child: PrintRecipt(
-                                    loadedTables: loadedTables,
-                                    pin: pin,
-                                    token: token,
-                                    restaurantId: restaurantId,
-                                    restaurantName: restaurantName,
-                                    zoneId: zoneId,
-                                  ),
-
-                                ),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Padding(
+                              padding: const EdgeInsets.only(
+                                left: 330,
+                                top: 60,
+                                bottom: 60,
                               ),
+                              child: PrintRecipt(
+                                loadedTables: loadedTables,
+                                pin: pin,
+                                token: token,
+                                restaurantId: restaurantId,
+                                restaurantName: restaurantName,
+                                zoneId: zoneId,
+                              ),
+
                             ),
+                          ),
+                        ),
                       );
                     },
                   ),
+
                 ],
               ),
             ],
@@ -140,8 +141,8 @@ class Paymentsucess extends StatelessWidget {
 
   Widget _buildInfoRow(BuildContext context, String? mode, String? amount) {
     return Container(
-      height: MediaQuery.of(context).size.height * 0.25,
-      width: MediaQuery.of(context).size.width * 0.30,
+      height: MediaQuery.of(context).size.height * 0.07,
+      width: MediaQuery.of(context).size.width * 0.38,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(5),
@@ -189,10 +190,10 @@ class Paymentsucess extends StatelessWidget {
       height: MediaQuery.of(context).size.height * 0.07,
       width: MediaQuery.of(context).size.width * 0.38,
       decoration: BoxDecoration(
-        color: const Color(0x101BA672),
+        color: Color(0x101BA672),
         borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: const Color(0x101BA672), width: 0.8),
-        boxShadow: const [
+        border: Border.all(color: Color(0x101BA672), width: 0.8),
+        boxShadow: [
           BoxShadow(
             color: Color(0x101BA672),
             blurRadius: 10,
@@ -200,11 +201,11 @@ class Paymentsucess extends StatelessWidget {
           ),
         ],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 30),
+      padding: EdgeInsets.symmetric(horizontal: 30),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
+          Text(
             "Change:",
             style: TextStyle(
               fontWeight: FontWeight.w500,
@@ -213,8 +214,8 @@ class Paymentsucess extends StatelessWidget {
             ),
           ),
           Text(
-            "₹${changeAmount.abs().toStringAsFixed(2)}",
-            style: const TextStyle(
+            "₹${(double.tryParse(change ?? '0.00')?.abs() ?? 0.00).toStringAsFixed(2)}",
+            style: TextStyle(
               fontWeight: FontWeight.w500,
               fontSize: 20,
               color: Color(0xFF1BA672),
@@ -224,7 +225,6 @@ class Paymentsucess extends StatelessWidget {
       ),
     );
   }
-
 
   Widget _buildActionButton(
       BuildContext context, {

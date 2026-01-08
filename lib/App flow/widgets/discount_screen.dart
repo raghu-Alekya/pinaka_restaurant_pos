@@ -14,6 +14,8 @@ class _DiscountPopupState extends State<DiscountPopup> {
   int? _selectedRadio = 1;
   final TextEditingController _controller1 = TextEditingController();
   final TextEditingController _controller2 = TextEditingController();
+  final TextEditingController _reasonController = TextEditingController();
+
 
   void _handleRadioValueChange(int? value) {
     setState(() {
@@ -45,6 +47,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
   void dispose() {
     _controller1.dispose();
     _controller2.dispose();
+    _reasonController.dispose();
     super.dispose();
   }
 
@@ -53,7 +56,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: SizedBox(
-        width: MediaQuery.of(context).size.width * 0.95,
+        width: MediaQuery.of(context).size.width * 0.70,
         height: MediaQuery.of(context).size.height * 0.55,
         child: Padding(
           padding: EdgeInsets.all(0),
@@ -77,26 +80,30 @@ class _DiscountPopupState extends State<DiscountPopup> {
                       ),
                     ),
                     Align(
-                      alignment: Alignment.centerRight,
-                      child: GestureDetector(
-                        onTap: () => Navigator.of(context).pop(),
-                        child: Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Icon(
-                              Icons.close,
-                              color: Colors.white,
-                              size: 25,
+                      alignment: Alignment.topRight,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 6, right: 10), // ✅ space from top
+                        child: GestureDetector(
+                          onTap: () => Navigator.of(context).pop(),
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Center(
+                              child: Icon(
+                                Icons.close,
+                                color: Colors.white,
+                                size: 20, // better fit
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
+
                   ],
                 ),
               ),
@@ -204,8 +211,9 @@ class _DiscountPopupState extends State<DiscountPopup> {
                             SizedBox(height: 10),
                             SizedBox(
                               width: 380,
-                              child: TextFormField(
-                                decoration: InputDecoration(
+                              child:TextFormField(
+                                controller: _reasonController, // ✅ important
+                                decoration: const InputDecoration(
                                   border: OutlineInputBorder(),
                                   isDense: true,
                                   contentPadding: EdgeInsets.symmetric(
@@ -214,17 +222,49 @@ class _DiscountPopupState extends State<DiscountPopup> {
                                   ),
                                 ),
                               ),
+
                             ),
                             SizedBox(height: 15),
                             Row(
                               children: [
-                                _buildTag("Regular Customer"),
-                                SizedBox(width: 10),
-                                _buildTag("New Customer"),
-                                SizedBox(width: 10),
-                                _buildTag("Coupon Discount"),
+                                _buildTag(
+                                  "Regular Customer",
+                                  onTap: () {
+                                    setState(() {
+                                      _reasonController.text = "Regular Customer";
+                                    });
+                                  },
+                                ),
+                                const SizedBox(width: 7),
+                                _buildTag(
+                                  "New Customer",
+                                  onTap: () {
+                                    setState(() {
+                                      _reasonController.text = "New Customer";
+                                    });
+                                  },
+                                ),
+                                const SizedBox(width: 7),
+                                _buildTag(
+                                  "Coupon Discount",
+                                  onTap: () {
+                                    setState(() {
+                                      _reasonController.text = "Coupon Discount";
+                                    });
+                                  },
+                                ),
+                                const SizedBox(width: 7),
+                                _buildTag(
+                                  "Premium Customer",
+                                  onTap: () {
+                                    setState(() {
+                                      _reasonController.text = "Premium Customer";
+                                    });
+                                  },
+                                ),
                               ],
                             ),
+
                             SizedBox(height: 20),
                             SizedBox(
                               width: 380,
@@ -263,7 +303,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
                     Expanded(
                       flex: 1,
                       child: Padding(
-                        padding: EdgeInsets.all(12),
+                        padding: const EdgeInsets.only(left: 4, right: 4, top: 6),
                         child: NumberPad(onKeyPressed: _handleKeyPress, selectedPaymentMode: '',),
                       ),
                     ),
@@ -277,19 +317,33 @@ class _DiscountPopupState extends State<DiscountPopup> {
     );
   }
 
-  static Widget _buildTag(String text) {
-    return Container(
-      width: 90,
-      height: 30,
-      decoration: BoxDecoration(
-        color: Color(0xFF4C81F1),
-        borderRadius: BorderRadius.circular(5),
-      ),
-      child: Center(
-        child: Text(text, style: TextStyle(color: Colors.white, fontSize: 10)),
+  static Widget _buildTag(
+      String text, {
+        required VoidCallback onTap,
+      }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 100,
+        height: 30,
+        decoration: BoxDecoration(
+          color: const Color(0xFF4C81F1),
+          borderRadius: BorderRadius.circular(5),
+        ),
+        child: Center(
+          child: Text(
+            text,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
       ),
     );
   }
+
 }
 
 // Reuse your NumberPad
