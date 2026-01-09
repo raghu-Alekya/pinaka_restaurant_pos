@@ -1,426 +1,529 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+enum DiscountType { percent, amount }
 
 class DiscountPopup extends StatefulWidget {
-  final VoidCallback? onApply; // ✅ Callback to notify discount applied
+  final double grossTotal; // ✅ comes from parent
 
-  const DiscountPopup({super.key, this.onApply});
+  const DiscountPopup({
+    super.key,
+    required this.grossTotal,
+  });
 
   @override
   State<DiscountPopup> createState() => _DiscountPopupState();
 }
 
 class _DiscountPopupState extends State<DiscountPopup> {
-  int? _selectedRadio = 1;
-  final TextEditingController _controller1 = TextEditingController();
-  final TextEditingController _controller2 = TextEditingController();
-  final TextEditingController _reasonController = TextEditingController();
 
+  final TextEditingController discountController = TextEditingController();
+  final TextEditingController reasonController = TextEditingController();
 
-  void _handleRadioValueChange(int? value) {
-    setState(() {
-      _selectedRadio = value;
-    });
+  DiscountType selectedType = DiscountType.percent;
+  bool isNCSelected = false;
+  double payableAmount = 0; // original
+  double newPayableAmount = 0;
+  // final double grossTotal;
+
+  @override
+  void initState() {
+    super.initState();
+    payableAmount = widget.grossTotal;
+    newPayableAmount = widget.grossTotal;
+    discountController.addListener(_calculateNewPayable); // ✅ CORRECT
   }
 
-  void _handleKeyPress(String value) {
-    setState(() {
-      TextEditingController targetController =
-      _selectedRadio == 1 ? _controller1 : _controller2;
 
-      if (value == "Clear") {
-        targetController.clear();
-      } else if (value == "⌫") {
-        if (targetController.text.isNotEmpty) {
-          targetController.text = targetController.text.substring(
-            0,
-            targetController.text.length - 1,
-          );
+
+
+  @override
+  void dispose() {
+    discountController.dispose();
+    reasonController.dispose();
+    discountController.addListener(_calculateNewPayable);
+    super.dispose();
+  }
+
+  void _onKeypadTap(String value) {
+    if (isNCSelected) return; // 🔒 HARD BLOCK
+
+    setState(() {
+      if (value == 'Clear') {
+        discountController.clear();
+      } else if (value == '⌫') {
+        if (discountController.text.isNotEmpty) {
+          discountController.text =
+              discountController.text.substring(
+                  0, discountController.text.length - 1);
         }
       } else {
-        targetController.text += value;
+        discountController.text += value;
+      }
+    });
+  }
+  void _calculateNewPayable() {
+    if (isNCSelected) {
+      setState(() {
+        newPayableAmount = 0;
+      });
+      return;
+    }
+
+    final value = double.tryParse(discountController.text) ?? 0;
+
+    setState(() {
+      if (selectedType == DiscountType.percent) {
+        final discount = (payableAmount * value) / 100;
+        newPayableAmount =
+            (payableAmount - discount).clamp(0, payableAmount);
+      } else {
+        newPayableAmount =
+            (payableAmount - value).clamp(0, payableAmount);
       }
     });
   }
 
-  @override
-  void dispose() {
-    _controller1.dispose();
-    _controller2.dispose();
-    _reasonController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: SizedBox(
-        width: MediaQuery.of(context).size.width * 0.70,
-        height: MediaQuery.of(context).size.height * 0.55,
-        child: Padding(
-          padding: EdgeInsets.all(0),
-          child: Column(
-            children: [
-              // Header with title and close
-              Container(
-                width: double.infinity,
-                height: 30,
-                padding: EdgeInsets.symmetric(horizontal: 0),
-                child: Stack(
-                  children: [
-                    Align(
-                      alignment: Alignment.center,
-                      child: Text(
-                        "Discount",
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    Align(
-                      alignment: Alignment.topRight,
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 6, right: 10), // ✅ space from top
-                        child: GestureDetector(
-                          onTap: () => Navigator.of(context).pop(),
-                          child: Container(
-                            width: 32,
-                            height: 32,
-                            decoration: const BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Center(
-                              child: Icon(
-                                Icons.close,
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.all(20),
+      child: Container(
+        width: 900,
+        padding: const EdgeInsets.all(20), // ✅ equal padding all around
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFF1FBF75), width: 2),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _header(context),
+
+            const SizedBox(height: 24), // ✅ consistent spacing
+
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                /// LEFT SIDE
+                SizedBox(
+                  width: 460,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _leftSection(),
+
+                      const SizedBox(height: 20),
+
+                      /// Save & Continue (outside container)
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.pop(context);
+                        },
+                        child: Container(
+                          height: 48,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF6B6B),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              'Save & Continue',
+                              style: TextStyle(
                                 color: Colors.white,
-                                size: 20, // better fit
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              SizedBox(height: 10),
+
+                const SizedBox(width: 20), // ✅ equal horizontal spacing
+
+                /// KEYPAD
+                _keypadSection(),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+
+  /// ---------------- HEADER ----------------
+  Widget _header(BuildContext context) {
+    return Stack(
+      children: [
+        Center(
+          child: Column(
+            children: const [
               Text(
-                "Add discounts using a percentage or amount, with an optional reason and real-time total preview.",
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: Color(0xFF4C5F7D)),
-              ),
-              SizedBox(height: 10),
-
-              // Body
-              Expanded(
-                child: Row(
-                  children: [
-                    // Left side
-                    Expanded(
-                      flex: 1,
-                      child: Padding(
-                        padding: EdgeInsets.all(10),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Food",
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w500,
-                                color: Color(0xFF373535),
-                              ),
-                            ),
-                            SizedBox(height: 10),
-                            Row(
-                              children: [
-                                Radio<int>(
-                                  value: 1,
-                                  groupValue: _selectedRadio,
-                                  onChanged: _handleRadioValueChange,
-                                ),
-                                SizedBox(width: 8),
-                                Text(
-                                  "Percent",
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color:
-                                    _selectedRadio == 1
-                                        ? Color(0xFF3649FC)
-                                        : Color(0xFFBCBDBD),
-                                  ),
-                                ),
-                                SizedBox(width: 8),
-                                SizedBox(
-                                  width: 80,
-                                  height: 37,
-                                  child: TextFormField(
-                                    controller: _controller1,
-                                    decoration: InputDecoration(
-                                      labelText: '%',
-                                      border: OutlineInputBorder(),
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(width: 20),
-                                Radio<int>(
-                                  value: 2,
-                                  groupValue: _selectedRadio,
-                                  onChanged: _handleRadioValueChange,
-                                ),
-                                SizedBox(width: 8),
-                                Text(
-                                  "Amount",
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color:
-                                    _selectedRadio == 2
-                                        ? Color(0xFF3649FC)
-                                        : Color(0xFFBCBDBD),
-                                  ),
-                                ),
-                                SizedBox(width: 8),
-                                SizedBox(
-                                  width: 80,
-                                  height: 37,
-                                  child: TextFormField(
-                                    controller: _controller2,
-                                    decoration: InputDecoration(
-                                      labelText: 'Rs',
-                                      border: OutlineInputBorder(),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 15),
-                            Text(
-                              "Add discount reason",
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF4C5F7D),
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            SizedBox(height: 10),
-                            SizedBox(
-                              width: 380,
-                              child:TextFormField(
-                                controller: _reasonController, // ✅ important
-                                decoration: const InputDecoration(
-                                  border: OutlineInputBorder(),
-                                  isDense: true,
-                                  contentPadding: EdgeInsets.symmetric(
-                                    vertical: 12,
-                                    horizontal: 15,
-                                  ),
-                                ),
-                              ),
-
-                            ),
-                            SizedBox(height: 15),
-                            Row(
-                              children: [
-                                _buildTag(
-                                  "Regular Customer",
-                                  onTap: () {
-                                    setState(() {
-                                      _reasonController.text = "Regular Customer";
-                                    });
-                                  },
-                                ),
-                                const SizedBox(width: 7),
-                                _buildTag(
-                                  "New Customer",
-                                  onTap: () {
-                                    setState(() {
-                                      _reasonController.text = "New Customer";
-                                    });
-                                  },
-                                ),
-                                const SizedBox(width: 7),
-                                _buildTag(
-                                  "Coupon Discount",
-                                  onTap: () {
-                                    setState(() {
-                                      _reasonController.text = "Coupon Discount";
-                                    });
-                                  },
-                                ),
-                                const SizedBox(width: 7),
-                                _buildTag(
-                                  "Premium Customer",
-                                  onTap: () {
-                                    setState(() {
-                                      _reasonController.text = "Premium Customer";
-                                    });
-                                  },
-                                ),
-                              ],
-                            ),
-
-                            SizedBox(height: 20),
-                            SizedBox(
-                              width: 380,
-                              height: 38,
-                              child: TextButton(
-                                style: TextButton.styleFrom(
-                                  backgroundColor: Color(0xFFFE6464),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  shadowColor: Colors.grey.withOpacity(0.5),
-                                  elevation: 3,
-                                ),
-                                onPressed: () {
-                                  // ✅ Call the onApply callback when discount is applied
-                                  if (widget.onApply != null) {
-                                    widget.onApply!();
-                                  }
-                                  Navigator.of(context).pop(true);
-                                },
-                                child: Text(
-                                  "Save & Continue",
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    // Right side - NumberPad
-                    Expanded(
-                      flex: 1,
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 4, right: 4, top: 6),
-                        child: NumberPad(onKeyPressed: _handleKeyPress, selectedPaymentMode: '',),
-                      ),
-                    ),
-                  ],
+                'Discount',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1C1C1C),
                 ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Add discounts using a percentage or amount, with an optional reason and real-time total preview.',
+                style: TextStyle(fontSize: 12, color: Color(0xFF7A869A)),
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  static Widget _buildTag(
-      String text, {
-        required VoidCallback onTap,
-      }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 100,
-        height: 30,
-        decoration: BoxDecoration(
-          color: const Color(0xFF4C81F1),
-          borderRadius: BorderRadius.circular(5),
-        ),
-        child: Center(
-          child: Text(
-            text,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
+        Positioned(
+          right: 0,
+          child: GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: const CircleAvatar(
+              radius: 14,
+              backgroundColor: Color(0xFFFF5A5A),
+              child: Icon(Icons.close, size: 14, color: Colors.white),
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-}
-
-// Reuse your NumberPad
-class NumberPad extends StatelessWidget {
-  final Function(String) onKeyPressed;
-
-  NumberPad({super.key, required this.onKeyPressed, required String selectedPaymentMode});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _buildRow(["1", "2", "3"]),
-        _buildRow(["4", "5", "6"]),
-        _buildRow(["7", "8", "9"]),
-        _buildFinalRow(),
+        )
       ],
     );
   }
 
-  Widget _buildRow(List<String> labels) {
-    return Row(children: labels.map((label) => _buildButton(label)).toList());
+  /// ---------------- LEFT SECTION ----------------
+  Widget _leftSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFC),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE6EAF2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _amountRow(),
+          const Divider(height: 32),
+
+          const Text(
+            'Apply Discount',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 12),
+
+          _discountToggle(),
+          const SizedBox(height: 12),
+
+          _reasonField(),
+          const SizedBox(height: 12),
+
+          _customerTags(),
+          // const SizedBox(height: 20),
+
+        ],
+      ),
+    );
   }
 
-  Widget _buildButton(
-      String label, {
-        int flex = 1,
-        Color? backgroundColor,
-        Color? textColor,
-        BoxBorder? border,
-      }) {
-    final bool isNumber = RegExp(r'^\d+$').hasMatch(label);
 
+  Widget _amountRow() {
+    return Row(
+      children: [
+        _amountBox(
+          'Payable Amount',
+          payableAmount.toStringAsFixed(0),
+          readOnly: true,
+        ),
+        const SizedBox(width: 12),
+        _amountBox(
+          'New Payable Amount',
+          newPayableAmount.toStringAsFixed(0), // 🔥 LIVE UPDATE
+          readOnly: true,
+        ),
+      ],
+    );
+  }
+
+  Widget _amountBox(String label, String value, {bool readOnly = false}) {
     return Expanded(
-      flex: flex,
-      child: Padding(
-        padding: EdgeInsets.all(8.0),
-        child: GestureDetector(
-          onTap: () => onKeyPressed(label),
-          child: Container(
-            height: 60,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF7A869A))),
+          const SizedBox(height: 6),
+
+          Container(
+            height: 42,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            alignment: Alignment.centerLeft,
             decoration: BoxDecoration(
-              color: backgroundColor ?? Color(0xFFF3F5FF),
-              borderRadius: BorderRadius.circular(10),
-              border: border,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 4,
-                  offset: Offset(0, 2),
-                ),
-              ],
+              color: const Color(0xFFF1F3F7),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: const Color(0xFFE6EAF2)),
             ),
-            alignment: Alignment.center,
             child: Text(
-              label,
-              style: TextStyle(
-                fontSize: isNumber ? 24 : 18,
-                fontWeight: isNumber ? FontWeight.w600 : FontWeight.bold,
-                color:
-                textColor ?? (isNumber ? Color(0xFF4C5F7D) : Color(0xFFE64646)),
+              value, // ✅ dynamically updates
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+  Widget _discountToggle() {
+    return Row(
+      children: [
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              selectedType = DiscountType.percent;
+              isNCSelected = false;
+              discountController.clear();
+            });
+          },
+          child: _radioButton(
+            'Percent',
+            selectedType == DiscountType.percent && !isNCSelected,
+          ),
+        ),
+        const SizedBox(width: 12),
+
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              selectedType = DiscountType.amount;
+              isNCSelected = false;
+              discountController.clear();
+            });
+          },
+          child: _radioButton(
+            'Amount',
+            selectedType == DiscountType.amount && !isNCSelected,
+          ),
+        ),
+
+        const SizedBox(width: 12),
+
+        /// 🔹 Input Field (Enabled for Percent / Amount / NC)
+        SizedBox(
+          width: 120,
+          child: IgnorePointer( // 🚫 blocks ALL interaction
+            ignoring: isNCSelected,
+            child: TextField(
+              controller: discountController,
+              readOnly: true, // keypad only
+              enabled: !isNCSelected,
+              textAlign: TextAlign.center,
+              decoration: InputDecoration(
+                hintText: isNCSelected
+                    ? '--'
+                    : selectedType == DiscountType.percent
+                    ? ' ex:10%'
+                    : 'ex:₹100',
+                hintStyle: TextStyle(               // ✅ CONTROL COLOR HERE
+                  color: isNCSelected
+                      ? const Color(0xFF9CA3AF)     // medium grey (disabled)
+                      : const Color(0xFF999393),    // darker grey (active)
+                  fontWeight: FontWeight.w500,
+                ),
+
+                filled: true,
+                fillColor: isNCSelected
+                    ? const Color(0xFFE5E7EB) // disabled look
+                    : Colors.white,
+                contentPadding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                ),
               ),
             ),
           ),
         ),
+
+
+        const SizedBox(width: 12),
+
+        /// 🔹 NC Button
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              isNCSelected = true;
+              discountController.clear();
+            });
+          },
+          child: Container(
+            width: 80,
+            height: 42,
+            decoration: BoxDecoration(
+              color: isNCSelected
+                  ? const Color(0xFFF59E0B)
+                  : const Color(0xFFFAD51D),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: isNCSelected
+                    ? const Color(0xFFB45309)
+                    : Colors.transparent,
+              ),
+            ),
+            child: const Center(
+              child: Text(
+                'NC',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+
+  Widget _radioButton(String text, bool selected) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: selected ? const Color(0xFFEAF2FF) : Colors.white,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+            color: selected
+                ? const Color(0xFF3B82F6)
+                : const Color(0xFFE6EAF2)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            selected
+                ? Icons.radio_button_checked
+                : Icons.radio_button_off,
+            size: 16,
+            color:
+            selected ? const Color(0xFF3B82F6) : Colors.grey,
+          ),
+          const SizedBox(width: 6),
+          Text(text),
+        ],
       ),
     );
   }
 
-  Widget _buildFinalRow() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+  Widget _reasonField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildButton("Clear"),
-        _buildButton("0"),
-        _buildButton("⌫"),
+        const Text(
+          'Discount / NC Reason :',
+          style: TextStyle(fontSize: 12, color: Color(0xFF7A869A)),
+        ),
+        const SizedBox(height: 6),
+        TextField(
+          controller: reasonController, // ✅ bind here
+          decoration: InputDecoration(
+            contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
+          ),
+        ),
       ],
     );
   }
+
+  Widget _customerTags() {
+    return Row(
+      children: [
+        _tag('Regular Customer'),
+        const SizedBox(width: 8),
+        _tag('New Customer'),
+        const SizedBox(width: 8),
+        _tag('Corporate'),
+      ],
+    );
+  }
+
+
+  Widget _tag(String text) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          reasonController.text = text; // ✅ reflect in field
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color(0xFF4C81F1),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(color: Colors.white, fontSize: 11),
+        ),
+      ),
+    );
+  }
+
+
+  /// ---------------- KEYPAD ----------------
+  Widget _keypadSection() {
+    final labels = [
+      '1','2','3',
+      '4','5','6',
+      '7','8','9',
+      'Clear','0','⌫'
+    ];
+
+    return SizedBox(
+      width: 340,
+      child: GridView.builder(
+        shrinkWrap: true,
+        itemCount: labels.length,
+        gridDelegate:
+        const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          childAspectRatio: 1.0,
+        ),
+        itemBuilder: (_, i) {
+          return InkWell(
+            onTap: () => _onKeypadTap(labels[i]), // ✅ tap enabled
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5FB),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFE6EAF2)),
+              ),
+              child: Center(
+                child: Text(
+                  labels[i],
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+
 }

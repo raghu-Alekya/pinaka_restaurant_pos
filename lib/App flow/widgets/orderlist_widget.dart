@@ -103,7 +103,8 @@ class OrderPanelList extends StatelessWidget {
                   SizedBox(
                     width: 50,
                     child: Text(
-                      '${item.productId}', // ✅ use productId instead of id
+                      '${item.variationId ?? item.productId}',
+                      // ✅ use productId instead of id
                       style: const TextStyle(fontSize: 12),
                     ),
                   ),

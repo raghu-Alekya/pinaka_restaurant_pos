@@ -13,6 +13,8 @@ class OrderItems {
 
   // ✅ New field
   final bool hasOptions;
+  // ✅ NEW – tax class from backend (food / beverages)
+  final String? taxClass;
 
   OrderItems({
     required this.productId,
@@ -24,7 +26,8 @@ class OrderItems {
     this.addOns = const {},
     this.note = '',
     required this.section,
-    this.hasOptions = false, required variantId, // default false
+    this.taxClass,
+    this.hasOptions = false,  // default false
   });
   String get itemName => name;
 
@@ -66,11 +69,14 @@ class OrderItems {
       imagepath: '',
       subCategories: [],
     );
+    /// 🔹 tax class from WooCommerce Tax API
+    final taxClass = (json['class'] as String?)?.trim();
+
 // fallback
 
     return OrderItems(
       productId: json['productId'] ?? 0,
-      variantId: json['variantId'] ?? json['variationId'] ?? 0, // ✅ FIXED
+      variationId: json['variationId'],  // ✅ FIXED
       name: json['name']?.toString() ??
           json['item_name']?.toString() ??
           'Unknown',
@@ -80,6 +86,7 @@ class OrderItems {
       modifiers: modifiers,
       note: json['note']?.toString() ?? '',
       section: section,
+      taxClass: taxClass,
     );
   }
 
@@ -101,6 +108,7 @@ class OrderItems {
       'modifiers': modifiers,
       'addOns': serializedAddOns,
       'note': note,
+      'tax_class': taxClass,
       'section': section.toJson(),
     };
   }
@@ -115,10 +123,12 @@ class OrderItems {
     Map<String, Map<String, dynamic>>? addOns,
     String? note,
     Category? section,
+    String? taxClass,
+
   }) {
     return OrderItems(
       productId: productId ?? this.productId,
-      variantId: variationId ?? this.variationId, // ✅ include here
+      variationId: variationId ?? this.variationId, // ✅ include here
       name: name ?? this.name,
       quantity: quantity ?? this.quantity,
       price: price ?? this.price,
@@ -126,6 +136,7 @@ class OrderItems {
       addOns: addOns ?? Map<String, Map<String, dynamic>>.from(this.addOns),
       note: note ?? this.note,
       section: section ?? this.section,
+        taxClass: taxClass ?? this.taxClass,
     );
   }
 }

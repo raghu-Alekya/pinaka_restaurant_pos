@@ -1,7 +1,12 @@
 import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:pinaka_restaurant_pos/models/payment/payment_summary_model.dart';
+
+import '../../blocs/Bloc Logic/tax_bloc.dart';
+import '../../blocs/Bloc State/tax_state.dart';
+import '../../models/tax_model.dart';
 
 class Sidebarwidgets extends StatefulWidget {
   final PaymentSummary paymentSummary;
@@ -15,6 +20,7 @@ class Sidebarwidgets extends StatefulWidget {
 
   @override
   State<Sidebarwidgets> createState() => _SidebarwidgetsState();
+
 }
 
 
@@ -23,12 +29,126 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
   bool _isExpanded = false;
   late AnimationController _controller;
   late Animation<double> _heightAnimation;
+  double foodTax = 0;
+  double beverageTax = 0;
+
+  double foodCgst = 0;
+  double foodSgst = 0;
+  double beverageCgst = 0;
+  double beverageSgst = 0;
+  double totalTax = 0;
+
 
   @override
   void dispose() {
     _controller.dispose(); // ✅ VERY IMPORTANT
     super.dispose();
   }
+  String normalizeTaxClass(String? value) {
+    return value
+        ?.toLowerCase()
+        .trim()
+        .replaceAll(' ', '')
+        .replaceAll('bewerages', 'beverages') // typo fix
+        ?? '';
+  }
+
+
+
+  /// ✅ CORRECT PLACE
+  // Map<String, double> _calculateTaxFromApi(List<TaxModel> taxes) {
+  //   double totalTax = 0;
+  //   double cgst = 0;
+  //   double sgst = 0;
+  //
+  //   for (final item in widget.paymentSummary.lineItems) {
+  //
+  //     debugPrint('────────────────────────────────────');
+  //     debugPrint('🛒 ITEM NAME     : ${item.name}');
+  //     debugPrint('🛒 ITEM TOTAL    : ${item.total}');
+  //     debugPrint('🛒 ITEM TAXCLASS : ${item.taxClass}');
+  //
+  //     final tax = state.taxes.firstWhere(
+  //           (t) => t.taxClass == item.taxClass,
+  //       orElse: () {
+  //         debugPrint('❌ NO TAX MATCH FOUND → using 0%');
+  //         return TaxModel(
+  //           id: 0,
+  //           rate: "0",
+  //           name: "",
+  //           taxClass: "",
+  //           compound: false,
+  //           shipping: false,
+  //         );
+  //       },
+  //     );
+  //
+  //     debugPrint('✅ MATCHED TAX CLASS : ${tax.taxClass}');
+  //     debugPrint('✅ MATCHED TAX RATE  : ${tax.rate}%');
+  //
+  //     final rate = double.tryParse(tax.rate) ?? 0;
+  //     debugPrint('🔢 PARSED RATE      : $rate');
+  //
+  //     if (rate == 0) {
+  //       debugPrint('⚠️ RATE IS ZERO → skipping item');
+  //       continue;
+  //     }
+  //
+  //     final itemTax = item.total * rate / 100;
+  //     final halfTax = itemTax / 2;
+  //
+  //     debugPrint('💰 ITEM TAX TOTAL   : $itemTax');
+  //     debugPrint('💰 HALF TAX (CGST)  : $halfTax');
+  //     debugPrint('💰 HALF TAX (SGST)  : $halfTax');
+  //
+  //     totalTax += itemTax;
+  //
+  //     final itemClass = item.taxClass.toLowerCase().trim();
+  //     final taxClass  = tax.taxClass.toLowerCase().trim();
+  //
+  //     debugPrint('🔍 COMPARE → itemClass="$itemClass" | taxClass="$taxClass"');
+  //
+  //     /// 🍽 FOOD
+  //     if (itemClass == 'food' && taxClass == 'food') {
+  //       foodCgst += halfTax;
+  //       foodSgst += halfTax;
+  //       debugPrint('🍽 FOOD GST APPLIED');
+  //     }
+  //
+  //     /// 🥤 BEVERAGES
+  //     else if (
+  //     (itemClass == 'beverages' || itemClass == 'bewerages') &&
+  //         (taxClass == 'beverages' || taxClass == 'bewerages')
+  //     ) {
+  //       beverageCgst += halfTax;
+  //       beverageSgst += halfTax;
+  //       debugPrint('🥤 BEVERAGE GST APPLIED');
+  //     }
+  //
+  //     else {
+  //       debugPrint('❌ TAX CLASS DID NOT MATCH ANY CATEGORY');
+  //     }
+  //   }
+  //
+  //   debugPrint('================ FINAL TAX SUMMARY ================');
+  //   debugPrint('🍽 Food CGST      : $foodCgst');
+  //   debugPrint('🍽 Food SGST      : $foodSgst');
+  //   debugPrint('🥤 Beverage CGST  : $beverageCgst');
+  //   debugPrint('🥤 Beverage SGST  : $beverageSgst');
+  //   debugPrint('💰 TOTAL TAX      : $totalTax');
+  //   debugPrint('===================================================');
+  //
+  //
+  //
+  //
+  //   return {
+  //     "total": totalTax,
+  //     "cgst": cgst,
+  //     "sgst": sgst,
+  //   };
+  // }
+
+
 
 
 
@@ -40,6 +160,7 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
     _heightAnimation = Tween<double>(begin: 60, end: 260).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
+    // _calculateTaxes();
   }
 
   void _toggleExpand() {
@@ -54,6 +175,7 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
       }
     });
   }
+
 
   Widget _row(String label, double value,
       {bool isBold = false, Color? color}) {
@@ -320,48 +442,162 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
     children: [
 
     /// 🔼 EXPANDABLE PART (Animated)
-      /// 🔼 EXPANDABLE PART (Animated)
-      /// 🔼 EXPANDABLE PART (Animated)
       AnimatedBuilder(
         animation: _controller,
         builder: (context, child) {
           if (!_isExpanded) {
-            // ✅ NO SPACE when collapsed
+            debugPrint('🔽 Tax panel collapsed');
             return const SizedBox.shrink();
           }
 
-          return Container(
+          debugPrint('🔼 Tax panel expanded');
+
+          return Padding(
             padding: const EdgeInsets.all(12),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // const Divider(height: 1),
+            child: BlocBuilder<TaxBloc, TaxState>(
+              builder: (context, state) {
 
-                _row("Sub Total", widget.paymentSummary.grossTotal),
-                _row("Tax", widget.paymentSummary.tax),
-                _row(
-                  "Discount",
-                  -widget.paymentSummary.discount,
-                  color: Colors.blue,
-                ),
+                debugPrint('📦 BlocBuilder state = ${state.runtimeType}');
 
-                const DottedLine(
-                  dashLength: 4,
-                  dashGapLength: 4,
-                  lineThickness: 1,
-                  dashColor: Color(0x66666626),
-                ),
+                if (state is TaxLoading) {
+                  debugPrint('⏳ TaxLoading...');
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-                _row(
-                  "Total",
-                  widget.paymentSummary.netTotal,
-                  isBold: true,
-                ),
-              ],
+                if (state is TaxLoaded) {
+                  debugPrint('✅ TaxLoaded → Calculating taxes');
+
+                  double foodCgst = 0;
+                  double foodSgst = 0;
+                  double beverageCgst = 0;
+                  double beverageSgst = 0;
+                  double totalTax = 0;
+
+                  for (final item in widget.paymentSummary.lineItems) {
+                    debugPrint('────────────────────────────────────');
+                    debugPrint('🛒 ITEM NAME     : ${item.name}');
+                    debugPrint('🛒 ITEM TOTAL    : ${item.total}');
+                    debugPrint('🛒 ITEM TAXCLASS : ${item.taxClass}');
+
+                    // ✅ MUST come FIRST
+                    final itemClass = normalizeTaxClass(item.taxClass);
+
+                    debugPrint('🧪 NORMALIZED ITEM CLASS : $itemClass');
+
+                    final tax = state.taxes.firstWhere(
+                          (t) => normalizeTaxClass(t.taxClass) == itemClass,
+                      orElse: () {
+                        debugPrint('❌ NO TAX MATCH FOUND → using 0%');
+                        return TaxModel(
+                          id: 0,
+                          rate: "0",
+                          name: "",
+                          taxClass: "",
+                          compound: false,
+                          shipping: false,
+                        );
+                      },
+                    );
+
+                    final taxClass = normalizeTaxClass(tax.taxClass);
+
+                    debugPrint('✅ MATCHED TAX CLASS : $taxClass');
+                    debugPrint('✅ MATCHED TAX RATE  : ${tax.rate}%');
+
+                    final rate = double.tryParse(tax.rate) ?? 0;
+                    if (rate == 0) {
+                      debugPrint('⚠️ RATE IS ZERO → skipping item');
+                      continue;
+                    }
+
+                    final itemTax = item.total * rate / 100;
+                    final halfTax = itemTax / 2;
+
+                    totalTax += itemTax;
+
+                    debugPrint('🔍 COMPARE → itemClass="$itemClass" | taxClass="$taxClass"');
+
+                    /// 🍽 FOOD
+                    if (itemClass == 'food' && taxClass == 'food') {
+                      foodCgst += halfTax;
+                      foodSgst += halfTax;
+                      debugPrint('🍽 FOOD GST APPLIED');
+                    }
+
+                    /// 🥤 BEVERAGES
+                    else if (itemClass == 'bewerages' && taxClass == 'bewerages') {
+                      beverageCgst += halfTax;
+                      beverageSgst += halfTax;
+                      debugPrint('🥤 BEVERAGE GST APPLIED');
+                    }
+
+                    else {
+                      debugPrint('❌ TAX CLASS DID NOT MATCH ANY CATEGORY');
+                    }
+                  }
+
+
+                  // ✅ FINAL SUMMARY PRINT
+                  debugPrint('================ FINAL TAX SUMMARY ================');
+                  debugPrint('🍽 Food CGST      : $foodCgst');
+                  debugPrint('🍽 Food SGST      : $foodSgst');
+                  debugPrint('🥤 Beverage CGST  : $beverageCgst');
+                  debugPrint('🥤 Beverage SGST  : $beverageSgst');
+                  debugPrint('💰 TOTAL TAX      : $totalTax');
+                  debugPrint('===================================================');
+
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _row("Sub Total", widget.paymentSummary.grossTotal),
+
+                      if (foodCgst > 0) _row("Food CGST", foodCgst),
+                      if (foodSgst > 0) _row("Food SGST", foodSgst),
+
+                      if (beverageCgst > 0) _row("Beverage CGST", beverageCgst),
+                      if (beverageSgst > 0) _row("Beverage SGST", beverageSgst),
+
+                      _row("Total Tax", totalTax, isBold: true),
+
+                      _row(
+                        "Discount",
+                        -widget.paymentSummary.discount,
+                        color: Colors.blue,
+                      ),
+
+                      const DottedLine(
+                        dashLength: 4,
+                        dashGapLength: 4,
+                        lineThickness: 1,
+                        dashColor: Color(0x66666626),
+                      ),
+
+                      _row(
+                        "Total",
+                        widget.paymentSummary.netTotal,
+                        isBold: true,
+                      ),
+                    ],
+                  );
+                }
+
+                if (state is TaxError) {
+                  debugPrint('❌ TaxError → ${state.message}');
+                  return Text(
+                    "Tax error: ${state.message}",
+                    style: const TextStyle(color: Colors.red),
+                  );
+                }
+
+                debugPrint('⚠️ Unknown state');
+                return const SizedBox.shrink();
+              },
             ),
           );
         },
       ),
+
+
 
 
 

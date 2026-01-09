@@ -59,22 +59,25 @@ class LineItem {
   final String name;
   final int qty;
   final double total;
+  final String taxClass; // 🔥 food / beverages
 
   LineItem({
     required this.id,
     required this.name,
     required this.qty,
     required this.total,
+    required this.taxClass,
   });
 
   factory LineItem.fromJson(Map<String, dynamic> json) {
     return LineItem(
-      // 🔥 backend DOES NOT send id
       id: (json['id'] ?? 0).toInt(),
-
       name: json['name'] ?? '',
       qty: (json['qty'] ?? 0).toInt(),
       total: (json['total'] ?? 0).toDouble(),
+
+      // 🔥 MUST come from backend
+      taxClass: json['tax_class'] ?? 'food',
     );
   }
 }

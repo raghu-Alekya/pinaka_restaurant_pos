@@ -477,6 +477,7 @@ class _paymentsummaryState extends State<paymentsummary> {
 
                             _buildPaymentDiscountItem(
                               context,
+                              grossTotal: totalAmount,
 
                               // ===== STATE FLAGS =====
                               isDiscountApplied: _isDiscountApplied,
@@ -810,6 +811,7 @@ final TextEditingController _discountController = TextEditingController();
 
 Widget _buildPaymentDiscountItem(
     BuildContext context, {
+      required double grossTotal,
       required VoidCallback onDiscountApplied,
       required VoidCallback onDiscountDelete,
 
@@ -850,35 +852,39 @@ Widget _buildPaymentDiscountItem(
         const Text('Discount :',
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
         const SizedBox(height: 6),
-        Row(
-          children: [
-            Expanded(
-              child: GestureDetector(
-                onTap: isDiscountApplied
-                    ? null
-                    : () async {
-                  final result = await showDialog<bool>(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (_) => const DiscountPopup(),
-                  );
-                  if (result == true) onDiscountApplied();
-                },
-                child: AbsorbPointer(
-                  child: _inputField(
-                    hint: '10%',
-                    enabled: !isDiscountApplied,
+      Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: isDiscountApplied
+                  ? null
+                  : () async {
+                final result = await showDialog<bool>(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (_) => DiscountPopup(
+                    grossTotal: grossTotal,
                   ),
+                );
+
+                if (result == true) onDiscountApplied();
+              },
+              child: AbsorbPointer(
+                child: _inputField(
+                  hint: '10%',
+                  enabled: !isDiscountApplied,
                 ),
               ),
             ),
-            const SizedBox(width: 6),
-            if (isDiscountApplied)
-              _deleteButton(onDiscountDelete),
-          ],
-        ),
+          ),
+          const SizedBox(width: 6),
+          if (isDiscountApplied)
+            _deleteButton(onDiscountDelete),
+        ],
+      ),
 
-        const SizedBox(height: 14),
+
+      const SizedBox(height: 14),
 
         /// 🔻 COUPON
         const Text('Coupon :',

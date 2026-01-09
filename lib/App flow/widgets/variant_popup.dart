@@ -85,7 +85,7 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
         modifiers: [],
         section: widget.section,
         productId: widget.product.id,
-        variantId: variant.variationId,
+        variationId: variant.variationId,
       );
 
       widget.orderBloc.add(AddOrderItem(orderItem));

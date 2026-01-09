@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../blocs/Bloc Event/payment_event.dart';
+import '../../blocs/Bloc Event/tax_event.dart';
 import '../../blocs/Bloc Logic/order_bloc.dart';
 import '../../blocs/Bloc Logic/payment_bloc.dart';
+import '../../blocs/Bloc Logic/tax_bloc.dart';
 import '../../blocs/Bloc State/payment_state.dart';
 // import '../../blocs/payment/payment_bloc.dart';
 // import '../../blocs/payment/payment_event.dart';
 // import '../../blocs/payment/payment_state.dart';
 import '../../local database/database_helper.dart';
+import '../../repositories/tax_repository.dart';
 import '../../utils/SessionManager.dart';
 
 import '../widgets/payment_sidebar_widget.dart';
@@ -138,13 +141,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 /// LEFT SIDEBAR
                 Expanded(
                   flex: 25,
-                  child: Sidebarwidgets(
-                    userPermissions: _userPermissions,
-                    selectedUser: _selectedUser,
-                    paymentSummary: paymentSummary,
-                    // paymentSummary: null,
+                  child: BlocProvider(
+                    create: (context) => TaxBloc(TaxRepository())..add(LoadTaxesEvent()),
+                    child: Sidebarwidgets(
+                      userPermissions: _userPermissions,
+                      selectedUser: _selectedUser,
+                      paymentSummary: paymentSummary,
+                    ),
                   ),
                 ),
+
 
                 /// NUMBER PAD
                 Expanded(
