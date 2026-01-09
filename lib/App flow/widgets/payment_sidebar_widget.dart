@@ -31,12 +31,20 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
   late Animation<double> _heightAnimation;
   double foodTax = 0;
   double beverageTax = 0;
+  double? foodRate;
+  double? beverageRate;
+
 
   double foodCgst = 0;
   double foodSgst = 0;
   double beverageCgst = 0;
   double beverageSgst = 0;
-  double totalTax = 0;
+  // double totalTax = 0;
+  double liquorCgst = 0;
+  double liquorSgst = 0;
+  final merchantDiscount = 0.0; // until backend provides it
+
+
 
 
   @override
@@ -52,105 +60,6 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
         .replaceAll('bewerages', 'beverages') // typo fix
         ?? '';
   }
-
-
-
-  /// ✅ CORRECT PLACE
-  // Map<String, double> _calculateTaxFromApi(List<TaxModel> taxes) {
-  //   double totalTax = 0;
-  //   double cgst = 0;
-  //   double sgst = 0;
-  //
-  //   for (final item in widget.paymentSummary.lineItems) {
-  //
-  //     debugPrint('────────────────────────────────────');
-  //     debugPrint('🛒 ITEM NAME     : ${item.name}');
-  //     debugPrint('🛒 ITEM TOTAL    : ${item.total}');
-  //     debugPrint('🛒 ITEM TAXCLASS : ${item.taxClass}');
-  //
-  //     final tax = state.taxes.firstWhere(
-  //           (t) => t.taxClass == item.taxClass,
-  //       orElse: () {
-  //         debugPrint('❌ NO TAX MATCH FOUND → using 0%');
-  //         return TaxModel(
-  //           id: 0,
-  //           rate: "0",
-  //           name: "",
-  //           taxClass: "",
-  //           compound: false,
-  //           shipping: false,
-  //         );
-  //       },
-  //     );
-  //
-  //     debugPrint('✅ MATCHED TAX CLASS : ${tax.taxClass}');
-  //     debugPrint('✅ MATCHED TAX RATE  : ${tax.rate}%');
-  //
-  //     final rate = double.tryParse(tax.rate) ?? 0;
-  //     debugPrint('🔢 PARSED RATE      : $rate');
-  //
-  //     if (rate == 0) {
-  //       debugPrint('⚠️ RATE IS ZERO → skipping item');
-  //       continue;
-  //     }
-  //
-  //     final itemTax = item.total * rate / 100;
-  //     final halfTax = itemTax / 2;
-  //
-  //     debugPrint('💰 ITEM TAX TOTAL   : $itemTax');
-  //     debugPrint('💰 HALF TAX (CGST)  : $halfTax');
-  //     debugPrint('💰 HALF TAX (SGST)  : $halfTax');
-  //
-  //     totalTax += itemTax;
-  //
-  //     final itemClass = item.taxClass.toLowerCase().trim();
-  //     final taxClass  = tax.taxClass.toLowerCase().trim();
-  //
-  //     debugPrint('🔍 COMPARE → itemClass="$itemClass" | taxClass="$taxClass"');
-  //
-  //     /// 🍽 FOOD
-  //     if (itemClass == 'food' && taxClass == 'food') {
-  //       foodCgst += halfTax;
-  //       foodSgst += halfTax;
-  //       debugPrint('🍽 FOOD GST APPLIED');
-  //     }
-  //
-  //     /// 🥤 BEVERAGES
-  //     else if (
-  //     (itemClass == 'beverages' || itemClass == 'bewerages') &&
-  //         (taxClass == 'beverages' || taxClass == 'bewerages')
-  //     ) {
-  //       beverageCgst += halfTax;
-  //       beverageSgst += halfTax;
-  //       debugPrint('🥤 BEVERAGE GST APPLIED');
-  //     }
-  //
-  //     else {
-  //       debugPrint('❌ TAX CLASS DID NOT MATCH ANY CATEGORY');
-  //     }
-  //   }
-  //
-  //   debugPrint('================ FINAL TAX SUMMARY ================');
-  //   debugPrint('🍽 Food CGST      : $foodCgst');
-  //   debugPrint('🍽 Food SGST      : $foodSgst');
-  //   debugPrint('🥤 Beverage CGST  : $beverageCgst');
-  //   debugPrint('🥤 Beverage SGST  : $beverageSgst');
-  //   debugPrint('💰 TOTAL TAX      : $totalTax');
-  //   debugPrint('===================================================');
-  //
-  //
-  //
-  //
-  //   return {
-  //     "total": totalTax,
-  //     "cgst": cgst,
-  //     "sgst": sgst,
-  //   };
-  // }
-
-
-
-
 
   @override
   void initState() {
@@ -175,25 +84,53 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
       }
     });
   }
-
-
-  Widget _row(String label, double value,
-      {bool isBold = false, Color? color}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: TextStyle(fontWeight: isBold ? FontWeight.w600 : null),
+  Widget rightAlignedDottedLine({double width = 120}) {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: SizedBox(
+        width: width, // 👈 controls line length
+        child: const DottedLine(
+          dashLength: 4,
+          dashGapLength: 4,
+          lineThickness: 1,
+          dashColor: Color(0x66666626),
         ),
-        Text(
-          value.toStringAsFixed(2),
-          style: TextStyle(
-            fontWeight: isBold ? FontWeight.bold : null,
-            color: color,
+      ),
+    );
+  }
+
+
+
+  Widget _row(
+      String label,
+      double value, {
+        bool isBold = false,
+        Color? color,
+        double fontSize = 14,
+      }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: fontSize,
+              fontWeight: isBold ? FontWeight.w600 : FontWeight.normal,
+              color: color,
+            ),
           ),
-        ),
-      ],
+          Text(
+            "₹${value.toStringAsFixed(2)}",
+            style: TextStyle(
+              fontSize: fontSize,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+              color: color,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -216,90 +153,101 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                 // ---------- Header Section ----------
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    GestureDetector(
-                      onTap: () {
-                        if (!mounted) return;
-                        Navigator.pop(context);
-                      },
 
-                      child: Container(
-                        width: 90,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFDEE8FF),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Image.asset(
-                              "assets/icon/-01.png",
-                              width: 18,
-                              height: 18,
-                            ),
-                            const SizedBox(width: 10),
-                            const Text(
-                              "Back",
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF585A5C),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    // ---- Date & Time ----
-                    Row(
+                    /// LEFT COLUMN
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Image.asset("assets/icon/calender.png", width: 18, height: 18),
-                        const SizedBox(width: 3),
-                        Text(
-                          formattedDate,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                            color: Color(0xFF656161),
+
+                        /// 🔙 Back Button (row 1)
+                        GestureDetector(
+                          onTap: () {
+                            if (!mounted) return;
+                            Navigator.pop(context);
+                          },
+                          child: Container(
+                            width: 90,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFDEE8FF),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Image.asset("assets/icon/-01.png", width: 18),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  "Back",
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF585A5C),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 6),
-                        Image.asset("assets/icon/clock.png", width: 18, height: 18),
-                        const SizedBox(width: 3),
+
+                        const SizedBox(height: 12),
+
+                        /// 🧾 Order ID (row 2)
                         Text(
-                          formattedTime,
+                          "Order ID #${widget.paymentSummary.orderId}",
                           style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                            color: Color(0xFF656161),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF111827),
                           ),
                         ),
                       ],
                     ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "Order ID #${widget.paymentSummary.orderId}",
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF111827),
-                      ),
-                    ),
-                    const Text(
-                      "Payment Summary",
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
-                        color: Color(0xFF656161),
-                      ),
+
+                    /// RIGHT COLUMN
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+
+                        /// 🖨️ Print Button (row 1)
+                        Container(
+                          width: 90,
+                          height: 36,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey),
+                          ),
+                          child: const Text(
+                            "Print",
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        /// 📅 Date & Time (row 2)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Image.asset("assets/icon/calender.png", width: 16),
+                            const SizedBox(width: 4),
+                            Text(
+                              formattedDate,
+                              style: const TextStyle(fontSize: 12, color: Color(0xFF656161)),
+                            ),
+                            const SizedBox(width: 8),
+                            Image.asset("assets/icon/clock.png", width: 16),
+                            const SizedBox(width: 4),
+                            Text(
+                              formattedTime,
+                              style: const TextStyle(fontSize: 12, color: Color(0xFF656161)),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -308,7 +256,7 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
 
                 // ---------- Items Container ----------
 
-              Expanded(
+               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
                     color: const Color(0xFFDEE8FF),
@@ -463,6 +411,16 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                   debugPrint('⏳ TaxLoading...');
                   return const Center(child: CircularProgressIndicator());
                 }
+                final grossTotal = widget.paymentSummary.grossTotal;
+                final couponDiscount = widget.paymentSummary.discount;
+                final merchantDiscount = 0.0; // backend not available yet
+
+                final subTotal = grossTotal - couponDiscount;
+                // final netPayable = subTotal + totalTax - merchantDiscount;
+                // final netTotal = subTotal + totalTax;
+
+
+
 
                 if (state is TaxLoaded) {
                   debugPrint('✅ TaxLoaded → Calculating taxes');
@@ -471,7 +429,7 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                   double foodSgst = 0;
                   double beverageCgst = 0;
                   double beverageSgst = 0;
-                  double totalTax = 0;
+                  // double totalTax = 0;
 
                   for (final item in widget.paymentSummary.lineItems) {
                     debugPrint('────────────────────────────────────');
@@ -506,35 +464,54 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
 
                     final rate = double.tryParse(tax.rate) ?? 0;
                     if (rate == 0) {
-                      debugPrint('⚠️ RATE IS ZERO → skipping item');
+                      if (itemClass == 'liquor-rate') {
+                        debugPrint('🍺 LIQUOR ITEM → CGST = 0, SGST = 0');
+
+                        liquorCgst += 0;
+                        liquorSgst += 0;
+                      } else {
+                        debugPrint('⚠️ RATE IS ZERO → skipping item');
+                      }
                       continue;
                     }
+
 
                     final itemTax = item.total * rate / 100;
                     final halfTax = itemTax / 2;
 
-                    totalTax += itemTax;
+                    // totalTax += itemTax;
 
                     debugPrint('🔍 COMPARE → itemClass="$itemClass" | taxClass="$taxClass"');
 
                     /// 🍽 FOOD
-                    if (itemClass == 'food' && taxClass == 'food') {
+                    if (itemClass == 'food' && taxClass == 'food' && rate > 0) {
+                      foodRate ??= rate; // 👈 capture rate ONCE
                       foodCgst += halfTax;
                       foodSgst += halfTax;
-                      debugPrint('🍽 FOOD GST APPLIED');
                     }
 
+
                     /// 🥤 BEVERAGES
-                    else if (itemClass == 'bewerages' && taxClass == 'bewerages') {
+                    else if (itemClass == 'beverages' && taxClass == 'beverages' && rate > 0) {
+                      beverageRate ??= rate; // 👈 capture rate ONCE
                       beverageCgst += halfTax;
                       beverageSgst += halfTax;
-                      debugPrint('🥤 BEVERAGE GST APPLIED');
                     }
+
 
                     else {
                       debugPrint('❌ TAX CLASS DID NOT MATCH ANY CATEGORY');
                     }
                   }
+                  final totalTax =
+                      foodCgst +
+                          foodSgst +
+                          beverageCgst +
+                          beverageSgst;
+                  final netTotal = subTotal + totalTax;
+                  final netPayable = netTotal - merchantDiscount;
+
+
 
 
                   // ✅ FINAL SUMMARY PRINT
@@ -543,27 +520,116 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                   debugPrint('🍽 Food SGST      : $foodSgst');
                   debugPrint('🥤 Beverage CGST  : $beverageCgst');
                   debugPrint('🥤 Beverage SGST  : $beverageSgst');
+                  debugPrint('🍺 Liquor CGST    : $liquorCgst');
+                  debugPrint('🍺 Liquor SGST    : $liquorSgst');
                   debugPrint('💰 TOTAL TAX      : $totalTax');
                   debugPrint('===================================================');
 
                   return Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      _row("Sub Total", widget.paymentSummary.grossTotal),
-
-                      if (foodCgst > 0) _row("Food CGST", foodCgst),
-                      if (foodSgst > 0) _row("Food SGST", foodSgst),
-
-                      if (beverageCgst > 0) _row("Beverage CGST", beverageCgst),
-                      if (beverageSgst > 0) _row("Beverage SGST", beverageSgst),
-
-                      _row("Total Tax", totalTax, isBold: true),
+                      _row("Gross Total", grossTotal ,isBold: true, fontSize: 15),
 
                       _row(
-                        "Discount",
-                        -widget.paymentSummary.discount,
+                        "Coupon / Discounts",
+                        -couponDiscount,
+                        color: Colors.green,
+                      ),
+
+                      const DottedLine(),
+
+                      _row("Sub Total", subTotal, isBold: true, fontSize: 15),
+
+
+                      if ((foodCgst > 0 || foodSgst > 0) && foodRate != null) ...[
+                        const SizedBox(height: 6),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            "Tax @${foodRate!.toStringAsFixed(0)}% Food",
+                            style: const TextStyle(
+                              fontSize: 14,
+                              // fontWeight: FontWeight.w900,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 12),
+                          child: Column(
+                            children: [
+                              _row(
+                                "CGST ${(foodRate! / 2).toStringAsFixed(1)}%",
+                                foodCgst,
+                              ),
+                              _row(
+                                "SGST ${(foodRate! / 2).toStringAsFixed(1)}%",
+                                foodSgst,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+
+
+                      if ((beverageCgst > 0 || beverageSgst > 0) && beverageRate != null) ...[
+                        const SizedBox(height: 6),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            "Tax @${beverageRate!.toStringAsFixed(0)}% Beverages",
+                            style: const TextStyle(
+                              fontSize: 14,
+                              // fontWeight: FontWeight.w900,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 12),
+                          child: Column(
+                            children: [
+                              _row(
+                                "CGST ${(beverageRate! / 2).toStringAsFixed(1)}%",
+                                beverageCgst,
+                              ),
+                              _row(
+                                "SGST ${(beverageRate! / 2).toStringAsFixed(1)}%",
+                                beverageSgst,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+
+// ✅ ALWAYS show liquor (even zero)
+                      _row(
+                        "Tax Alcohol @Nil (Price inclusive of Excise Duty)",
+                        0.00,
+                      ),
+
+                      rightAlignedDottedLine(width: 140),
+
+
+
+                      _row("Total Tax", totalTax, isBold: true),
+                      const DottedLine(),
+
+                      _row(
+                        "Net Total",
+                        netTotal,
+                        isBold: true, fontSize: 15
+
+                      ),
+
+
+                      _row(
+                        "Merchant Discount",
+                        -merchantDiscount,
                         color: Colors.blue,
                       ),
+                      // const DottedLine(),
+
 
                       const DottedLine(
                         dashLength: 4,
@@ -573,10 +639,12 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                       ),
 
                       _row(
-                        "Total",
+                        "Net Payable",
                         widget.paymentSummary.netTotal,
                         isBold: true,
+                        fontSize: 18,
                       ),
+
                     ],
                   );
                 }

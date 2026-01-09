@@ -55,29 +55,33 @@ class PaymentSummary {
 
 
 class LineItem {
-  final int id;
+  final int productId;
+  final int variationId;
   final String name;
   final int qty;
   final double total;
-  final String taxClass; // 🔥 food / beverages
+  final double tax;
+  final String taxClass;
 
   LineItem({
-    required this.id,
+    required this.productId,
+    required this.variationId,
     required this.name,
     required this.qty,
     required this.total,
+    required this.tax,
     required this.taxClass,
   });
 
   factory LineItem.fromJson(Map<String, dynamic> json) {
     return LineItem(
-      id: (json['id'] ?? 0).toInt(),
+      productId: (json['product_id'] ?? 0).toInt(),
+      variationId: (json['variation_id'] ?? 0).toInt(),
       name: json['name'] ?? '',
       qty: (json['qty'] ?? 0).toInt(),
       total: (json['total'] ?? 0).toDouble(),
-
-      // 🔥 MUST come from backend
-      taxClass: json['tax_class'] ?? 'food',
+      tax: (json['tax'] ?? 0).toDouble(),
+      taxClass: (json['tax_class'] ?? 'food').toString().toLowerCase(),
     );
   }
 }

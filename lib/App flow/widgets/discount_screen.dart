@@ -89,7 +89,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.all(20),
       child: Container(
-        width: 900,
+        width: 860,
         padding: const EdgeInsets.all(20), // ✅ equal padding all around
         decoration: BoxDecoration(
           color: Colors.white,
@@ -101,54 +101,60 @@ class _DiscountPopupState extends State<DiscountPopup> {
           children: [
             _header(context),
 
-            const SizedBox(height: 24), // ✅ consistent spacing
+            const SizedBox(height: 40), // ✅ consistent spacing
 
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                /// LEFT SIDE
-                SizedBox(
-                  width: 460,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _leftSection(),
+            Align(
+              alignment: Alignment.center,
+              child: SizedBox(
+                width: 870, // SAME as dialog width
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    /// LEFT SIDE
+                    SizedBox(
+                      width: 460,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _leftSection(),
 
-                      const SizedBox(height: 20),
+                          const SizedBox(height: 25),
 
-                      /// Save & Continue (outside container)
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.pop(context);
-                        },
-                        child: Container(
-                          height: 48,
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFF6B6B),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              'Save & Continue',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.pop(context);
+                            },
+                            child: Container(
+                              height: 48,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFF6B6B),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Center(
+                                child: Text(
+                                  'Save & Continue',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
-                        ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+
+                    const SizedBox(width: 30),
+
+                    /// KEYPAD
+                    _keypadSection(),
+                  ],
                 ),
-
-                const SizedBox(width: 20), // ✅ equal horizontal spacing
-
-                /// KEYPAD
-                _keypadSection(),
-              ],
+              ),
             ),
+
           ],
         ),
       ),
@@ -488,7 +494,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
     ];
 
     return SizedBox(
-      width: 340,
+      width: 300,
       child: GridView.builder(
         shrinkWrap: true,
         itemCount: labels.length,
