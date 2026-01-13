@@ -234,40 +234,37 @@ class _ManageStockDialogState extends State<ManageStockDialog> {
                         children: [
                           // Reduce Reasons Column
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Select Reason',
-                                  style: TextStyle(fontWeight: FontWeight.bold),
+                            child: Opacity(
+                              opacity: isAddingStock ? 0.4 : 1.0, // dull when disabled
+                              child: IgnorePointer(
+                                ignoring: isAddingStock, // block taps
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Select Reason',
+                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                    ...reduceReasons.map((reason) {
+                                      return CheckboxListTile(
+                                        controlAffinity: ListTileControlAffinity.leading,
+                                        contentPadding: const EdgeInsets.symmetric(vertical: 2),
+                                        dense: true,
+                                        title: Text(reason, style: const TextStyle(fontSize: 12)),
+                                        value: reduceSelected[reason],
+                                        onChanged: (value) {
+                                          setState(() {
+                                            reduceSelected[reason] = value ?? false;
+                                          });
+                                        },
+                                      );
+                                    }),
+                                  ],
                                 ),
-                                ...reduceReasons.map((reason) {
-                                  return Theme(
-                                    data: Theme.of(context).copyWith(
-                                      unselectedWidgetColor: Colors.grey,
-                                    ),
-                                    child: CheckboxListTile(
-                                      controlAffinity: ListTileControlAffinity.leading,
-                                      contentPadding: const EdgeInsets.symmetric(vertical: 2, horizontal: 0),
-                                      dense: true,
-                                      visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
-                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                      title: Text(
-                                        reason,
-                                        style: const TextStyle(fontSize: 12),
-                                      ),
-                                      value: reduceSelected[reason],
-                                      onChanged: (bool? value) {
-                                        setState(() {
-                                          reduceSelected[reason] = value ?? false;
-                                        });
-                                      },
-                                    ),
-                                  );
-                                }).toList(),
-                              ],
+                              ),
                             ),
                           ),
+
 
                           Container(
                             height: 200,
@@ -278,40 +275,37 @@ class _ManageStockDialogState extends State<ManageStockDialog> {
 
                           // Add Reasons Column
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Select Reason',
-                                  style: TextStyle(fontWeight: FontWeight.bold),
+                            child: Opacity(
+                              opacity: isAddingStock ? 1.0 : 0.4, // dull when disabled
+                              child: IgnorePointer(
+                                ignoring: !isAddingStock, // block taps
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Select Reason',
+                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                    ...addReasons.map((reason) {
+                                      return CheckboxListTile(
+                                        controlAffinity: ListTileControlAffinity.leading,
+                                        contentPadding: const EdgeInsets.symmetric(vertical: 2),
+                                        dense: true,
+                                        title: Text(reason, style: const TextStyle(fontSize: 12)),
+                                        value: addSelected[reason],
+                                        onChanged: (value) {
+                                          setState(() {
+                                            addSelected[reason] = value ?? false;
+                                          });
+                                        },
+                                      );
+                                    }),
+                                  ],
                                 ),
-                                ...addReasons.map((reason) {
-                                  return Theme(
-                                    data: Theme.of(context).copyWith(
-                                      unselectedWidgetColor: Colors.grey,
-                                    ),
-                                    child: CheckboxListTile(
-                                      controlAffinity: ListTileControlAffinity.leading,
-                                      contentPadding: const EdgeInsets.symmetric(vertical: 2, horizontal: 0),
-                                      dense: true,
-                                      visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
-                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                      title: Text(
-                                        reason,
-                                        style: const TextStyle(fontSize: 12),
-                                      ),
-                                      value: addSelected[reason],
-                                      onChanged: (bool? value) {
-                                        setState(() {
-                                          addSelected[reason] = value ?? false;
-                                        });
-                                      },
-                                    ),
-                                  );
-                                }).toList(),
-                              ],
+                              ),
                             ),
                           ),
+
                         ],
                       ),
 

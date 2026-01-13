@@ -42,7 +42,10 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
   // double totalTax = 0;
   double liquorCgst = 0;
   double liquorSgst = 0;
-  final merchantDiscount = 0.0; // until backend provides it
+  final merchantDiscount = 0.0;
+  double _calculatedNetPayable = 0.0;
+
+  // until backend provides it
 
 
 

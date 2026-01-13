@@ -1,12 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../blocs/Bloc Event/discount_event.dart';
+import '../../blocs/Bloc Logic/discount_bloc.dart';
+import '../../blocs/Bloc State/discount_stata.dart';
+import '../../models/payment/discount_model.dart';
 enum DiscountType { percent, amount }
 
 class DiscountPopup extends StatefulWidget {
-  final double grossTotal; // ✅ comes from parent
+  final double netPayable;
+  final String ? authToken;
+  final int orderId;
+// ✅ comes from parent
 
   const DiscountPopup({
     super.key,
-    required this.grossTotal,
+    required this.netPayable,
+     this.authToken,
+    required this.orderId,
+
+
   });
 
   @override
@@ -27,21 +40,40 @@ class _DiscountPopupState extends State<DiscountPopup> {
   @override
   void initState() {
     super.initState();
-    payableAmount = widget.grossTotal;
-    newPayableAmount = widget.grossTotal;
-    discountController.addListener(_calculateNewPayable); // ✅ CORRECT
+
+    payableAmount = widget.netPayable;
+    newPayableAmount = widget.netPayable;
+
+    discountController.addListener(_calculateNewPayable);
+
+    // // ✅ SAFE & CORRECT
+    // if (widget.authToken != null) {
+    //   context.read<DiscountReasonBloc>().add(
+    //     LoadDiscountReasons(widget.authToken!),
+    //   );
+    // }
   }
+  bool _isBlocLoaded = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    context.read<DiscountReasonBloc>().add(LoadDiscountReasons());
+  }
+
 
 
 
 
   @override
   void dispose() {
+    discountController.removeListener(_calculateNewPayable);
     discountController.dispose();
     reasonController.dispose();
-    discountController.addListener(_calculateNewPayable);
     super.dispose();
   }
+
 
   void _onKeypadTap(String value) {
     if (isNCSelected) return; // 🔒 HARD BLOCK
@@ -81,85 +113,166 @@ class _DiscountPopupState extends State<DiscountPopup> {
       }
     });
   }
+  void _onSaveAndContinue() {
+    debugPrint('🟢 [_onSaveAndContinue] called');
 
+    // // 🔐 Token check
+    // if (widget.authToken == null) {
+    //   debugPrint('❌ authToken is NULL');
+    //   return;
+    // }
 
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(20),
-      child: Container(
-        width: 860,
-        padding: const EdgeInsets.all(20), // ✅ equal padding all around
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFF1FBF75), width: 2),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _header(context),
+    debugPrint('🔐 authToken present');
 
-            const SizedBox(height: 40), // ✅ consistent spacing
+    // 🔒 Validation
+    if (!isNCSelected && discountController.text.isEmpty) {
+      debugPrint('❌ Discount value empty');
+      _showError('Enter discount value');
+      return;
+    }
 
-            Align(
-              alignment: Alignment.center,
-              child: SizedBox(
-                width: 870, // SAME as dialog width
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    /// LEFT SIDE
-                    SizedBox(
-                      width: 460,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _leftSection(),
+    if (reasonController.text.isEmpty) {
+      debugPrint('❌ Reason not selected');
+      _showError('Select discount reason');
+      return;
+    }
 
-                          const SizedBox(height: 25),
+    final inputValue = double.tryParse(discountController.text) ?? 0;
 
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.pop(context);
-                            },
-                            child: Container(
-                              height: 48,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFF6B6B),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Center(
-                                child: Text(
-                                  'Save & Continue',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+    debugPrint('➡️ inputValue = $inputValue');
+    debugPrint('➡️ selectedType = $selectedType');
+    debugPrint('➡️ isNCSelected = $isNCSelected');
+    debugPrint('➡️ payableAmount = $payableAmount');
 
-                    const SizedBox(width: 30),
+    // 🔥 CORRECT AMOUNT CALCULATION
+    final discountAmount = isNCSelected
+        ? payableAmount
+        : selectedType == DiscountType.percent
+        ? (payableAmount * inputValue) / 100
+        : inputValue;
 
-                    /// KEYPAD
-                    _keypadSection(),
-                  ],
-                ),
-              ),
-            ),
+    debugPrint('💰 FINAL discountAmount sent to API = $discountAmount');
+    debugPrint('🧾 orderId = ${widget.orderId}');
+    debugPrint('🧾 reason = ${reasonController.text}');
 
-          ],
+    debugPrint('🚀 Dispatching ApplyDiscountEvent');
+
+    context.read<DiscountBloc>().add(
+      ApplyDiscountEvent(
+        // token: widget.authToken!,
+        request: AddDiscountRequest(
+          orderId: widget.orderId,
+          amount: discountAmount,
+          isNc: isNCSelected ? "yes" : "no",
+          reason: reasonController.text,
         ),
       ),
     );
   }
+
+
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg)),
+    );
+  }
+
+
+
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocListener<DiscountBloc, DiscountState>(
+      listener: (context, state) {
+        debugPrint('🟣 [DiscountPopup] BlocListener state = ${state.runtimeType}');
+
+        if (state is DiscountSuccess) {
+          debugPrint('✅ [DiscountPopup] DiscountSuccess received → closing dialog');
+
+          final appliedDiscount = isNCSelected
+              ? payableAmount
+              : selectedType == DiscountType.percent
+              ? (payableAmount * (double.tryParse(discountController.text) ?? 0)) / 100
+              : double.tryParse(discountController.text) ?? 0;
+
+          Navigator.pop(context, appliedDiscount);
+        }
+
+
+        if (state is DiscountFailure) {
+          debugPrint('❌ [DiscountPopup] DiscountFailure = ${state.error}');
+          _showError(state.error);
+        }
+      },
+      child: Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(20),
+        child: Container(
+          width: 860,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFF1FBF75), width: 2),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _header(context),
+              const SizedBox(height: 40),
+              Align(
+                alignment: Alignment.center,
+                child: SizedBox(
+                  width: 870,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: 460,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _leftSection(),
+                            const SizedBox(height: 25),
+                            GestureDetector(
+                              onTap: () {
+                                debugPrint('🟢 [UI] Save & Continue tapped');
+                                _onSaveAndContinue();
+                              },
+                              child: Container(
+                                height: 48,
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFF6B6B),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Center(
+                                  child: Text(
+                                    'Save & Continue',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 30),
+                      _keypadSection(),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
 
 
   /// ---------------- HEADER ----------------
@@ -227,7 +340,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
           _reasonField(),
           const SizedBox(height: 12),
 
-          _customerTags(),
+          // _customerTags(),
           // const SizedBox(height: 20),
 
         ],
@@ -435,31 +548,81 @@ class _DiscountPopupState extends State<DiscountPopup> {
           style: TextStyle(fontSize: 12, color: Color(0xFF7A869A)),
         ),
         const SizedBox(height: 6),
-        TextField(
-          controller: reasonController, // ✅ bind here
-          decoration: InputDecoration(
-            contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(6),
-            ),
-          ),
+
+        BlocBuilder<DiscountReasonBloc, DiscountReasonState>(
+          builder: (context, state) {
+            print('🟡 [ReasonField] Bloc state: ${state.runtimeType}');
+
+            if (state is DiscountReasonLoading) {
+              print('⏳ Loading discount reasons...');
+              return const SizedBox(
+                height: 48,
+                child: Center(
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              );
+            }
+
+            if (state is DiscountReasonLoaded) {
+              print('✅ Discount reasons loaded: ${state.reasons}');
+
+              return DropdownButtonFormField<String>(
+                value: reasonController.text.isNotEmpty
+                    ? reasonController.text
+                    : null,
+                items: state.reasons
+                    .map(
+                      (reason) => DropdownMenuItem<String>(
+                    value: reason,
+                    child: Text(reason),
+                  ),
+                )
+                    .toList(),
+                onChanged: (value) {
+                  print('👉 Selected discount reason: $value');
+                  reasonController.text = value ?? '';
+                },
+                decoration: InputDecoration(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+                hint: const Text('Select reason'),
+              );
+            }
+
+            if (state is DiscountReasonError) {
+              print('❌ Error loading discount reasons: ${state.message}');
+              return Text(
+                state.message,
+                style: const TextStyle(color: Colors.red, fontSize: 12),
+              );
+            }
+
+            print('⚪ ReasonField: Initial/empty state');
+            return const SizedBox();
+          },
         ),
       ],
     );
   }
 
-  Widget _customerTags() {
-    return Row(
-      children: [
-        _tag('Regular Customer'),
-        const SizedBox(width: 8),
-        _tag('New Customer'),
-        const SizedBox(width: 8),
-        _tag('Corporate'),
-      ],
-    );
-  }
+
+  // Widget _customerTags() {
+  //   return Row(
+  //     children: [
+  //       _tag('Regular Customer'),
+  //       const SizedBox(width: 8),
+  //       _tag('New Customer'),
+  //       const SizedBox(width: 8),
+  //       _tag('Corporate'),
+  //     ],
+  //   );
+  // }
 
 
   Widget _tag(String text) {

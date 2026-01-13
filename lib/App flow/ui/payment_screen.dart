@@ -126,6 +126,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         // ✅ Data Loaded
         if (state is PaymentSummaryLoaded) {
           final paymentSummary = state.summary;
+          final orderId = context.read<OrderBloc>().state.orderId; //
           return Scaffold(
             appBar: PreferredSize(
               preferredSize: const Size.fromHeight(60),
@@ -155,6 +156,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 /// NUMBER PAD
                 Expanded(
                   flex: 50,
+
                   child: paymentsummary(
                     loadedTables: widget.loadedTables,
                     pin: widget.pin,
@@ -163,6 +165,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     restaurantName: widget.restaurantName,
                     zoneId: widget.zoneId,
                     PaymentSummary: paymentSummary,
+                    orderId: orderId,
                   ),
                 ),
               ],

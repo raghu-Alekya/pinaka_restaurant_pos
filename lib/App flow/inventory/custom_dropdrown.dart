@@ -1,7 +1,21 @@
 import 'package:flutter/material.dart';
+// import '../../models/inventory/SearchCategory.dart';
+import '../../models/inventory/search_category.dart';
+// import '../../repositories/inventory_repository/SearchCategory_Repository.dart';
+import '../../repositories/search_category_repository.dart';
+
 
 class CustomDropdownCard extends StatefulWidget {
-  const CustomDropdownCard({super.key});
+  final String token;
+  final String baseUrl;
+  final Function(SearchCategory) onSelected;
+
+  const CustomDropdownCard({
+    super.key,
+    required this.token,
+    required this.baseUrl,
+    required this.onSelected,
+  });
 
   @override
   State<CustomDropdownCard> createState() => _CustomDropdownCardState();
@@ -9,29 +23,11 @@ class CustomDropdownCard extends StatefulWidget {
 
 class _CustomDropdownCardState extends State<CustomDropdownCard>
     with SingleTickerProviderStateMixin {
-  final List<String> categories = [
-    'Beer',
-    'Brandy',
-    'Cocktails',
-    'Coffee & Tea',
-    'Energy Drinks',
-    'Juices',
-    'Liquers & Bitters',
-    'Mocktails',
-    'Milkshakes / Smoothies',
-    'Soft Drinks',
-    'Spirits',
-    'Water',
-    'Wine',
-    'Custom',
-    'Uncategorized',
-  ];
-
-  String selectedCategory = 'Custom';
+  List<SearchCategory> categories = [];
+  String selectedCategoryName = 'Loading...';
   OverlayEntry? _overlayEntry;
   final LayerLink _layerLink = LayerLink();
   bool _isOpen = false;
-
   late final AnimationController _controller;
 
   @override
@@ -41,6 +37,36 @@ class _CustomDropdownCardState extends State<CustomDropdownCard>
       vsync: this,
       duration: const Duration(milliseconds: 200),
     );
+    _fetchCategories();
+  }
+
+  Future<void> _fetchCategories() async {
+    print('🔹 Fetching categories from API...');
+    try {
+      final repo = SearchCategoryRepository(baseUrl: widget.baseUrl);
+      print('🔹 URL: ${widget.baseUrl}/wp-json/pinaka-restaurant-pos/v1/inventories/get-search-categories');
+      print('🔹 Token: ${widget.token.substring(0, 10)}...'); // print only part of token for safety
+
+      final data = await repo.fetchSearchCategories(token: widget.token);
+
+      print('✅ API call successful. Categories fetched: ${data.length}');
+      for (var cat in data) {
+        print('    ${cat.id} - ${cat.name}');
+      }
+
+      setState(() {
+        categories = data;
+        if (categories.isNotEmpty) {
+          selectedCategoryName = categories.first.name;
+        }
+      });
+    } catch (e, st) {
+      print('❌ Error fetching categories: $e');
+      print('Stack trace: $st');
+      setState(() {
+        selectedCategoryName = 'Error loading';
+      });
+    }
   }
 
   void _toggleDropdown() {
@@ -81,20 +107,30 @@ class _CustomDropdownCardState extends State<CustomDropdownCard>
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.grey.shade300),
               ),
-              child: ListView(
+              child: categories.isEmpty
+                  ? const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(12.0),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+                  : ListView(
                 padding: EdgeInsets.zero,
                 shrinkWrap: true,
                 children: categories.map((category) {
                   return ListTile(
-                    title: Text(category,
+                    title: Text(
+                      category.name,
                       style: const TextStyle(
-                          fontSize: 14, // <-- adjust this
-                          fontWeight: FontWeight.w500, // optional
-                          color: Colors.black87),),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black87),
+                    ),
                     onTap: () {
                       setState(() {
-                        selectedCategory = category;
+                        selectedCategoryName = category.name;
                       });
+                      widget.onSelected(category);
                       _toggleDropdown();
                     },
                   );
@@ -139,7 +175,7 @@ class _CustomDropdownCardState extends State<CustomDropdownCard>
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                selectedCategory,
+                selectedCategoryName,
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
@@ -151,7 +187,7 @@ class _CustomDropdownCardState extends State<CustomDropdownCard>
                 animation: _controller,
                 builder: (_, child) {
                   return Transform.rotate(
-                    angle: _controller.value * 3.1416, // rotate 180 degrees
+                    angle: _controller.value * 3.1416,
                     child: child,
                   );
                 },

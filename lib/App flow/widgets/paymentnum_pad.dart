@@ -7,11 +7,13 @@ import 'package:pinaka_restaurant_pos/App%20flow/widgets/tip_widget.dart';
 import 'package:pinaka_restaurant_pos/blocs/Bloc%20Event/order_event.dart';
 import '../../blocs/Bloc Event/create_payment_event.dart';
 import '../../blocs/Bloc Logic/create_payment_bloc.dart';
+import '../../blocs/Bloc Logic/discount_bloc.dart';
 import '../../blocs/Bloc Logic/order_bloc.dart';
 import '../../blocs/Bloc Logic/payment_bloc.dart';
 import '../../blocs/Bloc State/create_payment_state.dart';
 import '../../blocs/Bloc State/payment_state.dart';
 import '../../models/payment/create_payment_model.dart';
+import '../../repositories/discount_repository.dart';
 import '../../services/app_database.dart';
 import '../../utils/SessionManager.dart';
 import 'coupon_widget.dart';
@@ -24,6 +26,7 @@ class paymentsummary extends StatefulWidget {
   final String restaurantId;
   final String restaurantName;
   final int? zoneId;
+  final int orderId;
 
   const paymentsummary({
     Key? key,
@@ -32,7 +35,9 @@ class paymentsummary extends StatefulWidget {
     required this.token,
     required this.restaurantId,
     required this.restaurantName,
-    this.zoneId,   required PaymentSummary,
+    this.zoneId,
+    required PaymentSummary,
+    required this.orderId,
   }) : super(key: key);
 
 
@@ -52,13 +57,45 @@ class _paymentsummaryState extends State<paymentsummary> {
   bool _isCouponApplied = false;
   bool _isTipApplied = false;
   String _appliedCoupon = "";
-  bool _isSplitApplied = false; // ✅ FIXED
+  bool _isSplitApplied = false;
+  double _discountAmount = 0.0;
+  double _couponAmount = 0.0;
+  double _tipAmount = 0.0;
+  double _splitAmount = 0.0;
+
+
+  final TextEditingController discountController =
+  TextEditingController();
+  final TextEditingController couponController =
+  TextEditingController();
+
+  final TextEditingController tipController =
+  TextEditingController();
+
+  final TextEditingController splitPayController =
+  TextEditingController();
+
+
+// ✅ FIXED
+
 
 
 
   // / Delete button enabled if any of the above are applied
   bool get isDeleteEnabled =>
       _isTipApplied || _isDiscountApplied || _isCouponApplied;
+
+  @override
+  @override
+  void dispose() {
+    discountController.dispose();
+    couponController.dispose();
+    tipController.dispose();
+    splitPayController.dispose();
+    super.dispose();
+  }
+
+
 
   Future<void> _submitPayment() async {
     debugPrint("🟡 SUBMIT PAYMENT CALLED");
@@ -223,9 +260,20 @@ class _paymentsummaryState extends State<paymentsummary> {
     );
     debugPrint("💰 grossTotal = ${context.read<OrderBloc>().state.grossTotal}");
 
+    final double netPayable = context.select(
+          (PaymentBloc bloc) =>
+      bloc.state is PaymentSummaryLoaded
+          ? (bloc.state as PaymentSummaryLoaded).summary.netTotal
+          : 0.0,
+    );
+
+
+
 
     // ✅ DEFINE HERE
-    final List<double> presetAmounts = buildPresetAmounts(totalAmount);
+    final List<double> presetAmounts =
+    buildPresetAmounts(netPayable);
+
     return BlocListener<CreatePaymentBloc, CreatePaymentState>(
         listener: (context, state) async {
           if (state is CreatePaymentLoading) {
@@ -458,7 +506,8 @@ class _paymentsummaryState extends State<paymentsummary> {
                             buildPayment(
                               context,
                               amount,
-                              "Transaction Overview :",
+                              "Transaction Overview :", netPayable: netPayable,
+
                             ),
 
                             const SizedBox(height: 25),
@@ -477,7 +526,15 @@ class _paymentsummaryState extends State<paymentsummary> {
 
                             _buildPaymentDiscountItem(
                               context,
-                              grossTotal: totalAmount,
+                              netPayable: netPayable,
+                              orderId: widget.orderId,
+
+                              // ✅ controller comes from parent
+                              discountController: discountController,
+                              couponController: couponController,
+                              tipController: tipController,
+                              splitPayController: splitPayController,
+
 
                               // ===== STATE FLAGS =====
                               isDiscountApplied: _isDiscountApplied,
@@ -488,43 +545,70 @@ class _paymentsummaryState extends State<paymentsummary> {
                               appliedCoupon: _appliedCoupon,
 
                               // ===== APPLY CALLBACKS =====
-                              onDiscountApplied: () {
-                                setState(() => _isDiscountApplied = true);
-                              },
 
-                              onCouponApplied: (String coupon) {
+                              /// ✅ FIXED: receives discount amount
+                              onDiscountApplied: (double amount) {
                                 setState(() {
-                                  _isCouponApplied = true;
-                                  _appliedCoupon = coupon;
+                                  _isDiscountApplied = true;
+                                  _discountAmount = amount;
+                                  discountController.text = amount.toStringAsFixed(2);
                                 });
                               },
 
-                              onTipApplied: () {
-                                setState(() => _isTipApplied = true);
+                              onCouponApplied: (coupon) {
+                                setState(() {
+                                  _isCouponApplied = true;
+                                  _appliedCoupon = coupon;
+                                  couponController.text = coupon;
+                                });
                               },
 
-                              onSplitApplied: () {
-                                setState(() => _isSplitApplied = true);
+                              onTipApplied: (amount) {
+                                setState(() {
+                                  _isTipApplied = true;
+                                  _tipAmount = amount;
+                                  tipController.text = amount.toStringAsFixed(2);
+                                });
                               },
 
-                              // ===== DELETE CALLBACKS (🔥 KEY FIX) =====
+                              onSplitApplied: (amount) {
+                                setState(() {
+                                  _isSplitApplied = true;
+                                  _splitAmount = amount;
+                                  splitPayController.text = amount.toStringAsFixed(2);
+                                });
+                              },
+
+                              // ===== DELETE CALLBACKS =====
+
                               onDiscountDelete: () {
-                                setState(() => _isDiscountApplied = false);
+                                setState(() {
+                                  _isDiscountApplied = false;
+                                  _discountAmount = 0;
+                                  discountController.clear();
+                                });
                               },
-
                               onCouponDelete: () {
                                 setState(() {
                                   _isCouponApplied = false;
                                   _appliedCoupon = '';
+                                  couponController.clear();
+                                });
+                              },
+                              onTipDelete: () {
+                                setState(() {
+                                  _isTipApplied = false;
+                                  _tipAmount = 0;
+                                  tipController.clear();
                                 });
                               },
 
-                              onTipDelete: () {
-                                setState(() => _isTipApplied = false);
-                              },
-
                               onSplitDelete: () {
-                                setState(() => _isSplitApplied = false);
+                                setState(() {
+                                  _isSplitApplied = false;
+                                  _splitAmount = 0;
+                                  splitPayController.clear();
+                                });
                               },
                             ),
 
@@ -545,34 +629,40 @@ class _paymentsummaryState extends State<paymentsummary> {
 }
 
 @override
-Widget buildPayment(BuildContext context, String amount, String label) {
-  final double grossTotal = context.select(
-        (PaymentBloc bloc) =>
-    bloc.state is PaymentSummaryLoaded
-        ? (bloc.state as PaymentSummaryLoaded).summary.grossTotal
-        : 0.0,
-  );
+Widget buildPayment(
+    BuildContext context,
+    String amount,
+    String label, {
+      required double netPayable,
+    })
+ {
+  // final double grossTotal = context.select(
+  //       (PaymentBloc bloc) =>
+  //   bloc.state is PaymentSummaryLoaded
+  //       ? (bloc.state as PaymentSummaryLoaded).summary.grossTotal
+  //       : 0.0,
+  // );
 
   final double tenderAmount =
   amount.isNotEmpty ? double.tryParse(amount) ?? 0.0 : 0.0;
 
   final double balanceAmount =
-  tenderAmount < grossTotal ? (grossTotal - tenderAmount) : 0.0;
-  final bool isPartial = tenderAmount < grossTotal;
-  final bool isOver = tenderAmount > grossTotal;
+  tenderAmount < netPayable ? (netPayable - tenderAmount) : 0.0;
+
+  final bool isPartial = tenderAmount < netPayable;
+  final bool isOver = tenderAmount > netPayable;
 
   final double changeAmount =
-  isOver ? (tenderAmount - grossTotal) : 0.0;
-
+  isOver ? (tenderAmount - netPayable) : 0.0;
 
 
   /// 🔍 DEBUG
-  print('💰 grossTotal = $grossTotal');
+  print('💰 netPayable = $netPayable');
   print('Tender Amount = $tenderAmount');
 
-  if (tenderAmount < grossTotal) {
+  if (isPartial) {
     print('Payment Type: PARTIAL PAYMENT');
-  } else if (tenderAmount > grossTotal) {
+  } else if (isOver) {
     print('Payment Type: OVER PAYMENT');
   } else {
     print('Payment Type: FULL PAYMENT');
@@ -801,9 +891,9 @@ class NumberPad extends StatelessWidget {
   }
 }
 
-bool isSplitApplied = false;
-final TextEditingController splitPayController = TextEditingController();
-final TextEditingController _discountController = TextEditingController();
+// bool isSplitApplied = false;
+// final TextEditingController splitPayController = TextEditingController();
+// final TextEditingController _discountController = TextEditingController();
 
 
 
@@ -811,26 +901,34 @@ final TextEditingController _discountController = TextEditingController();
 
 Widget _buildPaymentDiscountItem(
     BuildContext context, {
-      required double grossTotal,
-      required VoidCallback onDiscountApplied,
-      required VoidCallback onDiscountDelete,
+      required double netPayable,
+      required int orderId,
 
-      required Function(String) onCouponApplied,
-      required VoidCallback onCouponDelete,
-
-      required VoidCallback onTipApplied,
-      required VoidCallback onTipDelete,
-
-      required VoidCallback onSplitApplied,
-      required VoidCallback onSplitDelete,
+      required TextEditingController discountController,
+      required TextEditingController couponController,
+      required TextEditingController tipController,
+      required TextEditingController splitPayController,
 
       required bool isDiscountApplied,
       required bool isCouponApplied,
       required bool isTipApplied,
       required bool isSplitApplied,
 
+      required ValueChanged<double> onDiscountApplied,
+      required ValueChanged<String> onCouponApplied,
+      required ValueChanged<double> onTipApplied,
+      required ValueChanged<double> onSplitApplied,
+
+      required VoidCallback onDiscountDelete,
+      required VoidCallback onCouponDelete,
+      required VoidCallback onTipDelete,
+      required VoidCallback onSplitDelete,
+
+
       String appliedCoupon = "",
-    }) {
+    })
+
+{
 
   final screenWidth = MediaQuery.of(context).size.width;
   final screenHeight = MediaQuery.of(context).size.height;
@@ -852,39 +950,88 @@ Widget _buildPaymentDiscountItem(
         const Text('Discount :',
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
         const SizedBox(height: 6),
-      Row(
-        children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: isDiscountApplied
-                  ? null
-                  : () async {
-                final result = await showDialog<bool>(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (_) => DiscountPopup(
-                    grossTotal: grossTotal,
-                  ),
-                );
+        Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: isDiscountApplied
+                    ? null
+                    : () async {
+                  print('🟢 Discount field tapped');
+                  print('➡️ isDiscountApplied: $isDiscountApplied');
+                  print('➡️ netPayable: $netPayable');
+                  // print('➡️ authToken present: ${authToken != null}');
 
-                if (result == true) onDiscountApplied();
-              },
-              child: AbsorbPointer(
-                child: _inputField(
-                  hint: '10%',
-                  enabled: !isDiscountApplied,
+                  final discountAmount = await showDialog<double>(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (_) {
+                      print('📦 Opening DiscountPopup dialog');
+
+                      return MultiBlocProvider(
+                        providers: [
+                          BlocProvider(
+                            create: (_) {
+                              print('🧱 Creating DiscountReasonBloc');
+                              return DiscountReasonBloc(
+                                DiscountReasonRepository(),
+                              );
+                            },
+                          ),
+                          BlocProvider(
+                            create: (_) {
+                              print('🧱 Creating DiscountBloc');
+                              return DiscountBloc(
+                                AddDiscountRepository(),
+                              );
+                            },
+                          ),
+                        ],
+                        child: DiscountPopup(
+                          netPayable: netPayable,
+                          // authToken: authToken,
+                          orderId: orderId,
+                        ),
+                      );
+                    },
+                  );
+
+                  print('⬅️ Dialog closed');
+                  print('⬅️ Returned discountAmount: $discountAmount');
+                  /// ✅ ADD THIS HERE
+                  if (discountAmount != null && discountAmount > 0) {
+                    onDiscountApplied(discountAmount.abs());
+                  } else {
+                    print('❌ Discount not applied / dialog cancelled');
+                  }
+                },
+                child: AbsorbPointer(
+                  child: _inputField(
+                    controller: discountController,
+                    hint: '0.00',
+                    enabled: !isDiscountApplied,
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 6),
-          if (isDiscountApplied)
-            _deleteButton(onDiscountDelete),
-        ],
-      ),
+            const SizedBox(width: 6),
+            if (isDiscountApplied)
+              _deleteButton(() {
+                print('🗑️ Discount delete button pressed');
+                // setState(() {
+                //   isDiscountApplied = false;
+                //   discountController.clear();
+                // });
+                onDiscountDelete();
+              }),
+          ],
+        ),
 
 
-      const SizedBox(height: 14),
+
+
+
+        const SizedBox(height: 14),
 
         /// 🔻 COUPON
         const Text('Coupon :',
@@ -912,7 +1059,8 @@ Widget _buildPaymentDiscountItem(
                   child: _inputField(
                     hint: 'Enter your coupon code',
                     enabled: !isCouponApplied,
-                    initialValue: appliedCoupon,
+                    // initialValue: appliedCoupon,
+                    controller: couponController,
                   ),
                 ),
               ),
@@ -936,18 +1084,23 @@ Widget _buildPaymentDiscountItem(
                 onTap: isTipApplied
                     ? null
                     : () async {
-                  final result = await showDialog<bool>(
+                  final double? result = await showDialog<double>(
                     context: context,
                     barrierDismissible: false,
                     builder: (_) => const TipPopup(),
                   );
-                  if (result == true) onTipApplied();
+
+                  if (result != null && result > 0) {
+                    onTipApplied(result);
+                  }
                 },
                 child: AbsorbPointer(
                   child: _inputField(
                     hint: 'Enter tip amount',
                     keyboardType: TextInputType.number,
                     enabled: !isTipApplied,
+                    controller:tipController,
+                    // initialValue: '' ,
                   ),
                 ),
               ),
@@ -971,19 +1124,23 @@ Widget _buildPaymentDiscountItem(
                 onTap: isSplitApplied
                     ? null
                     : () async {
-                  final result =
-                  await showDialog<Map<String, String>>(
+                  final double? result = await showDialog<double>(
                     context: context,
                     barrierDismissible: false,
                     builder: (_) => const SplitPaymentPopup(),
                   );
-                  if (result != null) onSplitApplied();
+
+                  if (result != null && result > 0) {
+                    onSplitApplied(result);
+                  }
                 },
+
                 child: AbsorbPointer(
                   child: _inputField(
                     hint: 'Enter split amount',
                     keyboardType: TextInputType.number,
                     enabled: !isSplitApplied,
+                    controller:  splitPayController,
                   ),
                 ),
               ),
@@ -1001,10 +1158,9 @@ Widget _buildPaymentDiscountItem(
 }
 Widget _inputField({
   required String hint,
+  required TextEditingController controller,
   bool enabled = true,
-  String? initialValue,
   TextInputType keyboardType = TextInputType.text,
-  Function(String)? onChanged,
 }) {
   return Container(
     height: 40,
@@ -1014,18 +1170,18 @@ Widget _inputField({
       borderRadius: BorderRadius.circular(6),
     ),
     child: TextFormField(
-      initialValue: initialValue,
+      controller: controller,
+      readOnly: true,
       enabled: enabled,
       keyboardType: keyboardType,
-      onChanged: onChanged,
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(fontSize: 12),
         border: InputBorder.none,
       ),
     ),
   );
 }
+
 
 Widget _deleteButton(VoidCallback onTap) {
   return GestureDetector(
