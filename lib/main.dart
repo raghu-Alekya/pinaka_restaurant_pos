@@ -144,7 +144,7 @@ class MyApp extends StatelessWidget {
           BlocProvider<OrderBloc>(
             create: (context) => OrderBloc(
               OrderRepository(baseUrl: ''),
-              repeatOrderRepository(baseUrl: "https://merchantrestaurant.alektasolutions.com"),
+              RepeatOrderRepository(baseUrl: "https://merchantrestaurant.alektasolutions.com"),
               token,
             ),
           ),

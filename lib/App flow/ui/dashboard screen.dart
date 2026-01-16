@@ -206,7 +206,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     modifiers: [],
                     section: section,
                     productId: product.id,
-                    variantId: variant.id,
+                    variationId: variant.id,
                   ),
                 ),
               );
@@ -226,7 +226,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             modifiers: [],
             section: section,
             productId: product.id,
-            variantId: null,
+            variationId: null,
           ),
         ),
       );

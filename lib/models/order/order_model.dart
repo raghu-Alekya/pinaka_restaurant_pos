@@ -56,7 +56,7 @@ class OrderModel {
             name: lineItem.itemName,
             quantity: lineItem.quantity,
             price: lineItem.price,
-            variantId: null,
+            variationId: lineItem.variationId,
             section: lineItem.section ??
                 Category(
                   id: '0',

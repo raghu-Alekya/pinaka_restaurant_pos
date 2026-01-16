@@ -208,25 +208,26 @@ class _PrintReciptState extends State<PrintRecipt> {
               ),
             ),
             SizedBox(height: 15),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildDialogButton(
-                  label: 'No Receipt',
-                  color: Color(0xFFECEEF2),
-                  textColor: Color(0xFF4C5F7D),
-                  onTap: () => Navigator.pop(context),
-                ),
-                SizedBox(width: 20),
-                _buildDialogButton(
-                  label: 'Done',
-                  color: Color(0xFF1BA672),
-                  textColor: Colors.white,
-                  onTap: _onDonePressed,
-                ),
-              ],
-            ),
-          ],
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _buildDialogButton(
+            label: 'No Receipt',
+            color: const Color(0xFFECEEF2),
+            textColor: const Color(0xFF4C5F7D),
+            onTap: _onDonePressed, // ✅ same navigation as Done
+          ),
+          const SizedBox(width: 20),
+          _buildDialogButton(
+            label: 'Done',
+            color: const Color(0xFF1BA672),
+            textColor: Colors.white,
+            onTap: _onDonePressed,
+          ),
+        ],
+      ),
+
+      ],
         ),
       ),
     );

@@ -30,6 +30,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
     {"label": "Customers", "icon": Icons.people},
     {"label": "Take Aways", "icon": Icons.inventory_2},
     {"label": "Online Orders", "icon": Icons.delivery_dining},
+    {"label": "Inventory", "icon": Icons.inventory},
   ];
 
   void _scrollLeft() {

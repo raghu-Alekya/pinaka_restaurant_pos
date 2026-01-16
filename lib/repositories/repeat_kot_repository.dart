@@ -1,12 +1,30 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../models/order/repeat_kot_model.dart';
-// import '../models/repeat_kot_model.dart';
 
-class repeatOrderRepository {
+import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../models/order/repeat_kot_model.dart';
+
+class RepeatOrderRepository {
   final String baseUrl;
 
-  repeatOrderRepository({required this.baseUrl});
+  RepeatOrderRepository({required this.baseUrl});
+
+  /// ✅ Always get token from storage
+  Future<String> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    if (token == null || token.isEmpty) {
+      throw Exception("JWT token missing");
+    }
+
+    // ✅ Safety cleanup (handles old stored Bearer tokens)
+    return token.startsWith('Bearer ')
+        ? token.substring(7)
+        : token;
+  }
 
   Future<RepeatKotModel> repeatKotOrder({
     required int orderId,
@@ -18,10 +36,18 @@ class repeatOrderRepository {
       "$baseUrl/wp-json/pinaka-restaurant-pos/v1/orders/repeat-kot-order",
     );
 
+    final token = await _getToken(); // 🔥 CORRECT
+
+    if (kDebugMode) {
+      print("🔐 CLEAN TOKEN => $token");
+      print("🔐 HEADER     => Bearer $token");
+    }
+
     final response = await http.post(
       uri,
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "application/json; charset=utf-8",
+        "Accept": "application/json",
         "Authorization": "Bearer $token",
       },
       body: jsonEncode({
@@ -39,5 +65,4 @@ class repeatOrderRepository {
       );
     }
   }
-
 }

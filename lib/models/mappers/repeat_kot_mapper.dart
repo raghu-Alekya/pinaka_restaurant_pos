@@ -17,7 +17,7 @@ extension RepeatKotMapper on RepeatKotModel {
       items: lineItems.map((item) {
         return OrderItems(
           productId: item.productId,
-          variationId: -1, // or item.variantId if exists
+          // variationId: -1,/ // or item.variantId if exists
 
           name: item.name,
           price: item.price,
@@ -35,7 +35,7 @@ extension RepeatKotMapper on RepeatKotModel {
           addOns: const {},
           note: '',
           hasOptions: false,
-          variantId: -1,
+          // variantId: -1,
         );
       }).toList(),
 

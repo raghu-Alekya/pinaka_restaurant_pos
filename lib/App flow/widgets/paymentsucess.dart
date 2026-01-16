@@ -106,29 +106,30 @@ class Paymentsucess extends StatelessWidget {
                           backgroundColor: Colors.transparent,
                           insetPadding:
                           EdgeInsets.zero, // Remove default margin
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: Padding(
-                                  padding: const EdgeInsets.only(
-                                    left: 330,
-                                    top: 60,
-                                    bottom: 60,
-                                  ),
-                                  child: PrintRecipt(
-                                    loadedTables: loadedTables,
-                                    pin: pin,
-                                    token: token,
-                                    restaurantId: restaurantId,
-                                    restaurantName: restaurantName,
-                                    zoneId: zoneId,
-                                  ),
-
-                                ),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Padding(
+                              padding: const EdgeInsets.only(
+                                left: 330,
+                                top: 60,
+                                bottom: 60,
                               ),
+                              child: PrintRecipt(
+                                loadedTables: loadedTables,
+                                pin: pin,
+                                token: token,
+                                restaurantId: restaurantId,
+                                restaurantName: restaurantName,
+                                zoneId: zoneId,
+                              ),
+
                             ),
+                          ),
+                        ),
                       );
                     },
                   ),
+
                 ],
               ),
             ],
@@ -180,6 +181,11 @@ class Paymentsucess extends StatelessWidget {
   }
 
   Widget _buildChangeRow(BuildContext context, String? change) {
+    debugPrint("🟢 Change received in UI = $change");
+
+    final double changeAmount = double.tryParse(change ?? '') ?? 0.0;
+    // final double changeAmount = double.tryParse(change ?? '') ?? 0.0;
+
     return Container(
       height: MediaQuery.of(context).size.height * 0.07,
       width: MediaQuery.of(context).size.width * 0.38,

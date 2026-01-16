@@ -198,7 +198,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       productId: item.id,
       hasOptions: hasOptions,
       variationId: null,
-      variantId: null, // 🔹 now accurate
+      // variantId: null, // 🔹 now accurate
     );
 
     try {
@@ -239,7 +239,9 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
             quantity: 1,
             modifiers: [],
             section: section,
-            productId: product.id, variantId: null,
+            productId: product.id,
+            variationId: variant.id,
+            // variantId:  variant.id,
           );
           orderBloc.add(AddOrderItem(orderItem));
           print("[VariantPopup] Added to order: ${orderItem.name} x${orderItem.quantity}");

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../inventory/dashboard.dart';
 import '../ui/KitchenStatusScreen.dart';
 import '../../local database/table_dao.dart';
 import '../ui/tables_screen.dart';
@@ -73,7 +74,20 @@ class NavigationHelper {
           ),
         ),
       );
-    } else {
+    }else if (tappedIndex == 8) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => Dashboard(
+            pin: pin,
+            token: token,
+            restaurantId: restaurantId,
+            restaurantName: restaurantName,
+          ),
+        ),
+      );
+    }
+    else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Screen not implemented yet')),
       );

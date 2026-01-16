@@ -17,7 +17,7 @@ import 'checkin_bloc.dart';
 
 class OrderBloc extends Bloc<OrderEvent, OrderState> {
   final OrderRepository repository;
-  final repeatOrderRepository repeatRepository;
+  final RepeatOrderRepository repeatRepository;
   final String token;
 
 
@@ -102,7 +102,7 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
                 name: item.name,
                 quantity: item.quantity,
                 price: item.price,
-                variantId: item.variationId,
+                variationId: item.variationId,
                 section: item.section,
                 modifiers: item.modifiers,
                 addOns: item.addOns,
@@ -146,8 +146,9 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
       final index = updatedItems.indexWhere(
             (item) =>
         item.productId == event.item.productId &&
-            item.name == event.item.name, // ✅ name-based match
+            item.variationId == event.item.variationId,
       );
+
 
       if (index != -1) {
         final updatedItem = updatedItems[index].copyWith(
