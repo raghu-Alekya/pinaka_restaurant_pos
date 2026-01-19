@@ -11,9 +11,12 @@ class AddUpdateItemRepository {
   'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvbWVyY2hhbnRyZXN0YXVyYW50LmFsZWt0YXNvbHV0aW9ucy5jb20iLCJpYXQiOjE3Njc3NzQ1MjQsIm5iZiI6MTc2Nzc3NDUyNCwiZXhwIjoxNzcwMzY2NTI0LCJkYXRhIjp7InVzZXIiOnsiaWQiOjUsImRldmljZSI6IiIsInBhc3MiOiIyYjhlMjJlOTM2ZTY0N2JhNDRmOWJhMmY3Y2Q1ZmFjNiJ9fX0.kk0uY8-nQPcfIgJkrWr5j5UQca9RJNzG7LBWhI5jVGE'
       .trim();
 
+  // ✅ Added miniCategoryId here
   Future<AddUpdateItemResponse> addOrUpdateItem({
     required String itemName,
     required int categoryId,
+    int? miniCategoryId, // optional mini-category
+    int? taxId, // ✅
     required int itemQty,
     required int itemPrice,
     required String itemNote,
@@ -36,6 +39,8 @@ class AddUpdateItemRepository {
       'item_price': itemPrice.toString(),
       'item_note': itemNote,
       'item_sku': itemSku,
+      // ✅ Include miniCategoryId if provided
+      if (miniCategoryId != null) 'mini_category_id': miniCategoryId.toString(),
     });
 
     final streamedResponse = await request.send();

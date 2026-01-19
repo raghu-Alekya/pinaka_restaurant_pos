@@ -19,20 +19,29 @@ class PaymentRepository {
     int? zoneId,
     required String orderType,
   }) async {
-    final url =
-        'https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1/orders/get-order-items'
-        '?order_id=$orderId'
-        '&restaurant_id=$restaurantId'
-        '&zone_id=$zoneId'
-        '&order_type=Dine In';
+    final queryParams = <String, String>{
+      "order_id": orderId.toString(),
+      "restaurant_id": restaurantId.toString(),
+      "order_type": orderType, // ✅ use dynamic
+    };
 
+    // ✅ only add zone_id if not null
+    if (zoneId != null) {
+      queryParams["zone_id"] = zoneId.toString();
+    }
 
-    debugPrint("➡️ PAYMENT API URL: $url");
+    final uri = Uri.https(
+      "merchantrestaurant.alektasolutions.com",
+      "/wp-json/pinaka-restaurant-pos/v1/orders/get-order-items",
+      queryParams,
+    );
+
+    debugPrint("➡️ PAYMENT API URL: $uri");
     debugPrint("➡️ TOKEN: $token");
     debugPrint("➡️ ORDER ID: $orderId");
 
     final response = await http.get(
-      Uri.parse(url),
+      uri,
       headers: {
         "Authorization": "Bearer $token",
         "Content-Type": "application/json",
@@ -45,10 +54,8 @@ class PaymentRepository {
     if (response.statusCode == 200) {
       return PaymentSummary.fromJson(jsonDecode(response.body));
     } else {
-      throw Exception(
-        "Payment summary failed: ${response.statusCode}",
-      );
+      throw Exception("Payment summary failed: ${response.body}");
     }
   }
-
 }
+

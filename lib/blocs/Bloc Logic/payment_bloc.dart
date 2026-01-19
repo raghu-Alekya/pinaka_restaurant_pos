@@ -10,9 +10,9 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
   final PaymentRepository repository;
 
   PaymentBloc(this.repository) : super(PaymentInitial()) {
-
     on<LoadPaymentSummary>((event, emit) async {
       emit(PaymentLoading());
+
       try {
         final summary = await repository.fetchOrderPaymentDetails(
           restaurantId: event.restaurantId,
@@ -21,19 +21,27 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
           orderType: event.orderType,
         );
 
-        emit(PaymentSummaryLoaded(summary: summary));
+        emit(
+          PaymentSummaryLoaded(
+            summary: summary,
+            merchantDiscount: summary.discount, // ✅ from API
+          ),
+        );
       } catch (e) {
         emit(PaymentFailure(e.toString()));
       }
     });
 
+
     on<SelectPaymentMethod>((event, emit) {
       if (state is PaymentSummaryLoaded) {
         final current = state as PaymentSummaryLoaded;
+
         emit(
           PaymentSummaryLoaded(
             summary: current.summary,
             selectedMethod: event.method,
+            merchantDiscount: current.merchantDiscount, // ✅ keep it
           ),
         );
       }
@@ -42,12 +50,8 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
     on<ConfirmPayment>((event, emit) async {
       emit(PaymentLoading());
       try {
-        // 🔗 Call Cash / Card / UPI API here
         await Future.delayed(const Duration(seconds: 1));
-
-        emit(PaymentSuccess(
-          "RCPT-${DateTime.now().millisecondsSinceEpoch}",
-        ));
+        emit(PaymentSuccess("RCPT-${DateTime.now().millisecondsSinceEpoch}"));
       } catch (_) {
         emit(PaymentFailure("Payment failed"));
       }
@@ -55,6 +59,20 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
 
     on<ResetPayment>((event, emit) {
       emit(PaymentInitial());
+    });
+
+    on<UpdateMerchantDiscount>((event, emit) {
+      if (state is PaymentSummaryLoaded) {
+        final current = state as PaymentSummaryLoaded;
+
+        emit(
+          PaymentSummaryLoaded(
+            summary: current.summary,
+            selectedMethod: current.selectedMethod,
+            merchantDiscount: event.value, // ✅ update it
+          ),
+        );
+      }
     });
   }
 }

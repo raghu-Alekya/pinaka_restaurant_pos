@@ -8,6 +8,7 @@ import '../../blocs/Bloc Event/kot_event.dart';
 import '../../blocs/Bloc Event/kot_event.dart' as kot_evt;
 import '../../blocs/Bloc Event/order_event.dart';
 import '../../blocs/Bloc Logic/checkin_bloc.dart';
+import '../../blocs/Bloc Logic/discount_bloc.dart';
 import '../../blocs/Bloc Logic/kot_bloc.dart';
 import '../../blocs/Bloc Logic/order_bloc.dart';
 import '../../blocs/Bloc Logic/payment_bloc.dart';
@@ -20,6 +21,7 @@ import '../../models/order/order_items.dart';
 import '../../models/order/KOT_model.dart';
 import '../../models/order/guest_details.dart';
 import '../../repositories/checkin_repository.dart';
+import '../../repositories/discount_repository.dart';
 import '../../repositories/kot_repository.dart';
 import '../../repositories/order_repository.dart';
 import '../../repositories/payment_summary_repository.dart';
@@ -783,15 +785,20 @@ class OrderPanel extends StatelessWidget {
                               value: context.read<OrderBloc>(),
                             ),
 
-                            // ✅ Create PaymentBloc (new instance is fine)
-                            BlocProvider(
-                              create: (_) => PaymentBloc(
-                                PaymentRepository(
-                                  baseUrl: "https://merchantrestaurant.alektasolutions.com",
-                                  token: token,
-                                ),
-                              ),
-                            ),
+
+                            // ✅ PASS SAME PaymentBloc
+                            BlocProvider.value(value: context.read<PaymentBloc>()),
+
+                            // ✅ Remove Discount Bloc (NEW)
+                            // BlocProvider(
+                            //   create: (_) => RemoveDiscountBloc(
+                            //     RemoveDiscountRepository(
+                            //       baseUrl: "https://merchantrestaurant.alektasolutions.com",
+                            //     ),
+                            //   ),
+                            // ),
+                            BlocProvider.value(value: context.read<RemoveDiscountBloc>()),
+
                           ],
                           child: PaymentScreen(
                             loadedTables: loadedTables,

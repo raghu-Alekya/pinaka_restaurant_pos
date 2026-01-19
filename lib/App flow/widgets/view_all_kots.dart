@@ -264,11 +264,13 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                           fontSize: 12)),
                                                   const SizedBox(width: 120),
                                                   Text(
-                                                      "₹${item.price.toStringAsFixed(2)}",
-                                                      style: const TextStyle(
-                                                          fontSize: 12,
-                                                          fontWeight:
-                                                          FontWeight.w500)),
+                                                    "₹${(item.quantity * item.price).toStringAsFixed(2)}",
+                                                    style: const TextStyle(
+                                                      fontSize: 12,
+                                                      fontWeight: FontWeight.w500,
+                                                    ),
+                                                  )
+
                                                 ],
                                               ),
                                               const Divider(

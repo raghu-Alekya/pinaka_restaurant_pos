@@ -47,6 +47,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
   int? shiftId;
 
   Map<String, dynamic>? _selectedUser;
+  // double merchantDiscount = 0.0;
+
 
   @override
   void initState() {
@@ -61,9 +63,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
       context.read<PaymentBloc>().add(
         LoadPaymentSummary(
           restaurantId: widget.restaurantId,
-          orderId: orderBloc.state.orderId,
-          zoneId: orderBloc.state.zoneId,
-          orderType: '',
+          orderId: orderBloc.state.orderId!,
+          zoneId: orderBloc.state.zoneId, // can be null
+          orderType: "Dine In",
+          token: widget.token, // ✅ must pass token
         ),
       );
     });
@@ -122,11 +125,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ),
           );
         }
+        // debugPrint("🟦 Passing merchantDiscount to Sidebar = $merchantDiscount");
+
 
         // ✅ Data Loaded
         if (state is PaymentSummaryLoaded) {
           final paymentSummary = state.summary;
           final orderId = context.read<OrderBloc>().state.orderId; //
+          final merchantDiscount = state.merchantDiscount; // ✅ important
+
           return Scaffold(
             appBar: PreferredSize(
               preferredSize: const Size.fromHeight(60),
@@ -144,9 +151,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   flex: 25,
                   child: BlocProvider(
                     create: (context) => TaxBloc(TaxRepository())..add(LoadTaxesEvent()),
+
+
                     child: Sidebarwidgets(
                       userPermissions: _userPermissions,
                       selectedUser: _selectedUser,
+                      merchantDiscount: merchantDiscount,
                       paymentSummary: paymentSummary,
                     ),
                   ),
@@ -166,6 +176,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     zoneId: widget.zoneId,
                     PaymentSummary: paymentSummary,
                     orderId: orderId,
+                    onMerchantDiscountChanged: (double value) {
+                      debugPrint("🟢 PaymentScreen received merchantDiscount = $value");
+
+                      context.read<PaymentBloc>().add(UpdateMerchantDiscount(value));
+
+                    },
+
                   ),
                 ),
               ],

@@ -5,9 +5,11 @@ import 'package:path/path.dart';
 import 'package:pinaka_restaurant_pos/repositories/category_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/checkin_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/create_payment_repository.dart';
+import 'package:pinaka_restaurant_pos/repositories/discount_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/kot_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/minisubcategory_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/order_repository.dart';
+import 'package:pinaka_restaurant_pos/repositories/payment_summary_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/product_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/repeat_kot_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/subcategory_repository.dart';
@@ -27,9 +29,11 @@ import 'blocs/Bloc Event/kot_event.dart';
 import 'blocs/Bloc Logic/auth_bloc.dart';
 import 'blocs/Bloc Logic/category_bloc.dart';
 import 'blocs/Bloc Logic/create_payment_bloc.dart';
+import 'blocs/Bloc Logic/discount_bloc.dart';
 import 'blocs/Bloc Logic/kot_bloc.dart';
 import 'blocs/Bloc Logic/minisubcategory_bloc.dart';
 import 'blocs/Bloc Logic/order_bloc.dart';
+import 'blocs/Bloc Logic/payment_bloc.dart';
 import 'blocs/Bloc Logic/product_bloc.dart';
 import 'blocs/Bloc Logic/subcategory_bloc.dart';
 import 'blocs/Bloc Logic/table_bloc.dart';
@@ -156,6 +160,21 @@ class MyApp extends StatelessWidget {
           BlocProvider<CreatePaymentBloc>(
             create: (_) => CreatePaymentBloc(
               CreatePaymentRepository(),
+            ),
+          ),
+          BlocProvider<PaymentBloc>(
+            create: (_) => PaymentBloc(
+              PaymentRepository(
+                baseUrl: "https://merchantrestaurant.alektasolutions.com",
+                token: token, // ✅ use real token
+              ),
+            ),
+          ),
+          BlocProvider(
+            create: (_) => RemoveDiscountBloc(
+              RemoveDiscountRepository(
+                baseUrl: "https://merchantrestaurant.alektasolutions.com",
+              ),
             ),
           ),
 

@@ -36,8 +36,10 @@ class PaymentSummary {
       // 🔥 backend uses "Fees" (capital F)
       fees: (json['Fees'] ?? 0).toDouble(),
 
-      // 🔥 backend DOES NOT send discount
-      discount: (json['discount'] ?? 0).toDouble(),
+      // ✅ FIXED: read merchant_discount
+      discount: double.tryParse(
+        (json['merchant_discount'] ?? json['discount'] ?? 0).toString(),
+      ) ?? 0.0,
 
       coupons: (json['coupons'] ?? 0).toDouble(),
       netTotal: (json['net_total'] ?? 0).toDouble(),

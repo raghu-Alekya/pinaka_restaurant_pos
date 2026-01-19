@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../blocs/Bloc Event/discount_event.dart';
+import '../../blocs/Bloc Event/payment_event.dart';
 import '../../blocs/Bloc Logic/discount_bloc.dart';
+import '../../blocs/Bloc Logic/payment_bloc.dart';
 import '../../blocs/Bloc State/discount_stata.dart';
 import '../../models/payment/discount_model.dart';
 enum DiscountType { percent, amount }
@@ -187,16 +189,20 @@ class _DiscountPopupState extends State<DiscountPopup> {
         debugPrint('🟣 [DiscountPopup] BlocListener state = ${state.runtimeType}');
 
         if (state is DiscountSuccess) {
-          debugPrint('✅ [DiscountPopup] DiscountSuccess received → closing dialog');
-
           final appliedDiscount = isNCSelected
               ? payableAmount
               : selectedType == DiscountType.percent
-              ? (payableAmount * (double.tryParse(discountController.text) ?? 0)) / 100
+              ? (payableAmount *
+              (double.tryParse(discountController.text) ?? 0)) /
+              100
               : double.tryParse(discountController.text) ?? 0;
+
+          // ✅ SAVE discount in PaymentBloc so it won't reset after refresh
+          // context.read<PaymentBloc>().add(UpdateMerchantDiscount(appliedDiscount));
 
           Navigator.pop(context, appliedDiscount);
         }
+
 
 
         if (state is DiscountFailure) {

@@ -111,3 +111,38 @@ class AddDiscountRepository {
     }
   }
 }
+class RemoveDiscountRepository {
+  final String baseUrl;
+
+  RemoveDiscountRepository({required this.baseUrl});
+
+  Future<RemoveDiscountResponseModel> removeDiscount({
+    required String token,
+    required int orderId,
+    required String isNc, // "yes" or "no"
+  }) async {
+    final url = Uri.parse(
+      "$baseUrl/wp-json/pinaka-restaurant-pos/v1/orders/remove-discount",
+    );
+
+    final response = await http.post(
+      url,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
+      },
+      body: jsonEncode({
+        "order_id": orderId,
+        "is_nc": isNc,
+      }),
+    );
+
+    final decoded = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return RemoveDiscountResponseModel.fromJson(decoded);
+    } else {
+      throw Exception(decoded["message"] ?? "Failed to remove discount");
+    }
+  }
+}

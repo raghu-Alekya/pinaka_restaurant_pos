@@ -4,18 +4,23 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:pinaka_restaurant_pos/models/payment/payment_summary_model.dart';
 
+import '../../blocs/Bloc Logic/payment_bloc.dart';
 import '../../blocs/Bloc Logic/tax_bloc.dart';
+import '../../blocs/Bloc State/payment_state.dart';
 import '../../blocs/Bloc State/tax_state.dart';
 import '../../models/tax_model.dart';
 
 class Sidebarwidgets extends StatefulWidget {
   final PaymentSummary paymentSummary;
+  final double merchantDiscount;
+
 
   const Sidebarwidgets({
     super.key,
     required this.paymentSummary,
     required userPermissions,
     Map<String, dynamic>? selectedUser,
+    required this.merchantDiscount,
   });
 
   @override
@@ -42,8 +47,11 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
   // double totalTax = 0;
   double liquorCgst = 0;
   double liquorSgst = 0;
-  final merchantDiscount = 0.0;
-  double _calculatedNetPayable = 0.0;
+  double netPayable = 0.0;
+
+  // final merchantDiscount = 0.0;
+  double calculatedNetPayable = 0.0;
+
 
   // until backend provides it
 
@@ -64,6 +72,7 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
         ?? '';
   }
 
+
   @override
   void initState() {
     super.initState();
@@ -71,8 +80,8 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
         AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
     _heightAnimation = Tween<double>(begin: 60, end: 260).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+
     );
-    // _calculateTaxes();
   }
 
   void _toggleExpand() {
@@ -415,8 +424,23 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                   return const Center(child: CircularProgressIndicator());
                 }
                 final grossTotal = widget.paymentSummary.grossTotal;
-                final couponDiscount = widget.paymentSummary.discount;
-                final merchantDiscount = 0.0; // backend not available yet
+                final couponDiscount = widget.paymentSummary.coupons;
+                // final merchantDiscount = widget.paymentSummary.discount ?? 0.0;
+                // final merchantDiscount = widget.merchantDiscount;
+                // double netPayable = widget.paymentSummary.netTotal;
+                // final double merchantDiscount = context.select((PaymentBloc bloc) {
+                //   return bloc.state is PaymentSummaryLoaded
+                //       ? (bloc.state as PaymentSummaryLoaded).merchantDiscount
+                //       : 0.0;
+                // });
+                final double merchantDiscount = widget.merchantDiscount;
+
+
+                final double backendNetPayable =
+                    widget.paymentSummary.netTotal -  widget.merchantDiscount.abs();
+
+
+// backend not available yet
 
                 final subTotal = grossTotal - couponDiscount;
                 // final netPayable = subTotal + totalTax - merchantDiscount;
@@ -512,7 +536,18 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                           beverageCgst +
                           beverageSgst;
                   final netTotal = subTotal + totalTax;
-                  final netPayable = netTotal - merchantDiscount;
+                  // final netPayable = netTotal - merchantDiscount;
+
+                  // calculatedNetPayable = netTotal - merchantDiscount;
+                  final tempPayable = netTotal - merchantDiscount.abs();
+
+                  // ✅ UPDATE CLASS VARIABLE (so bottom bar can use it)
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) return;
+                    setState(() {
+                      calculatedNetPayable = tempPayable;
+                    });
+                  });
 
 
 
@@ -527,6 +562,7 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                   debugPrint('🍺 Liquor SGST    : $liquorSgst');
                   debugPrint('💰 TOTAL TAX      : $totalTax');
                   debugPrint('===================================================');
+                  debugPrint("💙 Showing Merchant Discount in UI = ${widget.merchantDiscount}");
 
                   return Column(
                     mainAxisSize: MainAxisSize.min,
@@ -625,12 +661,9 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
 
                       ),
 
+                      _row("Merchant Discount", merchantDiscount.abs(), color: Colors.blue),
 
-                      _row(
-                        "Merchant Discount",
-                        -merchantDiscount,
-                        color: Colors.blue,
-                      ),
+
                       // const DottedLine(),
 
 
@@ -643,10 +676,11 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
 
                       _row(
                         "Net Payable",
-                        widget.paymentSummary.netTotal,
+                        tempPayable,
                         isBold: true,
                         fontSize: 18,
                       ),
+
 
                     ],
                   );
@@ -697,12 +731,13 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
 
               /// NET PAYABLE
               Text(
-                "Net Payable : ${widget.paymentSummary.netTotal.toStringAsFixed(2)}",
+                "Net Payable : ${ calculatedNetPayable.toStringAsFixed(2)}",
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
                 ),
               ),
+
 
               const SizedBox(width: 6),
 

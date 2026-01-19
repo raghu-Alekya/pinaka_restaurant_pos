@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
-
+import '../../models/inventory/category_sublist_model.dart';
 import '../../models/inventory/bev_model.dart';
-// import '../../models/inventory/bevmodel.dart';
-// import '../../repositories/add_item_inventory.dart';
+// import '../../models/inventory/tax_model.dart';
+import '../../models/inventory/tax_inventory_model.dart';
+import '../../repositories/inventory_repository/Category_Sublist_Repository.dart';
 import '../../repositories/inventory_repository/add_item_repository.dart';
-
-
+import '../../repositories/inventory_repository/beverage_iventory_repository.dart';
+// import '../../repositories/inventory_repository/tax_repository.dart';
+import '../../repositories/inventory_repository/tax_inventory_repository.dart';
+import 'dashboard.dart';
 
 class AddItemDialog extends StatefulWidget {
+
   final Function(Products product) onItemAdded;
 
   const AddItemDialog({super.key, required this.onItemAdded});
@@ -17,91 +21,223 @@ class AddItemDialog extends StatefulWidget {
 }
 
 class _AddItemDialogState extends State<AddItemDialog> {
+  // Controllers
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _skuController = TextEditingController();
   final TextEditingController _unitsController = TextEditingController();
   final TextEditingController _thresholdController = TextEditingController();
-  final TextEditingController _categoryController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
-
-  // Add the imageUrl controller here
+  final TextEditingController _categoryController = TextEditingController();
+  final TextEditingController _subCategoryController = TextEditingController();
   final TextEditingController _imageUrlController = TextEditingController();
-  final AddUpdateItemRepository _repository = AddUpdateItemRepository();
-  final List<String> _categories = [
-    'Beer',
-    'Brandy',
-    'Cocktails',
-    'Coffee & Tea',
-    'Energy Drinks',
-    'Juices',
-    'Liquers & Bitters',
-    'Mocktails',
-    'Milkshakes / Smoothies',
-    'Soft Drinks',
-    'Spirits',
-    'Water',
-    'Wine',
-    'Custom',
-    'Uncategorized',
-  ];
+  final TextEditingController _miniCategoryController = TextEditingController();
+  final TextEditingController _taxController = TextEditingController();
 
-  void _showCategoryPicker(BuildContext context) async {
+  final AddUpdateItemRepository _repository = AddUpdateItemRepository();
+  List<TaxInventoryModel> taxes = [];
+  TaxInventoryModel? selectedTax;
+  bool showTaxList = false;
+
+  // Categories
+  CategorySublistResponse? categoryResponse;
+  CategoryItem? selectedCategory;
+  CategoryItem? selectedSubCategory;
+  MiniCategory? selectedMiniCategory;
+  bool showCategoryList = false;
+  bool showSubCategoryList = false;
+  bool showParentCategoryList = false;
+  bool showMiniCategoryList = false;
+
+  CategoryItem? expandedSubCategory;
+  List<CategorySublistResponse> parentCategories = [];
+  CategorySublistResponse? selectedParentCategory;
+  bool isSubmitting = false;
+
+  bool isLoading = false;
+  String? error;
+
+
+  final String token =
+      'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvbWVyY2hhbnRyZXN0YXVyYW50LmFsZWt0YXNvbHV0aW9ucy5jb20iLCJpYXQiOjE3NjgyMDMwNjQsIm5iZiI6MTc2ODIwMzA2NCwiZXhwIjoxNzcwNzk1MDY0LCJkYXRhIjp7InVzZXIiOnsiaWQiOjUsImRldmljZSI6IiIsInBhc3MiOiIyYjhlMjJlOTM2ZTY0N2JhNDRmOWJhMmY3Y2Q1ZmFjNiJ9fX0.vBVcnan6C9hN-ZDGN1vgpN_MkuT4twI-_WqXGOTgAio';
+
+  @override
+  void initState() {
+    super.initState();
+    fetchCategories();
+    fetchTaxes();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _skuController.dispose();
+    _unitsController.dispose();
+    _thresholdController.dispose();
+    _notesController.dispose();
+    _categoryController.dispose();
+    _subCategoryController.dispose();
+    _imageUrlController.dispose();
+    _miniCategoryController.dispose();
+    _taxController.dispose();
+    super.dispose();
+  }
+
+
+  Future<void> fetchTaxes() async {
+    try {
+      final repo =TaxinventoryRepository(token);
+      final data = await repo.fetchTaxes();
+      setState(() => taxes = data);
+    } catch (e) {
+      debugPrint("❌ Tax error: $e");
+    }
+  }
+  Future<void> fetchCategories() async {
+    setState(() {
+      isLoading = true;
+      error = null;
+    });
+
+    try {
+      final repo = CategorySublistRepository(
+        baseUrl: 'https://merchantrestaurant.alektasolutions.com',
+      );
+
+      final alcohol = await repo.fetchCategorySublist(
+        categoryId: 131,
+        token: token,
+      );
+      final beverages = await repo.fetchCategorySublist(
+        categoryId: 228,
+        token: token,
+      );
+
+      setState(() {
+        parentCategories = [alcohol, beverages];
+      });
+
+      print("📦 Parent categories fetched:");
+      for (var p in parentCategories) {
+        print(
+          "Parent: ${p.parentName}, Categories count: ${p.categories.length}",
+        );
+        for (var c in p.categories) {
+          print(
+            "  → SubCategory: ${c.name}, Children count: ${c.children.length}",
+          );
+          for (var m in c.children) {
+            print("      → MiniCategory: ${m.name}");
+          }
+        }
+      }
+    } catch (e) {
+      setState(() => error = e.toString());
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
+  // Show category picker
+  Future<void> _showCategoryPicker(BuildContext context) async {
+    if (categoryResponse == null) return;
     final RenderBox box = context.findRenderObject() as RenderBox;
     final Offset offset = box.localToGlobal(Offset.zero);
 
-    final selected = await showMenu<String>(
+    final CategoryItem? selected = await showMenu<CategoryItem>(
       context: context,
-      color: Colors.white,
       position: RelativeRect.fromLTRB(
         offset.dx,
         offset.dy + box.size.height + 2,
         offset.dx + box.size.width,
         0,
       ),
-      constraints: const BoxConstraints(
-        maxHeight: 220,
-        minWidth: 250,
-      ),
-      items: _categories
-          .map(
-            (item) => PopupMenuItem<String>(
-          value: item,
-          height: 36,
-          child: Text(
-            item,
-            style: const TextStyle(fontSize: 14),
-          ),
-        ),
+      items:
+      categoryResponse!.categories
+          .map<PopupMenuEntry<CategoryItem>>(
+            (cat) => PopupMenuItem(value: cat, child: Text(cat.name)),
       )
           .toList(),
     );
 
     if (selected != null) {
       setState(() {
-        _categoryController.text = selected;
+        selectedCategory = selected;
+        selectedSubCategory = null;
+        selectedMiniCategory = null;
+        _categoryController.text = selected.name;
+        _subCategoryController.text = '';
       });
     }
   }
 
+  // Show subcategory picker
+  Future<void> _showSubCategoryPicker(BuildContext context) async {
+    if (selectedCategory == null || selectedCategory!.children.isEmpty) return;
+    final RenderBox box = context.findRenderObject() as RenderBox;
+    final Offset offset = box.localToGlobal(Offset.zero);
+
+    // Change type to MiniCategory
+    final MiniCategory? selected = await showMenu<MiniCategory>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        offset.dx,
+        offset.dy + box.size.height + 2,
+        offset.dx + box.size.width,
+        0,
+      ),
+      items:
+      selectedCategory!.children
+          .map<PopupMenuEntry<MiniCategory>>(
+            (mini) => PopupMenuItem(value: mini, child: Text(mini.name)),
+      )
+          .toList(),
+    );
+
+    if (selected != null) {
+      setState(() {
+        selectedMiniCategory = selected;
+        _subCategoryController.text = selected.name;
+      });
+    }
+  }
+
+  // Product fetch
+  Future<void> fetchProducts({required int categoryId}) async {
+    try {
+      setState(() => isLoading = true);
+      final repo = ProductRepository();
+      final model = await repo.getProducts(categoryId: categoryId);
+      if (model.products.isNotEmpty) widget.onItemAdded(model.products.first);
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       title: const Center(
-        child: Text(
-          "Add Stock",
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
+        child: Text("Add Stock", style: TextStyle(fontWeight: FontWeight.w600)),
       ),
-      content: SingleChildScrollView(
-        child: SizedBox(
-          width: 500,
+      content: SizedBox(
+        width: 500,
+        child:
+        isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : error != null
+            ? Center(child: Text(error!))
+            : SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 6),
+              // ===== FIRST ROW: Product Name + SKU =====
               Row(
                 children: [
                   Expanded(
@@ -113,112 +249,198 @@ class _AddItemDialogState extends State<AddItemDialog> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                            "Category", style: TextStyle(fontWeight: FontWeight
-                            .bold)),
-                        const SizedBox(height: 2),
-                        SizedBox(
-                          height: 40,
-                          child: Builder(
-                            builder: (context) => GestureDetector(
-                              onTap: () => _showCategoryPicker(context),
-                              child: AbsorbPointer(
-                                child: TextField(
-                                  controller: _categoryController,
-                                  readOnly: true,
-                                  style: const TextStyle(fontSize: 14),
-                                  decoration: InputDecoration(
-                                    hintText: "Select category",
-                                    contentPadding:
-                                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderSide: const BorderSide(color: Colors.grey),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderSide: const BorderSide(color: Colors.black),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    suffixIcon: const Icon(Icons.keyboard_arrow_down),
-                                  ),
-                                ),
-                              ),
+                    child: _buildLabeledField(
+                      label: "SKU Code",
+                      controller: _skuController,
+                      hint: "Enter SKU code",
+                      suffix: GestureDetector(
+                        onTap: () {
+                          _skuController.text =
+                          "SKU-${DateTime.now().millisecondsSinceEpoch}";
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: ShapeDecoration(
+                            color: const Color(0xFFFE6464),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text(
+                            "Generate",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
                             ),
                           ),
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 10),
+              // ===== SECOND ROW: Category + SubCategory =====
               Row(
                 children: [
+                  // ===== CATEGORY PICKER =====
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                            "SKU Code", style: TextStyle(fontWeight: FontWeight
-                            .bold)),
-                        const SizedBox(height: 4),
-                        SizedBox(
-                          height: 40,
-                          child: TextField(
-                            controller: _skuController,
-                            style: const TextStyle(fontSize: 14),
-                            decoration: InputDecoration(
-                              hintText: "Enter SKU code",
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 8),
-                              border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8)),
-                              enabledBorder: OutlineInputBorder(
-                                borderSide: const BorderSide(
-                                    color: Colors.grey),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderSide: const BorderSide(
-                                    color: Colors.black),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              suffix: GestureDetector(
-                                onTap: () {
-                                  _skuController.text = "SKU-${DateTime
-                                      .now()
-                                      .millisecondsSinceEpoch}";
-                                },
-                                child: Container(
-                                  margin: const EdgeInsets.only(left: 0),
-                                  padding: const EdgeInsets.fromLTRB(
-                                      10, 6, 16, 4),
-                                  decoration: ShapeDecoration(
-                                    color: const Color(0xFFFE6464),
-                                    shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8)),
-                                  ),
-                                  child: const Text(
-                                    "Generate",
-                                    style: TextStyle(color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12),
-                                  ),
-                                ),
-                              ),
+                        _buildPickerField(
+                          label: "Category",
+                          controller: _categoryController,
+                          onTap: () {
+                            setState(() {
+                              showParentCategoryList = !showParentCategoryList;
+                              showSubCategoryList = false;
+                              showMiniCategoryList = false;
+                            });
+                          },
+                        ),
+                        if (showParentCategoryList)
+                          Container(
+                            margin: const EdgeInsets.only(top: 4),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey),
+                              borderRadius: BorderRadius.circular(8),
+                              color: Colors.white,
+                            ),
+                            constraints: BoxConstraints(maxHeight: 200),
+                            child: ListView(
+                              shrinkWrap: true,
+                              children: parentCategories.map((parent) {
+                                return ListTile(
+                                  title: Text(parent.parentName),
+                                  onTap: () {
+                                    setState(() {
+                                      selectedParentCategory = parent;
+                                      _categoryController.text = parent.parentName;
+
+                                      // reset sub & mini
+                                      selectedCategory = null;
+                                      selectedMiniCategory = null;
+                                      _subCategoryController.clear();
+                                      _miniCategoryController.clear();
+
+                                      showParentCategoryList = false;
+                                    });
+                                  },
+                                );
+                              }).toList(),
                             ),
                           ),
-                        ),
                       ],
                     ),
                   ),
+
                   const SizedBox(width: 12),
+
+                  // ===== SUBCATEGORY PICKER =====
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildPickerField(
+                          label: "Sub Category",
+                          controller: _subCategoryController,
+                          onTap: () {
+                            if (selectedParentCategory == null) return;
+                            setState(() {
+                              showSubCategoryList = !showSubCategoryList;
+                              showMiniCategoryList = false;
+                            });
+                          },
+                        ),
+                        if (showSubCategoryList && selectedParentCategory != null)
+                          Container(
+                            margin: const EdgeInsets.only(top: 4),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey),
+                              borderRadius: BorderRadius.circular(8),
+                              color: Colors.white,
+                            ),
+                            constraints: BoxConstraints(maxHeight: 200),
+                            child: ListView(
+                              shrinkWrap: true,
+                              children: selectedParentCategory!.categories.map((sub) {
+                                return ListTile(
+                                  title: Text(sub.name),
+                                  onTap: () {
+                                    setState(() {
+                                      selectedCategory = sub;
+                                      _subCategoryController.text = sub.name;
+
+                                      // reset mini
+                                      selectedMiniCategory = null;
+                                      _miniCategoryController.clear();
+
+                                      showSubCategoryList = false;
+                                      showMiniCategoryList = true; // optionally open mini
+                                    });
+                                  },
+                                );
+                              }).toList(),
+                            ),
+                          ),
+
+                        // ===== MINI CATEGORY BELOW SUBCATEGORY =====
+                        if (selectedCategory != null && selectedCategory!.children.isNotEmpty)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 8),
+                              _buildPickerField(
+                                label: "Mini Category",
+                                controller: _miniCategoryController,
+                                onTap: () {
+                                  setState(() {
+                                    showMiniCategoryList = !showMiniCategoryList;
+                                  });
+                                },
+                              ),
+                              if (showMiniCategoryList)
+                                Container(
+                                  margin: const EdgeInsets.only(top: 4),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: Colors.grey),
+                                    borderRadius: BorderRadius.circular(8),
+                                    color: Colors.white,
+                                  ),
+                                  constraints: BoxConstraints(maxHeight: 200),
+                                  child: ListView(
+                                    shrinkWrap: true,
+                                    children: selectedCategory!.children.map((mini) {
+                                      return ListTile(
+                                        title: Text(mini.name),
+                                        onTap: () {
+                                          setState(() {
+                                            selectedMiniCategory = mini;
+                                            _miniCategoryController.text = mini.name;
+                                            showMiniCategoryList = false;
+                                          });
+                                        },
+                                      );
+                                    }).toList(),
+                                  ),
+                                ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 10),
+              // ===== THIRD ROW: Stock + Price + Notes =====
+              Row(
+                children: [
                   Expanded(
                     child: _buildLabeledField(
                       label: "Stock Quantity",
@@ -227,11 +449,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
                       isNumber: true,
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
+                  const SizedBox(width: 12),
                   Expanded(
                     child: _buildLabeledField(
                       label: "Unit Price",
@@ -240,29 +458,65 @@ class _AddItemDialogState extends State<AddItemDialog> {
                       isNumber: true,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  //  Tax dropdown
                   Expanded(
+                    flex: 2,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                            "Notes", style: TextStyle(fontWeight: FontWeight
-                            .bold)),
-                        const SizedBox(height: 4),
-                        TextField(
-                          controller: _notesController,
-                          decoration: const InputDecoration(
-                            hintText: "Add notes (optional)",
-                            hintStyle: TextStyle(
-                                color: Color(0xFF949494), fontSize: 14),
-                            border: UnderlineInputBorder(),
-                            enabledBorder: UnderlineInputBorder(
-                                borderSide: BorderSide(color: Colors.grey)),
-                            focusedBorder: UnderlineInputBorder(
-                                borderSide: BorderSide(color: Colors.black)),
-                          ),
+                        _buildPickerField(
+                          label: "Tax",
+                          controller: _taxController,
+                          onTap: () {
+                            setState(() => showTaxList = !showTaxList);
+                          },
                         ),
+                        if (showTaxList)
+                          Container(
+                            margin: const EdgeInsets.only(top: 1),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey),
+                              borderRadius: BorderRadius.circular(8),
+                              color: Colors.white,
+                            ),
+                            constraints: const BoxConstraints(maxHeight: 150),
+                            child: ListView(
+                              shrinkWrap: true,
+                              children: taxes.map((tax) {
+                                return ListTile(
+                                  title: Text(tax.name),
+                                  onTap: () {
+                                    setState(() {
+                                      selectedTax = tax;
+                                      _taxController.text = tax.name;
+
+                                      showTaxList = false;
+                                    });
+                                  },
+                                );
+                              }).toList(),
+                            ),
+                          ),
                       ],
+                    ),
+                  ),
+
+                  const SizedBox(width: 12),
+
+                  // ===== NOTES =====
+                  Expanded(
+                    flex: 2,
+                    child: _buildLabeledField(
+                      label: "Notes",
+                      controller: _notesController,
+                      hint: "Add notes (optional)",
+                      maxLines: 1,
                     ),
                   ),
                 ],
@@ -271,10 +525,101 @@ class _AddItemDialogState extends State<AddItemDialog> {
           ),
         ),
       ),
-      actionsPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      actions: [
-        _buildCancelButton(context),
-        _buildAddButton(context),
+      actions: [_buildCancelButton(context), _buildAddButton(context)],
+    );
+  }
+
+  Widget _buildLabeledField({
+    required String label,
+    required TextEditingController controller,
+    required String hint,
+    bool isNumber = false,
+    int maxLines = 1,
+    Widget? suffix,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+        ),
+        const SizedBox(height: 4),
+        SizedBox(
+          height: 38.0 * (maxLines > 1 ? maxLines : 1),
+          child: TextField(
+            controller: controller,
+            keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+            maxLines: maxLines,
+            decoration: InputDecoration(
+              hintText: hint,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderSide: const BorderSide(color: Colors.grey),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderSide: const BorderSide(color: Colors.black),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              suffixIcon: suffix,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPickerField({
+    required String label,
+    required TextEditingController controller,
+    required VoidCallback onTap,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+        ),
+        const SizedBox(height: 4),
+        SizedBox(
+          height: 38,
+          child: GestureDetector(
+            onTap: onTap,
+            child: AbsorbPointer(
+              child: TextField(
+                controller: controller,
+                readOnly: true,
+                decoration: InputDecoration(
+                  hintText: "Select $label",
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: const BorderSide(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: const BorderSide(color: Colors.black),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  suffixIcon: const Icon(Icons.keyboard_arrow_down),
+                ),
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -301,7 +646,6 @@ class _AddItemDialogState extends State<AddItemDialog> {
               color: Color(0xFFE44F29),
               fontSize: 14,
               fontWeight: FontWeight.w700,
-              letterSpacing: -0.18,
             ),
           ),
         ),
@@ -318,41 +662,64 @@ class _AddItemDialogState extends State<AddItemDialog> {
           backgroundColor: const Color(0xFF4C81F1),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
-        onPressed: () async {
+        onPressed:
+        isSubmitting
+            ? null
+            : () async {
+          print("🟢 ADD BUTTON PRESSED");
+          setState(() => isSubmitting = true);
+
+          // Validation
           if (_nameController.text.isEmpty ||
               _skuController.text.isEmpty ||
               _unitsController.text.isEmpty ||
               _thresholdController.text.isEmpty) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("All required fields must be filled")),
+              const SnackBar(
+                content: Text("All required fields must be filled"),
+              ),
             );
+            setState(() => isSubmitting = false);
             return;
           }
-          print("⏳ Sending item to backend: ${_nameController.text.trim()}");
-          // ✅ Show loading
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (_) => const Center(child: CircularProgressIndicator()),
+          print(
+            "🧪 Mini Category ID being sent: ${selectedMiniCategory?.id}",
           );
+          print(
+            "⏳ Sending item to backend: ${_nameController.text.trim()}",
+          );
+          print("📤 tax_id: ${selectedTax?.id}");
+
+          print(" Name: ${_nameController.text.trim()}");
+          print(" SKU: ${_skuController.text.trim()}");
+          print(" Stock: ${_unitsController.text.trim()}");
+          print(" Price: ${_thresholdController.text.trim()}");
+          print(
+            " Parent Category: ${selectedParentCategory?.parentName}",
+          );
+          print(" Sub Category: ${selectedCategory?.name}");
+          print(" Mini Category: ${selectedMiniCategory?.name}");
+          print(" Notes: ${_notesController.text.trim()}");
+          print("📤 category_id (sub): ${selectedCategory?.id}");
+          print("📤 mini_category_id: ${selectedMiniCategory?.id}");
 
           try {
-            // Call API
             final response = await _repository.addOrUpdateItem(
               itemName: _nameController.text.trim(),
-              categoryId: 1, // Replace with your actual category ID mapping
+              categoryId: selectedCategory?.id ?? 0,
+              miniCategoryId: selectedMiniCategory?.id,
+              taxId: selectedTax?.id,
               itemQty: int.tryParse(_unitsController.text.trim()) ?? 0,
-              itemPrice: int.tryParse(_thresholdController.text.trim()) ?? 0,
+              itemPrice:
+              int.tryParse(_thresholdController.text.trim()) ?? 0,
               itemNote: _notesController.text.trim(),
               itemSku: _skuController.text.trim(),
             );
 
-            Navigator.pop(context); // close loader
-            print("📤 Backend response: status=${response.status}, message=${response.message}, id=${response.itemId}");
-
+            if (!mounted) return;
 
             if (response.isCreated) {
-              // ✅ Create local Products object from API response
+              // Create product object
               final product = Products(
                 id: response.itemId,
                 itemName: _nameController.text.trim(),
@@ -361,21 +728,31 @@ class _AddItemDialogState extends State<AddItemDialog> {
                 soldTotal: 0,
                 statusLabel: "Normal",
                 statusColor: "#4CAF50",
-                image: _imageUrlController.text.trim(), sku: '',
+                image: _imageUrlController.text.trim(),
+                sku: '',
               );
-              print("✅ Item created on backend: ${product.itemName}, ID: ${product.id}");
+
+              // Call parent callback
               widget.onItemAdded(product);
-              Navigator.pop(context); // close dialog
+
+              // ✅ Pop dialog
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const Dashboard(token: '', pin: '', restaurantId: '', restaurantName: '',)),
+              );
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text("Failed: ${response.message}")),
               );
             }
           } catch (e) {
-            Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text("Error: $e")),
-            );
+            if (mounted) {
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text("Error: $e")));
+            }
+          } finally {
+            if (mounted) setState(() => isSubmitting = false);
           }
         },
         child: const Text(
@@ -387,43 +764,6 @@ class _AddItemDialogState extends State<AddItemDialog> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildLabeledField({
-    required String label,
-    required TextEditingController controller,
-    required String hint,
-    bool isNumber = false,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-        const SizedBox(height: 4),
-        SizedBox(
-          height: 38,
-          child: TextField(
-            controller: controller,
-            keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-            style: const TextStyle(fontSize: 14, color: Colors.black),
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: const TextStyle(color: Color(0xFF949494), fontSize: 14),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-              enabledBorder: OutlineInputBorder(
-                borderSide: const BorderSide(color: Colors.grey),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderSide: const BorderSide(color: Colors.black),
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

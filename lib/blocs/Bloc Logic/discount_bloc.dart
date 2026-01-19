@@ -51,3 +51,25 @@ class DiscountBloc extends Bloc<DiscountEvent, DiscountState> {
     }
   }
 }
+class RemoveDiscountBloc
+    extends Bloc<RemoveDiscountEvent, RemoveDiscountState> {
+  final RemoveDiscountRepository repository;
+
+  RemoveDiscountBloc(this.repository) : super(RemoveDiscountInitial()) {
+    on<RemoveDiscountRequested>((event, emit) async {
+      try {
+        emit(RemoveDiscountLoading());
+
+        final result = await repository.removeDiscount(
+          token: event.token,
+          orderId: event.orderId,
+          isNc: event.isNc,
+        );
+
+        emit(RemoveDiscountSuccess(result));
+      } catch (e) {
+        emit(RemoveDiscountFailure(e.toString()));
+      }
+    });
+  }
+}

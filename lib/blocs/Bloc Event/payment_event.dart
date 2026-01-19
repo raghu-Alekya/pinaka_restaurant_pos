@@ -11,6 +11,7 @@ class LoadPaymentSummary extends PaymentEvent {
     required this.orderId,
     this.zoneId,
     required this.orderType,
+    required String token,
   });
 }
 
@@ -25,3 +26,10 @@ class ConfirmPayment extends PaymentEvent {
 }
 
 class ResetPayment extends PaymentEvent {}
+/// ✅ ADD THIS EVENT
+class UpdateMerchantDiscount extends PaymentEvent {
+  final double value;
+  UpdateMerchantDiscount(this.value);
+}
+
+
