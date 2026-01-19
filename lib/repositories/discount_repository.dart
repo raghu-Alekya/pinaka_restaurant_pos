@@ -112,18 +112,32 @@ class AddDiscountRepository {
   }
 }
 class RemoveDiscountRepository {
-  final String baseUrl;
+  final String baseUrl =
+      "https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1";
 
-  RemoveDiscountRepository({required this.baseUrl});
+  /// ✅ Single source of truth
+  Future<String> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    if (token == null || token.isEmpty) {
+      throw Exception("JWT token missing");
+    }
+
+    return token.startsWith('Bearer ') ? token.substring(7) : token;
+  }
 
   Future<RemoveDiscountResponseModel> removeDiscount({
-    required String token,
     required int orderId,
     required String isNc, // "yes" or "no"
   }) async {
-    final url = Uri.parse(
-      "$baseUrl/wp-json/pinaka-restaurant-pos/v1/orders/remove-discount",
-    );
+    final token = await _getToken();
+
+    final url = Uri.parse("$baseUrl/orders/remove-discount");
+
+    print("➡️ [REMOVE DISCOUNT API]");
+    print("➡️ URL: $url");
+    print("➡️ BODY: ${jsonEncode({"order_id": orderId, "is_nc": isNc})}");
 
     final response = await http.post(
       url,
@@ -136,6 +150,9 @@ class RemoveDiscountRepository {
         "is_nc": isNc,
       }),
     );
+
+    print("⬅️ STATUS CODE: ${response.statusCode}");
+    print("⬅️ RESPONSE BODY: ${response.body}");
 
     final decoded = jsonDecode(response.body);
 

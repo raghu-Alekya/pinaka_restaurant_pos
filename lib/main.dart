@@ -166,14 +166,14 @@ class MyApp extends StatelessWidget {
             create: (_) => PaymentBloc(
               PaymentRepository(
                 baseUrl: "https://merchantrestaurant.alektasolutions.com",
-                token: token, // ✅ use real token
+                // token: token, // ✅ use real token
               ),
             ),
           ),
           BlocProvider(
             create: (_) => RemoveDiscountBloc(
               RemoveDiscountRepository(
-                baseUrl: "https://merchantrestaurant.alektasolutions.com",
+                // baseUrl: "https://merchantrestaurant.alektasolutions.com",
               ),
             ),
           ),

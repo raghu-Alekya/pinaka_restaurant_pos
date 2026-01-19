@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../blocs/Bloc Event/order_list_event.dart';
+import '../../blocs/Bloc Logic/order_list_bloc.dart';
+// import '../../blocs/Bloc Logic/orders_list_bloc.dart';
+import '../../repositories/order_list_repository.dart';
+// import '../../repositories/orders_list_repository.dart';
 import '../inventory/dashboard.dart';
 import '../ui/KitchenStatusScreen.dart';
 import '../../local database/table_dao.dart';
+import '../ui/orderstatus_screen.dart';
 import '../ui/tables_screen.dart';
 import '../ui/reservation_list_screen.dart';
 import '../ui/dashboard_screen.dart';
@@ -74,7 +81,27 @@ class NavigationHelper {
           ),
         ),
       );
-    }else if (tappedIndex == 8) {
+    }
+    else if (tappedIndex == 4) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => BlocProvider(
+            create: (_) => OrderstatusBloc(OrderstatusRepository())..add(FetchOrders(token: token)),
+            child: OrdersListTable(
+              token: token,
+              pin: pin,
+              restaurantId: restaurantId,
+              restaurantName: restaurantName,
+              userPermissions: userPermissions,
+              orders: [], // you can pass empty; Bloc will fetch
+            ),
+          ),
+        ),
+      );
+    }
+
+    else if (tappedIndex == 8) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(

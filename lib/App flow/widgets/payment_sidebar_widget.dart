@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:pinaka_restaurant_pos/models/payment/payment_summary_model.dart';
 
+import '../../blocs/Bloc Event/tax_event.dart';
 import '../../blocs/Bloc Logic/payment_bloc.dart';
 import '../../blocs/Bloc Logic/tax_bloc.dart';
 import '../../blocs/Bloc State/payment_state.dart';
@@ -44,7 +45,7 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
   double foodSgst = 0;
   double beverageCgst = 0;
   double beverageSgst = 0;
-  // double totalTax = 0;
+  double totalTax = 0;
   double liquorCgst = 0;
   double liquorSgst = 0;
   double netPayable = 0.0;
@@ -71,17 +72,40 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
         .replaceAll('bewerages', 'beverages') // typo fix
         ?? '';
   }
+  void _calculateNetPayableOnce() {
+    final grossTotal = widget.paymentSummary.grossTotal;
+    final couponDiscount = widget.paymentSummary.coupons;
+    final merchantDiscount = widget.merchantDiscount.abs();
+
+    final subTotal = grossTotal - couponDiscount;
+    final netTotal = subTotal + totalTax; // ✅ uses class totalTax
+
+    setState(() {
+      calculatedNetPayable = netTotal - merchantDiscount;
+    });
+  }
 
 
   @override
+  @override
   void initState() {
     super.initState();
-    _controller =
-        AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
+
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+
     _heightAnimation = Tween<double>(begin: 60, end: 260).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-
     );
+
+    _calculateNetPayableOnce();
+
+    // ✅ LOAD TAX IMMEDIATELY (before expand)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<TaxBloc>() .add(LoadTaxesEvent());
+    });
   }
 
   void _toggleExpand() {
@@ -229,14 +253,19 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                           height: 36,
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
+                            color: Colors.green, // ✅ background
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey),
+                            border: Border.all(color: Colors.green),
                           ),
-                          child: const Text(
+                          child: Text(
                             "Print",
-                            style: TextStyle(fontWeight: FontWeight.w600),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white, // ✅ text color
+                            ),
                           ),
                         ),
+
 
                         const SizedBox(height: 12),
 
@@ -407,8 +436,66 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
         builder: (context, child) {
           if (!_isExpanded) {
             debugPrint('🔽 Tax panel collapsed');
-            return const SizedBox.shrink();
+
+            return BlocBuilder<TaxBloc, TaxState>(
+              builder: (context, state) {
+                if (state is TaxLoaded) {
+                  final grossTotal = widget.paymentSummary.grossTotal;
+                  final couponDiscount = widget.paymentSummary.coupons;
+                  final merchantDiscount = widget.merchantDiscount.abs();
+                  final subTotal = grossTotal - couponDiscount;
+
+                  double foodCgst = 0, foodSgst = 0, beverageCgst = 0, beverageSgst = 0;
+
+                  for (final item in widget.paymentSummary.lineItems) {
+                    final itemClass = normalizeTaxClass(item.taxClass);
+
+                    final tax = state.taxes.firstWhere(
+                          (t) => normalizeTaxClass(t.taxClass) == itemClass,
+                      orElse: () => TaxModel(
+                        id: 0,
+                        rate: "0",
+                        name: "",
+                        taxClass: "",
+                        compound: false,
+                        shipping: false,
+                      ),
+                    );
+
+                    final rate = double.tryParse(tax.rate) ?? 0;
+                    if (rate == 0) continue;
+
+                    final halfTax = (item.total * rate / 100) / 2;
+
+                    if (itemClass == 'food') {
+                      foodCgst += halfTax;
+                      foodSgst += halfTax;
+                    } else if (itemClass == 'beverages') {
+                      beverageCgst += halfTax;
+                      beverageSgst += halfTax;
+                    }
+                  }
+
+                  final newTotalTax = foodCgst + foodSgst + beverageCgst + beverageSgst;
+                  final netTotal = subTotal + newTotalTax;
+                  final tempPayable = netTotal - merchantDiscount;
+
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) return;
+                    if (calculatedNetPayable != tempPayable) {
+                      setState(() {
+                        totalTax = newTotalTax;
+                        calculatedNetPayable = tempPayable;
+                      });
+                    }
+                  });
+                }
+
+                return const SizedBox.shrink();
+              },
+            );
           }
+
 
           debugPrint('🔼 Tax panel expanded');
 
@@ -530,25 +617,17 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                       debugPrint('❌ TAX CLASS DID NOT MATCH ANY CATEGORY');
                     }
                   }
-                  final totalTax =
-                      foodCgst +
-                          foodSgst +
-                          beverageCgst +
-                          beverageSgst;
-                  final netTotal = subTotal + totalTax;
-                  // final netPayable = netTotal - merchantDiscount;
-
-                  // calculatedNetPayable = netTotal - merchantDiscount;
+                  final newTotalTax = foodCgst + foodSgst + beverageCgst + beverageSgst;
+                  final netTotal = subTotal + newTotalTax;
                   final tempPayable = netTotal - merchantDiscount.abs();
 
-                  // ✅ UPDATE CLASS VARIABLE (so bottom bar can use it)
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     if (!mounted) return;
                     setState(() {
+                      totalTax = newTotalTax;
                       calculatedNetPayable = tempPayable;
                     });
                   });
-
 
 
 

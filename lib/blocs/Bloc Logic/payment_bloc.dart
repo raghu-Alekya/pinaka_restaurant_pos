@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -20,6 +21,7 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
           zoneId: event.zoneId,
           orderType: event.orderType,
         );
+        debugPrint("🔥 API returned merchant_discount = ${summary.discount}");
 
         emit(
           PaymentSummaryLoaded(
@@ -27,6 +29,7 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
             merchantDiscount: summary.discount, // ✅ from API
           ),
         );
+        debugPrint("🟥 PaymentBloc emitted merchantDiscount(from API) = ${summary.discount}");
       } catch (e) {
         emit(PaymentFailure(e.toString()));
       }
@@ -62,6 +65,8 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
     });
 
     on<UpdateMerchantDiscount>((event, emit) {
+      debugPrint("🟦 PaymentBloc UpdateMerchantDiscount = ${event.value}");
+
       if (state is PaymentSummaryLoaded) {
         final current = state as PaymentSummaryLoaded;
 
@@ -69,10 +74,13 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
           PaymentSummaryLoaded(
             summary: current.summary,
             selectedMethod: current.selectedMethod,
-            merchantDiscount: event.value, // ✅ update it
+            merchantDiscount: event.value,
           ),
         );
+
+        debugPrint("🟩 PaymentBloc emitted merchantDiscount = ${event.value}");
       }
     });
+
   }
 }

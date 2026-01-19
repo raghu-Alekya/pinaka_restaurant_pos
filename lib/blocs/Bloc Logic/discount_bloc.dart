@@ -61,7 +61,7 @@ class RemoveDiscountBloc
         emit(RemoveDiscountLoading());
 
         final result = await repository.removeDiscount(
-          token: event.token,
+          // token: event.token,
           orderId: event.orderId,
           isNc: event.isNc,
         );

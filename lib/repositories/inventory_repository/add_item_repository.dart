@@ -16,7 +16,7 @@ class AddUpdateItemRepository {
     required String itemName,
     required int categoryId,
     int? miniCategoryId, // optional mini-category
-    int? taxId, // ✅
+    String? taxClass, // ✅
     required int itemQty,
     required int itemPrice,
     required String itemNote,
@@ -39,8 +39,14 @@ class AddUpdateItemRepository {
       'item_price': itemPrice.toString(),
       'item_note': itemNote,
       'item_sku': itemSku,
-      // ✅ Include miniCategoryId if provided
+      //  Include miniCategoryId if provided
       if (miniCategoryId != null) 'mini_category_id': miniCategoryId.toString(),
+      //  Include taxId if provided
+      if (taxClass != null) ...{
+        'tax_status': 'taxable',
+        'tax_class': taxClass,
+      },
+
     });
 
     final streamedResponse = await request.send();

@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 
 class SplitPaymentPopup extends StatefulWidget {
-  const SplitPaymentPopup({super.key});
+  final double netPayable;
+
+  const SplitPaymentPopup({
+    super.key,
+    required this.netPayable,
+  });
 
   @override
   State<SplitPaymentPopup> createState() => _SplitPaymentPopupState();
 }
+
 
 class _SplitPaymentPopupState extends State<SplitPaymentPopup> {
   final TextEditingController payableController = TextEditingController();
@@ -13,6 +19,13 @@ class _SplitPaymentPopupState extends State<SplitPaymentPopup> {
   final TextEditingController perCustomerController = TextEditingController();
 
   String activeField = 'split';
+  @override
+  void initState() {
+    super.initState();
+
+    payableController.text = widget.netPayable.toStringAsFixed(2);
+  }
+
 
   @override
   void dispose() {
@@ -113,7 +126,7 @@ class _SplitPaymentPopupState extends State<SplitPaymentPopup> {
             const SizedBox(height: 6),
             _dynamicInputBox(
               controller: payableController,
-              onTap: () => activeField = 'payable',
+              onTap: () => activeField = 'split',
             ),
 
             const SizedBox(height: 12),

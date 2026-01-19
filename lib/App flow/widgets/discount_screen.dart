@@ -13,6 +13,7 @@ class DiscountPopup extends StatefulWidget {
   final double netPayable;
   final String ? authToken;
   final int orderId;
+  final double initialDiscount;
 // ✅ comes from parent
 
   const DiscountPopup({
@@ -20,6 +21,7 @@ class DiscountPopup extends StatefulWidget {
     required this.netPayable,
      this.authToken,
     required this.orderId,
+    this.initialDiscount = 0.0,
 
 
   });
@@ -40,29 +42,37 @@ class _DiscountPopupState extends State<DiscountPopup> {
   // final double grossTotal;
 
   @override
+  @override
   void initState() {
     super.initState();
 
     payableAmount = widget.netPayable;
     newPayableAmount = widget.netPayable;
 
-    discountController.addListener(_calculateNewPayable);
+    // ✅ show existing discount when popup opens
+    if (widget.initialDiscount > 0) {
+      discountController.text = widget.initialDiscount.toStringAsFixed(2);
 
-    // // ✅ SAFE & CORRECT
-    // if (widget.authToken != null) {
-    //   context.read<DiscountReasonBloc>().add(
-    //     LoadDiscountReasons(widget.authToken!),
-    //   );
-    // }
+      // update preview also
+      final applied = widget.initialDiscount;
+      newPayableAmount = (payableAmount - applied).clamp(0, payableAmount);
+    }
+
+    discountController.addListener(_calculateNewPayable);
   }
-  bool _isBlocLoaded = false;
+
+  bool _isLoaded = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    context.read<DiscountReasonBloc>().add(LoadDiscountReasons());
+    if (!_isLoaded) {
+      _isLoaded = true;
+      context.read<DiscountReasonBloc>().add(LoadDiscountReasons());
+    }
   }
+
 
 
 
@@ -82,7 +92,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
 
     setState(() {
       if (value == 'Clear') {
-        discountController.clear();
+        // discountController.clear();
       } else if (value == '⌫') {
         if (discountController.text.isNotEmpty) {
           discountController.text =
@@ -97,6 +107,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
   void _calculateNewPayable() {
     if (isNCSelected) {
       setState(() {
+        discountController.text = payableAmount.toStringAsFixed(2);
         newPayableAmount = 0;
       });
       return;
@@ -189,19 +200,31 @@ class _DiscountPopupState extends State<DiscountPopup> {
         debugPrint('🟣 [DiscountPopup] BlocListener state = ${state.runtimeType}');
 
         if (state is DiscountSuccess) {
+          final inputValue = double.tryParse(discountController.text) ?? 0;
+
           final appliedDiscount = isNCSelected
               ? payableAmount
               : selectedType == DiscountType.percent
-              ? (payableAmount *
-              (double.tryParse(discountController.text) ?? 0)) /
-              100
-              : double.tryParse(discountController.text) ?? 0;
+              ? (payableAmount * inputValue) / 100
+              : inputValue;
 
-          // ✅ SAVE discount in PaymentBloc so it won't reset after refresh
-          // context.read<PaymentBloc>().add(UpdateMerchantDiscount(appliedDiscount));
+          // ✅ keep discount value in TextField after apply
+          discountController.value = TextEditingValue(
+            text: inputValue.toString(),
+            selection: TextSelection.collapsed(offset: inputValue.toString().length),
+          );
+
+          // ✅ update payable preview
+          setState(() {
+            newPayableAmount = (payableAmount - appliedDiscount).clamp(0, payableAmount);
+          });
+
+          // ✅ save discount in PaymentBloc
+          context.read<PaymentBloc>().add(UpdateMerchantDiscount(appliedDiscount));
 
           Navigator.pop(context, appliedDiscount);
         }
+
 
 
 
@@ -413,7 +436,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
             setState(() {
               selectedType = DiscountType.percent;
               isNCSelected = false;
-              discountController.clear();
+              // discountController.clear();
             });
           },
           child: _radioButton(
@@ -428,7 +451,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
             setState(() {
               selectedType = DiscountType.amount;
               isNCSelected = false;
-              discountController.clear();
+              // discountController.clear();
             });
           },
           child: _radioButton(
@@ -484,21 +507,23 @@ class _DiscountPopupState extends State<DiscountPopup> {
           onTap: () {
             setState(() {
               isNCSelected = true;
-              discountController.clear();
+
+              // ✅ Discount becomes full payable amount
+              discountController.text = payableAmount.toStringAsFixed(2);
+
+              // ✅ New payable becomes zero
+              newPayableAmount = 0;
             });
           },
+
           child: Container(
             width: 80,
             height: 42,
             decoration: BoxDecoration(
-              color: isNCSelected
-                  ? const Color(0xFFF59E0B)
-                  : const Color(0xFFFAD51D),
+              color: isNCSelected ? const Color(0xFFF59E0B) : const Color(0xFFFAD51D),
               borderRadius: BorderRadius.circular(6),
               border: Border.all(
-                color: isNCSelected
-                    ? const Color(0xFFB45309)
-                    : Colors.transparent,
+                color: isNCSelected ? const Color(0xFFB45309) : Colors.transparent,
               ),
             ),
             child: const Center(
@@ -512,6 +537,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
             ),
           ),
         ),
+
       ],
     );
   }

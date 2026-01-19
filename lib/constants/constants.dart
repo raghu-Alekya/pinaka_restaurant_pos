@@ -66,4 +66,6 @@ class AppConstants {
 
   // Slots
   static String getAllSlotsByDate(String formattedDate) => '$baseApiPath/slots/get-all-slots?reservation_date=$formattedDate';
+  //  orders list
+  static const String getAllOrdersList = '$baseApiPath/kot/get-all-orders';
 }

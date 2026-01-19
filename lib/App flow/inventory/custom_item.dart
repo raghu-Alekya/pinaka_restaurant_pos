@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../models/inventory/category_sublist_model.dart';
 import '../../models/inventory/bev_model.dart';
-// import '../../models/inventory/tax_model.dart';
 import '../../models/inventory/tax_inventory_model.dart';
 import '../../repositories/inventory_repository/Category_Sublist_Repository.dart';
 import '../../repositories/inventory_repository/add_item_repository.dart';
 import '../../repositories/inventory_repository/beverage_iventory_repository.dart';
-// import '../../repositories/inventory_repository/tax_repository.dart';
+
 import '../../repositories/inventory_repository/tax_inventory_repository.dart';
 import 'dashboard.dart';
 
@@ -510,15 +509,15 @@ class _AddItemDialogState extends State<AddItemDialog> {
                   const SizedBox(width: 12),
 
                   // ===== NOTES =====
-                  Expanded(
-                    flex: 2,
-                    child: _buildLabeledField(
-                      label: "Notes",
-                      controller: _notesController,
-                      hint: "Add notes (optional)",
-                      maxLines: 1,
-                    ),
-                  ),
+                  // Expanded(
+                  //   flex: 2,
+                  //   child: _buildLabeledField(
+                  //     label: "Notes",
+                  //     controller: _notesController,
+                  //     hint: "Add notes (optional)",
+                  //     maxLines: 1,
+                  //   ),
+                  // ),
                 ],
               ),
             ],
@@ -673,7 +672,8 @@ class _AddItemDialogState extends State<AddItemDialog> {
           if (_nameController.text.isEmpty ||
               _skuController.text.isEmpty ||
               _unitsController.text.isEmpty ||
-              _thresholdController.text.isEmpty) {
+              _thresholdController.text.isEmpty||
+              selectedTax == null) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text("All required fields must be filled"),
@@ -688,7 +688,8 @@ class _AddItemDialogState extends State<AddItemDialog> {
           print(
             "⏳ Sending item to backend: ${_nameController.text.trim()}",
           );
-          print("📤 tax_id: ${selectedTax?.id}");
+          print("📤 taxClass: '${selectedTax?.taxClass}'");
+
 
           print(" Name: ${_nameController.text.trim()}");
           print(" SKU: ${_skuController.text.trim()}");
@@ -708,7 +709,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
               itemName: _nameController.text.trim(),
               categoryId: selectedCategory?.id ?? 0,
               miniCategoryId: selectedMiniCategory?.id,
-              taxId: selectedTax?.id,
+              taxClass: selectedTax?.taxClass,
               itemQty: int.tryParse(_unitsController.text.trim()) ?? 0,
               itemPrice:
               int.tryParse(_thresholdController.text.trim()) ?? 0,
