@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 
 import '../../blocs/Bloc Event/order_list_event.dart';
 // import '../../blocs/Bloc Logic/orders_list_bloc.dart';
@@ -20,6 +21,7 @@ class OrdersListTable extends StatefulWidget {
   final String restaurantId;
   final String restaurantName;
   final UserPermissions? userPermissions;
+
   const OrdersListTable({super.key,required this.token,
     required List orders,
     required this.pin,
@@ -33,7 +35,13 @@ class OrdersListTable extends StatefulWidget {
 }
 
 class _OrdersListTableState extends State<OrdersListTable> {
-  int _selectedIndex = 4; // assuming Orders tab is index 4
+  UserPermissions? _userPermissions;
+  int _selectedIndex = 4;
+  String? _selectedStatus;
+  String? _selectedDate;
+
+  final List<String> statusOptions = ['All', 'Completed', 'Pending', 'Declined'];
+  DateTime? selectedDate;
 
   void _onItemTapped(int index) {
     NavigationHelper.handleNavigation(
@@ -55,11 +63,15 @@ class _OrdersListTableState extends State<OrdersListTable> {
   int _currentPage = 0;
   final int _rowsPerPage = 6;
   final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _dateController = TextEditingController();
+
   String _searchQuery = "";
+
 
   @override
   void initState() {
     super.initState();
+    _userPermissions = widget.userPermissions;
     // Trigger fetch
     context.read<OrderstatusBloc>().add(
       FetchOrders(token: widget.token),
@@ -77,27 +89,57 @@ class _OrdersListTableState extends State<OrdersListTable> {
     switch (status.toLowerCase()) {
       case "completed":
         return Colors.green;
-        //case "pending":
-        return Colors.orange;
-      case "processing":
+      case "pending":
         return Colors.orange;
       case "declined":
-        return Colors.red;
-      case "yet-to-prepare":
         return Colors.red;
       default:
         return Colors.grey;
     }
   }
 
-  List< OrderlistModel> _filterOrders(List< OrderlistModel> orders) {
-    if (_searchQuery.isEmpty) return orders;
+  List<OrderlistModel> _filterOrders(List<OrderlistModel> orders) {
+    final query = _searchQuery.toLowerCase();
+
     return orders.where((order) {
-      return (order.customerName ?? '').toLowerCase().contains(_searchQuery) ||
-          (order.customerPhone ?? '').toLowerCase().contains(_searchQuery) ||
-          (order.orderId?.toString() ?? '').toLowerCase().contains(_searchQuery);
+      final matchesSearch =
+          (order.orderId?.toString().toLowerCase() ?? '').contains(query) ||
+              (order.orderType?.toLowerCase() ?? '').contains(query) ||
+              (order.zoneName?.toLowerCase() ?? '').contains(query) ||
+              (order.tableName?.toLowerCase() ?? '').contains(query) ||
+              (order.customerPhone?.toLowerCase() ?? '').contains(query);
+
+      bool matchesStatus = true;
+      if (_selectedStatus != null && _selectedStatus != 'All') {
+        matchesStatus =
+            (order.status?.toLowerCase() ?? '') ==
+                _selectedStatus!.toLowerCase();
+      }
+
+      bool matchesDate = true;
+      if (selectedDate != null) {
+        final orderDate = DateTime.tryParse(order.date ?? '');
+        if (orderDate == null) {
+          matchesDate = false;
+        } else {
+          matchesDate =
+              orderDate.year == selectedDate!.year &&
+                  orderDate.month == selectedDate!.month &&
+                  orderDate.day == selectedDate!.day;
+        }
+      }
+
+      return matchesSearch && matchesStatus && matchesDate;
     }).toList();
   }
+
+
+  bool _isResetEnabled() {
+    return _searchQuery.isNotEmpty ||
+        _selectedStatus != null ||
+        selectedDate != null;
+  }
+
 
   List<OrderlistModel> _currentPageOrders(List< OrderlistModel> filtered) {
     final startIndex = _currentPage * _rowsPerPage;
@@ -133,27 +175,32 @@ class _OrdersListTableState extends State<OrdersListTable> {
 
     return List.generate(visibleCount, (i) => startPage + i);
   }
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _dateController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey,
+      appBar: TopBar(
+        token: widget.token,
+        pin: widget.pin,
+        userPermissions: _userPermissions,
+        onPermissionsReceived: (permissions) async {
+          setState(() {
+            _userPermissions = permissions;
+          });
+        },
+      ),
       body: Column(
         children: [
+          const SizedBox(height: 4),
 
-          /// 🔹 TOP BAR
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            height: 60,
-            child: const TopBar(
-              token: '', // pass your token if needed
-              pin: '',   // pass your pin if needed
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          /// 🔹 MAIN CONTENT (BlocBuilder)
+          // MAIN CONTENT (BlocBuilder)
           Expanded(
             child: BlocBuilder<OrderstatusBloc, OrderstatusState>(
               builder: (context, state) {
@@ -166,34 +213,42 @@ class _OrdersListTableState extends State<OrdersListTable> {
                   // ======= Debug prints =======
                   for (var order in orders) {
                     print('==============================');
-                    print('Order ID    : ${order.orderId}');
-                    print('Type        : ${order.orderType}');
-                    print('Date        : ${order.date}');
-                    print('Customer    : ${order.customerName}');
-                    print('Phone       : ${order.customerPhone}');
-                    print('Amount      : ${order.amount}');
-                    print('Discount    : ${order.discount}');
-                    print('Total       : ${order.total}');
-                    print('Status      : ${order.status}');
-                    print('Is Parent   : ${order.isParent}');
+                    print('Order ID        : ${order.orderId}');
+                    print('Order Type      : ${order.orderType}');
+                    print('Date            : ${order.date}');
+                    print('Customer Name   : ${order.customerName}');
+                    print('Customer Phone  : ${order.customerPhone}');
+                    print('Payment Type    : ${order.paymentType}');
+                    print('Amount          : ${order.amount}');
+                    print('Discount        : ${order.discount}');
+                    print('Total           : ${order.total}');
+                    print('Status          : ${order.status}');
+                    print('Is Parent       : ${order.isParent}');
+                    print('Restaurant ID   : ${order.restaurantId}');
+                    print('Zone ID         : ${order.zoneId}');
+                    print('Zone Name       : ${order.zoneName}');
+                    print('Table ID        : ${order.tableId}');
+                    print('Table Name      : ${order.tableName}');
+                    print('Table Status    : ${order.tableStatus}');
                     print('--- KOT ORDERS ---');
 
                     if (order.kotOrders != null && order.kotOrders!.isNotEmpty) {
                       for (var kot in order.kotOrders!) {
-                        print('  KOT Order ID : ${kot.kotOrderId}');
-                        print('  Status       : ${kot.status}');
-                        print('  Total        : ${kot.total}');
-                        print('  Created At   : ${kot.createdAt}');
-                        print('  Is Parent    : ${kot.isParent}');
+                        print('  ----------------------------');
+                        print('  KOT Order ID  : ${kot.kotOrderId}');
+                        print('  Status        : ${kot.status}');
+                        print('  Total         : ${kot.total}');
+                        print('  Created At    : ${kot.createdAt}');
+                        print('  Is Parent     : ${kot.isParent}');
                         print('  --- LINE ITEMS ---');
 
                         if (kot.lineItems != null && kot.lineItems!.isNotEmpty) {
                           for (var item in kot.lineItems!) {
-                            print('    Item ID   : ${item.itemId}');
-                            print('    Name      : ${item.name}');
-                            print('    Qty       : ${item.quantity}');
-                            print('    Amount    : ${item.amount}');
-                            print('    Total     : ${item.total}');
+                            print('    Item ID     : ${item.itemId}');
+                            print('    Name        : ${item.name}');
+                            print('    Quantity    : ${item.quantity}');
+                            print('    Rate        : ${item.amount}');
+                            print('    Total       : ${item.total}');
                           }
                         } else {
                           print('    No line items found.');
@@ -203,13 +258,15 @@ class _OrdersListTableState extends State<OrdersListTable> {
                       print('No KOT Orders found.');
                     }
                   }
+                  print('==================================');
+
                   // ===========================
 
                   final filtered = _filterOrders(orders);
                   final pageOrders = _currentPageOrders(filtered);
                   final totalPages = ((filtered.length - 1) ~/ _rowsPerPage) + 1;
 
-                  /// ⬇️ Your existing table UI goes here (unchanged)
+
                   /// 🔹 TABLE + PAGINATION CONTAINER
                   return Container(
                     margin: const EdgeInsets.all(8),
@@ -232,10 +289,11 @@ class _OrdersListTableState extends State<OrdersListTable> {
                               ),
                             ),
                             const Spacer(),
+
                             /// SEARCH
                             Container(
                               height: 36,
-                              width: 250,
+                              width: 360,
                               padding: const EdgeInsets.symmetric(horizontal: 6),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(8),
@@ -256,21 +314,156 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                     child: TextField(
                                       controller: _searchController,
                                       decoration: const InputDecoration(
-                                        hintText: 'Name or Order ID',
+                                        hintText: 'Search order ID, Order Type, Zone, Table, or Cust name, phone....',
                                         border: InputBorder.none,
                                         isDense: true,
+                                        hintStyle: TextStyle(
+                                          color: Color(0xFFB0B0B0),
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w400,
+                                        ),
                                       ),
+                                      onChanged: (_) => setState(() {}),
                                     ),
                                   ),
+
                                 ],
                               ),
                             ),
+
+                            const SizedBox(width: 12),
+
+                            /// DATE DROPDOWN
+                            SizedBox(
+                              height: 36,
+                              width: 150,
+                              child: TextField(
+                                controller: _dateController,
+                                readOnly: true,
+                                onTap: () async {
+                                  final picked = await showDatePicker(
+                                    context: context,
+                                    initialDate: selectedDate ?? DateTime.now(),
+                                    firstDate: DateTime(2020),
+                                    lastDate: DateTime(2030),
+                                  );
+                                  if (picked != null) {
+                                    setState(() {
+                                      selectedDate = picked;
+                                      _dateController.text = DateFormat('dd/MM/yy').format(picked);
+                                    });
+                                  }
+                                },
+                                decoration: InputDecoration(
+                                  hintText: "Select Date",
+                                  hintStyle: const TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 14,
+                                  ),
+                                  suffixIcon: Icon(Icons.calendar_today, size: 18),
+                                  filled: true,
+                                  fillColor: Colors.grey.shade200,
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 10),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                ),
+                                style: TextStyle(fontSize: 14),
+                              ),
+                            ),
+
+                            const SizedBox(width: 12),
+
+                            //  status dropdown
+                            Container(
+                              height: 36,
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                color: const Color(0xFF4C81F1),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  dropdownColor: const Color(0xFF4C81F1),
+                                  iconEnabledColor: Colors.white,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                  ),
+                                  hint: const Text(
+                                    'Status',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.white,               // hint color
+                                    ),
+                                  ),
+                                  value: _selectedStatus,
+                                  items: statusOptions.map(
+                                        (e) => DropdownMenuItem<String>(
+                                      value: e,
+                                      child: Text(
+                                        e,
+                                        style: const TextStyle(
+                                          color: Colors.white,           // item text color
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ),
+                                  ).toList(),
+                                  onChanged: (val) {
+                                    setState(() {
+                                      _selectedStatus = val;
+                                    });
+                                  },
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(width: 12),
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _isResetEnabled()
+                                    ? Colors.red
+                                    : Colors.grey.shade300,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              onPressed: _isResetEnabled()
+                                  ? () {
+                                setState(() {
+                                  // 🔹 Search
+                                  _searchQuery = '';
+                                  _searchController.clear();
+
+                                  // 🔹 Status
+                                  _selectedStatus = null;
+
+                                  // 🔹 Date
+                                  selectedDate = null;
+                                  _dateController.clear();
+
+                                  // 🔹 Pagination
+                                  _currentPage = 0;
+                                });
+                              }
+                                  : null,
+                              icon: const Icon(Icons.refresh, size: 16, color: Colors.white),
+                              label: const Text(
+                                "Reset",
+                                style: TextStyle(color: Colors.white, fontSize: 14),
+                              ),
+                            ),
+
                           ],
                         ),
 
+
                         const SizedBox(height: 12),
 
-                        /// TABLE
+                        // TABLE
                         Expanded(
                           child: SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
@@ -291,52 +484,68 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                 DataColumn(label: Text("Order ID")),
                                 DataColumn(label: Text("Order Type")),
                                 DataColumn(label: Text("Date")),
-                                DataColumn(label: Text("Cust Name")),
-                                DataColumn(label: Text("Cust Phone")),
-                                DataColumn(label: Text("Payment Type")),
+                                DataColumn(label: Text("Zone")),
+                                DataColumn(label: Text("Table")),
+                                DataColumn(label: Text("Cust. Name")),
+                                DataColumn(label: Text("Cust. Phone")),
+                                DataColumn(label: Text("Payment")),
                                 DataColumn(label: Text("Amount")),
                                 DataColumn(label: Text("Discount")),
                                 DataColumn(label: Text("Total")),
                                 DataColumn(label: Text("Status")),
                               ],
+
                               rows: pageOrders.map((order) {
                                 return DataRow(
                                   onSelectChanged: (_) {
                                     // Open the view screen when row is tapped
-                                    showDialog(
-                                      context: context,
-                                      builder: (_) => ViewOrderScreen(
-                                        order: order.toMapForView(),
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => ViewOrderScreen(
+                                          order: order.toMapForView(),
+                                        ),
                                       ),
                                     );
+
                                   },
                                   cells: [
-                                    DataCell(Text(order.orderId?.toString() ?? '')),
-                                    DataCell(Text(order.orderType ?? '')),
-                                    DataCell(Text(order.date ?? '')),
-                                    DataCell(Text(order.customerName ?? '')),
-                                    DataCell(Text(order.customerPhone ?? '')),
-                                    DataCell(Text(order.paymentType ?? '')),
-                                    DataCell(Text(order.amount?.toString() ?? '')),
-                                    DataCell(Text(order.discount?.toString() ?? '')),
-                                    DataCell(Text(order.total?.toString() ?? '')),
+                                    DataCell(Text(order.orderId?.toString() ?? '-')),
+                                    DataCell(Text(order.orderType ?? '-')),
+                                    DataCell(Text(order.date ?? '-')),
+                                    DataCell(Text(order.zoneName ?? '-')),
+                                    DataCell(Text(order.tableName ?? '-')),
+                                    DataCell(Text(
+                                      order.customerName?.trim().isEmpty == true
+                                          ? ''
+                                          : order.customerName ?? '-',
+                                    )),
+                                    DataCell(Text(order.customerPhone ?? '-')),
+                                    DataCell(Text(order.paymentType ?? '-')),
+                                    DataCell(Text(order.amount?.toStringAsFixed(2) ?? '0.00')),
+                                    DataCell(Text(order.discount?.toStringAsFixed(2) ?? '0.00')),
+                                    DataCell(Text(order.total?.toStringAsFixed(2) ?? '0.00')),
                                     DataCell(
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                         decoration: BoxDecoration(
-                                          color: _statusColor(order.status ?? '').withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(20),
+                                          color: _statusColor(order.status ?? '').withOpacity(0.1), // light bg
+                                          borderRadius: BorderRadius.circular(12), // rounded pill
                                         ),
                                         child: Text(
-                                          order.status ?? '',
+                                          order.status?.isNotEmpty == true ? order.status! : '-',
                                           style: TextStyle(
-                                            color: _statusColor(order.status ?? ''),
                                             fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                            color: _statusColor(order.status ?? ''), // text color matches
                                           ),
                                         ),
                                       ),
                                     ),
+
+
                                   ],
+
                                 );
 
                               }).toList(),

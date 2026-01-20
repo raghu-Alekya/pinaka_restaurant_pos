@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pinaka_restaurant_pos/App%20flow/widgets/transer_kot.dart';
+import 'package:pinaka_restaurant_pos/App%20flow/widgets/void_items.dart';
 import '../../blocs/Bloc Event/kot_event.dart';
 import '../../blocs/Bloc Logic/kot_bloc.dart';
 import '../../blocs/Bloc State/kot_state.dart';
@@ -13,12 +15,14 @@ class ViewAllKOTDropdown extends StatefulWidget {
   final int restaurantId;
   final int zoneId;
   final String token;
+  final String tableNo;
 
   const ViewAllKOTDropdown({
     super.key,
     required this.parentOrderId,
     required this.restaurantId,
     required this.zoneId,
+    required this.tableNo,
     required this.token, required List<KotModel> kots,
   });
 
@@ -207,19 +211,113 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                           horizontal: 4, vertical: 6),
                                       color: const Color(0xFFECEEFB),
                                       child: Row(
-                                        mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
                                         children: [
                                           Text(
-                                            kot.time?.toString() ??
-                                                "12:30 PM",
+                                            TimeOfDay.fromDateTime(kot.time).format(context),
                                             style: const TextStyle(
-                                                fontSize: 12,
-                                                fontWeight:
-                                                FontWeight.bold),
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.black,
+                                            ),
                                           ),
+
+
+                                          const Spacer(),
+
+
+                                          // ✅ Void Items Button (Blue)
+                                          _kotActionButton(
+                                            text: "Void Items",
+                                            bgColor: const Color(0xFF1E63FF), // same blue like image
+                                            textColor: Colors.white,
+                                            iconColor: Colors.white,
+                                            onTap: () async {
+                                              final List<Item> voidDialogItems = kot.items.map((o) {
+                                                return Item(
+                                                  name: o.name ?? "",
+                                                  pricePerItem: (o.price ?? 0).toDouble(),
+                                                  // quantity: o.qty ?? 1,
+                                                  // notes: o.modifier ?? "",
+                                                );
+                                              }).toList();
+
+                                              final result = await showDialog(
+                                                context: context,
+                                                barrierDismissible: true,
+                                                builder: (context) => VoidItemsDialog(
+                                                  items: voidDialogItems,
+                                                  tableNo: widget.tableNo.toString(),
+                                                  kotNo: kot.kotId.toString(),
+                                                  onRemark: (value) {
+                                                    print("Remark: $value");
+                                                  },
+                                                  item: kot,
+                                                ),
+                                              );
+
+                                              if (result != null) {
+                                                print("Selected Items: ${result['items']}");
+                                                print("Remark: ${result['remark']}");
+                                              }
+                                            },
+
+                                          ),
+
+                                          const SizedBox(width: 10),
+
+                                          // ✅ Transfer KOT Button (Yellow)
+                                          _kotActionButton(
+                                            text: "Transfer KOT",
+                                            bgColor: const Color(0xFFFFC107),
+                                            textColor: Colors.black,
+                                            iconColor: Colors.black,
+                                            onTap: () async {
+
+                                              // ✅ Convert your KOT items into TransferKotItem list dynamically
+                                              final transferItems = kot.items.map((e) {
+                                                return TransferKotItem(
+                                                  name: e.itemName ?? "",
+                                                  note: e.note.isNotEmpty
+                                                      ? e.note
+                                                      : (e.modifiers.isNotEmpty ? e.modifiers.join(", ") : ""),
+                                                  qty: e.quantity ?? 1,
+                                                  amount: e.totalWithAddons,
+
+                                                  // amount: (e.amount ?? 0).toDouble(),
+                                                );
+                                              }).toList();
+
+                                              // ✅ Dynamic tables list (from API or static)
+                                              final tableList = List.generate(24, (i) => "Table-${i + 1}");
+
+                                              final result = await showDialog(
+                                                context: context,
+                                                barrierDismissible: false,
+                                                builder: (_) => TransferKOTDialog(
+                                                  tableNo: widget.tableNo.toString(),   // dynamic
+                                                  kotNo: kot.kotId.toString(),          // dynamic
+                                                  dateTime: kot.time ?? DateTime.now(), // dynamic
+                                                  items: transferItems,                 // dynamic
+                                                  tables: tableList,                    // dynamic
+                                                ),
+                                              );
+
+                                              if (result != null) {
+                                                final selectedTable = result["selectedTable"];
+                                                final selectedItems = result["selectedItems"];
+
+                                                debugPrint("✅ Selected Table: $selectedTable");
+                                                debugPrint("✅ Selected Items: $selectedItems");
+
+                                                // TODO: Call API / Bloc Event here for transfer KOT
+                                              }
+                                            },
+                                          ),
+
                                         ],
-                                      ),
+                                      )
+
+
                                     ),
                                     const SizedBox(height: 6),
                                     // Items list
@@ -264,10 +362,9 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                           fontSize: 12)),
                                                   const SizedBox(width: 120),
                                                   Text(
-                                                    "₹${(item.quantity * item.totalWithAddons).toStringAsFixed(2)}",
+                                                    "₹${(item.quantity * (item.price ?? 0)).toStringAsFixed(2)}",
                                                     style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                                                   )
-
 
                                                 ],
                                               ),
@@ -294,4 +391,41 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
       ),
     );
   }
+  Widget _kotActionButton({
+    required String text,
+    required Color bgColor,
+    required Color textColor,
+    required Color iconColor,
+    required VoidCallback onTap,
+  }) {
+    return SizedBox(
+      height: 32, // ✅ same height like image
+      child: ElevatedButton.icon(
+        onPressed: onTap,
+        icon: Image.asset(
+          "assets/icon/Void.png", // 🔥 your asset path
+          height: 16,
+          width: 16,
+          color: iconColor, // optional (works only for single-color png/svg)
+        ),
+        label: Text(
+          text,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: textColor,
+          ),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: bgColor,
+          elevation: 0, // ✅ flat like image
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8), // ✅ rounded like image
+          ),
+        ),
+      ),
+    );
+  }
+
 }

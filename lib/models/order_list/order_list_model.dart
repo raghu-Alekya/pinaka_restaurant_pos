@@ -5,11 +5,21 @@ class OrderlistModel {
   String? customerName;
   String? customerPhone;
   String? paymentType;
-  num? amount;          // ✅ changed
-  num? discount;        // ✅ changed
-  num? total;           // ✅ changed
+
+  num? amount;
+  num? discount;
+  num? total;
+
+  int? restaurantId;
+  int? zoneId;
+  int? tableId;
+  String? tableStatus;
+  String? zoneName;
+  String? tableName;
+
   String? status;
   bool? isParent;
+
   List<KotOrder>? kotOrders;
 
   OrderlistModel({
@@ -22,6 +32,12 @@ class OrderlistModel {
     this.amount,
     this.discount,
     this.total,
+    this.restaurantId,
+    this.zoneId,
+    this.tableId,
+    this.tableStatus,
+    this.zoneName,
+    this.tableName,
     this.status,
     this.isParent,
     this.kotOrders,
@@ -38,6 +54,12 @@ class OrderlistModel {
       amount: num.tryParse(json['amount'].toString()) ?? 0,
       discount: num.tryParse(json['discount'].toString()) ?? 0,
       total: num.tryParse(json['total'].toString()) ?? 0,
+      restaurantId: json['restaurant_id'],
+      zoneId: json['zone_id'],
+      tableId: json['table_id'],
+      tableStatus: json['table_status'],
+      zoneName: json['zone_name'],
+      tableName: json['table_name'],
       status: json['status'],
       isParent: json['is_parent'],
       kotOrders: (json['kot_orders'] as List?)
@@ -46,6 +68,7 @@ class OrderlistModel {
     );
   }
 }
+
 class KotOrder {
   int? kotOrderId;
   String? status;

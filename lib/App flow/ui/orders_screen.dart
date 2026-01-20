@@ -491,6 +491,7 @@ class OrderPanel extends StatelessWidget {
                             restaurantId: int.parse(restaurantId),
                             zoneId: orderState.zoneId,
                             token: token,
+                            tableNo: tableId.toString(),
                           ),
                         );
                       },
@@ -769,9 +770,9 @@ class OrderPanel extends StatelessWidget {
 
 
 
-                  orderButton('Generate e-Bill', Colors.green, onPressed: () {
-                    AppLogger.info("Generate e-Bill clicked");
-                  }),
+                  // orderButton('Generate e-Bill', Colors.green, onPressed: () {
+                  //   AppLogger.info("Generate e-Bill clicked");
+                  // }),
                   orderButton('Pay', const Color(0xFF086888), onPressed: () {
                     AppLogger.info("Pay clicked");
 

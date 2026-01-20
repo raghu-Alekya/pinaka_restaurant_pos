@@ -711,43 +711,43 @@ class _CustomBoxState extends State<CustomBox> {
 
                           const Spacer(),
 
-                          if (showCustomCard) const SizedBox(width: 12),
-                          if (showCustomCard)  CustomDropdownCard(
-                            token: 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvbWVyY2hhbnRyZXN0YXVyYW50LmFsZWt0YXNvbHV0aW9ucy5jb20iLCJpYXQiOjE3NjgyMDMwNjQsIm5iZiI6MTc2ODIwMzA2NCwiZXhwIjoxNzcwNzk1MDY0LCJkYXRhIjp7InVzZXIiOnsiaWQiOjUsImRldmljZSI6IiIsInBhc3MiOiIyYjhlMjJlOTM2ZTY0N2JhNDRmOWJhMmY3Y2Q1ZmFjNiJ9fX0.vBVcnan6C9hN-ZDGN1vgpN_MkuT4twI-_WqXGOTgAio',
-                            baseUrl: 'https://merchantrestaurant.alektasolutions.com',
-                            onSelected: (category) {
-                              print('Selected Category: ${category.id} - ${category.name}');
-                            },
-                          ),
-                          if (showCustomCard) const SizedBox(width: 12),
-
-                          /// SORT CIRCLE
-                          if (showCustomCard)
-                            GestureDetector(
-                              onTap: _showSortPopup,
-                              child: Container(
-                                width: 36,
-                                height: 36,
-                                decoration: const BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black12,
-                                      blurRadius: 4,
-                                      offset: Offset(0, 2),
-                                    )
-                                  ],
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8),
-                                  child: Image.asset(
-                                    'assets/sort.png',
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
-                              ),
-                            ),
+                          // if (showCustomCard) const SizedBox(width: 12),
+                          // if (showCustomCard)  CustomDropdownCard(
+                          //   token: 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvbWVyY2hhbnRyZXN0YXVyYW50LmFsZWt0YXNvbHV0aW9ucy5jb20iLCJpYXQiOjE3NjgyMDMwNjQsIm5iZiI6MTc2ODIwMzA2NCwiZXhwIjoxNzcwNzk1MDY0LCJkYXRhIjp7InVzZXIiOnsiaWQiOjUsImRldmljZSI6IiIsInBhc3MiOiIyYjhlMjJlOTM2ZTY0N2JhNDRmOWJhMmY3Y2Q1ZmFjNiJ9fX0.vBVcnan6C9hN-ZDGN1vgpN_MkuT4twI-_WqXGOTgAio',
+                          //   baseUrl: 'https://merchantrestaurant.alektasolutions.com',
+                          //   onSelected: (category) {
+                          //     print('Selected Category: ${category.id} - ${category.name}');
+                          //   },
+                          // ),
+                          // if (showCustomCard) const SizedBox(width: 12),
+                          //
+                          // /// SORT CIRCLE
+                          // if (showCustomCard)
+                          //   GestureDetector(
+                          //     onTap: _showSortPopup,
+                          //     child: Container(
+                          //       width: 36,
+                          //       height: 36,
+                          //       decoration: const BoxDecoration(
+                          //         color: Colors.white,
+                          //         shape: BoxShape.circle,
+                          //         boxShadow: [
+                          //           BoxShadow(
+                          //             color: Colors.black12,
+                          //             blurRadius: 4,
+                          //             offset: Offset(0, 2),
+                          //           )
+                          //         ],
+                          //       ),
+                          //       child: Padding(
+                          //         padding: const EdgeInsets.all(8),
+                          //         child: Image.asset(
+                          //           'assets/sort.png',
+                          //           fit: BoxFit.contain,
+                          //         ),
+                          //       ),
+                          //     ),
+                          //   ),
                         ],
                       ),
                     ),

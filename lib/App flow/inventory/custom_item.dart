@@ -341,6 +341,98 @@ class _AddItemDialogState extends State<AddItemDialog> {
                   const SizedBox(width: 12),
 
                   // ===== SUBCATEGORY PICKER =====
+                  // Expanded(
+                  //   child: Column(
+                  //     crossAxisAlignment: CrossAxisAlignment.start,
+                  //     children: [
+                  //       _buildPickerField(
+                  //         label: "Sub Category",
+                  //         controller: _subCategoryController,
+                  //         onTap: () {
+                  //           if (selectedParentCategory == null) return;
+                  //           setState(() {
+                  //             showSubCategoryList = !showSubCategoryList;
+                  //             showMiniCategoryList = false;
+                  //           });
+                  //         },
+                  //       ),
+                  //       if (showSubCategoryList && selectedParentCategory != null)
+                  //         Container(
+                  //           margin: const EdgeInsets.only(top: 4),
+                  //           decoration: BoxDecoration(
+                  //             border: Border.all(color: Colors.grey),
+                  //             borderRadius: BorderRadius.circular(8),
+                  //             color: Colors.white,
+                  //           ),
+                  //           constraints: BoxConstraints(maxHeight: 200),
+                  //           child: ListView(
+                  //             shrinkWrap: true,
+                  //             children: selectedParentCategory!.categories.map((sub) {
+                  //               return ListTile(
+                  //                 title: Text(sub.name),
+                  //                 onTap: () {
+                  //                   setState(() {
+                  //                     selectedCategory = sub;
+                  //                     _subCategoryController.text = sub.name;
+                  //
+                  //                     // reset mini
+                  //                     selectedMiniCategory = null;
+                  //                     _miniCategoryController.clear();
+                  //
+                  //                     showSubCategoryList = false;
+                  //                     showMiniCategoryList = true; // optionally open mini
+                  //                   });
+                  //                 },
+                  //               );
+                  //             }).toList(),
+                  //           ),
+                  //         ),
+                  //
+                  //       // ===== MINI CATEGORY BELOW SUBCATEGORY =====
+                  //       if (selectedCategory != null && selectedCategory!.children.isNotEmpty)
+                  //         Column(
+                  //           crossAxisAlignment: CrossAxisAlignment.start,
+                  //           children: [
+                  //             const SizedBox(height: 8),
+                  //             _buildPickerField(
+                  //               label: "Mini Category",
+                  //               controller: _miniCategoryController,
+                  //               onTap: () {
+                  //                 setState(() {
+                  //                   showMiniCategoryList = !showMiniCategoryList;
+                  //                 });
+                  //               },
+                  //             ),
+                  //             if (showMiniCategoryList)
+                  //               Container(
+                  //                 margin: const EdgeInsets.only(top: 4),
+                  //                 decoration: BoxDecoration(
+                  //                   border: Border.all(color: Colors.grey),
+                  //                   borderRadius: BorderRadius.circular(8),
+                  //                   color: Colors.white,
+                  //                 ),
+                  //                 constraints: BoxConstraints(maxHeight: 200),
+                  //                 child: ListView(
+                  //                   shrinkWrap: true,
+                  //                   children: selectedCategory!.children.map((mini) {
+                  //                     return ListTile(
+                  //                       title: Text(mini.name),
+                  //                       onTap: () {
+                  //                         setState(() {
+                  //                           selectedMiniCategory = mini;
+                  //                           _miniCategoryController.text = mini.name;
+                  //                           showMiniCategoryList = false;
+                  //                         });
+                  //                       },
+                  //                     );
+                  //                   }).toList(),
+                  //                 ),
+                  //               ),
+                  //           ],
+                  //         ),
+                  //     ],
+                  //   ),
+                  // ),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -352,7 +444,6 @@ class _AddItemDialogState extends State<AddItemDialog> {
                             if (selectedParentCategory == null) return;
                             setState(() {
                               showSubCategoryList = !showSubCategoryList;
-                              showMiniCategoryList = false;
                             });
                           },
                         ),
@@ -364,71 +455,61 @@ class _AddItemDialogState extends State<AddItemDialog> {
                               borderRadius: BorderRadius.circular(8),
                               color: Colors.white,
                             ),
-                            constraints: BoxConstraints(maxHeight: 200),
+                            constraints: BoxConstraints(maxHeight: 300),
                             child: ListView(
                               shrinkWrap: true,
                               children: selectedParentCategory!.categories.map((sub) {
-                                return ListTile(
-                                  title: Text(sub.name),
-                                  onTap: () {
-                                    setState(() {
-                                      selectedCategory = sub;
-                                      _subCategoryController.text = sub.name;
+                                final bool isExpanded = selectedCategory == sub;
 
-                                      // reset mini
-                                      selectedMiniCategory = null;
-                                      _miniCategoryController.clear();
-
-                                      showSubCategoryList = false;
-                                      showMiniCategoryList = true; // optionally open mini
-                                    });
-                                  },
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    ListTile(
+                                      title: Text(sub.name, style: TextStyle(fontWeight: FontWeight.bold)),
+                                      trailing: sub.children.isNotEmpty
+                                          ? Icon(
+                                        isExpanded
+                                            ? Icons.keyboard_arrow_up
+                                            : Icons.keyboard_arrow_down,
+                                      )
+                                          : null,
+                                      onTap: () {
+                                        setState(() {
+                                          if (isExpanded) {
+                                            // collapse if already selected
+                                            selectedCategory = null;
+                                            selectedMiniCategory = null;
+                                            _subCategoryController.clear();
+                                          } else {
+                                            selectedCategory = sub;
+                                            selectedMiniCategory = null;
+                                            _subCategoryController.text = sub.name;
+                                          }
+                                        });
+                                      },
+                                    ),
+                                    if (isExpanded && sub.children.isNotEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.only(left: 16),
+                                        child: Column(
+                                          children: sub.children.map((mini) {
+                                            return ListTile(
+                                              title: Text(mini.name),
+                                              onTap: () {
+                                                setState(() {
+                                                  selectedMiniCategory = mini;
+                                                  _subCategoryController.text = "${sub.name} > ${mini.name}";
+                                                  showSubCategoryList = false; // close list
+                                                });
+                                              },
+                                            );
+                                          }).toList(),
+                                        ),
+                                      ),
+                                  ],
                                 );
                               }).toList(),
                             ),
-                          ),
-
-                        // ===== MINI CATEGORY BELOW SUBCATEGORY =====
-                        if (selectedCategory != null && selectedCategory!.children.isNotEmpty)
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 8),
-                              _buildPickerField(
-                                label: "Mini Category",
-                                controller: _miniCategoryController,
-                                onTap: () {
-                                  setState(() {
-                                    showMiniCategoryList = !showMiniCategoryList;
-                                  });
-                                },
-                              ),
-                              if (showMiniCategoryList)
-                                Container(
-                                  margin: const EdgeInsets.only(top: 4),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.grey),
-                                    borderRadius: BorderRadius.circular(8),
-                                    color: Colors.white,
-                                  ),
-                                  constraints: BoxConstraints(maxHeight: 200),
-                                  child: ListView(
-                                    shrinkWrap: true,
-                                    children: selectedCategory!.children.map((mini) {
-                                      return ListTile(
-                                        title: Text(mini.name),
-                                        onTap: () {
-                                          setState(() {
-                                            selectedMiniCategory = mini;
-                                            _miniCategoryController.text = mini.name;
-                                            showMiniCategoryList = false;
-                                          });
-                                        },
-                                      );
-                                    }).toList(),
-                                  ),
-                                ),
-                            ],
                           ),
                       ],
                     ),
