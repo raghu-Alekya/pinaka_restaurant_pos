@@ -10,6 +10,7 @@ class OrderItems {
   final List<String> modifiers;
   final Map<String, Map<String, dynamic>> addOns; // {'Cheese': {'quantity': 2, 'price': 20.0}}
   final String note;
+  final double amount;
 
   // ✅ New field
   final bool hasOptions;
@@ -27,21 +28,24 @@ class OrderItems {
     this.note = '',
     required this.section,
     this.taxClass,
-    this.hasOptions = false,  // default false
+    this.hasOptions = false,
+    required this.amount,// default false
   });
   String get itemName => name;
 
   /// ✅ Total including add-ons (multiplies add-ons per item quantity)
+  /// ✅ Total including add-ons (add-ons fixed, only item price multiplies)
   double get totalWithAddons {
     double addonsTotal = 0.0;
+
     addOns.forEach((_, data) {
       final qty = (data['quantity'] as int?) ?? 0;
       final addonPrice = (data['price'] as num?)?.toDouble() ?? 0.0;
       addonsTotal += qty * addonPrice;
     });
 
-    // each addon applies per item quantity
-    return (price * quantity) + (addonsTotal * quantity);
+    // ✅ Only item price multiplies by quantity
+    return (price * quantity) + addonsTotal;
   }
 
   factory OrderItems.fromJson(Map<String, dynamic> json) {
@@ -82,7 +86,11 @@ class OrderItems {
           'Unknown',
       quantity: json['quantity'] ?? 1,
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
-      addOns: addOns,
+        //  ✅ amount includes modifier price
+    amount: (json['amount'] as num?)?.toDouble() ??
+        (((json['price'] as num?)?.toDouble() ?? 0.0) * (json['quantity'] ?? 1)),
+
+    addOns: addOns,
       modifiers: modifiers,
       note: json['note']?.toString() ?? '',
       section: section,
@@ -119,6 +127,7 @@ class OrderItems {
     String? name,
     int? quantity,
     double? price,
+    double? amount,
     List<String>? modifiers,
     Map<String, Map<String, dynamic>>? addOns,
     String? note,
@@ -131,6 +140,7 @@ class OrderItems {
       variationId: variationId ?? this.variationId, // ✅ include here
       name: name ?? this.name,
       quantity: quantity ?? this.quantity,
+      amount: amount ?? this.amount,
       price: price ?? this.price,
       modifiers: modifiers ?? List<String>.from(this.modifiers),
       addOns: addOns ?? Map<String, Map<String, dynamic>>.from(this.addOns),

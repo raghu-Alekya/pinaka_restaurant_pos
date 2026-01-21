@@ -8,6 +8,7 @@ class Item {
   double amount;
   String? notes;
   bool selected;
+  List<String> modifiers;
 
   Item({
     required this.name,
@@ -15,6 +16,7 @@ class Item {
     this.quantity = 1,
     this.selected = false,
     this.notes,
+    this.modifiers = const [],
   }) : amount = pricePerItem * quantity;
 }
 
@@ -73,6 +75,7 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
       pricePerItem: e.pricePerItem,
       quantity: e.quantity,
       notes: e.notes,
+      modifiers: e.modifiers, //
     ))
         .toList();
 
@@ -84,6 +87,7 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
         pricePerItem: e.pricePerItem,
         quantity: e.quantity,
         notes: e.notes,
+        modifiers: e.modifiers,
       ))
           .toList(),
     );
@@ -274,6 +278,19 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
+                                  if (item.modifiers.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 2),
+                                      child: Text(
+                                        "Modifiers: ${item.modifiers.join(", ")}",
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.blueGrey,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+
                                   if ((item.notes ?? "").isNotEmpty)
                                     Padding(
                                       padding: const EdgeInsets.only(top: 2),
@@ -493,6 +510,19 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                                           fontWeight: FontWeight.w500,
                                         ),
                                       ),
+                                      if (item.modifiers.isNotEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 2),
+                                          child: Text(
+                                            "Modifiers: ${item.modifiers.join(", ")}",
+                                            style: const TextStyle(
+                                              fontSize: 10,
+                                              color: Colors.blueGrey,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+
                                       if ((item.notes ?? "").isNotEmpty)
                                         Padding(
                                           padding:

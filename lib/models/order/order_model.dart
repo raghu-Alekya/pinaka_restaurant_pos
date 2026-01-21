@@ -66,6 +66,8 @@ class OrderModel {
                 ),
             modifiers: lineItem.modifiers,
             addOns: lineItem.addOns,
+            // ✅ IMPORTANT
+            amount: lineItem.amount,
           ));
         }
       }

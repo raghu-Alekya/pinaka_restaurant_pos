@@ -65,6 +65,9 @@ class LineItem {
   final double tax;
   final String taxClass;
 
+  final List<String> modifiers;
+  final double modifierAmount; // ✅ ADD THIS
+
   LineItem({
     required this.productId,
     required this.variationId,
@@ -73,6 +76,8 @@ class LineItem {
     required this.total,
     required this.tax,
     required this.taxClass,
+    required this.modifiers,
+    required this.modifierAmount, // ✅ ADD THIS
   });
 
   factory LineItem.fromJson(Map<String, dynamic> json) {
@@ -84,6 +89,13 @@ class LineItem {
       total: (json['total'] ?? 0).toDouble(),
       tax: (json['tax'] ?? 0).toDouble(),
       taxClass: (json['tax_class'] ?? 'food').toString().toLowerCase(),
+
+      modifiers: List<String>.from(json['modifiers'] ?? []),
+
+      // ✅ parse modifier_amount
+      modifierAmount: (json['modifier_amount'] ?? 0).toDouble(),
     );
   }
 }
+
+

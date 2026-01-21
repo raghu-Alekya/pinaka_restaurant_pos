@@ -425,11 +425,17 @@ class OrderPanel extends StatelessWidget {
                           child: Row(
                             children: [
                               SizedBox(width: 50, child: headerText('#')),
-                              Expanded(child: headerText('Item Name')),
-                              SizedBox(width: 120, child: headerText('Modifiers')),
+                              SizedBox(width: 140, child: headerText('Item Name')),
+                              SizedBox(width: 90, child: headerText('Modifiers')),
+
+                              // ✅ Unit Price column
+                              SizedBox(width: 80, child: headerText('Price')),
+
                               SizedBox(width: 70, child: headerText('Qty')),
+
                               SizedBox(width: 50, child: headerText('Amount')),
                             ],
+
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -533,35 +539,40 @@ class OrderPanel extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  orderButton(
-                    'Repeat order',
-                    const Color(0xFFF7C127),
-                    onPressed: () {
-                      final bloc = context.read<OrderBloc>();
-
-                      // 🛑 Prevent duplicate taps while loading
-                      if (bloc.state.isLoading) {
-                        AppLogger.info("⏳ Repeat already in progress");
-                        return;
+                  BlocListener<OrderBloc, OrderState>(
+                    listenWhen: (prev, curr) => prev.error != curr.error,
+                    listener: (context, state) {
+                      if (state.error != null && state.error!.isNotEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(state.error!)),
+                        );
                       }
-
-                      // ❌ Safety check
-                      if (bloc.state.orderId == 0) {
-                        AppLogger.error("❌ Cannot repeat order: orderId is 0");
-                        return;
-                      }
-
-                      AppLogger.info("🔁 Repeat order clicked");
-
-                      bloc.add(
-                        RepeatKotOrder(
-                          orderId: bloc.state.orderId,
-                          restaurantId: int.parse(bloc.state.restaurantId),
-                          zoneId: bloc.state.zoneId,
-                          token: token,
-                        ),
-                      );
                     },
+                    child: orderButton(
+                      'Repeat order',
+                      const Color(0xFFF7C127),
+                      onPressed: () {
+                        final bloc = context.read<OrderBloc>();
+
+                        if (bloc.state.isLoading) return;
+
+                        if (bloc.state.orderId == 0) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Order not found")),
+                          );
+                          return;
+                        }
+
+                        bloc.add(
+                          RepeatKotOrder(
+                            orderId: bloc.state.orderId,
+                            restaurantId: int.parse(bloc.state.restaurantId),
+                            zoneId: bloc.state.zoneId,
+                            token: token,
+                          ),
+                        );
+                      },
+                    ),
                   ),
 
                   orderButton(

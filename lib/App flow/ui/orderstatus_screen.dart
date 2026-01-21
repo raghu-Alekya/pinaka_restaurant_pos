@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:pinaka_restaurant_pos/App%20flow/ui/view_order_details_screen.dart';
 
 import '../../blocs/Bloc Event/order_list_event.dart';
 // import '../../blocs/Bloc Logic/orders_list_bloc.dart';
@@ -467,88 +468,89 @@ class _OrdersListTableState extends State<OrdersListTable> {
                         Expanded(
                           child: SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
-                            child: DataTable(
-                              showCheckboxColumn: false,
-                              headingTextStyle: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
-                                height: 1.10,
-                              ),
-                              headingRowHeight: 45,
-                              dataRowHeight: 40,
-                              headingRowColor: MaterialStateProperty.all(const Color(0xFFE7F5FD)),
-                              columnSpacing: 40,
-                              dividerThickness: 0,
-                              columns: const [
-                                DataColumn(label: Text("Order ID")),
-                                DataColumn(label: Text("Order Type")),
-                                DataColumn(label: Text("Date")),
-                                DataColumn(label: Text("Zone")),
-                                DataColumn(label: Text("Table")),
-                                DataColumn(label: Text("Cust. Name")),
-                                DataColumn(label: Text("Cust. Phone")),
-                                DataColumn(label: Text("Payment")),
-                                DataColumn(label: Text("Amount")),
-                                DataColumn(label: Text("Discount")),
-                                DataColumn(label: Text("Total")),
-                                DataColumn(label: Text("Status")),
-                              ],
-
-                              rows: pageOrders.map((order) {
-                                return DataRow(
-                                  onSelectChanged: (_) {
-                                    // Open the view screen when row is tapped
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => ViewOrderScreen(
-                                          order: order.toMapForView(),
+                            child: SizedBox(
+                              width: MediaQuery.of(context).size.width * 0.99, // 80% of screen width
+                              child: DataTable(
+                                showCheckboxColumn: false,
+                                headingTextStyle: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                  height: 1.10,
+                                ),
+                                headingRowHeight: 45,
+                                dataRowHeight: 40,
+                                headingRowColor: MaterialStateProperty.all(const Color(0xFFE7F5FD)),
+                                columnSpacing: 40,
+                                dividerThickness: 0,
+                                columns: const [
+                                  DataColumn(label: Text("Order ID")),
+                                  DataColumn(label: Text("Order Type")),
+                                  DataColumn(label: Text("Date")),
+                                  DataColumn(label: Text("Zone")),
+                                  DataColumn(label: Text("Table")),
+                                  DataColumn(label: Text("Cust. Name")),
+                                  DataColumn(label: Text("Cust. Phone")),
+                                  DataColumn(label: Text("Payment")),
+                                  // DataColumn(label: Text("Amount")),
+                                  // DataColumn(label: Text("Discount")),
+                                  DataColumn(label: Text("Total")),
+                                  DataColumn(label: Text("Status")),
+                                ],
+                                rows: pageOrders.map((order) {
+                                  return DataRow(
+                                    onSelectChanged: (_) {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => OrdersDetailsScreen(
+                                            token: widget.token,
+                                            pin: widget.pin,
+                                            restaurantId: widget.restaurantId,
+                                            restaurantName: widget.restaurantName,
+                                            userPermissions: _userPermissions,
+                                            orderId: order.orderId!,
+                                          ),
                                         ),
-                                      ),
-                                    );
-
-                                  },
-                                  cells: [
-                                    DataCell(Text(order.orderId?.toString() ?? '-')),
-                                    DataCell(Text(order.orderType ?? '-')),
-                                    DataCell(Text(order.date ?? '-')),
-                                    DataCell(Text(order.zoneName ?? '-')),
-                                    DataCell(Text(order.tableName ?? '-')),
-                                    DataCell(Text(
-                                      order.customerName?.trim().isEmpty == true
-                                          ? ''
-                                          : order.customerName ?? '-',
-                                    )),
-                                    DataCell(Text(order.customerPhone ?? '-')),
-                                    DataCell(Text(order.paymentType ?? '-')),
-                                    DataCell(Text(order.amount?.toStringAsFixed(2) ?? '0.00')),
-                                    DataCell(Text(order.discount?.toStringAsFixed(2) ?? '0.00')),
-                                    DataCell(Text(order.total?.toStringAsFixed(2) ?? '0.00')),
-                                    DataCell(
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                        decoration: BoxDecoration(
-                                          color: _statusColor(order.status ?? '').withOpacity(0.1), // light bg
-                                          borderRadius: BorderRadius.circular(12), // rounded pill
-                                        ),
-                                        child: Text(
-                                          order.status?.isNotEmpty == true ? order.status! : '-',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                            color: _statusColor(order.status ?? ''), // text color matches
+                                      );
+                                    },
+                                    cells: [
+                                      DataCell(Text(order.orderId?.toString() ?? '-')),
+                                      DataCell(Text(order.orderType ?? '-')),
+                                      DataCell(Text(order.date ?? '-')),
+                                      DataCell(Text(order.zoneName ?? '-')),
+                                      DataCell(Text(order.tableName ?? '-')),
+                                      DataCell(Text(
+                                        order.customerName?.trim().isEmpty == true
+                                            ? ''
+                                            : order.customerName ?? '-',
+                                      )),
+                                      DataCell(Text(order.customerPhone ?? '-')),
+                                      DataCell(Text(order.paymentType ?? '-')),
+                                      // DataCell(Text(order.amount?.toStringAsFixed(2) ?? '0.00')),
+                                      // DataCell(Text(order.discount?.toStringAsFixed(2) ?? '0.00')),
+                                      DataCell(Text(order.total?.toStringAsFixed(2) ?? '0.00')),
+                                      DataCell(
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                          decoration: BoxDecoration(
+                                            color: _statusColor(order.status ?? '').withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: Text(
+                                            order.status?.isNotEmpty == true ? order.status! : '-',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w500,
+                                              color: _statusColor(order.status ?? ''),
+                                            ),
                                           ),
                                         ),
                                       ),
-                                    ),
-
-
-                                  ],
-
-                                );
-
-                              }).toList(),
+                                    ],
+                                  );
+                                }).toList(),
+                              ),
                             ),
                           ),
                         ),

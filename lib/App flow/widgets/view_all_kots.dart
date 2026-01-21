@@ -10,6 +10,13 @@ import '../../blocs/Bloc Logic/order_bloc.dart';
 import '../../blocs/Bloc State/order_state.dart';
 import '../../models/order/KOT_model.dart';
 
+const Color kHeaderBlue = Color(0xFF152148);
+const Color kKotHeaderBg = Color(0xFFECEEFB);
+const Color kCardBg = Color(0xFFF1F1F3);
+const Color kDivider = Color(0xFFE6E6E6);
+const Color kTotalBg = Color(0xFFFFE4B8);
+
+
 class ViewAllKOTDropdown extends StatefulWidget {
   final int parentOrderId;
   final int restaurantId;
@@ -60,6 +67,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
     }
   }
 
+
   @override
   Widget build(BuildContext context) {
     return MultiBlocListener(
@@ -72,6 +80,16 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
               setState(() => _expanded = false);
             }
             _previousOrderItemCount = currentItemCount;
+          },
+        ),
+        // ✅ NEW: Refresh KOT list when KOT created
+        BlocListener<OrderBloc, OrderState>(
+          listener: (context, state) {
+            // whenever kotList length changes, fetch again
+            // (or you can check a success flag)
+            if (state.kotList.length > 0) {
+              _fetchKots();
+            }
           },
         ),
       ],
@@ -123,268 +141,389 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
               const SizedBox(height: 6),
 
               // Expanded KOT content
-              if (_expanded)
-                Container(
-                  width: double.infinity,
-                  height: 300,
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0XFFF1F1F3),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: kotList.isEmpty
-                      ? const Center(
-                    child: Text(
-                      "No KOTs Available",
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontStyle: FontStyle.italic,
+              // if (_expanded)
+                if (_expanded)
+                  Container(
+                    width: double.infinity,
+                    height: 420,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: kCardBg,
+                      borderRadius: BorderRadius.circular(10),
+                      // ✅ Border
+                      border: Border.all(
+                        color: Colors.black.withOpacity(0.08),
+                        width: 1,
                       ),
-                    ),
-                  )
-                      : SingleChildScrollView(
-                    child: Column(
-                      children: kotList.map<Widget>((kot) {
-                        final kotKey = kot.kotId.toString();
-                        return Column(
-                          children: [
-                            // KOT header
-                            GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _kotExpanded[kotKey] =
-                                  !_kotExpanded[kotKey]!;
-                                });
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 6, horizontal: 8),
-                                color: const Color(0xFFECEEFB),
-                                child: Row(
-                                  mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      (kot.kotNumber?.isNotEmpty ?? false)
-                                          ? kot.kotNumber!
-                                          : "KOT #${kot.kotId}",
-                                      style: const TextStyle(fontWeight: FontWeight.bold),
-                                    ),
 
-                                    Row(
-                                      children: [
-                                        Text(
-                                          kot.status,
-                                          style: TextStyle(
-                                            color: kot.status == 'Pending'
-                                                ? Colors.red
-                                                : Colors.green,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Icon(
-                                          _kotExpanded[kotKey]!
-                                              ? Icons.keyboard_arrow_up
-                                              : Icons.keyboard_arrow_down,
-                                          size: 16,
+                      // ✅ Shadow
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.10),
+                          blurRadius: 12,
+                          spreadRadius: 2,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: kotList.isEmpty
+                        ? const Center(
+                      child: Text(
+                        "No KOTs Available",
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    )
+                        : SingleChildScrollView(
+                      child: Column(
+                        children: kotList.map((kot) {
+                          final kotKey = kot.kotId.toString();
+                          final isOpen = _kotExpanded[kotKey] ?? false;
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.transparent,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              children: [
+                                // ─────────── KOT HEADER (Top Row) ───────────
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _kotExpanded[kotKey] = !isOpen;
+                                    });
+                                  },
+                                  child: Container(
+                                    height: 44,
+                                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(10),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.05),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
                                         ),
                                       ],
                                     ),
-                                  ],
-                                ),
-                              ),
-                            ),
-
-                            // KOT items
-                            if (_kotExpanded[kotKey]!)
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 6),
-                                child: Column(
-                                  crossAxisAlignment:
-                                  CrossAxisAlignment.stretch,
-                                  children: [
-                                    // Time + action buttons
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 4, vertical: 6),
-                                      color: const Color(0xFFECEEFB),
-                                      child: Row(
-                                        children: [
-                                          Text(
-                                            TimeOfDay.fromDateTime(kot.time).format(context),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 10, vertical: 6),
+                                          decoration: BoxDecoration(
+                                            color: kKotHeaderBg,
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Text(
+                                            (kot.kotNumber?.isNotEmpty ?? false)
+                                                ? kot.kotNumber!
+                                                : "KOT#${kot.kotId}",
                                             style: const TextStyle(
                                               fontSize: 12,
                                               fontWeight: FontWeight.w700,
                                               color: Colors.black,
                                             ),
                                           ),
-
-
-                                          const Spacer(),
-
-
-                                          // ✅ Void Items Button (Blue)
-                                          _kotActionButton(
-                                            text: "Void Items",
-                                            bgColor: const Color(0xFF1E63FF), // same blue like image
-                                            textColor: Colors.white,
-                                            iconColor: Colors.white,
-                                            onTap: () async {
-                                              final List<Item> voidDialogItems = kot.items.map((o) {
-                                                return Item(
-                                                  name: o.name ?? "",
-                                                  pricePerItem: (o.price ?? 0).toDouble(),
-                                                  // quantity: o.qty ?? 1,
-                                                  // notes: o.modifier ?? "",
-                                                );
-                                              }).toList();
-
-                                              final result = await showDialog(
-                                                context: context,
-                                                barrierDismissible: true,
-                                                builder: (context) => VoidItemsDialog(
-                                                  items: voidDialogItems,
-                                                  tableNo: widget.tableNo.toString(),
-                                                  kotNo: kot.kotId.toString(),
-                                                  onRemark: (value) {
-                                                    print("Remark: $value");
-                                                  },
-                                                  item: kot,
-                                                ),
-                                              );
-
-                                              if (result != null) {
-                                                print("Selected Items: ${result['items']}");
-                                                print("Remark: ${result['remark']}");
-                                              }
-                                            },
-
-                                          ),
-
-                                          const SizedBox(width: 10),
-
-                                          // ✅ Transfer KOT Button (Yellow)
-                                          _kotActionButton(
-                                            text: "Transfer KOT",
-                                            bgColor: const Color(0xFFFFC107),
-                                            textColor: Colors.black,
-                                            iconColor: Colors.black,
-                                            onTap: () async {
-
-                                              // ✅ Convert your KOT items into TransferKotItem list dynamically
-                                              final transferItems = kot.items.map((e) {
-                                                return TransferKotItem(
-                                                  name: e.itemName ?? "",
-                                                  note: e.note.isNotEmpty
-                                                      ? e.note
-                                                      : (e.modifiers.isNotEmpty ? e.modifiers.join(", ") : ""),
-                                                  qty: e.quantity ?? 1,
-                                                  amount: e.totalWithAddons,
-
-                                                  // amount: (e.amount ?? 0).toDouble(),
-                                                );
-                                              }).toList();
-
-                                              // ✅ Dynamic tables list (from API or static)
-                                              final tableList = List.generate(24, (i) => "Table-${i + 1}");
-
-                                              final result = await showDialog(
-                                                context: context,
-                                                barrierDismissible: false,
-                                                builder: (_) => TransferKOTDialog(
-                                                  tableNo: widget.tableNo.toString(),   // dynamic
-                                                  kotNo: kot.kotId.toString(),          // dynamic
-                                                  dateTime: kot.time ?? DateTime.now(), // dynamic
-                                                  items: transferItems,                 // dynamic
-                                                  tables: tableList,                    // dynamic
-                                                ),
-                                              );
-
-                                              if (result != null) {
-                                                final selectedTable = result["selectedTable"];
-                                                final selectedItems = result["selectedItems"];
-
-                                                debugPrint("✅ Selected Table: $selectedTable");
-                                                debugPrint("✅ Selected Items: $selectedItems");
-
-                                                // TODO: Call API / Bloc Event here for transfer KOT
-                                              }
-                                            },
-                                          ),
-
-                                        ],
-                                      )
-
-
+                                        ),
+                                        const Spacer(),
+                                        Icon(
+                                          isOpen
+                                              ? Icons.keyboard_arrow_up
+                                              : Icons.keyboard_arrow_down,
+                                          size: 18,
+                                          color: Colors.black,
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(height: 6),
-                                    // Items list
-                                    Container(
-                                      color: Colors.white,
-                                      padding: const EdgeInsets.all(8),
-                                      child: Column(
-                                        children: kot.items
-                                            .asMap()
-                                            .entries
-                                            .map<Widget>((entry) {
-                                          final index = entry.key;
-                                          final item = entry.value;
-                                          return Column(
+                                  ),
+                                ),
+
+                                // ─────────── KOT BODY ───────────
+                                if (isOpen)
+                                  Container(
+                                    margin: const EdgeInsets.only(top: 8),
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: kKotHeaderBg,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        // Time + Buttons Row
+                                        Row(
+                                          children: [
+                                            Text(
+                                              TimeOfDay.fromDateTime(kot.time)
+                                                  .format(context),
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w700,
+                                                color: Colors.black,
+                                              ),
+                                            ),
+                                            const Spacer(),
+
+                                            // Void Items Button (Blue)
+                                            SizedBox(
+                                              height: 32,
+                                              child: ElevatedButton.icon(
+                                                onPressed: () async {
+                                                  final List<Item> voidDialogItems =
+                                                  kot.items.map((o) {
+                                                    return Item(
+                                                      name: o.name ?? "",
+                                                      pricePerItem:
+                                                      (o.price ?? 0).toDouble(),
+                                                    );
+                                                  }).toList();
+
+                                                  await showDialog(
+                                                    context: context,
+                                                    barrierDismissible: true,
+                                                    builder: (context) => VoidItemsDialog(
+                                                      items: voidDialogItems,
+                                                      tableNo: widget.tableNo,
+                                                      kotNo: kot.kotId.toString(),
+                                                      onRemark: (value) {
+                                                        debugPrint("Remark: $value");
+                                                      },
+                                                      item: kot,
+                                                    ),
+                                                  );
+                                                },
+                                                // ✅ Asset Icon
+                                                icon: Image.asset(
+                                                  "assets/icon/Void.png", // 🔥 your icon path
+                                                  height: 16,
+                                                  width: 16,
+                                                  color: Colors.white, // remove if not changing color
+                                                ),
+                                                label: const Text(
+                                                  "Void Items",
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor:
+                                                  const Color(0xFF1E63FF),
+                                                  elevation: 0,
+                                                  padding: const EdgeInsets.symmetric(
+                                                      horizontal: 12),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                    BorderRadius.circular(8),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+
+                                            const SizedBox(width: 10),
+
+                                            // Transfer KOT Button (Yellow)
+                                            SizedBox(
+                                              height: 32,
+                                              child: ElevatedButton.icon(
+                                                onPressed: () async {
+                                                  final transferItems = kot.items.map((e) {
+                                                    return TransferKotItem(
+                                                      name: e.itemName ?? "",
+                                                      note: e.note.isNotEmpty
+                                                          ? e.note
+                                                          : (e.modifiers.isNotEmpty
+                                                          ? e.modifiers.join(", ")
+                                                          : ""),
+                                                      qty: e.quantity ?? 1,
+                                                      amount: e.totalWithAddons,
+                                                    );
+                                                  }).toList();
+
+                                                  final tableList = List.generate(
+                                                      24, (i) => "Table-${i + 1}");
+
+                                                  await showDialog(
+                                                    context: context,
+                                                    barrierDismissible: false,
+                                                    builder: (_) => TransferKOTDialog(
+                                                      tableNo: widget.tableNo,
+                                                      kotNo: kot.kotId.toString(),
+                                                      dateTime:
+                                                      kot.time ?? DateTime.now(),
+                                                      items: transferItems,
+                                                      tables: tableList,
+                                                    ),
+                                                  );
+                                                },
+                                                // ✅ Asset Icon
+                                                icon: Image.asset(
+                                                  "assets/icon/Void.png", // 🔥 your icon path
+                                                  height: 16,
+                                                  width: 16,
+                                                  color: Colors.black, // remove if not changing color
+                                                ),
+                                                label: const Text(
+                                                  "Transfer KOT",
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.black,
+                                                  ),
+                                                ),
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor:
+                                                  const Color(0xFFFFC107),
+                                                  elevation: 0,
+                                                  padding: const EdgeInsets.symmetric(
+                                                      horizontal: 12),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                    BorderRadius.circular(8),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+
+                                        const SizedBox(height: 10),
+
+                                        // Items Table Container
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: Column(
                                             children: [
-                                              Row(
-                                                mainAxisAlignment:
-                                                MainAxisAlignment
-                                                    .spaceBetween,
-                                                crossAxisAlignment:
-                                                CrossAxisAlignment.center,
-                                                children: [
-                                                  Text("${index + 1}.",
-                                                      style: const TextStyle(
-                                                          fontSize: 12)),
-                                                  Expanded(
-                                                    child: Padding(
-                                                      padding: const EdgeInsets
-                                                          .symmetric(
-                                                          horizontal: 8.0),
-                                                      child: Text(
-                                                        item.name,
-                                                        style: const TextStyle(
-                                                            fontSize: 12),
-                                                        overflow:
-                                                        TextOverflow.ellipsis,
+                                              ...kot.items.asMap().entries.map((entry) {
+                                                final index = entry.key;
+                                                final item = entry.value;
+
+                                                return Column(
+                                                  children: [
+                                                    Padding(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                                      child: Row(
+                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                        children: [
+                                                          SizedBox(
+                                                            width: 20,
+                                                            child: Text(
+                                                              "${index + 1}",
+                                                              style: const TextStyle(fontSize: 12),
+                                                            ),
+                                                          ),
+
+                                                          // ✅ Name + modifier + addons
+                                                          Expanded(
+                                                            child: Column(
+                                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                                              children: [
+                                                                Text(
+                                                                  item.name,
+                                                                  style: const TextStyle(
+                                                                    fontSize: 13,
+                                                                    fontWeight: FontWeight.w500,
+                                                                  ),
+                                                                  overflow: TextOverflow.ellipsis,
+                                                                ),
+
+                                                                if (item.modifiers.isNotEmpty)
+                                                                  Padding(
+                                                                    padding: const EdgeInsets.only(top: 2),
+                                                                    child: Text(
+                                                                      item.modifiers.join(", "),
+                                                                      style: const TextStyle(
+                                                                        fontSize: 10,
+                                                                        color: Colors.red,
+                                                                        fontWeight: FontWeight.w600,
+                                                                      ),
+                                                                    ),
+                                                                  ),
+
+                                                                if (item.addOns.isNotEmpty)
+                                                                  Padding(
+                                                                    padding: const EdgeInsets.only(top: 2),
+                                                                    child: Text(
+                                                                      item.addOns.entries.map((e) {
+                                                                        final qty = e.value['quantity'] ?? 0;
+                                                                        return "${e.key} x$qty";
+                                                                      }).join(", "),
+                                                                      style: const TextStyle(
+                                                                        fontSize: 10,
+                                                                        color: Colors.blue,
+                                                                        fontWeight: FontWeight.w600,
+                                                                      ),
+                                                                    ),
+                                                                  ),
+                                                              ],
+                                                            ),
+                                                          ),
+
+                                                          SizedBox(
+                                                            width: 40,
+                                                            child: Center(
+                                                              child: Text(
+                                                                "${item.quantity}",
+                                                                style: const TextStyle(fontSize: 12),
+                                                              ),
+                                                            ),
+                                                          ),
+
+                                                          SizedBox(
+                                                            width: 70,
+                                                            child: Column(
+                                                              crossAxisAlignment: CrossAxisAlignment.end,
+                                                              children: [
+                                                                Text(
+                                                                  item.amount.toStringAsFixed(2),
+                                                                  style: const TextStyle(
+                                                                    fontSize: 13,
+                                                                    fontWeight: FontWeight.w700,
+                                                                  ),
+                                                                ),
+                                                                const SizedBox(height: 2),
+                                                                Text(
+                                                                  item.amount.toStringAsFixed(2),
+                                                                  style: const TextStyle(
+                                                                    fontSize: 11,
+                                                                    color: Colors.grey,
+                                                                    fontWeight: FontWeight.w500,
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                        ],
                                                       ),
                                                     ),
-                                                  ),
-                                                  Text("${item.quantity}",
-                                                      style: const TextStyle(
-                                                          fontSize: 12)),
-                                                  const SizedBox(width: 120),
-                                                  Text(
-                                                    "₹${(item.quantity * (item.price ?? 0)).toStringAsFixed(2)}",
-                                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                                                  )
-
-                                                ],
-                                              ),
-                                              const Divider(
-                                                  thickness: 1,
-                                                  color: Color(0XFFD9D9D9)),
+                                                    const Divider(height: 1, thickness: 1, color: kDivider),
+                                                  ],
+                                                );
+                                              }).toList(),
                                             ],
-                                          );
-                                        }).toList(),
-                                      ),
+                                          ),
+                                        ),
+
+                                      ],
                                     ),
-                                  ],
-                                ),
-                              ),
-                          ],
-                        );
-                      }).toList(),
+                                  ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
                     ),
                   ),
-                ),
+
             ],
           );
         },

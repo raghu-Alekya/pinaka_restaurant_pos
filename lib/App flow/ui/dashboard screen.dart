@@ -207,13 +207,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     section: section,
                     productId: product.id,
                     variationId: variant.id,
+
+                    // ✅ base amount (item total)
+                    amount: variant.price * 1,
                   ),
                 ),
               );
+
               Navigator.pop(dialogContext);
             },
             onVariantSelected: (variant) {}, // optional
           );
+
         },
       );
     } else {
@@ -227,8 +232,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
             section: section,
             productId: product.id,
             variationId: null,
+
+            // ✅ base amount
+            amount: (double.tryParse(product.price.toString()) ?? 0.0) * 1,
           ),
         ),
+
       );
     }
   }
@@ -458,7 +467,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
             // RIGHT SIDE: Order Panel
             Expanded(
-              flex: 45,
+              flex: 49,
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: BlocBuilder<OrderBloc, OrderState>(

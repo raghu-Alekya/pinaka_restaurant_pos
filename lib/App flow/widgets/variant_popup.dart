@@ -86,6 +86,9 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
         section: widget.section,
         productId: widget.product.id,
         variationId: variant.variationId,
+        // ✅ base amount = price * quantity
+        amount: variant.price * entry.value,
+
       );
 
       widget.orderBloc.add(AddOrderItem(orderItem));

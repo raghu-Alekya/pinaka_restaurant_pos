@@ -6,6 +6,14 @@ class OrderlistModel {
   String? customerPhone;
   String? paymentType;
 
+  // Payment fields
+  num? grossTotal;
+  num? subTotal;
+  num? totalTax;
+  num? netTotal;
+  num? merchantDiscount;
+  num? netPayable;
+  num? roundOff; // ✅ new field
   num? amount;
   num? discount;
   num? total;
@@ -29,6 +37,13 @@ class OrderlistModel {
     this.customerName,
     this.customerPhone,
     this.paymentType,
+    this.grossTotal,
+    this.subTotal,
+    this.totalTax,
+    this.netTotal,
+    this.merchantDiscount,
+    this.netPayable,
+    this.roundOff, // ✅ include in constructor
     this.amount,
     this.discount,
     this.total,
@@ -51,9 +66,18 @@ class OrderlistModel {
       customerName: json['customer_name'],
       customerPhone: json['customer_phone'],
       paymentType: json['payment_type'],
-      amount: num.tryParse(json['amount'].toString()) ?? 0,
-      discount: num.tryParse(json['discount'].toString()) ?? 0,
-      total: num.tryParse(json['total'].toString()) ?? 0,
+
+      grossTotal: num.tryParse(json['gross_total'].toString()) ?? 0,
+      subTotal: num.tryParse(json['sub_total'].toString()) ?? 0,
+      totalTax: num.tryParse(json['total_tax'].toString()) ?? 0,
+      netTotal: num.tryParse(json['net_total'].toString()) ?? 0,
+      merchantDiscount: num.tryParse(json['merchant_discount'].toString()) ?? 0,
+      netPayable: num.tryParse(json['net_payable'].toString()) ?? 0,
+      roundOff: num.tryParse(json['round_off']?.toString() ?? "0") ?? 0,
+      amount: num.tryParse((json['amount'] ?? 0).toString()) ?? 0,
+      discount: num.tryParse((json['discount'] ?? 0).toString()) ?? 0,
+      total: num.tryParse((json['total'] ?? 0).toString()) ?? 0,
+
       restaurantId: json['restaurant_id'],
       zoneId: json['zone_id'],
       tableId: json['table_id'],
@@ -68,6 +92,8 @@ class OrderlistModel {
     );
   }
 }
+
+
 
 class KotOrder {
   int? kotOrderId;

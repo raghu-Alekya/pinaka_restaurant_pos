@@ -198,6 +198,8 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       productId: item.id,
       hasOptions: hasOptions,
       variationId: null,
+      // ✅ base amount (only item price now)
+      amount: item.price * 1,
       // variantId: null, // 🔹 now accurate
     );
 
@@ -241,11 +243,16 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
             section: section,
             productId: product.id,
             variationId: variant.id,
-            // variantId:  variant.id,
+
+            // ✅ base amount (item total)
+            amount: variant.price * 1,
           );
+
           orderBloc.add(AddOrderItem(orderItem));
+
           print("[VariantPopup] Added to order: ${orderItem.name} x${orderItem.quantity}");
         },
+
         section: section,
         orderBloc: orderBloc,
       ),

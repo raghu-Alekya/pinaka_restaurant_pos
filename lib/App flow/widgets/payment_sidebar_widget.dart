@@ -54,6 +54,7 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
   double calculatedNetPayable = 0.0;
 
 
+
   // until backend provides it
 
 
@@ -333,6 +334,7 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
+
                               ),
                               Text(
                                 'Units',
@@ -370,16 +372,38 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                                     child: Row(
                                       children: [
                                         Expanded(
-                                          child: Text(
-                                            item.name,
-                                            style: const TextStyle(fontSize: 12),
-                                            overflow: TextOverflow.ellipsis,
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                item.name,
+                                                style: const TextStyle(fontSize: 12),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+
+                                              if (item.modifiers.isNotEmpty)
+                                                Padding(
+                                                  padding: const EdgeInsets.only(top: 2),
+                                                  child: Text(
+                                                    "${item.modifiers.join(", ")}  (+₹${item.modifierAmount.toStringAsFixed(0)})",
+                                                    style: const TextStyle(
+                                                      fontSize: 10,
+                                                      color: Colors.red, // ✅ RED
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                            ],
                                           ),
                                         ),
+
                                         Text(
-                                          '${item.qty} × ${(item.qty > 0 ? item.total / item.qty : 0).toStringAsFixed(0)}',
+                                          '${item.qty} × ${((item.qty > 0 ? ((item.total - item.modifierAmount) / item.qty) : 0)).toStringAsFixed(0)}',
                                           style: const TextStyle(fontSize: 12),
                                         ),
+
+
                                         const SizedBox(width: 80),
                                         Text(
                                           item.total.toStringAsFixed(2),
