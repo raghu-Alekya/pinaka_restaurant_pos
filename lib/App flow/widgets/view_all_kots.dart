@@ -3,12 +3,17 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/widgets/transer_kot.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/widgets/void_items.dart';
 import '../../blocs/Bloc Event/kot_event.dart';
+import '../../blocs/Bloc Event/void_item_evnts.dart';
 import '../../blocs/Bloc Logic/kot_bloc.dart';
+import '../../blocs/Bloc Logic/void_item_bloc.dart';
 import '../../blocs/Bloc State/kot_state.dart';
 import '../../blocs/Bloc Event/order_event.dart';
 import '../../blocs/Bloc Logic/order_bloc.dart';
+import '../../blocs/Bloc State/order_list_state.dart';
 import '../../blocs/Bloc State/order_state.dart';
+import '../../blocs/Bloc State/void_item_state.dart';
 import '../../models/order/KOT_model.dart';
+import '../../models/order/void_kot_items.dart';
 
 const Color kHeaderBlue = Color(0xFF152148);
 const Color kKotHeaderBg = Color(0xFFECEEFB);
@@ -23,6 +28,7 @@ class ViewAllKOTDropdown extends StatefulWidget {
   final int zoneId;
   final String token;
   final String tableNo;
+  final List<KotModel> kots; // ✅ ADD THIS
 
   const ViewAllKOTDropdown({
     super.key,
@@ -30,7 +36,8 @@ class ViewAllKOTDropdown extends StatefulWidget {
     required this.restaurantId,
     required this.zoneId,
     required this.tableNo,
-    required this.token, required List<KotModel> kots,
+    required this.token,
+    required this.kots, // ✅ FIXED
   });
 
   @override
@@ -41,6 +48,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
   bool _expanded = false;
   final Map<String, bool> _kotExpanded = {};
   int _previousOrderItemCount = 0;
+
 
   @override
   void initState() {
@@ -256,144 +264,196 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                     child: Column(
                                       children: [
                                         // Time + Buttons Row
-                                        Row(
-                                          children: [
-                                            Text(
-                                              TimeOfDay.fromDateTime(kot.time)
-                                                  .format(context),
-                                              style: const TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w700,
-                                                color: Colors.black,
-                                              ),
-                                            ),
-                                            const Spacer(),
+                                        MultiBlocListener(
+                                        listeners: [
+                                        // ✅ 1) Load KOT Line Items → open dialog
+                                        BlocListener<KotLineItemsBloc, KotLineItemsState>(
+                                    listener: (context, state) async {
+                                      if (state is KotLineItemsLoaded) {
+                                        final response = state.response;
 
-                                            // Void Items Button (Blue)
-                                            SizedBox(
-                                              height: 32,
-                                              child: ElevatedButton.icon(
-                                                onPressed: () async {
-                                                  final List<Item> voidDialogItems =
-                                                  kot.items.map((o) {
-                                                    return Item(
-                                                      name: o.name ?? "",
-                                                      pricePerItem:
-                                                      (o.price ?? 0).toDouble(),
-                                                    );
-                                                  }).toList();
-
-                                                  await showDialog(
-                                                    context: context,
-                                                    barrierDismissible: true,
-                                                    builder: (context) => VoidItemsDialog(
-                                                      items: voidDialogItems,
-                                                      tableNo: widget.tableNo,
-                                                      kotNo: kot.kotId.toString(),
-                                                      onRemark: (value) {
-                                                        debugPrint("Remark: $value");
-                                                      },
-                                                      item: kot,
-                                                    ),
-                                                  );
+                                        await showDialog(
+                                          context: context,
+                                          barrierDismissible: true,
+                                          builder: (dialogContext) {
+                                            return BlocProvider.value(
+                                              value: context.read<UpdatekotBloc>(), // ✅ pass existing bloc
+                                              child: VoidItemsDialog(
+                                                items: response.items,
+                                                tableNo: widget.tableNo,
+                                                kotNo: response.kotNumber,
+                                                kotId: response.kotId,
+                                                restaurantId: response.restaurantId,
+                                                zoneId: response.zoneId,
+                                                token: widget.token,
+                                                parentOrderId: context.read<KotBloc>().currentParentOrderId,
+                                                item: kot,
+                                                onRemark: (value) {
+                                                  debugPrint("Remark: $value");
                                                 },
-                                                // ✅ Asset Icon
-                                                icon: Image.asset(
-                                                  "assets/icon/Void.png", // 🔥 your icon path
-                                                  height: 16,
-                                                  width: 16,
-                                                  color: Colors.white, // remove if not changing color
-                                                ),
-                                                label: const Text(
-                                                  "Void Items",
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor:
-                                                  const Color(0xFF1E63FF),
-                                                  elevation: 0,
-                                                  padding: const EdgeInsets.symmetric(
-                                                      horizontal: 12),
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                    BorderRadius.circular(8),
-                                                  ),
-                                                ),
                                               ),
-                                            ),
+                                            );
+                                          },
+                                        );
 
-                                            const SizedBox(width: 10),
+                                      }
 
-                                            // Transfer KOT Button (Yellow)
-                                            SizedBox(
-                                              height: 32,
-                                              child: ElevatedButton.icon(
-                                                onPressed: () async {
-                                                  final transferItems = kot.items.map((e) {
-                                                    return TransferKotItem(
-                                                      name: e.itemName ?? "",
-                                                      note: e.note.isNotEmpty
-                                                          ? e.note
-                                                          : (e.modifiers.isNotEmpty
-                                                          ? e.modifiers.join(", ")
-                                                          : ""),
-                                                      qty: e.quantity ?? 1,
-                                                      amount: e.totalWithAddons,
-                                                    );
-                                                  }).toList();
+                                      if (state is KotLineItemsError) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text(state.message)),
+                                        );
+                                      }
+                                    },
+                                    ),
 
-                                                  final tableList = List.generate(
-                                                      24, (i) => "Table-${i + 1}");
+                                        // ✅ 2) After Update/Void success → Refresh KOT list automatically
+                                          BlocListener<UpdatekotBloc, UpdatekotState>(
+                                            listener: (context, state) {
+                                              if (state is UpdatekotSuccess) {
+                                                final kotBloc = context.read<KotBloc>();
 
-                                                  await showDialog(
-                                                    context: context,
-                                                    barrierDismissible: false,
-                                                    builder: (_) => TransferKOTDialog(
-                                                      tableNo: widget.tableNo,
-                                                      kotNo: kot.kotId.toString(),
-                                                      dateTime:
-                                                      kot.time ?? DateTime.now(),
-                                                      items: transferItems,
-                                                      tables: tableList,
-                                                    ),
-                                                  );
-                                                },
-                                                // ✅ Asset Icon
-                                                icon: Image.asset(
-                                                  "assets/icon/Void.png", // 🔥 your icon path
-                                                  height: 16,
-                                                  width: 16,
-                                                  color: Colors.black, // remove if not changing color
-                                                ),
-                                                label: const Text(
-                                                  "Transfer KOT",
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: Colors.black,
+                                                context.read<KotBloc>().add(
+                                                  FetchKots(
+                                                    parentOrderId: kotBloc.currentParentOrderId, // ✅ NOT NULL
+                                                    restaurantId: widget.restaurantId,
+                                                    zoneId: widget.zoneId,
+                                                    token: widget.token,
+                                                    // orderId: 0, // if required in event, pass dummy or correct
                                                   ),
-                                                ),
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor:
-                                                  const Color(0xFFFFC107),
-                                                  elevation: 0,
-                                                  padding: const EdgeInsets.symmetric(
-                                                      horizontal: 12),
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                    BorderRadius.circular(8),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
+                                                );
+
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  const SnackBar(content: Text("KOT Updated Successfully")),
+                                                );
+                                              }
+
+                                              if (state is UpdatekotFailure) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(content: Text(state.message)),
+                                                );
+                                              }
+                                            },
+                                          ),
+
                                           ],
-                                        ),
+                                    child: Row(
+                                    children: [
+                                    Text(
+                                        TimeOfDay.fromDateTime(kot.time).format(context),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                const Spacer(),
 
-                                        const SizedBox(height: 10),
+                                // ✅ Void Items Button
+                                SizedBox(
+                                  height: 32,
+                                  child: ElevatedButton.icon(
+                                    onPressed: () {
+                                      if (kot.kotId == null) {
+                                        debugPrint("❌ kotId is null");
+                                        return;
+                                      }
+
+                                      context.read<KotLineItemsBloc>().add(
+                                        FetchKotLineItems(
+                                          kotId: kot.kotId!,
+                                          restaurantId: widget.restaurantId,
+                                          zoneId: widget.zoneId,
+                                          token: widget.token,
+                                        ),
+                                      );
+                                    },
+                                    icon: Image.asset(
+                                      "assets/icon/Void.png",
+                                      height: 16,
+                                      width: 16,
+                                      color: Colors.white,
+                                    ),
+                                    label: const Text(
+                                      "Void Items",
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF1E63FF),
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                                const SizedBox(width: 10),
+
+                                // ✅ Transfer KOT Button
+                                SizedBox(
+                                  height: 32,
+                                  child: ElevatedButton.icon(
+                                    onPressed: () async {
+                                      final transferItems = kot.items.map((e) {
+                                        return TransferKotItem(
+                                          name: e.itemName ?? "",
+                                          note: e.note.isNotEmpty
+                                              ? e.note
+                                              : (e.modifiers.isNotEmpty ? e.modifiers.join(", ") : ""),
+                                          qty: e.quantity ?? 1,
+                                          amount: e.totalWithAddons,
+                                        );
+                                      }).toList();
+
+                                      final tableList = List.generate(24, (i) => "Table-${i + 1}");
+
+                                      await showDialog(
+                                        context: context,
+                                        barrierDismissible: false,
+                                        builder: (_) => TransferKOTDialog(
+                                          tableNo: widget.tableNo,
+                                          kotNo: kot.kotId.toString(),
+                                          dateTime: kot.time ?? DateTime.now(),
+                                          items: transferItems,
+                                          tables: tableList,
+                                        ),
+                                      );
+                                    },
+                                    icon: Image.asset(
+                                      "assets/icon/Void.png",
+                                      height: 16,
+                                      width: 16,
+                                      color: Colors.black,
+                                    ),
+                                    label: const Text(
+                                      "Transfer KOT",
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFFFFC107),
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+
+                          const SizedBox(height: 10),
 
                                         // Items Table Container
                                         Container(

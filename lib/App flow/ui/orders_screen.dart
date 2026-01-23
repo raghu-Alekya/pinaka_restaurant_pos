@@ -12,6 +12,7 @@ import '../../blocs/Bloc Logic/discount_bloc.dart';
 import '../../blocs/Bloc Logic/kot_bloc.dart';
 import '../../blocs/Bloc Logic/order_bloc.dart';
 import '../../blocs/Bloc Logic/payment_bloc.dart';
+import '../../blocs/Bloc Logic/void_item_bloc.dart';
 import '../../blocs/Bloc State/checkin_state.dart';
 import '../../blocs/Bloc State/kot_state.dart';
 import '../../blocs/Bloc State/order_state.dart';
@@ -25,6 +26,7 @@ import '../../repositories/discount_repository.dart';
 import '../../repositories/kot_repository.dart';
 import '../../repositories/order_repository.dart';
 import '../../repositories/payment_summary_repository.dart';
+import '../../repositories/void_item_repository.dart';
 import '../../utils/logger.dart';
 import '../widgets/orderlist_widget.dart';
 import '../widgets/view_all_kots.dart';
@@ -484,24 +486,52 @@ class OrderPanel extends StatelessWidget {
                     // 2️⃣ Overlay: ViewAllKOTDropdown
                     BlocBuilder<OrderBloc, OrderState>(
                       builder: (context, orderState) {
-                        final kots = orderState.kotList; // always from OrderBloc
+                        final kots = orderState.kotList;
                         final isExpanded = orderState.showKOTDropdown;
 
                         return Positioned(
                           top: 0,
                           left: 0,
                           right: 0,
-                          child: ViewAllKOTDropdown(
-                            kots: kots,
-                            parentOrderId: orderState.orderId,
-                            restaurantId: int.parse(restaurantId),
-                            zoneId: orderState.zoneId,
-                            token: token,
-                            tableNo: tableId.toString(),
+                          child: MultiBlocProvider(
+                            providers: [
+                              BlocProvider<KotLineItemsBloc>(
+                                create: (_) => KotLineItemsBloc(
+                                  repository: VoidItemRepository(
+                                    baseUrl: "https://merchantrestaurant.alektasolutions.com",
+                                  ),
+                                ),
+                              ),
+
+                              // ✅ ADD THIS
+                              BlocProvider<UpdatekotBloc>(
+                                create: (_) => UpdatekotBloc(
+                                  repository: UpdatekotRepository(
+                                    baseUrl: "https://merchantrestaurant.alektasolutions.com",
+                                  ),
+                                ),
+                              ),
+
+                              // ✅ If you are refreshing using KotBloc inside dropdown, also provide KotBloc
+                              BlocProvider<KotBloc>(
+                                create: (_) => KotBloc(KotRepository( baseUrl: "https://merchantrestaurant.alektasolutions.com")),
+                              ),
+                            ],
+                            child: ViewAllKOTDropdown(
+                              kots: kots,
+                              parentOrderId: orderState.orderId,
+                              restaurantId: int.parse(restaurantId),
+                              zoneId: orderState.zoneId,
+                              token: token,
+                              tableNo: tableId.toString(),
+                            ),
                           ),
                         );
+
+
                       },
                     ),
+
 
                   ],
                 ),

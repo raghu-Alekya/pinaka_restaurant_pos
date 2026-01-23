@@ -6,6 +6,7 @@ import '../../repositories/order_list_repository.dart';
 import '../widgets/navigationhelper.dart';
 import '../widgets/top_bar.dart';
 import '../widgets/bottom_nav_bar.dart';
+import 'edit_order_screen.dart';
 // import 'edit_order_list.dart';
 
 class OrdersDetailsScreen extends StatefulWidget {
@@ -175,36 +176,38 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                     ),
                                   ],
                                 ),
-                                ElevatedButton(
-                                  onPressed: () {
-                                    // Navigator.push(
-                                    //   context,
-                                    //   MaterialPageRoute(
-                                    //     builder: (context) => EditOrdersListScreen(
-                                    //       token: widget.token,
-                                    //       pin: widget.pin,
-                                    //       restaurantId: widget.restaurantId,
-                                    //       restaurantName: widget.restaurantName,
-                                    //       userPermissions: widget.userPermissions,
-                                    //     ),
-                                    //   ),
-                                    // );
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF4C5F7D),
-                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
+                                if ((orderModel.status ?? '').toLowerCase() == 'completed')
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => EditOrdersListScreen(
+                                            token: widget.token,
+                                            pin: widget.pin,
+                                            restaurantId: widget.restaurantId,
+                                            restaurantName: widget.restaurantName,
+                                            userPermissions: widget.userPermissions,
+                                            orderId: orderModel.orderId!,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF4C5F7D),
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      "Edit Order",
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.white,
+                                      ),
                                     ),
                                   ),
-                                  child: const Text(
-                                    "Edit Order",
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                )
 
                               ],
                             ),
