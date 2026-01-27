@@ -10,6 +10,8 @@ class PaymentSummary {
   final List<LineItem> lineItems;
   final int tableId;
   final int zoneId;
+  final bool modifiersTaxable;
+
 
   PaymentSummary({
     required this.restaurantId,
@@ -23,6 +25,7 @@ class PaymentSummary {
     required this.lineItems,
     required this.tableId,
     required this.zoneId,
+    required this.modifiersTaxable,
   });
 
   factory PaymentSummary.fromJson(Map<String, dynamic> json) {
@@ -50,6 +53,9 @@ class PaymentSummary {
 
       tableId: (json['table_id'] ?? 0).toInt(),
       zoneId: (json['zone_id'] ?? 0).toInt(),
+      // ✅ ADD THIS
+      modifiersTaxable:
+      (json['modifiers_taxable'] ?? 'no').toString().toLowerCase() == 'yes',
     );
   }
 }
@@ -61,12 +67,18 @@ class LineItem {
   final int variationId;
   final String name;
   final int qty;
+
+  /// Backend totals (SOURCE OF TRUTH)
   final double total;
   final double tax;
   final String taxClass;
 
+  /// Modifiers
   final List<String> modifiers;
-  final double modifierAmount; // ✅ ADD THIS
+  final double modifierAmount;
+
+  /// 👇 Derived (NOT from API)
+  late final double basePrice;
 
   LineItem({
     required this.productId,
@@ -77,8 +89,30 @@ class LineItem {
     required this.tax,
     required this.taxClass,
     required this.modifiers,
-    required this.modifierAmount, // ✅ ADD THIS
-  });
+    required this.modifierAmount,
+  }) {
+    // base price = total - tax - modifier amount
+    basePrice = (total - tax - modifierAmount).clamp(0, double.infinity);
+  }
+
+  /// 🔢 Tax %
+  double get taxPercent {
+    if (basePrice == 0) return 0;
+    return (tax / basePrice) * 100;
+  }
+
+  /// 💰 Taxable amount based on modifier rule
+  double taxableAmount({required bool modifiersTaxable}) {
+    return modifiersTaxable
+        ? basePrice + modifierAmount
+        : basePrice;
+  }
+
+  /// 🧮 Calculated tax (UI / validation ONLY)
+  double calculatedTax({required bool modifiersTaxable}) {
+    final taxable = taxableAmount(modifiersTaxable: modifiersTaxable);
+    return (taxable * taxPercent) / 100;
+  }
 
   factory LineItem.fromJson(Map<String, dynamic> json) {
     return LineItem(
@@ -89,13 +123,8 @@ class LineItem {
       total: (json['total'] ?? 0).toDouble(),
       tax: (json['tax'] ?? 0).toDouble(),
       taxClass: (json['tax_class'] ?? 'food').toString().toLowerCase(),
-
       modifiers: List<String>.from(json['modifiers'] ?? []),
-
-      // ✅ parse modifier_amount
       modifierAmount: (json['modifier_amount'] ?? 0).toDouble(),
     );
   }
 }
-
-

@@ -556,6 +556,9 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                 final subTotal = grossTotal - couponDiscount;
                 // final netPayable = subTotal + totalTax - merchantDiscount;
                 // final netTotal = subTotal + totalTax;
+                final bool modifiersTaxable =
+                    widget.paymentSummary.modifiersTaxable;
+
 
 
 
@@ -614,7 +617,10 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                     }
 
 
-                    final itemTax = item.total * rate / 100;
+                    // final itemTax = item.total * rate / 100;
+                    final itemTax = item.calculatedTax(
+                      modifiersTaxable: modifiersTaxable,
+                    );
                     final halfTax = itemTax / 2;
 
                     // totalTax += itemTax;

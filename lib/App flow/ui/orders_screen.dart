@@ -711,12 +711,26 @@ class OrderPanel extends StatelessWidget {
                             const SnackBar(content: Text('Failed to create KOT')),
                           );
                         }
-                      } catch (e) {
-                        Navigator.of(context).pop();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Error: ${e.toString()}')),
-                        );
                       }
+                      catch (e) {
+                        String message = 'Failed to create KOT';
+
+                        try {
+                          // 🧠 force extract response body even without DioException type
+                          final errorString = e.toString();
+
+                          if (errorString.contains('woocommerce_rest_stock_error') ||
+                              errorString.contains('out of stock')) {
+                            message = 'This item is out of stock. Please check.';
+                          }
+                        } catch (_) {}
+
+                        AppLogger.error("⛔ Failed to create KOT: $e");
+
+                        // 🔥 THIS IS MANDATORY
+                        throw Exception(message);
+                      }
+
                     },
                   ),
                   // orderButton(

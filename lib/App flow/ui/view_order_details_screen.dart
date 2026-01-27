@@ -7,6 +7,7 @@ import '../widgets/navigationhelper.dart';
 import '../widgets/top_bar.dart';
 import '../widgets/bottom_nav_bar.dart';
 import 'edit_order_screen.dart';
+// import 'edit_kots_screen.dart';
 // import 'edit_order_list.dart';
 
 class OrdersDetailsScreen extends StatefulWidget {
@@ -37,6 +38,8 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
   final OrderstatusRepository _orderRepo = OrderstatusRepository();
   Future<List<OrderlistModel>>? _ordersFuture;
   int? selectedKotId;
+  bool _justUpdated = false;
+
 
   @override
   void initState() {
@@ -150,68 +153,152 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                       child: Column(
                         children: [
                           Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 2,
-                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
+                                // Left: Back button
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  decoration: ShapeDecoration(
+                                    color: const Color(0xFF3B4259),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    shadows: const [
+                                      BoxShadow(
+                                        color: Color(0x19000000),
+                                        blurRadius: 4,
+                                        offset: Offset(0, 1),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      GestureDetector(
+                                        onTap: () => Navigator.pop(context),
+                                        child: const Icon(
+                                          Icons.arrow_back,
+                                          size: 20,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      const Text(
+                                        "Back",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                // Right buttons: Edit Order + Cancel Order
                                 Row(
                                   children: [
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.arrow_back,
-                                        size: 20,
+                                    // Edit Order Button
+                                    if ((orderModel.status ?? '').toLowerCase() == 'completed')
+                                      ElevatedButton(
+                                        onPressed: () async {
+                                          final bool? updated = await Navigator.push<bool>(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => EditOrdersListScreen(
+                                                token: widget.token,
+                                                pin: widget.pin,
+                                                restaurantId: widget.restaurantId,
+                                                restaurantName: widget.restaurantName,
+                                                userPermissions: widget.userPermissions,
+                                                orderId: orderModel.orderId!,
+                                              ),
+                                            ),
+                                          );
+
+                                          if (updated == true) {
+                                            debugPrint("🔁 Refreshing View Order Screen");
+
+                                            setState(() {
+                                              _ordersFuture = _orderRepo.fetchOrders(widget.token);
+                                              _justUpdated = true;
+                                            });
+                                          }
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(0xFF4C5F7D),
+                                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Image.asset(
+                                              'assets/editorder.png',
+                                              width: 18,
+                                              height: 18,
+                                              color: Colors.white,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            const Text(
+                                              "Edit Order",
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                      onPressed: () => Navigator.pop(context),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    const Text(
-                                      "View Order",
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
+
+                                    const SizedBox(width: 12),
+
+                                    // Cancel Order Button
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                      decoration: ShapeDecoration(
+                                        color: Colors.white,
+                                        shape: RoundedRectangleBorder(
+                                          side: const BorderSide(
+                                            width: 0.8,
+                                            color: Color(0xFFFE6464),
+                                          ),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Container(
+                                            width: 24,
+                                            height: 24,
+
+                                            child: Stack(),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          const Text(
+                                            'Cancel Order',
+                                            style: TextStyle(
+                                              color: Color(0xFFFE6464),
+                                              fontSize: 22,
+                                              fontFamily: 'Kumbh Sans',
+                                              fontWeight: FontWeight.w400,
+                                              height: 0.75,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ],
                                 ),
-                                if ((orderModel.status ?? '').toLowerCase() == 'completed')
-                                  ElevatedButton(
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => EditOrdersListScreen(
-                                            token: widget.token,
-                                            pin: widget.pin,
-                                            restaurantId: widget.restaurantId,
-                                            restaurantName: widget.restaurantName,
-                                            userPermissions: widget.userPermissions,
-                                            orderId: orderModel.orderId!,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF4C5F7D),
-                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                    ),
-                                    child: const Text(
-                                      "Edit Order",
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-
                               ],
                             ),
                           ),
+
                           Expanded(
                             child: Padding(
                               padding: const EdgeInsets.all(10),
@@ -357,10 +444,38 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          const Text(
-                                            "Payment Details",
-                                            style: TextStyle(fontWeight: FontWeight.bold),
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              const Text(
+                                                "Payment Details",
+                                                style: TextStyle(fontWeight: FontWeight.bold),
+                                              ),
+
+                                              // Show "Updated" if either the backend says yes OR _justUpdated is true
+                                              if (_justUpdated || (order['is_updated']?.toString().toLowerCase() ?? '') == 'yes')
+                                                Row(
+                                                  children: [
+                                                    Image.asset(
+                                                      'assets/refreshicon.png',
+                                                      width: 12,
+                                                      height: 12,
+                                                      color: Colors.orange,
+                                                    ),
+                                                    const SizedBox(width: 4),
+                                                    const Text(
+                                                      "Updated",
+                                                      style: TextStyle(
+                                                        color: Colors.orange,
+                                                        fontWeight: FontWeight.bold,
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                            ],
                                           ),
+
 
                                           paymentRow(
                                             "Gross Total",
@@ -541,45 +656,111 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          /// Header
-                          // Row(
-                          //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          //   children: [
-                          //     const Text(
-                          //       "KOT’s",
-                          //       style: TextStyle(
-                          //         fontSize: 16,
-                          //         fontWeight: FontWeight.bold,
-                          //       ),
-                          //     ),
-                          //     DropdownButtonHideUnderline(
-                          //       child: DropdownButton<int>(
-                          //         value: selectedKotId,
-                          //         hint: const Text("Select KOT"),
-                          //         items: kots
-                          //             .map((kot) => DropdownMenuItem<int>(
-                          //           value: kot["kotNo"],
-                          //           child: Text("KOT ${kot["kotNo"]}"),
-                          //         ))
-                          //             .toList(),
-                          //         onChanged: (value) {
-                          //           setState(() {
-                          //             selectedKotId = value;
-                          //           });
-                          //         },
-                          //       ),
-                          //     ),
-                          //   ],
-                          // ),
+                          // ✅ Only show summary if updated
+                          if ((_justUpdated) || ((order['is_updated']?.toString().toLowerCase() ?? '') == 'yes'))
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              margin: const EdgeInsets.only(bottom: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(8),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withOpacity(0.2),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Top label
+                                  const Text(
+                                    "Old payment Details",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
 
-                          // const SizedBox(height: 12),
+                                  // Bottom row with values and vertical divider
+                                  IntrinsicHeight(
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      children: [
+                                        // Net Payable
+                                        Expanded(
+                                          child: Row(
+                                            children: [
+                                              const Text(
+                                                "Net Payable Amount- ",
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w400,
+                                                ),
+                                              ),
+                                              Text(
+                                                "₹${order['order_prev_total']?.toStringAsFixed(2) ?? '0.00'}",
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
 
-                          /// KOT TABLE
+                                        // Vertical Divider
+                                        Container(
+                                          width: 1,
+                                          color: Colors.grey[300],
+                                          margin: const EdgeInsets.symmetric(horizontal: 12),
+                                        ),
+
+                                        // Reason for edit
+                                        Expanded(
+                                          child: Row(
+                                            children: [
+                                              const Text(
+                                                "Reason for edit- ",
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w400,
+                                                ),
+                                              ),
+                                              Expanded(
+                                                child: Text(
+                                                  order['edit_reason'] ?? "-",
+                                                  style: const TextStyle(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+
+
+
+                          // 🔹 KOT TABLE
                           Expanded(child: buildSelectedKotCard(order)),
                         ],
                       ),
                     ),
-                  ),
+                  )
+
                 ],
               ),
             ),
@@ -646,7 +827,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
-                  color: Color(0xFF125BCE),
+                  color: const Color(0xFF125BCE), // blue background
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: DropdownButtonHideUnderline(
@@ -656,25 +837,27 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                       "Select KOT",
                       style: TextStyle(color: Colors.white),
                     ),
-                    dropdownColor: Colors.blue,
-                    items: kots
-                        .map(
-                          (kot) => DropdownMenuItem<int>(
+                    icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white), // white icon
+                    dropdownColor: const Color(0xFF125BCE), // dropdown menu blue
+                    style: const TextStyle(color: Colors.white), // selected text white
+                    items: kots.map((kot) {
+                      return DropdownMenuItem<int>(
                         value: kot["kotNo"],
                         child: Text(
                           "KOT ${kot["kotNo"]}",
-                          style: const TextStyle(color: Colors.white),
+                          style: const TextStyle(color: Colors.white), // dropdown items text
                         ),
-                      ),
-                    )
-                        .toList(),
+                      );
+                    }).toList(),
                     onChanged: (value) {
-                      selectedKotId = value;
-                      (context as Element).markNeedsBuild();
+                      setState(() {
+                        selectedKotId = value;
+                      });
                     },
                   ),
                 ),
               )
+
 
             ],
           ),
@@ -682,7 +865,13 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
           /// 🔹 Table Header
           Container(
-            color: Colors.grey[200],
+            decoration: BoxDecoration(
+              color: const Color(0xFF999393),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(8),
+                topRight: Radius.circular(8),
+              ),
+            ),
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
             child: Row(
               children: const [
@@ -722,8 +911,11 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
           Column(
             children:
             items.asMap().entries.map((entry) {
-              int index = entry.key + 1;
+              int index = entry.key ;
               var item = entry.value;
+              bool isLast = index == items.length - 1;
+
+              final List modifiers = item['modifiers'] ?? [];
               return Container(
                 padding: const EdgeInsets.symmetric(
                   vertical: 8,
@@ -731,15 +923,43 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                 ),
                 decoration: BoxDecoration(
                   border: Border(
-                    bottom: BorderSide(color: Colors.grey[300]!),
+                    bottom: BorderSide(color: Color(0xFFB9B9B9)!),
+                    left: const BorderSide(color: Color(0xFFB9B9B9)),
+                    right: const BorderSide(color: Color(0xFFB9B9B9)),
                   ),
+                  borderRadius: isLast
+                      ? const BorderRadius.only(
+                    bottomLeft: Radius.circular(8),
+                    bottomRight: Radius.circular(8),
+                  )
+                      : BorderRadius.zero,
                 ),
                 child: Row(
                   children: [
                     Expanded(flex: 1, child: Text("$index")),
                     Expanded(
                       flex: 3,
-                      child: Text(item['name']?.toString() ?? "-"),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item['name']?.toString() ?? "-",
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+
+                          if (modifiers.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                modifiers.join(", "), // 🔹 simple text only
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                     Expanded(flex: 2, child: Text("${item['qty'] ?? 0}x")),
                     Expanded(

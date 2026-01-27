@@ -1,5 +1,5 @@
 class OrderListLineItems {
-  final int id;
+  final int id;       // Woo order LINE ITEM ID
   final int quantity;
 
   OrderListLineItems({required this.id, required this.quantity});
@@ -22,13 +22,14 @@ class OrderListMetaData {
   };
 }
 
-
-
 class EditOrderRequest {
   final List<OrderListLineItems> lineItems;
   final List<OrderListMetaData> metaData;
 
-  EditOrderRequest({required this.lineItems, required this.metaData});
+  EditOrderRequest({
+    required this.lineItems,
+    required this.metaData,
+  });
 
   Map<String, dynamic> toJson() => {
     'line_items': lineItems.map((e) => e.toJson()).toList(),

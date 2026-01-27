@@ -421,6 +421,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                           dateTime: kot.time ?? DateTime.now(),
                                           items: transferItems,
                                           tables: tableList,
+                                          zoneTables: {},
                                         ),
                                       );
                                     },

@@ -529,7 +529,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                       DataCell(Text(order.paymentType ?? '-')),
                                       // DataCell(Text(order.amount?.toStringAsFixed(2) ?? '0.00')),
                                       // DataCell(Text(order.discount?.toStringAsFixed(2) ?? '0.00')),
-                                      DataCell(Text(order.total?.toStringAsFixed(2) ?? '0.00')),
+                                      DataCell(Text(order.netPayable?.toStringAsFixed(2) ?? '0.00')),
                                       DataCell(
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),

@@ -5,7 +5,7 @@ class OrderlistModel {
   String? customerName;
   String? customerPhone;
   String? paymentType;
-
+  int? kotOrderId;
   // Payment fields
   num? grossTotal;
   num? subTotal;
@@ -17,6 +17,8 @@ class OrderlistModel {
   num? amount;
   num? discount;
   num? total;
+  num? orderPrevTotal;
+  String? isUpdated;
 
   int? restaurantId;
   int? zoneId;
@@ -41,12 +43,15 @@ class OrderlistModel {
     this.subTotal,
     this.totalTax,
     this.netTotal,
+    this.kotOrderId,
     this.merchantDiscount,
     this.netPayable,
     this.roundOff, // ✅ include in constructor
     this.amount,
     this.discount,
     this.total,
+    this.orderPrevTotal,
+    this.isUpdated,
     this.restaurantId,
     this.zoneId,
     this.tableId,
@@ -66,7 +71,7 @@ class OrderlistModel {
       customerName: json['customer_name'],
       customerPhone: json['customer_phone'],
       paymentType: json['payment_type'],
-
+      kotOrderId: json['kot_order_id'],
       grossTotal: num.tryParse(json['gross_total'].toString()) ?? 0,
       subTotal: num.tryParse(json['sub_total'].toString()) ?? 0,
       totalTax: num.tryParse(json['total_tax'].toString()) ?? 0,
@@ -77,7 +82,13 @@ class OrderlistModel {
       amount: num.tryParse((json['amount'] ?? 0).toString()) ?? 0,
       discount: num.tryParse((json['discount'] ?? 0).toString()) ?? 0,
       total: num.tryParse((json['total'] ?? 0).toString()) ?? 0,
+      orderPrevTotal: json['order_prev_total'] != null
+          ? (json['order_prev_total'] is num
+          ? json['order_prev_total'] as num
+          : num.tryParse(json['order_prev_total'].toString()) ?? 0)
+          : 0,
 
+      isUpdated: json['is_updated']?.toString(),
       restaurantId: json['restaurant_id'],
       zoneId: json['zone_id'],
       tableId: json['table_id'],
@@ -90,6 +101,7 @@ class OrderlistModel {
           ?.map((v) => KotOrder.fromJson(v))
           .toList(),
     );
+
   }
 }
 
@@ -127,12 +139,14 @@ class KotOrder {
 }
 
 class LineItem {
-  int? lineItemId;
-  int? itemId;
+  int? lineItemId;   // <-- WooCommerce ORDER ITEM ID
+  int? itemId;       // product id
   String? name;
-  num? quantity;        // ✅ changed
-  num? amount;          // ✅ changed
-  num? total;           // ✅ changed
+  num? quantity;
+  num? amount;
+  num? total;
+  num? modifierAmount;
+  List<String>? modifiers;
 
   LineItem({
     this.lineItemId,
@@ -141,18 +155,23 @@ class LineItem {
     this.quantity,
     this.amount,
     this.total,
+    this.modifierAmount,
+    this.modifiers,
   });
 
   factory LineItem.fromJson(Map<String, dynamic> json) {
     return LineItem(
-      lineItemId: json['line_item_id'],
-      itemId: json['item_id'],
+      lineItemId: json['line_item_id'],    // ✅ Must come from backend
+      itemId: json['product_id'] ?? json['item_id'],            // ✅ fix key
       name: json['name'],
       quantity: num.tryParse(json['quantity'].toString()) ?? 0,
       amount: num.tryParse(json['amount'].toString()) ?? 0,
       total: num.tryParse(json['total'].toString()) ?? 0,
+      modifierAmount: num.tryParse(json['modifier_amount']?.toString() ?? "0") ?? 0,
+      modifiers: (json['modifiers'] as List?)?.map((e) => e.toString()).toList() ?? [],
     );
   }
+
 }
 
 
@@ -170,6 +189,7 @@ extension OrderModelMapping on OrderlistModel {
       "customerName": customerName,
       "customerContact": customerPhone,
       "status": status,
+      "order_prev_total": orderPrevTotal ?? 0,
       "kots": kotOrders?.map((k) => k.toMapForView()).toList() ?? [],
     };
   }
@@ -196,6 +216,7 @@ extension LineItemMapping on LineItem {
       "name": name,
       "qty": quantity,
       "amount": amount,
+      "modifiers": modifiers ?? [],
     };
   }
 }
