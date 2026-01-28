@@ -287,226 +287,103 @@ class _AddItemDialogState extends State<AddItemDialog> {
               Row(
                 children: [
                   // ===== CATEGORY PICKER =====
+                  // ===== CATEGORY DROPDOWN =====
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildPickerField(
-                          label: "Category",
-                          controller: _categoryController,
-                          onTap: () {
+                        const Text("Category", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        const SizedBox(height: 4),
+                        DropdownButtonFormField<CategorySublistResponse>(
+                          isExpanded: true,
+                          value: selectedParentCategory,
+                          hint: const Text("Select Category"),
+                          items: parentCategories.map((parent) {
+                            return DropdownMenuItem(
+                              value: parent,
+                              child: Text(parent.parentName),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
                             setState(() {
-                              showParentCategoryList = !showParentCategoryList;
-                              showSubCategoryList = false;
-                              showMiniCategoryList = false;
+                              selectedParentCategory = value;
+                              _categoryController.text = value?.parentName ?? '';
+
+                              // Reset sub & mini
+                              selectedCategory = null;
+                              selectedMiniCategory = null;
+                              _subCategoryController.clear();
+                              _miniCategoryController.clear();
                             });
                           },
-                        ),
-                        if (showParentCategoryList)
-                          Container(
-                            margin: const EdgeInsets.only(top: 4),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey),
-                              borderRadius: BorderRadius.circular(8),
-                              color: Colors.white,
-                            ),
-                            constraints: BoxConstraints(maxHeight: 200),
-                            child: ListView(
-                              shrinkWrap: true,
-                              children: parentCategories.map((parent) {
-                                return ListTile(
-                                  title: Text(parent.parentName),
-                                  onTap: () {
-                                    setState(() {
-                                      selectedParentCategory = parent;
-                                      _categoryController.text = parent.parentName;
-
-                                      // reset sub & mini
-                                      selectedCategory = null;
-                                      selectedMiniCategory = null;
-                                      _subCategoryController.clear();
-                                      _miniCategoryController.clear();
-
-                                      showParentCategoryList = false;
-                                    });
-                                  },
-                                );
-                              }).toList(),
-                            ),
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           ),
+                        ),
                       ],
                     ),
                   ),
 
                   const SizedBox(width: 12),
 
-                  // ===== SUBCATEGORY PICKER =====
-                  // Expanded(
-                  //   child: Column(
-                  //     crossAxisAlignment: CrossAxisAlignment.start,
-                  //     children: [
-                  //       _buildPickerField(
-                  //         label: "Sub Category",
-                  //         controller: _subCategoryController,
-                  //         onTap: () {
-                  //           if (selectedParentCategory == null) return;
-                  //           setState(() {
-                  //             showSubCategoryList = !showSubCategoryList;
-                  //             showMiniCategoryList = false;
-                  //           });
-                  //         },
-                  //       ),
-                  //       if (showSubCategoryList && selectedParentCategory != null)
-                  //         Container(
-                  //           margin: const EdgeInsets.only(top: 4),
-                  //           decoration: BoxDecoration(
-                  //             border: Border.all(color: Colors.grey),
-                  //             borderRadius: BorderRadius.circular(8),
-                  //             color: Colors.white,
-                  //           ),
-                  //           constraints: BoxConstraints(maxHeight: 200),
-                  //           child: ListView(
-                  //             shrinkWrap: true,
-                  //             children: selectedParentCategory!.categories.map((sub) {
-                  //               return ListTile(
-                  //                 title: Text(sub.name),
-                  //                 onTap: () {
-                  //                   setState(() {
-                  //                     selectedCategory = sub;
-                  //                     _subCategoryController.text = sub.name;
-                  //
-                  //                     // reset mini
-                  //                     selectedMiniCategory = null;
-                  //                     _miniCategoryController.clear();
-                  //
-                  //                     showSubCategoryList = false;
-                  //                     showMiniCategoryList = true; // optionally open mini
-                  //                   });
-                  //                 },
-                  //               );
-                  //             }).toList(),
-                  //           ),
-                  //         ),
-                  //
-                  //       // ===== MINI CATEGORY BELOW SUBCATEGORY =====
-                  //       if (selectedCategory != null && selectedCategory!.children.isNotEmpty)
-                  //         Column(
-                  //           crossAxisAlignment: CrossAxisAlignment.start,
-                  //           children: [
-                  //             const SizedBox(height: 8),
-                  //             _buildPickerField(
-                  //               label: "Mini Category",
-                  //               controller: _miniCategoryController,
-                  //               onTap: () {
-                  //                 setState(() {
-                  //                   showMiniCategoryList = !showMiniCategoryList;
-                  //                 });
-                  //               },
-                  //             ),
-                  //             if (showMiniCategoryList)
-                  //               Container(
-                  //                 margin: const EdgeInsets.only(top: 4),
-                  //                 decoration: BoxDecoration(
-                  //                   border: Border.all(color: Colors.grey),
-                  //                   borderRadius: BorderRadius.circular(8),
-                  //                   color: Colors.white,
-                  //                 ),
-                  //                 constraints: BoxConstraints(maxHeight: 200),
-                  //                 child: ListView(
-                  //                   shrinkWrap: true,
-                  //                   children: selectedCategory!.children.map((mini) {
-                  //                     return ListTile(
-                  //                       title: Text(mini.name),
-                  //                       onTap: () {
-                  //                         setState(() {
-                  //                           selectedMiniCategory = mini;
-                  //                           _miniCategoryController.text = mini.name;
-                  //                           showMiniCategoryList = false;
-                  //                         });
-                  //                       },
-                  //                     );
-                  //                   }).toList(),
-                  //                 ),
-                  //               ),
-                  //           ],
-                  //         ),
-                  //     ],
-                  //   ),
-                  // ),
+// ===== SUBCATEGORY DROPDOWN WITH INLINE MINI CATEGORIES =====
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildPickerField(
-                          label: "Sub Category",
-                          controller: _subCategoryController,
-                          onTap: () {
-                            if (selectedParentCategory == null) return;
+                        const Text("Sub Category", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        const SizedBox(height: 4),
+                        DropdownButtonFormField<CategoryItem>(
+                          isExpanded: true,
+                          value: selectedCategory,
+                          hint: const Text("Select Sub Category"),
+                          items: selectedParentCategory?.categories.map((sub) {
+                            return DropdownMenuItem(
+                              value: sub,
+                              child: Text(sub.name),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
                             setState(() {
-                              showSubCategoryList = !showSubCategoryList;
+                              selectedCategory = value;
+                              _subCategoryController.text = value?.name ?? '';
+
+                              // Reset mini
+                              selectedMiniCategory = null;
+                              _miniCategoryController.clear();
                             });
                           },
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
                         ),
-                        if (showSubCategoryList && selectedParentCategory != null)
-                          Container(
-                            margin: const EdgeInsets.only(top: 4),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey),
-                              borderRadius: BorderRadius.circular(8),
-                              color: Colors.white,
-                            ),
-                            constraints: BoxConstraints(maxHeight: 300),
-                            child: ListView(
-                              shrinkWrap: true,
-                              children: selectedParentCategory!.categories.map((sub) {
-                                final bool isExpanded = selectedCategory == sub;
 
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    ListTile(
-                                      title: Text(sub.name, style: TextStyle(fontWeight: FontWeight.bold)),
-                                      trailing: sub.children.isNotEmpty
-                                          ? Icon(
-                                        isExpanded
-                                            ? Icons.keyboard_arrow_up
-                                            : Icons.keyboard_arrow_down,
-                                      )
-                                          : null,
-                                      onTap: () {
-                                        setState(() {
-                                          if (isExpanded) {
-                                            // collapse if already selected
-                                            selectedCategory = null;
-                                            selectedMiniCategory = null;
-                                            _subCategoryController.clear();
-                                          } else {
-                                            selectedCategory = sub;
-                                            selectedMiniCategory = null;
-                                            _subCategoryController.text = sub.name;
-                                          }
-                                        });
-                                      },
-                                    ),
-                                    if (isExpanded && sub.children.isNotEmpty)
-                                      Padding(
-                                        padding: const EdgeInsets.only(left: 16),
-                                        child: Column(
-                                          children: sub.children.map((mini) {
-                                            return ListTile(
-                                              title: Text(mini.name),
-                                              onTap: () {
-                                                setState(() {
-                                                  selectedMiniCategory = mini;
-                                                  _subCategoryController.text = "${sub.name} > ${mini.name}";
-                                                  showSubCategoryList = false; // close list
-                                                });
-                                              },
-                                            );
-                                          }).toList(),
-                                        ),
-                                      ),
-                                  ],
+                        // ===== INLINE MINI CATEGORY BUTTONS (show only if sub category selected) =====
+                        if (selectedCategory != null && selectedCategory!.children.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Wrap(
+                              spacing: 8,
+                              runSpacing: 4,
+                              children: selectedCategory!.children.map((mini) {
+                                final isSelected = selectedMiniCategory == mini;
+                                return ChoiceChip(
+                                  label: Text(mini.name),
+                                  selected: isSelected,
+                                  onSelected: (_) {
+                                    setState(() {
+                                      selectedMiniCategory = mini;
+                                      _miniCategoryController.text = mini.name;
+                                    });
+                                  },
+                                  selectedColor: Colors.blueAccent,
+                                  backgroundColor: Colors.grey[200],
+                                  labelStyle: TextStyle(
+                                    color: isSelected ? Colors.white : Colors.black,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 );
                               }).toList(),
                             ),
@@ -514,6 +391,8 @@ class _AddItemDialogState extends State<AddItemDialog> {
                       ],
                     ),
                   ),
+
+
                 ],
               ),
 

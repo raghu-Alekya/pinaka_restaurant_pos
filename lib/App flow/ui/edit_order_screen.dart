@@ -6,8 +6,8 @@ import '../../constants/constants.dart';
 import '../../models/UserPermissions.dart';
 import '../../models/order_list/edit_order_list_model.dart';
 import '../../models/order_list/order_list_model.dart';
-import '../../repositories/edit_order_repository.dart';
 // import '../../repositories/edit_orderlist_repository.dart';
+import '../../repositories/edit_order_repository.dart';
 import '../../repositories/order_list_repository.dart';
 import '../widgets/navigationhelper.dart';
 import '../widgets/top_bar.dart';
@@ -135,6 +135,37 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       print(
           "Selected KOT: $_selectedKotId with ${_selectedKot?.lineItems?.length ?? 0} items");
     });
+  }
+  List<String> parseModifiers(dynamic raw) {
+    if (raw == null) return [];
+
+    if (raw is List) {
+      // List of strings or objects
+      return raw.map<String>((m) {
+        if (m is String) return m;
+        if (m is Map) return m['name']?.toString() ?? '';
+        return '';
+      }).where((e) => e.isNotEmpty).toList();
+    }
+
+    if (raw is String) {
+      // Possibly JSON string
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is List) {
+          return decoded.map<String>((m) {
+            if (m is String) return m;
+            if (m is Map) return m['name']?.toString() ?? '';
+            return '';
+          }).where((e) => e.isNotEmpty).toList();
+        }
+      } catch (e) {
+        // Not JSON, just raw string
+        return [raw];
+      }
+    }
+
+    return [];
   }
 
   Future<void> _updateKot() async {
@@ -299,7 +330,8 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
               name: item.name,
               quantity: item.quantity,
               amount: item.amount,
-              modifiers: List<String>.from(item.modifiers ?? []),
+              modifiers: parseModifiers(item.modifiers),
+
             ))
                 .toList();
           }
@@ -742,9 +774,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
   // =========================================================
   // RIGHT PANEL (Editable KOT)
-  // =======================
-// RIGHT PANEL: Editable KOT
-// =======================
+
   Widget buildSelectedKotCard(KotOrder kot) {
     // Use the editable copy
     final items = _leftPanelItems;

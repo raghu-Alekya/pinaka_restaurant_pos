@@ -85,6 +85,62 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
       calculatedNetPayable = netTotal - merchantDiscount;
     });
   }
+  void _calculateTaxAndPayable(TaxLoaded state) {
+    double foodCgstTemp = 0;
+    double foodSgstTemp = 0;
+    double beverageCgstTemp = 0;
+    double beverageSgstTemp = 0;
+
+    for (final item in widget.paymentSummary.lineItems) {
+      final itemClass = normalizeTaxClass(item.taxClass);
+
+      final tax = state.taxes.firstWhere(
+            (t) => normalizeTaxClass(t.taxClass) == itemClass,
+        orElse: () => TaxModel(
+          id: 0,
+          rate: "0",
+          name: "",
+          taxClass: "",
+          compound: false,
+          shipping: false,
+        ),
+      );
+
+      final rate = double.tryParse(tax.rate) ?? 0;
+      if (rate == 0) continue;
+
+      final itemTax = item.calculatedTax(
+        modifiersTaxable: widget.paymentSummary.modifiersTaxable,
+      );
+
+      final halfTax = itemTax / 2;
+
+      if (itemClass == 'food') {
+        foodRate ??= rate;
+        foodCgstTemp += halfTax;
+        foodSgstTemp += halfTax;
+      } else if (itemClass == 'beverages') {
+        beverageRate ??= rate;
+        beverageCgstTemp += halfTax;
+        beverageSgstTemp += halfTax;
+      }
+    }
+
+    final subTotal =
+        widget.paymentSummary.grossTotal - widget.paymentSummary.coupons;
+
+    setState(() {
+      foodCgst = foodCgstTemp;
+      foodSgst = foodSgstTemp;
+      beverageCgst = beverageCgstTemp;
+      beverageSgst = beverageSgstTemp;
+
+      totalTax = foodCgst + foodSgst + beverageCgst + beverageSgst;
+      calculatedNetPayable =
+          subTotal + totalTax - widget.merchantDiscount.abs();
+    });
+  }
+
 
 
   @override

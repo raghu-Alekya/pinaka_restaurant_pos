@@ -4,6 +4,7 @@ import 'package:pinaka_restaurant_pos/App%20flow/widgets/transer_kot.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/widgets/void_items.dart';
 import '../../blocs/Bloc Event/kot_event.dart';
 import '../../blocs/Bloc Event/void_item_evnts.dart';
+import '../../blocs/Bloc Logic/auth_bloc.dart';
 import '../../blocs/Bloc Logic/kot_bloc.dart';
 import '../../blocs/Bloc Logic/void_item_bloc.dart';
 import '../../blocs/Bloc State/kot_state.dart';
@@ -14,6 +15,9 @@ import '../../blocs/Bloc State/order_state.dart';
 import '../../blocs/Bloc State/void_item_state.dart';
 import '../../models/order/KOT_model.dart';
 import '../../models/order/void_kot_items.dart';
+import '../../repositories/auth_repository.dart';
+import '../../repositories/table_repository.dart';
+import '../../utils/SessionManager.dart';
 
 const Color kHeaderBlue = Color(0xFF152148);
 const Color kKotHeaderBg = Color(0xFFECEEFB);
@@ -74,6 +78,44 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
       _expanded = false;
     }
   }
+  /// zoneId -> zoneName
+  Map<String, String> buildZoneNameMap(
+      List<Map<String, dynamic>> tables) {
+
+    final Map<String, String> zoneNames = {};
+
+    for (final table in tables) {
+      final zoneId = table['zone_id']?.toString();
+      final zoneName = table['zone_name']?.toString();
+
+      if (zoneId == null || zoneName == null) continue;
+
+      zoneNames[zoneId] = zoneName; // overwrite is fine
+    }
+
+    return zoneNames;
+  }
+
+  /// zoneId -> tableNames
+  Map<String, List<String>> buildZoneTableMap(
+      List<Map<String, dynamic>> tables) {
+
+    final Map<String, List<String>> zoneMap = {};
+
+    for (final table in tables) {
+      final zoneId = table['zone_id']?.toString();
+      final tableName = table['table_name']?.toString();
+
+      if (zoneId == null || tableName == null) continue;
+
+      zoneMap.putIfAbsent(zoneId, () => []);
+      zoneMap[zoneId]!.add(tableName);
+    }
+
+    return zoneMap;
+  }
+
+
 
 
   @override
@@ -395,61 +437,97 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                 const SizedBox(width: 10),
 
                                 // ✅ Transfer KOT Button
-                                SizedBox(
-                                  height: 32,
-                                  child: ElevatedButton.icon(
-                                    onPressed: () async {
-                                      final transferItems = kot.items.map((e) {
-                                        return TransferKotItem(
-                                          name: e.itemName ?? "",
-                                          note: e.note.isNotEmpty
-                                              ? e.note
-                                              : (e.modifiers.isNotEmpty ? e.modifiers.join(", ") : ""),
-                                          qty: e.quantity ?? 1,
-                                          amount: e.totalWithAddons,
-                                        );
-                                      }).toList();
+                                      SizedBox(
+                                        height: 32,
+                                        child: ElevatedButton.icon(
+                                          onPressed: () async {
+                                            debugPrint("🔥 STEP 0: Transfer KOT button tapped");
 
-                                      final tableList = List.generate(24, (i) => "Table-${i + 1}");
+                                            try {
+                                              // ✅ STEP 1: GET TOKEN FROM SESSION
+                                              final token = await SessionManager.getToken();
+                                              debugPrint("🟢 TOKEN FETCHED = $token");
 
-                                      await showDialog(
-                                        context: context,
-                                        barrierDismissible: false,
-                                        builder: (_) => TransferKOTDialog(
-                                          tableNo: widget.tableNo,
-                                          kotNo: kot.kotId.toString(),
-                                          dateTime: kot.time ?? DateTime.now(),
-                                          items: transferItems,
-                                          tables: tableList,
-                                          zoneTables: {},
+                                              if (token == null || token.isEmpty) {
+                                                debugPrint("❌ STOP: TOKEN IS NULL OR EMPTY");
+                                                // redirect to login if needed
+                                                return;
+                                              }
+
+                                              // ✅ STEP 2: PREPARE DATA
+                                              final transferItems = kot.items.map((e) {
+                                                return TransferKotItem(
+                                                  name: e.itemName ?? "",
+                                                  note: e.note.isNotEmpty
+                                                      ? e.note
+                                                      : (e.modifiers.isNotEmpty ? e.modifiers.join(", ") : ""),
+                                                  qty: e.quantity ?? 1,
+                                                  amount: e.totalWithAddons,
+                                                );
+                                              }).toList();
+
+                                              // ✅ STEP 3: FETCH TABLES
+                                              final tableRepository = TableRepository();
+                                              final tableResponse = await tableRepository.getAllTables(token);
+                                              debugPrint("🟢 TABLES FETCHED = ${tableResponse.length}");
+
+                                              // ✅ STEP 4: BUILD ZONE MAP
+                                              final zoneTables = buildZoneTableMap(tableResponse);
+                                              debugPrint("🟢 ZONE TABLES = $zoneTables");
+                                              final zoneNames  = buildZoneNameMap(tableResponse);
+
+                                              if (!context.mounted) return;
+
+                                              // ✅ STEP 5: OPEN DIALOG
+                                              await showDialog(
+                                                context: context,
+                                                barrierDismissible: false,
+                                                builder: (_) => TransferKOTDialog(
+                                                  tableNo: widget.tableNo,
+                                                  kotNo: kot.kotId.toString(),
+                                                  dateTime: kot.time ?? DateTime.now(),
+                                                  items: transferItems,
+                                                  zoneTables: zoneTables,
+                                                  // zoneNames: zoneNames,
+                                                  // tables: [],
+                                                  // tables: [],
+                                                ),
+                                              );
+                                            } catch (e, s) {
+                                              debugPrint("❌ Transfer KOT failed: $e");
+                                              debugPrintStack(stackTrace: s);
+                                            }
+                                          },
+
+
+
+
+                                          icon: Image.asset(
+                                            "assets/icon/Void.png",
+                                            height: 16,
+                                            width: 16,
+                                            color: Colors.black,
+                                          ),
+                                          label: const Text(
+                                            "Transfer KOT",
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.black,
+                                            ),
+                                          ),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: const Color(0xFFFFC107),
+                                            elevation: 0,
+                                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                          ),
                                         ),
-                                      );
-                                    },
-                                    icon: Image.asset(
-                                      "assets/icon/Void.png",
-                                      height: 16,
-                                      width: 16,
-                                      color: Colors.black,
-                                    ),
-                                    label: const Text(
-                                      "Transfer KOT",
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.black,
                                       ),
-                                    ),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFFFFC107),
-                                      elevation: 0,
-                                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
+
+                                    ],
                             ),
                           ),
 

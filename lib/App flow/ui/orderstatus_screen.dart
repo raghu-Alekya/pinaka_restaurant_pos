@@ -11,6 +11,7 @@ import '../../blocs/Bloc State/order_list_state.dart';
 import '../../models/UserPermissions.dart';
 // import '../../models/orderslist/orders_list_model.dart';
 import '../../models/order_list/order_list_model.dart';
+import '../../utils/SessionManager.dart';
 import '../widgets/NavigationHelper.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/top_bar.dart';
@@ -74,8 +75,10 @@ class _OrdersListTableState extends State<OrdersListTable> {
     super.initState();
     _userPermissions = widget.userPermissions;
     // Trigger fetch
+    _loadPermissions();
     context.read<OrderstatusBloc>().add(
       FetchOrders(token: widget.token),
+
     );
 
     _searchController.addListener(() {
@@ -84,6 +87,14 @@ class _OrdersListTableState extends State<OrdersListTable> {
         _currentPage = 0;
       });
     });
+  }
+  Future<void> _loadPermissions() async {
+    final savedPermissions = await SessionManager.loadPermissions();
+    if (savedPermissions != null) {
+      setState(() {
+        _userPermissions = savedPermissions;
+      });
+    }
   }
 
   Color _statusColor(String status) {
@@ -186,12 +197,12 @@ class _OrdersListTableState extends State<OrdersListTable> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey,
+      backgroundColor: Colors.white,
       appBar: TopBar(
         token: widget.token,
         pin: widget.pin,
         userPermissions: _userPermissions,
-        onPermissionsReceived: (permissions) async {
+        onPermissionsReceived: (permissions) {
           setState(() {
             _userPermissions = permissions;
           });
@@ -499,8 +510,9 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                 ],
                                 rows: pageOrders.map((order) {
                                   return DataRow(
-                                    onSelectChanged: (_) {
-                                      Navigator.push(
+                                    onSelectChanged: (_) async {
+                                      // Wait for the OrdersDetailsScreen to return a value
+                                      final bool? didUpdate = await Navigator.push<bool>(
                                         context,
                                         MaterialPageRoute(
                                           builder: (_) => OrdersDetailsScreen(
@@ -513,6 +525,11 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                           ),
                                         ),
                                       );
+
+                                      // If the screen returned true (order was updated), refetch
+                                      if (didUpdate == true) {
+                                        context.read<OrderstatusBloc>().add(FetchOrders(token: widget.token));
+                                      }
                                     },
                                     cells: [
                                       DataCell(Text(order.orderId?.toString() ?? '-')),
@@ -633,7 +650,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
       /// 🔹 BOTTOM NAV BAR
       bottomNavigationBar: BottomNavBar(
         selectedIndex: 4,
-        userPermissions: null,
+        userPermissions: _userPermissions,
         onItemTapped: (int index) {
           NavigationHelper.handleNavigation(
             context,
@@ -643,7 +660,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
             widget.token,
             widget.restaurantId,
             widget.restaurantName,
-            null,
+            _userPermissions,
           );
         },
       ),

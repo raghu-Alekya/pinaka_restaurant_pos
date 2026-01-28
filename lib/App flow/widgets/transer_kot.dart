@@ -31,7 +31,8 @@ class TransferKOTDialog extends StatefulWidget {
     required this.kotNo,
     required this.dateTime,
     required this.items,
-    required this.zoneTables, required List<String> tables,
+    required this.zoneTables,
+    // required List<String> tables,
   });
 
   @override
@@ -241,7 +242,7 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
       height: 36,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E63FF),
+        color: const Color(0xFF125BCE),
         borderRadius: BorderRadius.circular(6),
       ),
       child: DropdownButtonHideUnderline(
@@ -261,7 +262,7 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
             return DropdownMenuItem(
               value: zone,
               child: Text("Zone $zone",
-                  style: const TextStyle(color: Colors.black)),
+                  style: const TextStyle(color: Colors.white)),
             );
           }).toList(),
         ),
@@ -315,60 +316,64 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
   // ================= RIGHT PANEL =================
 
   Widget _rightPanel() {
-    return Expanded(
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text("Select Table",
-                  style:
-                  TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-              _zoneDropdown(),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: Scrollbar(
-              controller: _tableScrollController,
-              thumbVisibility: true,
-              child: _tableGrid(),
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              "Select Table",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
             ),
+            _zoneDropdown(),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: Scrollbar(
+            controller: _tableScrollController,
+            thumbVisibility: true,
+            child: _tableGrid(),
           ),
-          const SizedBox(height: 14),
-          Align(
-            alignment: Alignment.centerRight,
-            child: SizedBox(
-              width: 140,
-              height: 40,
-              child: ElevatedButton(
-                onPressed: selectedTable == null
-                    ? null
-                    : () {
-                  Navigator.pop(context, {
-                    "zone": selectedZone,
-                    "table": selectedTable,
-                    "items":
-                    items.where((e) => e.selected).toList(),
-                  });
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF6B6B),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6)),
-                  elevation: 0,
+        ),
+        const SizedBox(height: 14),
+        Align(
+          alignment: Alignment.centerRight,
+          child: SizedBox(
+            width: 140,
+            height: 40,
+            child: ElevatedButton(
+              onPressed: selectedTable == null
+                  ? null
+                  : () {
+                Navigator.pop(context, {
+                  "zone": selectedZone,
+                  "table": selectedTable,
+                  "items":
+                  items.where((e) => e.selected).toList(),
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFE6464),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Text("Yes, Continue",
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700)),
+                elevation: 0,
+              ),
+              child: const Text(
+                "Yes, Continue",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
+
 
   // ================= BUILD =================
 

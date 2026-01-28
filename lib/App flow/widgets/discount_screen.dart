@@ -92,7 +92,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
 
     setState(() {
       if (value == 'Clear') {
-        // discountController.clear();
+        discountController.clear();
       } else if (value == '⌫') {
         if (discountController.text.isNotEmpty) {
           discountController.text =

@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants/constants.dart';
 import '../local database/login_dao.dart';
+import '../utils/SessionManager.dart';
 import '../utils/logger.dart';
 
 class AuthRepository {
@@ -20,23 +21,24 @@ class AuthRepository {
     var streamedResponse = await request.send();
     var response = await http.Response.fromStream(streamedResponse);
 
-    AppLogger.debug('Login API Response: ${response.body}');
-
     final responseData = jsonDecode(response.body);
 
     if (response.statusCode == 200 && responseData['success'] == true) {
       final data = responseData['data'];
 
-      String token = data['token'];
-      String restaurantId = data['restaurant_id'].toString();
-      String restaurantName = data['restaurant_name'].toString();
-      Map<String, dynamic> permissions = Map<String, dynamic>.from(data['permissions'] ?? {});
+      final String token = data['token'];
+      final String restaurantId = data['restaurant_id'].toString();
+      final String restaurantName = data['restaurant_name'].toString();
+      final Map<String, dynamic> permissions =
+      Map<String, dynamic>.from(data['permissions'] ?? {});
 
+      // 🔥🔥🔥 THIS IS MANDATORY 🔥🔥🔥
+      await SessionManager.saveToken(token);
+
+      // Optional (SQLite)
       await loginDao.insertLogin(pin, token, restaurantId, restaurantName);
 
-      AppLogger.info('Login successful. Token and restaurant data saved.');
-      AppLogger.info('Restaurant ID: $restaurantId');
-      AppLogger.info('Restaurant Name: $restaurantName');
+      AppLogger.info('Login successful. Token saved.');
 
       return {
         'success': true,
@@ -46,11 +48,13 @@ class AuthRepository {
         'permissions': permissions,
       };
     } else {
-      String errorMessage = responseData['message'] ?? "Login failed";
-      AppLogger.warning('Login failed: $errorMessage');
-      return {'success': false, 'message': errorMessage};
+      return {
+        'success': false,
+        'message': responseData['message'] ?? "Login failed",
+      };
     }
   }
+
   Future<bool> logout(String token) async {
     final url = Uri.parse(AppConstants.logoutEndpoint);
 
@@ -60,18 +64,20 @@ class AuthRepository {
         headers: {'Authorization': 'Bearer $token'},
       );
 
-      AppLogger.debug("Logout API Response: ${response.statusCode} - ${response.body}");
-
       if (response.statusCode == 200) {
         await loginDao.clearLogin();
 
         final prefs = await SharedPreferences.getInstance();
-        await prefs.clear();
 
-        AppLogger.info('Logout successful. Local data cleared.');
+        // ✅ REMOVE ONLY WHAT YOU NEED
+        await prefs.remove('auth_token');
+        await prefs.remove('user_permissions');
+        await prefs.remove('user_id');
+        await prefs.remove('shift_id');
+
+        AppLogger.info('Logout successful. Session cleared safely.');
         return true;
       } else {
-        AppLogger.warning('Logout failed with status: ${response.statusCode}');
         return false;
       }
     } catch (e) {
@@ -79,7 +85,6 @@ class AuthRepository {
       return false;
     }
   }
-
 
   Future<Map<String, dynamic>?> getSavedLogin() async {
     return await loginDao.getLogin();

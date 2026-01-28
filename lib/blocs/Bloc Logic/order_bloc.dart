@@ -84,6 +84,7 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
         zoneName: event.zoneName,
         restaurantId: event.restaurantId,
 
+
         // ✅ Clear items only if different table
         orderItems: isDifferentTable ? [] : state.orderItems,
         kotList: state.kotList,

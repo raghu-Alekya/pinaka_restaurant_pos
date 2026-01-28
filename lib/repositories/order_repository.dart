@@ -296,8 +296,12 @@ class OrderRepository {
 
         // ✅ Fallback zoneId if backend didn’t return it
         final effectiveZoneId = parent['zone_id'] ?? zoneId ?? 0;
+    // / ✅ FIX: read guest_count
+    final int guestCount = parent['guest_count'] ?? 0;
+    AppLogger.debug("👥 Guest count from API = $guestCount");
 
-        // Parse all KOTs
+
+    // Parse all KOTs
         final kotOrders = (parent['kot_orders'] as List<dynamic>? ?? [])
             .map((k) => KotModel.fromJson(k as Map<String, dynamic>))
             .toList();
@@ -314,6 +318,9 @@ class OrderRepository {
           status: parent['status'] ?? '',
           items: items,
           kotOrders: kotOrders,
+          // ✅ PASS GUEST DATA
+          guestCount: guestCount,
+          // guestDetails: guestDetails,
         );
 
       } else {

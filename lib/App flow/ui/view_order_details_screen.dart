@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/material.dart';
 import '../../models/UserPermissions.dart';
@@ -77,6 +79,35 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
     }
   }
 
+  void cancelOrder(int orderId) {
+    print("Cancel order triggered: $orderId");
+    // Call your API here
+  }
+  List<String> extractModifierNames(Map<String, dynamic> item) {
+    // Try all possible keys
+    final raw = item['modifiers'] ?? item['modifier'] ?? item['addons'];
+
+    if (raw == null) return [];
+
+    List modifiersList = [];
+
+    if (raw is String) {
+      try {
+        modifiersList = List<dynamic>.from(jsonDecode(raw));
+      } catch (e) {
+        modifiersList = [];
+      }
+    } else if (raw is List) {
+      modifiersList = raw;
+    }
+
+    // Extract modifier names safely
+    return modifiersList.map<String>((m) {
+      if (m is String) return m;
+      if (m is Map) return m['name']?.toString() ?? '';
+      return '';
+    }).where((e) => e.isNotEmpty).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -123,6 +154,24 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
             selectedKotId = kots.first["kotNo"];
           }
 
+          Map<String, dynamic>? selectedKot = kots
+              .cast<Map<String, dynamic>?>()
+              .firstWhere(
+                (kot) => kot?["kotNo"] == selectedKotId,
+            orElse: () => null,
+          );
+
+          String kotReason = "-"; // default
+          if (selectedKot != null && selectedKot["meta_data"] != null) {
+            final metaData = (selectedKot["meta_data"] as List<dynamic>);
+            final reasonMeta = metaData.firstWhere(
+                  (m) => m["key"] == "kot_reason",
+              orElse: () => {"value": "-"},
+            );
+            kotReason = reasonMeta["value"] ?? "-";
+          }
+
+
           return Center(
             child: Container(
               width: double.infinity,
@@ -158,44 +207,45 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 // Left: Back button
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                  decoration: ShapeDecoration(
-                                    color: const Color(0xFF3B4259),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    shadows: const [
-                                      BoxShadow(
-                                        color: Color(0x19000000),
-                                        blurRadius: 4,
-                                        offset: Offset(0, 1),
+                                GestureDetector(
+                                  onTap: () => Navigator.pop(context, true),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    decoration: ShapeDecoration(
+                                      color: const Color(0xFF3B4259),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
                                       ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      GestureDetector(
-                                        onTap: () => Navigator.pop(context),
-                                        child: const Icon(
+                                      shadows: const [
+                                        BoxShadow(
+                                          color: Color(0x19000000),
+                                          blurRadius: 4,
+                                          offset: Offset(0, 1),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: const [
+                                        Icon(
                                           Icons.arrow_back,
                                           size: 20,
                                           color: Colors.white,
                                         ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      const Text(
-                                        "Back",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
+                                        SizedBox(width: 8),
+                                        Text(
+                                          "Back",
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ),
+
 
                                 // Right buttons: Edit Order + Cancel Order
                                 Row(
@@ -258,41 +308,160 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                     const SizedBox(width: 12),
 
                                     // Cancel Order Button
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                      decoration: ShapeDecoration(
-                                        color: Colors.white,
-                                        shape: RoundedRectangleBorder(
-                                          side: const BorderSide(
-                                            width: 0.8,
-                                            color: Color(0xFFFE6464),
-                                          ),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Container(
-                                            width: 24,
-                                            height: 24,
+                                    if ((orderModel.status ?? '').toLowerCase() == 'completed')
+                                      GestureDetector(
+                                        onTap: () {
+                                          showDialog(
+                                              context: context,
+                                              barrierDismissible: false,
+                                              builder: (context) => Dialog(
+                                                backgroundColor: Colors.white,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(16),
+                                                ),
+                                                child: SizedBox(
+                                                  width: 400,
+                                                  child: Padding(
+                                                    padding: const EdgeInsets.all(20),
+                                                    child: Column(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
 
-                                            child: Stack(),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          const Text(
-                                            'Cancel Order',
-                                            style: TextStyle(
-                                              color: Color(0xFFFE6464),
-                                              fontSize: 22,
-                                              fontFamily: 'Kumbh Sans',
-                                              fontWeight: FontWeight.w400,
-                                              height: 0.75,
+                                                        /// 🔼 Top Image (You can replace asset path)
+                                                        Image.asset(
+                                                          'assets/cancelorder.png',
+                                                          height: 90,
+                                                        ),
+
+                                                        const SizedBox(height: 16),
+
+                                                        /// Title
+                                                        const Text(
+                                                          'Cancel Order?',
+                                                          textAlign: TextAlign.center,
+                                                          style: TextStyle(
+                                                            fontSize: 22,
+                                                            fontWeight: FontWeight.w600,
+                                                          ),
+                                                        ),
+
+                                                        const SizedBox(height: 10),
+
+                                                        /// Message
+                                                        const Text(
+                                                          'Are you sure do you want cancel the order?',
+                                                          textAlign: TextAlign.center,
+                                                          style: TextStyle(
+                                                            fontSize: 16,
+                                                            color: Colors.black54,
+                                                          ),
+                                                        ),
+
+                                                        const SizedBox(height: 24),
+
+                                                        /// Buttons Row
+                                                        Row(
+                                                          mainAxisAlignment: MainAxisAlignment.center,
+                                                          children: [
+
+                                                            /// Back Button
+                                                            SizedBox(
+                                                              width: 110,
+                                                              child: OutlinedButton(
+                                                                style: OutlinedButton.styleFrom(
+                                                                  minimumSize: const Size(110, 40),
+                                                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                                                  side: const BorderSide(color: Colors.grey),
+                                                                  shape: RoundedRectangleBorder(
+                                                                    borderRadius: BorderRadius.circular(8),
+                                                                  ),
+                                                                ),
+                                                                onPressed: () {
+                                                                  Navigator.pop(context);
+                                                                },
+                                                                child: const Text(
+                                                                  'Back',
+                                                                  style: TextStyle(fontSize: 15),
+                                                                ),
+                                                              ),
+                                                            ),
+
+                                                            const SizedBox(width: 14),
+
+                                                            /// Yes Done Button
+                                                            SizedBox(
+                                                              width: 130,
+                                                              child: ElevatedButton(
+                                                                style: ElevatedButton.styleFrom(
+                                                                  backgroundColor: const Color(0xFFFE6464),
+                                                                  minimumSize: const Size(130, 40),
+                                                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                                                  shape: RoundedRectangleBorder(
+                                                                    borderRadius: BorderRadius.circular(8),
+                                                                  ),
+                                                                ),
+                                                                onPressed: () {
+                                                                  Navigator.pop(context);
+
+                                                                  if (orderModel.orderId != null) {
+                                                                    cancelOrder(orderModel.orderId!);
+                                                                  }
+                                                                },
+                                                                child: const Text(
+                                                                  'Yes, Done',
+                                                                  style: TextStyle(fontSize: 15,color: Colors.white,),
+
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        )
+
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              )
+                                          );
+
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                          decoration: ShapeDecoration(
+                                            color: Colors.white,
+                                            shape: RoundedRectangleBorder(
+                                              side: const BorderSide(
+                                                width: 0.8,
+                                                color: Color(0xFFFE6464),
+                                              ),
+                                              borderRadius: BorderRadius.circular(8),
                                             ),
                                           ),
-                                        ],
-                                      ),
-                                    ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: const [
+                                              Icon(
+                                                Icons.close,
+                                                size: 20,
+                                                color: Color(0xFFFE6464),
+                                              ),
+                                              SizedBox(width: 6),
+                                              Text(
+                                                'Cancel Order',
+                                                style: TextStyle(
+                                                  color: Color(0xFFFE6464),
+                                                  fontSize: 18,
+                                                  fontFamily: 'Kumbh Sans',
+                                                  fontWeight: FontWeight.w400,
+                                                  height: 0.75,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      )
+
+
                                   ],
                                 ),
                               ],
@@ -733,7 +902,9 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                               ),
                                               Expanded(
                                                 child: Text(
-                                                  order['edit_reason'] ?? "-",
+                                                  (order['updatedRemarks'] != null && order['updatedRemarks'].toString().trim().isNotEmpty)
+                                                      ? order['updatedRemarks'].toString()
+                                                      : '-',
                                                   style: const TextStyle(
                                                     fontSize: 14,
                                                     fontWeight: FontWeight.w500,
@@ -744,6 +915,8 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                             ],
                                           ),
                                         ),
+
+
                                       ],
                                     ),
                                   ),
@@ -792,8 +965,17 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
         child: Text("No KOT Selected", style: TextStyle(color: Colors.grey)),
       );
     }
+    String kotReason = "-";
+    if (selectedKot["meta_data"] != null) {
+      final metaData = (selectedKot["meta_data"] as List<dynamic>);
+      final reasonMeta = metaData.firstWhere(
+            (m) => m["key"] == "kot_reason",
+        orElse: () => {"value": "-"},
+      );
+      kotReason = reasonMeta["value"] ?? "-";
+    }
 
-    return buildKOTCard(selectedKot, kots);
+    return buildKOTCard(selectedKot, kots, );
   }
 
   Widget buildKOTCard(Map<String, dynamic> selectedKot, List<dynamic> kots) {
@@ -909,21 +1091,21 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
           /// 🔹 Items List
           Column(
-            children:
-            items.asMap().entries.map((entry) {
-              int index = entry.key ;
+            children: items.asMap().entries.map((entry) {
+
+              int index = entry.key;
               var item = entry.value;
               bool isLast = index == items.length - 1;
 
-              final List modifiers = item['modifiers'] ?? [];
+              final List<String> modifierNames = extractModifierNames(item);
+
+
+
               return Container(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 8,
-                  horizontal: 6,
-                ),
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
                 decoration: BoxDecoration(
                   border: Border(
-                    bottom: BorderSide(color: Color(0xFFB9B9B9)!),
+                    bottom: const BorderSide(color: Color(0xFFB9B9B9)),
                     left: const BorderSide(color: Color(0xFFB9B9B9)),
                     right: const BorderSide(color: Color(0xFFB9B9B9)),
                   ),
@@ -947,11 +1129,11 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                             style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
 
-                          if (modifiers.isNotEmpty)
+                          if (modifierNames.isNotEmpty)
                             Padding(
                               padding: const EdgeInsets.only(top: 2),
                               child: Text(
-                                modifiers.join(", "), // 🔹 simple text only
+                                modifierNames.join(", "), // Display all modifiers
                                 style: const TextStyle(
                                   fontSize: 12,
                                   color: Colors.grey,
@@ -961,7 +1143,13 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                         ],
                       ),
                     ),
-                    Expanded(flex: 2, child: Text("${item['qty'] ?? 0}x")),
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        "${item['qty'] ?? 0} x ${item['item_price'] ?? 0}",
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ),
                     Expanded(
                       flex: 2,
                       child: Text(
@@ -973,7 +1161,8 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                 ),
               );
             }).toList(),
-          ),
+          )
+
         ],
       ),
     );
