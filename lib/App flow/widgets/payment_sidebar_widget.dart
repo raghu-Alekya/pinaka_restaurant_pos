@@ -4,18 +4,24 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:pinaka_restaurant_pos/models/payment/payment_summary_model.dart';
 
+import '../../blocs/Bloc Event/tax_event.dart';
+import '../../blocs/Bloc Logic/payment_bloc.dart';
 import '../../blocs/Bloc Logic/tax_bloc.dart';
+import '../../blocs/Bloc State/payment_state.dart';
 import '../../blocs/Bloc State/tax_state.dart';
 import '../../models/tax_model.dart';
 
 class Sidebarwidgets extends StatefulWidget {
   final PaymentSummary paymentSummary;
+  final double merchantDiscount;
+
 
   const Sidebarwidgets({
     super.key,
     required this.paymentSummary,
     required userPermissions,
     Map<String, dynamic>? selectedUser,
+    required this.merchantDiscount,
   });
 
   @override
@@ -39,11 +45,15 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
   double foodSgst = 0;
   double beverageCgst = 0;
   double beverageSgst = 0;
-  // double totalTax = 0;
+  double totalTax = 0;
   double liquorCgst = 0;
   double liquorSgst = 0;
-  final merchantDiscount = 0.0;
-  double _calculatedNetPayable = 0.0;
+  double netPayable = 0.0;
+
+  // final merchantDiscount = 0.0;
+  double calculatedNetPayable = 0.0;
+
+
 
   // until backend provides it
 
@@ -63,16 +73,40 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
         .replaceAll('bewerages', 'beverages') // typo fix
         ?? '';
   }
+  void _calculateNetPayableOnce() {
+    final grossTotal = widget.paymentSummary.grossTotal;
+    final couponDiscount = widget.paymentSummary.coupons;
+    final merchantDiscount = widget.merchantDiscount.abs();
 
+    final subTotal = grossTotal - couponDiscount;
+    final netTotal = subTotal + totalTax; // ✅ uses class totalTax
+
+    setState(() {
+      calculatedNetPayable = netTotal - merchantDiscount;
+    });
+  }
+
+
+  @override
   @override
   void initState() {
     super.initState();
-    _controller =
-        AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
+
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+
     _heightAnimation = Tween<double>(begin: 60, end: 260).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
-    // _calculateTaxes();
+
+    _calculateNetPayableOnce();
+
+    // ✅ LOAD TAX IMMEDIATELY (before expand)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<TaxBloc>() .add(LoadTaxesEvent());
+    });
   }
 
   void _toggleExpand() {
@@ -220,14 +254,19 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                           height: 36,
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
+                            color: Colors.green, // ✅ background
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey),
+                            border: Border.all(color: Colors.green),
                           ),
-                          child: const Text(
+                          child: Text(
                             "Print",
-                            style: TextStyle(fontWeight: FontWeight.w600),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white, // ✅ text color
+                            ),
                           ),
                         ),
+
 
                         const SizedBox(height: 12),
 
@@ -295,6 +334,7 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
+
                               ),
                               Text(
                                 'Units',
@@ -332,16 +372,38 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                                     child: Row(
                                       children: [
                                         Expanded(
-                                          child: Text(
-                                            item.name,
-                                            style: const TextStyle(fontSize: 12),
-                                            overflow: TextOverflow.ellipsis,
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                item.name,
+                                                style: const TextStyle(fontSize: 12),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+
+                                              if (item.modifiers.isNotEmpty)
+                                                Padding(
+                                                  padding: const EdgeInsets.only(top: 2),
+                                                  child: Text(
+                                                    "${item.modifiers.join(", ")}  (+₹${item.modifierAmount.toStringAsFixed(0)})",
+                                                    style: const TextStyle(
+                                                      fontSize: 10,
+                                                      color: Colors.red, // ✅ RED
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                            ],
                                           ),
                                         ),
+
                                         Text(
-                                          '${item.qty} × ${(item.qty > 0 ? item.total / item.qty : 0).toStringAsFixed(0)}',
+                                          '${item.qty} × ${((item.qty > 0 ? ((item.total - item.modifierAmount) / item.qty) : 0)).toStringAsFixed(0)}',
                                           style: const TextStyle(fontSize: 12),
                                         ),
+
+
                                         const SizedBox(width: 80),
                                         Text(
                                           item.total.toStringAsFixed(2),
@@ -398,8 +460,66 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
         builder: (context, child) {
           if (!_isExpanded) {
             debugPrint('🔽 Tax panel collapsed');
-            return const SizedBox.shrink();
+
+            return BlocBuilder<TaxBloc, TaxState>(
+              builder: (context, state) {
+                if (state is TaxLoaded) {
+                  final grossTotal = widget.paymentSummary.grossTotal;
+                  final couponDiscount = widget.paymentSummary.coupons;
+                  final merchantDiscount = widget.merchantDiscount.abs();
+                  final subTotal = grossTotal - couponDiscount;
+
+                  double foodCgst = 0, foodSgst = 0, beverageCgst = 0, beverageSgst = 0;
+
+                  for (final item in widget.paymentSummary.lineItems) {
+                    final itemClass = normalizeTaxClass(item.taxClass);
+
+                    final tax = state.taxes.firstWhere(
+                          (t) => normalizeTaxClass(t.taxClass) == itemClass,
+                      orElse: () => TaxModel(
+                        id: 0,
+                        rate: "0",
+                        name: "",
+                        taxClass: "",
+                        compound: false,
+                        shipping: false,
+                      ),
+                    );
+
+                    final rate = double.tryParse(tax.rate) ?? 0;
+                    if (rate == 0) continue;
+
+                    final halfTax = (item.total * rate / 100) / 2;
+
+                    if (itemClass == 'food') {
+                      foodCgst += halfTax;
+                      foodSgst += halfTax;
+                    } else if (itemClass == 'beverages') {
+                      beverageCgst += halfTax;
+                      beverageSgst += halfTax;
+                    }
+                  }
+
+                  final newTotalTax = foodCgst + foodSgst + beverageCgst + beverageSgst;
+                  final netTotal = subTotal + newTotalTax;
+                  final tempPayable = netTotal - merchantDiscount;
+
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) return;
+                    if (calculatedNetPayable != tempPayable) {
+                      setState(() {
+                        totalTax = newTotalTax;
+                        calculatedNetPayable = tempPayable;
+                      });
+                    }
+                  });
+                }
+
+                return const SizedBox.shrink();
+              },
+            );
           }
+
 
           debugPrint('🔼 Tax panel expanded');
 
@@ -415,12 +535,30 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                   return const Center(child: CircularProgressIndicator());
                 }
                 final grossTotal = widget.paymentSummary.grossTotal;
-                final couponDiscount = widget.paymentSummary.discount;
-                final merchantDiscount = 0.0; // backend not available yet
+                final couponDiscount = widget.paymentSummary.coupons;
+                // final merchantDiscount = widget.paymentSummary.discount ?? 0.0;
+                // final merchantDiscount = widget.merchantDiscount;
+                // double netPayable = widget.paymentSummary.netTotal;
+                // final double merchantDiscount = context.select((PaymentBloc bloc) {
+                //   return bloc.state is PaymentSummaryLoaded
+                //       ? (bloc.state as PaymentSummaryLoaded).merchantDiscount
+                //       : 0.0;
+                // });
+                final double merchantDiscount = widget.merchantDiscount;
+
+
+                final double backendNetPayable =
+                    widget.paymentSummary.netTotal -  widget.merchantDiscount.abs();
+
+
+// backend not available yet
 
                 final subTotal = grossTotal - couponDiscount;
                 // final netPayable = subTotal + totalTax - merchantDiscount;
                 // final netTotal = subTotal + totalTax;
+                final bool modifiersTaxable =
+                    widget.paymentSummary.modifiersTaxable;
+
 
 
 
@@ -479,7 +617,10 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                     }
 
 
-                    final itemTax = item.total * rate / 100;
+                    // final itemTax = item.total * rate / 100;
+                    final itemTax = item.calculatedTax(
+                      modifiersTaxable: modifiersTaxable,
+                    );
                     final halfTax = itemTax / 2;
 
                     // totalTax += itemTax;
@@ -506,14 +647,17 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                       debugPrint('❌ TAX CLASS DID NOT MATCH ANY CATEGORY');
                     }
                   }
-                  final totalTax =
-                      foodCgst +
-                          foodSgst +
-                          beverageCgst +
-                          beverageSgst;
-                  final netTotal = subTotal + totalTax;
-                  final netPayable = netTotal - merchantDiscount;
+                  final newTotalTax = foodCgst + foodSgst + beverageCgst + beverageSgst;
+                  final netTotal = subTotal + newTotalTax;
+                  final tempPayable = netTotal - merchantDiscount.abs();
 
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) return;
+                    setState(() {
+                      totalTax = newTotalTax;
+                      calculatedNetPayable = tempPayable;
+                    });
+                  });
 
 
 
@@ -527,6 +671,7 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                   debugPrint('🍺 Liquor SGST    : $liquorSgst');
                   debugPrint('💰 TOTAL TAX      : $totalTax');
                   debugPrint('===================================================');
+                  debugPrint("💙 Showing Merchant Discount in UI = ${widget.merchantDiscount}");
 
                   return Column(
                     mainAxisSize: MainAxisSize.min,
@@ -625,12 +770,9 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
 
                       ),
 
+                      _row("Merchant Discount", merchantDiscount.abs(), color: Colors.blue),
 
-                      _row(
-                        "Merchant Discount",
-                        -merchantDiscount,
-                        color: Colors.blue,
-                      ),
+
                       // const DottedLine(),
 
 
@@ -643,10 +785,11 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
 
                       _row(
                         "Net Payable",
-                        widget.paymentSummary.netTotal,
+                        tempPayable,
                         isBold: true,
                         fontSize: 18,
                       ),
+
 
                     ],
                   );
@@ -697,12 +840,13 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
 
               /// NET PAYABLE
               Text(
-                "Net Payable : ${widget.paymentSummary.netTotal.toStringAsFixed(2)}",
+                "Net Payable : ${ calculatedNetPayable.toStringAsFixed(2)}",
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
                 ),
               ),
+
 
               const SizedBox(width: 6),
 

@@ -61,6 +61,9 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
         orderItems: isDifferentOrder ? [] : state.orderItems,
         // ❌ Don’t clear KOTs
         kotList: state.kotList,
+        // ✅ IMPORTANT: reset repeat order lock for new order/table
+        isKotRepeated: false,
+        repeatedOrderId: 0,
       ));
     });
 
@@ -80,13 +83,17 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
         tableName: event.tableName,
         zoneName: event.zoneName,
         restaurantId: event.restaurantId,
+
         // ✅ Clear items only if different table
         orderItems: isDifferentTable ? [] : state.orderItems,
-        kotList: state.kotList, // keep existing KOTs
+        kotList: state.kotList,
+
+        // ✅ IMPORTANT: reset repeat flag when table changes
+        isKotRepeated: false,
+        repeatedOrderId: 0,
       ));
 
       try {
-        // Step 2: Fetch existing order for this table
         final existingOrder = await repository.getOrderByTable(
           tableId: event.tableId,
           zoneId: event.zoneId,
@@ -95,34 +102,33 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
         );
 
         if (existingOrder != null) {
-          // Convert fetched items to model list
-          final orderItems = existingOrder.items.map((item) =>
-              OrderItems(
-                productId: item.productId,
-                name: item.name,
-                quantity: item.quantity,
-                price: item.price,
-                variationId: item.variationId,
-                section: item.section,
-                modifiers: item.modifiers,
-                addOns: item.addOns,
-              )).toList();
+          final orderItems = existingOrder.items.map((item) => OrderItems(
+            productId: item.productId,
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price,
+            variationId: item.variationId,
+            section: item.section,
+            modifiers: item.modifiers,
+            addOns: item.addOns,
+            amount: item.amount,
+          )).toList();
 
           final guestDetails = Guestcount(guestCount: existingOrder.guestCount);
 
           emit(state.copyWith(
             orderId: existingOrder.orderId,
             orderItems: orderItems,
-            // ✅ restore items when returning to same table
             kotList: state.kotList,
-            // keep old KOTs intact
             guestDetails: guestDetails,
+
+            // ✅ also reset here (safe)
+            isKotRepeated: false,
+            repeatedOrderId: 0, //
           ));
 
           AppLogger.info(
-            "✅ Loaded existing order for Table '${event
-                .tableName}' → Items=${orderItems.length}, Guests=${guestDetails
-                .guestCount}",
+            "✅ Loaded existing order for Table '${event.tableName}' → Items=${orderItems.length}, Guests=${guestDetails.guestCount}",
           );
         } else {
           AppLogger.info("ℹ️ No existing order for table '${event.tableName}'");
@@ -131,6 +137,7 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
         AppLogger.error("❌ Failed to fetch existing order: $e\n$st");
       }
     });
+
 
 
     /// Order created successfully
@@ -320,7 +327,23 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
       Emitter<OrderState> emit,
       ) async {
     try {
-      emit(state.copyWith(isLoading: true));
+      // ✅ Block if already loading
+      if (state.isLoading) return;
+
+      // ✅ Block if already repeated for same order
+      if (state.repeatedOrderId == event.orderId) {
+        emit(state.copyWith(
+          isLoading: false,
+          error: "Already repeated this order",
+        ));
+        return;
+      }
+
+      // ✅ lock immediately
+      emit(state.copyWith(
+        isLoading: true,
+        error: null,
+      ));
 
       final result = await repeatRepository.repeatKotOrder(
         orderId: event.orderId,
@@ -329,30 +352,32 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
         token: token,
       );
 
-      // ✅ Convert API response → KotModel
       final kot = result.toKotModel();
 
-      // ✅ Merge items into existing order items
       final updatedOrderItems = [
         ...state.orderItems,
         ...kot.items,
       ];
 
-      // ✅ Update both order items & KOT list
       emit(state.copyWith(
         isLoading: false,
         orderItems: updatedOrderItems,
         kotList: [...state.kotList, kot],
+
+        // ✅ IMPORTANT: now it will block next click
+        repeatedOrderId: event.orderId,
+        isKotRepeated: true,
       ));
 
       AppLogger.info("✅ Repeat order applied to UI");
-
-    } catch (e, st) {
-      AppLogger.error("❌ Repeat order failed: $e");
+    } catch (e) {
       emit(state.copyWith(isLoading: false));
     }
   }
 
 
 
+
+
 }
+

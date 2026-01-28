@@ -57,3 +57,41 @@ class AddDiscountResponse {
     );
   }
 }
+class RemoveDiscountResponseModel {
+  final String status;
+  final String message;
+  final RemoveDiscountData? data;
+
+  RemoveDiscountResponseModel({
+    required this.status,
+    required this.message,
+    this.data,
+  });
+
+  factory RemoveDiscountResponseModel.fromJson(Map<String, dynamic> json) {
+    return RemoveDiscountResponseModel(
+      status: json['status'] ?? '',
+      message: json['message'] ?? '',
+      data: json['data'] != null
+          ? RemoveDiscountData.fromJson(json['data'])
+          : null,
+    );
+  }
+}
+
+class RemoveDiscountData {
+  final int orderId;
+  final String isNoCharge;
+
+  RemoveDiscountData({
+    required this.orderId,
+    required this.isNoCharge,
+  });
+
+  factory RemoveDiscountData.fromJson(Map<String, dynamic> json) {
+    return RemoveDiscountData(
+      orderId: json['order_id'] ?? 0,
+      isNoCharge: json['is_nocharge'] ?? '',
+    );
+  }
+}

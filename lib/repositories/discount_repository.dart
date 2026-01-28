@@ -111,3 +111,55 @@ class AddDiscountRepository {
     }
   }
 }
+class RemoveDiscountRepository {
+  final String baseUrl =
+      "https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1";
+
+  /// ✅ Single source of truth
+  Future<String> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    if (token == null || token.isEmpty) {
+      throw Exception("JWT token missing");
+    }
+
+    return token.startsWith('Bearer ') ? token.substring(7) : token;
+  }
+
+  Future<RemoveDiscountResponseModel> removeDiscount({
+    required int orderId,
+    required String isNc, // "yes" or "no"
+  }) async {
+    final token = await _getToken();
+
+    final url = Uri.parse("$baseUrl/orders/remove-discount");
+
+    print("➡️ [REMOVE DISCOUNT API]");
+    print("➡️ URL: $url");
+    print("➡️ BODY: ${jsonEncode({"order_id": orderId, "is_nc": isNc})}");
+
+    final response = await http.post(
+      url,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
+      },
+      body: jsonEncode({
+        "order_id": orderId,
+        "is_nc": isNc,
+      }),
+    );
+
+    print("⬅️ STATUS CODE: ${response.statusCode}");
+    print("⬅️ RESPONSE BODY: ${response.body}");
+
+    final decoded = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return RemoveDiscountResponseModel.fromJson(decoded);
+    } else {
+      throw Exception(decoded["message"] ?? "Failed to remove discount");
+    }
+  }
+}

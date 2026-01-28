@@ -206,6 +206,11 @@ class UpdateGuestCount extends OrderEvent {
 
   UpdateGuestCount({required this.guestDetails, required this.guestCount});
 }
+/// ✅ Mark Repeat done (so it will not repeat again for same KOT)
+class MarkKotRepeated extends OrderEvent {}
+/// ✅ Reset repeat flag for next KOT / next order
+class ResetKotRepeated extends OrderEvent {}
+
 
 
 

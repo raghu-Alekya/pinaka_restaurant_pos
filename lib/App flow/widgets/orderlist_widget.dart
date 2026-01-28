@@ -101,7 +101,7 @@ class OrderPanelList extends StatelessWidget {
                   const SizedBox(width:7),
                   // Serial #
                   SizedBox(
-                    width: 50,
+                    width: 40,
                     child: Text(
                       '${item.variationId ?? item.productId}',
                       // ✅ use productId instead of id
@@ -113,7 +113,7 @@ class OrderPanelList extends StatelessWidget {
 
                   // Item Name + Modifiers + AddOns + Note
                   SizedBox(
-                    width: 180,
+                    width: 170,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -164,7 +164,7 @@ class OrderPanelList extends StatelessWidget {
 
                   // Modifier Button
                   SizedBox(
-                    width: 60,
+                    width: 40,
                     child: IconButton(
                       padding: EdgeInsets.zero,
                       icon: const Icon(Icons.add, color: Colors.red, size: 20),
@@ -187,7 +187,23 @@ class OrderPanelList extends StatelessWidget {
                   //   ),
                   // ),
 
-                  const SizedBox(width: 25),
+                  const SizedBox(width: 8),
+                // ✅ Unit Price
+                SizedBox(
+                  width: 70,
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      '₹${item.price.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+                  const SizedBox(width:15),
+
 
                   // Quantity Controls
                   Row(
@@ -203,9 +219,12 @@ class OrderPanelList extends StatelessWidget {
                   ),
                   const SizedBox(width:10),
 
+
+                  // const SizedBox(width:10),
+
                   // Amount
                   SizedBox(
-                    width: 62,
+                    width: 60,
                     child: Align(
                       alignment: Alignment.centerRight,
                       child: Text(

@@ -22,6 +22,12 @@ class OrderState {
   final bool isLoading;
   final RepeatKotModel? repeatKot;
   final String? error;
+  final bool isKotRepeated;
+  // ✅ ADD THIS
+  final int repeatedOrderId;
+
+// ✅ add this
+
 
 
   OrderState({
@@ -40,6 +46,8 @@ class OrderState {
     this.isLoading = false,
     this.repeatKot,
     this.error,
+    this.isKotRepeated = false,
+    this.repeatedOrderId = 0,
   });
 
   OrderState copyWith({
@@ -57,6 +65,9 @@ class OrderState {
     bool? isLoading,
     RepeatKotModel? repeatKot,
     String? error,
+    bool? isKotRepeated,
+    int? repeatedOrderId,
+
   }) {
     return OrderState(
       orderItems: orderItems ?? this.orderItems,
@@ -74,6 +85,9 @@ class OrderState {
       isLoading: isLoading ?? this.isLoading,
       repeatKot: repeatKot ?? this.repeatKot,
       error: error,
+      isKotRepeated: isKotRepeated ?? this.isKotRepeated,
+      // ✅ ADD THIS
+      repeatedOrderId: repeatedOrderId ?? this.repeatedOrderId,
     );
   }
   /// ✅ Subtotal (price × quantity)

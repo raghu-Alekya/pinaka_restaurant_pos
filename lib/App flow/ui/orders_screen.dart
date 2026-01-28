@@ -8,9 +8,11 @@ import '../../blocs/Bloc Event/kot_event.dart';
 import '../../blocs/Bloc Event/kot_event.dart' as kot_evt;
 import '../../blocs/Bloc Event/order_event.dart';
 import '../../blocs/Bloc Logic/checkin_bloc.dart';
+import '../../blocs/Bloc Logic/discount_bloc.dart';
 import '../../blocs/Bloc Logic/kot_bloc.dart';
 import '../../blocs/Bloc Logic/order_bloc.dart';
 import '../../blocs/Bloc Logic/payment_bloc.dart';
+import '../../blocs/Bloc Logic/void_item_bloc.dart';
 import '../../blocs/Bloc State/checkin_state.dart';
 import '../../blocs/Bloc State/kot_state.dart';
 import '../../blocs/Bloc State/order_state.dart';
@@ -20,9 +22,11 @@ import '../../models/order/order_items.dart';
 import '../../models/order/KOT_model.dart';
 import '../../models/order/guest_details.dart';
 import '../../repositories/checkin_repository.dart';
+import '../../repositories/discount_repository.dart';
 import '../../repositories/kot_repository.dart';
 import '../../repositories/order_repository.dart';
 import '../../repositories/payment_summary_repository.dart';
+import '../../repositories/void_item_repository.dart';
 import '../../utils/logger.dart';
 import '../widgets/orderlist_widget.dart';
 import '../widgets/view_all_kots.dart';
@@ -423,11 +427,17 @@ class OrderPanel extends StatelessWidget {
                           child: Row(
                             children: [
                               SizedBox(width: 50, child: headerText('#')),
-                              Expanded(child: headerText('Item Name')),
-                              SizedBox(width: 120, child: headerText('Modifiers')),
+                              SizedBox(width: 140, child: headerText('Item Name')),
+                              SizedBox(width: 90, child: headerText('Modifiers')),
+
+                              // ✅ Unit Price column
+                              SizedBox(width: 80, child: headerText('Price')),
+
                               SizedBox(width: 70, child: headerText('Qty')),
+
                               SizedBox(width: 50, child: headerText('Amount')),
                             ],
+
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -476,23 +486,52 @@ class OrderPanel extends StatelessWidget {
                     // 2️⃣ Overlay: ViewAllKOTDropdown
                     BlocBuilder<OrderBloc, OrderState>(
                       builder: (context, orderState) {
-                        final kots = orderState.kotList; // always from OrderBloc
+                        final kots = orderState.kotList;
                         final isExpanded = orderState.showKOTDropdown;
 
                         return Positioned(
                           top: 0,
                           left: 0,
                           right: 0,
-                          child: ViewAllKOTDropdown(
-                            kots: kots,
-                            parentOrderId: orderState.orderId,
-                            restaurantId: int.parse(restaurantId),
-                            zoneId: orderState.zoneId,
-                            token: token,
+                          child: MultiBlocProvider(
+                            providers: [
+                              BlocProvider<KotLineItemsBloc>(
+                                create: (_) => KotLineItemsBloc(
+                                  repository: VoidItemRepository(
+                                    baseUrl: "https://merchantrestaurant.alektasolutions.com",
+                                  ),
+                                ),
+                              ),
+
+                              // ✅ ADD THIS
+                              BlocProvider<UpdatekotBloc>(
+                                create: (_) => UpdatekotBloc(
+                                  repository: UpdatekotRepository(
+                                    baseUrl: "https://merchantrestaurant.alektasolutions.com",
+                                  ),
+                                ),
+                              ),
+
+                              // ✅ If you are refreshing using KotBloc inside dropdown, also provide KotBloc
+                              BlocProvider<KotBloc>(
+                                create: (_) => KotBloc(KotRepository( baseUrl: "https://merchantrestaurant.alektasolutions.com")),
+                              ),
+                            ],
+                            child: ViewAllKOTDropdown(
+                              kots: kots,
+                              parentOrderId: orderState.orderId,
+                              restaurantId: int.parse(restaurantId),
+                              zoneId: orderState.zoneId,
+                              token: token,
+                              tableNo: tableId.toString(),
+                            ),
                           ),
                         );
+
+
                       },
                     ),
+
 
                   ],
                 ),
@@ -530,35 +569,40 @@ class OrderPanel extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  orderButton(
-                    'Repeat order',
-                    const Color(0xFFF7C127),
-                    onPressed: () {
-                      final bloc = context.read<OrderBloc>();
-
-                      // 🛑 Prevent duplicate taps while loading
-                      if (bloc.state.isLoading) {
-                        AppLogger.info("⏳ Repeat already in progress");
-                        return;
+                  BlocListener<OrderBloc, OrderState>(
+                    listenWhen: (prev, curr) => prev.error != curr.error,
+                    listener: (context, state) {
+                      if (state.error != null && state.error!.isNotEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(state.error!)),
+                        );
                       }
-
-                      // ❌ Safety check
-                      if (bloc.state.orderId == 0) {
-                        AppLogger.error("❌ Cannot repeat order: orderId is 0");
-                        return;
-                      }
-
-                      AppLogger.info("🔁 Repeat order clicked");
-
-                      bloc.add(
-                        RepeatKotOrder(
-                          orderId: bloc.state.orderId,
-                          restaurantId: int.parse(bloc.state.restaurantId),
-                          zoneId: bloc.state.zoneId,
-                          token: token,
-                        ),
-                      );
                     },
+                    child: orderButton(
+                      'Repeat order',
+                      const Color(0xFFF7C127),
+                      onPressed: () {
+                        final bloc = context.read<OrderBloc>();
+
+                        if (bloc.state.isLoading) return;
+
+                        if (bloc.state.orderId == 0) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Order not found")),
+                          );
+                          return;
+                        }
+
+                        bloc.add(
+                          RepeatKotOrder(
+                            orderId: bloc.state.orderId,
+                            restaurantId: int.parse(bloc.state.restaurantId),
+                            zoneId: bloc.state.zoneId,
+                            token: token,
+                          ),
+                        );
+                      },
+                    ),
                   ),
 
                   orderButton(
@@ -667,12 +711,26 @@ class OrderPanel extends StatelessWidget {
                             const SnackBar(content: Text('Failed to create KOT')),
                           );
                         }
-                      } catch (e) {
-                        Navigator.of(context).pop();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Error: ${e.toString()}')),
-                        );
                       }
+                      catch (e) {
+                        String message = 'Failed to create KOT';
+
+                        try {
+                          // 🧠 force extract response body even without DioException type
+                          final errorString = e.toString();
+
+                          if (errorString.contains('woocommerce_rest_stock_error') ||
+                              errorString.contains('out of stock')) {
+                            message = 'This item is out of stock. Please check.';
+                          }
+                        } catch (_) {}
+
+                        AppLogger.error("⛔ Failed to create KOT: $e");
+
+                        // 🔥 THIS IS MANDATORY
+                        throw Exception(message);
+                      }
+
                     },
                   ),
                   // orderButton(
@@ -767,9 +825,9 @@ class OrderPanel extends StatelessWidget {
 
 
 
-                  orderButton('Generate e-Bill', Colors.green, onPressed: () {
-                    AppLogger.info("Generate e-Bill clicked");
-                  }),
+                  // orderButton('Generate e-Bill', Colors.green, onPressed: () {
+                  //   AppLogger.info("Generate e-Bill clicked");
+                  // }),
                   orderButton('Pay', const Color(0xFF086888), onPressed: () {
                     AppLogger.info("Pay clicked");
 
@@ -783,15 +841,20 @@ class OrderPanel extends StatelessWidget {
                               value: context.read<OrderBloc>(),
                             ),
 
-                            // ✅ Create PaymentBloc (new instance is fine)
-                            BlocProvider(
-                              create: (_) => PaymentBloc(
-                                PaymentRepository(
-                                  baseUrl: "https://merchantrestaurant.alektasolutions.com",
-                                  token: token,
-                                ),
-                              ),
-                            ),
+
+                            // ✅ PASS SAME PaymentBloc
+                            BlocProvider.value(value: context.read<PaymentBloc>()),
+
+                            // ✅ Remove Discount Bloc (NEW)
+                            // BlocProvider(
+                            //   create: (_) => RemoveDiscountBloc(
+                            //     RemoveDiscountRepository(
+                            //       baseUrl: "https://merchantrestaurant.alektasolutions.com",
+                            //     ),
+                            //   ),
+                            // ),
+                            BlocProvider.value(value: context.read<RemoveDiscountBloc>()),
+
                           ],
                           child: PaymentScreen(
                             loadedTables: loadedTables,

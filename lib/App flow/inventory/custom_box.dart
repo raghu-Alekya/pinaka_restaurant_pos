@@ -42,6 +42,7 @@ class _CustomBoxState extends State<CustomBox> {
   final FocusNode _searchFocusNode = FocusNode();
   bool _barcodeLocked = false;
   bool _isFromBarcode = false;
+  int _searchSession = 0;
 
   // sort
   String _getApiFilter(String sort) {
@@ -188,7 +189,7 @@ class _CustomBoxState extends State<CustomBox> {
     print('🚀 Calling API with filter: $apiFilter');
 
     _fetchProducts(
-      filter: apiFilter.isEmpty ? null : apiFilter,
+      filter: apiFilter.isEmpty ? null : apiFilter, session: _searchSession,
     );
   }
 
@@ -243,25 +244,46 @@ class _CustomBoxState extends State<CustomBox> {
 
   void _onSearchChanged() {
     final query = _searchController.text.trim();
-    if (query.isEmpty) return;
+
+    // 🔥 Cancel debounce
+    _debounce?.cancel();
+
+    // 🔥 New search session
+    _searchSession++;
+
+    // ✅ HANDLE CLEAR SEARCH
+    if (query.isEmpty) {
+      setState(() {
+        filteredBeverages.clear();
+        showCustomCard = false;
+        _popupShown = false;
+        isLoading = false;
+      });
+
+      // 🔥 CLOSE ANY OPEN DIALOG (Manage / AddItem / Custom Item)
+      if (Navigator.canPop(context)) {
+        Navigator.of(context, rootNavigator: true)
+            .popUntil((route) => route.isFirst);
+      }
+      return;
+    }
 
     final isNumeric = RegExp(r'^\d+$').hasMatch(query);
 
-    setState(() {
-      showCustomCard = true;
-    });
+    setState(() => showCustomCard = true);
 
     // 🔒 Prevent partial barcode calls
     if (isNumeric && query.length < 8) return;
 
+    final int session = _searchSession;
+
     if (isNumeric) {
-      _fetchProducts(searchOrSku: query);
+      _fetchProducts(searchOrSku: query, session: session);
       return;
     }
 
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 400), () {
-      _fetchProducts(searchOrSku: query);
+      _fetchProducts(searchOrSku: query, session: session);
     });
   }
 
@@ -270,8 +292,10 @@ class _CustomBoxState extends State<CustomBox> {
   Future<void> _fetchProducts({
     String? searchOrSku,
     String? filter,
+    required int session,
   }) async {
     if (!mounted) return;
+
     setState(() => isLoading = true);
 
     try {
@@ -285,22 +309,30 @@ class _CustomBoxState extends State<CustomBox> {
         categoryId: null,
       );
 
-      if (!mounted) return;
+      // 🔒 IGNORE STALE API RESPONSES
+      if (!mounted || session != _searchSession) return;
 
       setState(() {
         filteredBeverages = response.products;
       });
 
-      if (filteredBeverages.isEmpty && !_popupShown && searchOrSku != null) {
+      // 🔒 Prevent popup after clear
+      if (filteredBeverages.isEmpty &&
+          !_popupShown &&
+          searchOrSku != null &&
+          _searchController.text.trim().isNotEmpty) {
         _popupShown = true;
         _showCustomItemAlert(searchOrSku);
       }
     } catch (e) {
       debugPrint('❌ Fetch error: $e');
     } finally {
-      if (mounted) setState(() => isLoading = false);
+      if (mounted && session == _searchSession) {
+        setState(() => isLoading = false);
+      }
     }
   }
+
   // ================= BARCODE LISTENER =================
 
   void _onBarcodeScanned(String barcode) async {
@@ -320,7 +352,8 @@ class _CustomBoxState extends State<CustomBox> {
     });
 
     //  Single API call
-    await _fetchProducts(searchOrSku: barcode);
+    await _fetchProducts( searchOrSku: barcode,
+      session: _searchSession,);
 
     //  Re-attach listener
     _searchController.addListener(_onSearchChanged);
@@ -393,13 +426,24 @@ class _CustomBoxState extends State<CustomBox> {
                                     radius: 1.5,
                                     colors: [
                                       Color(0xFFFBC2C2),
-                                      Colors.white
+                                      Colors.white,
                                     ],
                                   ),
                                   shape: BoxShape.circle,
                                 ),
+                                child: Center(
+                                  child: ClipOval(
+                                    child: Image.asset(
+                                      'assets/customalert.png',
+                                      width: 32,
+                                      height: 32,
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+                                ),
                               ),
-                            ),
+                            )
+
                           ],
                         ),
                         const SizedBox(height: 16),
@@ -414,7 +458,7 @@ class _CustomBoxState extends State<CustomBox> {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'The scanned item "$scannedCode" does not exist.\n'
+                          'The scanned or searched item "$scannedCode" does not exist.\n'
                               'You can add it as a custom item.',
                           textAlign: TextAlign.center,
                           style: const TextStyle(
@@ -621,7 +665,7 @@ class _CustomBoxState extends State<CustomBox> {
                                   showCustomCard = true;
                                 });
 
-                                await _fetchProducts(searchOrSku: value.trim());
+                                await _fetchProducts(searchOrSku: value.trim(),  session: _searchSession,);
                               },
                               style: const TextStyle(fontSize: 14),
                               decoration: InputDecoration(
@@ -667,43 +711,43 @@ class _CustomBoxState extends State<CustomBox> {
 
                           const Spacer(),
 
-                          if (showCustomCard) const SizedBox(width: 12),
-                          if (showCustomCard)  CustomDropdownCard(
-                            token: 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvbWVyY2hhbnRyZXN0YXVyYW50LmFsZWt0YXNvbHV0aW9ucy5jb20iLCJpYXQiOjE3NjgyMDMwNjQsIm5iZiI6MTc2ODIwMzA2NCwiZXhwIjoxNzcwNzk1MDY0LCJkYXRhIjp7InVzZXIiOnsiaWQiOjUsImRldmljZSI6IiIsInBhc3MiOiIyYjhlMjJlOTM2ZTY0N2JhNDRmOWJhMmY3Y2Q1ZmFjNiJ9fX0.vBVcnan6C9hN-ZDGN1vgpN_MkuT4twI-_WqXGOTgAio',
-                            baseUrl: 'https://merchantrestaurant.alektasolutions.com',
-                            onSelected: (category) {
-                              print('Selected Category: ${category.id} - ${category.name}');
-                            },
-                          ),
-                          if (showCustomCard) const SizedBox(width: 12),
-
-                          /// SORT CIRCLE
-                          if (showCustomCard)
-                            GestureDetector(
-                              onTap: _showSortPopup,
-                              child: Container(
-                                width: 36,
-                                height: 36,
-                                decoration: const BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black12,
-                                      blurRadius: 4,
-                                      offset: Offset(0, 2),
-                                    )
-                                  ],
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8),
-                                  child: Image.asset(
-                                    'assets/sort.png',
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
-                              ),
-                            ),
+                          // if (showCustomCard) const SizedBox(width: 12),
+                          // if (showCustomCard)  CustomDropdownCard(
+                          //   token: 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvbWVyY2hhbnRyZXN0YXVyYW50LmFsZWt0YXNvbHV0aW9ucy5jb20iLCJpYXQiOjE3NjgyMDMwNjQsIm5iZiI6MTc2ODIwMzA2NCwiZXhwIjoxNzcwNzk1MDY0LCJkYXRhIjp7InVzZXIiOnsiaWQiOjUsImRldmljZSI6IiIsInBhc3MiOiIyYjhlMjJlOTM2ZTY0N2JhNDRmOWJhMmY3Y2Q1ZmFjNiJ9fX0.vBVcnan6C9hN-ZDGN1vgpN_MkuT4twI-_WqXGOTgAio',
+                          //   baseUrl: 'https://merchantrestaurant.alektasolutions.com',
+                          //   onSelected: (category) {
+                          //     print('Selected Category: ${category.id} - ${category.name}');
+                          //   },
+                          // ),
+                          // if (showCustomCard) const SizedBox(width: 12),
+                          //
+                          // /// SORT CIRCLE
+                          // if (showCustomCard)
+                          //   GestureDetector(
+                          //     onTap: _showSortPopup,
+                          //     child: Container(
+                          //       width: 36,
+                          //       height: 36,
+                          //       decoration: const BoxDecoration(
+                          //         color: Colors.white,
+                          //         shape: BoxShape.circle,
+                          //         boxShadow: [
+                          //           BoxShadow(
+                          //             color: Colors.black12,
+                          //             blurRadius: 4,
+                          //             offset: Offset(0, 2),
+                          //           )
+                          //         ],
+                          //       ),
+                          //       child: Padding(
+                          //         padding: const EdgeInsets.all(8),
+                          //         child: Image.asset(
+                          //           'assets/sort.png',
+                          //           fit: BoxFit.contain,
+                          //         ),
+                          //       ),
+                          //     ),
+                          //   ),
                         ],
                       ),
                     ),

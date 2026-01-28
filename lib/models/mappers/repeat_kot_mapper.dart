@@ -15,6 +15,8 @@ extension RepeatKotMapper on RepeatKotModel {
       guestCount: null,
 
       items: lineItems.map((item) {
+        final baseAmount = item.price * item.quantity;
+
         return OrderItems(
           productId: item.productId,
           // variationId: -1,/ // or item.variantId if exists
@@ -35,6 +37,8 @@ extension RepeatKotMapper on RepeatKotModel {
           addOns: const {},
           note: '',
           hasOptions: false,
+          // ✅ amount should be base or API amount if exists
+          amount: baseAmount,
           // variantId: -1,
         );
       }).toList(),

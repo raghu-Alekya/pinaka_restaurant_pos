@@ -1,4 +1,5 @@
 import '../../models/payment/discount_model.dart';
+import 'package:equatable/equatable.dart';
 
 abstract class DiscountReasonState {}
 
@@ -33,4 +34,32 @@ class DiscountFailure extends DiscountState {
   final String error;
 
   DiscountFailure(this.error);
+}
+abstract class RemoveDiscountState extends Equatable {
+  const RemoveDiscountState();
+
+  @override
+  List<Object?> get props => [];
+}
+
+class RemoveDiscountInitial extends RemoveDiscountState {}
+
+class RemoveDiscountLoading extends RemoveDiscountState {}
+
+class RemoveDiscountSuccess extends RemoveDiscountState {
+  final RemoveDiscountResponseModel response;
+
+  const RemoveDiscountSuccess(this.response);
+
+  @override
+  List<Object?> get props => [response];
+}
+
+class RemoveDiscountFailure extends RemoveDiscountState {
+  final String error;
+
+  const RemoveDiscountFailure(this.error);
+
+  @override
+  List<Object?> get props => [error];
 }
