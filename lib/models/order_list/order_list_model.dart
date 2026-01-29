@@ -156,6 +156,7 @@ class LineItem {
   num? modifierAmount;
   num? itemPrice;
   List<String>? modifiers;
+  double? originalAmount;
 
   LineItem({
     this.lineItemId,
@@ -167,6 +168,7 @@ class LineItem {
     this.modifierAmount,
     this.modifiers,
     this.itemPrice,
+    this.originalAmount,
   });
 
   factory LineItem.fromJson(Map<String, dynamic> json) {

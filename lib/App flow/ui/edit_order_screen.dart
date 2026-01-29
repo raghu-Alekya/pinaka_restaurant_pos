@@ -56,39 +56,25 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
   int? _selectedKotId;
   KotOrder? _selectedKot;
-  // calculated net payable from edit kot
-  double getUpdatedNetPayable() {
-    // Start with the original net payable from the order
-    double originalNet = _selectedKot?.total != null
-        ? (_selectedKot!.total!.toDouble())
-        : 0.0;
 
-    // Sum all updated line items
-    for (int i = 0; i < _leftPanelItems.length; i++) {
-      _selectedKot!.lineItems![i].quantity = _leftPanelItems[i].quantity;
-      _selectedKot!.lineItems![i].amount = _leftPanelItems[i].amount;
-      // preserve lineItemId
+  String getUpdatedNetPayable(OrderlistModel order) {
+    // Start with original net payable
+    double currentNet = (order.netPayable ?? 0).toDouble();
+
+    // Calculate delta from all left panel items
+    double delta = 0.0;
+
+    for (final item in _leftPanelItems) {
+      final originalQty = (item.quantity ?? 0);
+      final originalAmount = (item.originalAmount ?? 0).toDouble();
+      final currentAmount = (item.amount ?? 0).toDouble();
+
+      delta += (currentAmount - originalAmount); // positive or negative
     }
-    for (final item in _selectedKot!.lineItems!) {
-      print("DEBUG ITEM => KOT:${item.lineItemId}  PRODUCT:${item.itemId}");
-    }
 
-
-    print("🔵 Update KOT button pressed");
-    print("📌 Order ID: ${widget.orderId}");
-    final items = _selectedKot?.lineItems ?? [];
-    double updatedItemsTotal = items.fold<double>(
-      0.0,
-          (sum, item) => sum + ((item.amount ?? 0) * (item.quantity ?? 0)) + (item.modifierAmount ?? 0),
-    );
-
-    // Calculate adjustment relative to the original total
-    double adjustment = updatedItemsTotal - (_selectedKot?.total?.toDouble() ?? 0.0);
-
-    // Final updated net payable = original net payable + adjustment
-    return (_selectedKot?.total?.toDouble() ?? 0.0) + adjustment;
+    final updatedNet = currentNet + delta;
+    return "₹${updatedNet.toStringAsFixed(2)}";
   }
-
 
   List<LineItem> _leftPanelItems = [];
 
@@ -459,10 +445,11 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                           Expanded(
                             child: _infoRow(
                               "Updated Net Payable",
-                              "₹${(order.netPayable ?? 0).toStringAsFixed(2)}",
+                              getUpdatedNetPayable(order),  // example adjustment
                               bold: true,
                             ),
                           ),
+
 
 
                         ],
@@ -600,11 +587,12 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
     );
   }
 
-  // =========================================================
-  // LEFT PANEL (Order info + KOT selector) static data
-  // =========================================================
+// =========================================================
+// LEFT PANEL (Order info + KOT selector) - STATIC VIEW
+// =========================================================
   Widget _buildLeftPanel(OrderlistModel order, List<KotOrder> kots) {
-    final items = _leftPanelItems ?? [];
+    final kot = _selectedKot; // selected KOT
+    final items = kot?.lineItems ?? [];
 
     return Container(
       margin: const EdgeInsets.all(8),
@@ -629,13 +617,11 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // const SizedBox(height: 8),
-
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  "KOT ID: ${_selectedKot?.kotOrderId ?? '-'}",
+                  "KOT ID: ${kot?.kotOrderId ?? '-'}",
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
@@ -656,7 +642,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
             ),
             const SizedBox(height: 4),
 
-            // 🔹 Table Header
+            // Table Header
             Container(
               decoration: BoxDecoration(
                 color: const Color(0xFF999393),
@@ -676,12 +662,14 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
               ),
             ),
 
-            //  Items list (no editing)
+            // Items List (STATIC)
             Expanded(
               child: ListView.builder(
                 itemCount: items.length,
                 itemBuilder: (context, index) {
                   final item = items[index];
+                  final modifiers = parseModifiers(item.modifiers);
+
                   return Container(
                     padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
                     decoration: BoxDecoration(
@@ -699,12 +687,11 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                                 item.name ?? "-",
                                 style: const TextStyle(fontWeight: FontWeight.w600),
                               ),
-
-                              if ((item.modifiers ?? []).isNotEmpty)
+                              if (modifiers.isNotEmpty)
                                 Padding(
                                   padding: const EdgeInsets.only(top: 2),
                                   child: Text(
-                                    item.modifiers!.join(", "),
+                                    modifiers.join(", "),
                                     style: const TextStyle(
                                       fontSize: 12,
                                       color: Colors.grey,
@@ -714,7 +701,6 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                             ],
                           ),
                         ),
-
                         Expanded(flex: 2, child: Text("${item.quantity ?? 0}")),
                         Expanded(flex: 2, child: Text("₹${(item.amount ?? 0).toStringAsFixed(2)}")),
                       ],
@@ -723,21 +709,12 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                 },
               ),
             ),
-
-            const SizedBox(height: 10),
-
-            // 🔹 Only Net Payable at the bottom
-            // _infoRow(
-            //   "Net Payable",
-            //   "₹${order.netPayable ?? 0}",
-            //   bold: true,
-            // ),
           ],
         ),
       ),
     );
-
   }
+
 
   Widget _infoRow(String label, String value, {bool bold = false}) {
     return Padding(

@@ -630,14 +630,14 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                   ),
                                                                 ),
                                                                 const SizedBox(height: 2),
-                                                                Text(
-                                                                  item.amount.toStringAsFixed(2),
-                                                                  style: const TextStyle(
-                                                                    fontSize: 11,
-                                                                    color: Colors.grey,
-                                                                    fontWeight: FontWeight.w500,
-                                                                  ),
-                                                                ),
+                                                                // Text(
+                                                                //   item.amount.toStringAsFixed(2),
+                                                                //   style: const TextStyle(
+                                                                //     fontSize: 11,
+                                                                //     color: Colors.grey,
+                                                                //     fontWeight: FontWeight.w500,
+                                                                //   ),
+                                                                // ),
                                                               ],
                                                             ),
                                                           ),

@@ -29,7 +29,7 @@ class ProductRepository {
     else if (search != null && search.isNotEmpty) {
       queryParams['search'] = search;
     } else if (sku != null && sku.isNotEmpty) {
-      queryParams['sku'] = sku;
+      queryParams['barcode'] = sku;
     }
 
     if (filter != null && filter.isNotEmpty) {

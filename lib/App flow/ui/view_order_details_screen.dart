@@ -426,7 +426,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
                                         },
                                         child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                           decoration: ShapeDecoration(
                                             color: Colors.white,
                                             shape: RoundedRectangleBorder(
@@ -450,7 +450,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                 'Cancel Order',
                                                 style: TextStyle(
                                                   color: Color(0xFFFE6464),
-                                                  fontSize: 18,
+                                                  fontSize: 14,
                                                   fontFamily: 'Kumbh Sans',
                                                   fontWeight: FontWeight.w400,
                                                   height: 0.75,

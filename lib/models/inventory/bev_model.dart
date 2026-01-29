@@ -7,7 +7,8 @@ class Products {
   final int soldTotal;
   final String statusLabel;
   final String statusColor;
-  final String image;
+  final String? image;
+
 
   Products({
     required this.id,

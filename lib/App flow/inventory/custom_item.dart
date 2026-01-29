@@ -1,4 +1,8 @@
+import 'dart:io';
+
+import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../models/inventory/category_sublist_model.dart';
 import '../../models/inventory/bev_model.dart';
 import '../../models/inventory/tax_inventory_model.dart';
@@ -36,6 +40,8 @@ class _AddItemDialogState extends State<AddItemDialog> {
   List<TaxInventoryModel> taxes = [];
   TaxInventoryModel? selectedTax;
   bool showTaxList = false;
+  File? _pickedImage;
+  final ImagePicker _picker = ImagePicker();
 
   // Categories
   CategorySublistResponse? categoryResponse;
@@ -64,6 +70,20 @@ class _AddItemDialogState extends State<AddItemDialog> {
     super.initState();
     fetchCategories();
     fetchTaxes();
+  }
+
+  Future<void> _pickImage() async {
+    final XFile? image = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+      maxWidth: 1024,
+    );
+
+    if (image != null) {
+      setState(() {
+        _pickedImage = File(image.path);
+      });
+    }
   }
 
   @override
@@ -219,7 +239,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: Colors.white,
+      backgroundColor: Color(0xFFFFFFFF),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       title: const Center(
         child: Text("Add Stock", style: TextStyle(fontWeight: FontWeight.w600)),
@@ -236,9 +256,101 @@ class _AddItemDialogState extends State<AddItemDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 6),
-              // ===== FIRST ROW: Product Name + SKU =====
+
               Row(
                 children: [
+
+                  Expanded(
+                    child: Row(
+                      children: [
+                        // === DASHED RECTANGLE BOX ===
+                        InkWell(
+                          onTap: _pickImage,
+                          borderRadius: BorderRadius.circular(8),
+                          child: DottedBorder(
+                            color: const Color(0xFFCAD5E2),
+                            strokeWidth: 1,
+                            dashPattern: const [6, 4],
+                            borderType: BorderType.RRect,
+                            radius: const Radius.circular(8),
+                            child: Container(
+                              width: 70,
+                              height: 70,
+                              alignment: Alignment.center,
+                              child: _pickedImage == null
+                                  ? Container(
+                                width: 48,
+                                height: 48,
+                                decoration: ShapeDecoration(
+                                  gradient: const LinearGradient(
+                                    begin: Alignment(0.0, 0.0),
+                                    end: Alignment(1.0, 1.0),
+                                    colors: [
+                                      Color(0xFFEEF5FE),
+                                      Color(0xFFDAEAFE),
+                                    ],
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: Image.asset(
+                                    'assets/uploadimage.png',
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                              )
+                                  : ClipRRect(
+                                borderRadius: BorderRadius.circular(6),
+                                child: Image.file(
+                                  _pickedImage!,
+                                  width: 60,
+                                  height: 60,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+
+                        const SizedBox(width: 12),
+
+                        // === TEXT OUTSIDE ===
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Text(
+                              'Upload Image',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 16,
+                                fontFamily: 'Kumbh Sans',
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              '(PNG/JPG, max 2 MB)',
+                              style: TextStyle(
+                                color: Color(0xFFB0B0B0),
+                                fontSize: 12,
+                                fontFamily: 'Kumbh Sans',
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(width: 12),
+
+                  // ===== RIGHT INPUT FIELD =====
                   Expanded(
                     child: _buildLabeledField(
                       label: "Product Name",
@@ -246,47 +358,13 @@ class _AddItemDialogState extends State<AddItemDialog> {
                       hint: "Enter Product Name",
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildLabeledField(
-                      label: "SKU Code",
-                      controller: _skuController,
-                      hint: "Enter SKU code",
-                      suffix: GestureDetector(
-                        onTap: () {
-                          _skuController.text =
-                          "SKU-${DateTime.now().millisecondsSinceEpoch}";
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: ShapeDecoration(
-                            color: const Color(0xFFFE6464),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: const Text(
-                            "Generate",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
                 ],
               ),
+
               const SizedBox(height: 10),
               // ===== SECOND ROW: Category + SubCategory =====
               Row(
                 children: [
-                  // ===== CATEGORY PICKER =====
                   // ===== CATEGORY DROPDOWN =====
                   Expanded(
                     child: Column(
@@ -320,6 +398,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           ),
+                          dropdownColor: Colors.white,
                         ),
                       ],
                     ),
@@ -328,69 +407,123 @@ class _AddItemDialogState extends State<AddItemDialog> {
                   const SizedBox(width: 12),
 
 // ===== SUBCATEGORY DROPDOWN WITH INLINE MINI CATEGORIES =====
-                  Expanded(
+                  SizedBox(
+                    width: 250,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text("Sub Category", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                        const SizedBox(height: 4),
-                        DropdownButtonFormField<CategoryItem>(
-                          isExpanded: true,
-                          value: selectedCategory,
-                          hint: const Text("Select Sub Category"),
-                          items: selectedParentCategory?.categories.map((sub) {
-                            return DropdownMenuItem(
-                              value: sub,
-                              child: Text(sub.name),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              selectedCategory = value;
-                              _subCategoryController.text = value?.name ?? '';
-
-                              // Reset mini
-                              selectedMiniCategory = null;
-                              _miniCategoryController.clear();
-                            });
-                          },
-                          decoration: InputDecoration(
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          ),
+                        const Text(
+                          "Sub Category",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                         ),
+                        const SizedBox(height: 4),
 
-                        // ===== INLINE MINI CATEGORY BUTTONS (show only if sub category selected) =====
-                        if (selectedCategory != null && selectedCategory!.children.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Wrap(
-                              spacing: 8,
-                              runSpacing: 4,
-                              children: selectedCategory!.children.map((mini) {
-                                final isSelected = selectedMiniCategory == mini;
-                                return ChoiceChip(
-                                  label: Text(mini.name),
-                                  selected: isSelected,
-                                  onSelected: (_) {
-                                    setState(() {
-                                      selectedMiniCategory = mini;
-                                      _miniCategoryController.text = mini.name;
-                                    });
-                                  },
-                                  selectedColor: Colors.blueAccent,
-                                  backgroundColor: Colors.grey[200],
-                                  labelStyle: TextStyle(
-                                    color: isSelected ? Colors.white : Colors.black,
-                                    fontWeight: FontWeight.w500,
+                        // Dropdown-like container
+                        GestureDetector(
+                          onTap: () async {
+                            if (selectedParentCategory == null) return;
+
+                            await showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (context) {
+                                return Align(
+                                  alignment: const Alignment(0.6, 0.6),
+                                  child: Container(
+                                    width: 250,
+                                    margin: const EdgeInsets.only(bottom: 19),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(8),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.15),
+                                          blurRadius: 12,
+                                        ),
+                                      ],
+                                    ),
+                                    child: DraggableScrollableSheet(
+                                      expand: false,
+                                      initialChildSize: 0.45,
+                                      minChildSize: 0.3,
+                                      maxChildSize: 0.7,
+                                      builder: (context, scrollController) {
+                                        return ListView(
+                                          controller: scrollController,
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                                          children: selectedParentCategory!.categories.map((sub) {
+                                            return Theme(
+                                              data: Theme.of(context).copyWith(
+                                                dividerColor: Colors.transparent,
+                                                visualDensity: VisualDensity.compact,
+                                              ),
+                                              child: ExpansionTile(
+                                                tilePadding: const EdgeInsets.symmetric(horizontal: 6),
+                                                dense: true,
+                                                title: Text(sub.name, style: const TextStyle(fontSize: 13)),
+                                                children: sub.children.map((mini) {
+                                                  return ListTile(
+                                                    dense: true,
+                                                    visualDensity: VisualDensity.compact,
+                                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                                                    title: Text(mini.name, style: const TextStyle(fontSize: 12)),
+                                                    selected: selectedMiniCategory?.id == mini.id,
+                                                    selectedTileColor: Colors.blue.withOpacity(0.1),
+                                                    onTap: () {
+                                                      setState(() {
+                                                        selectedCategory = sub;
+                                                        selectedMiniCategory = mini;
+
+                                                        _subCategoryController.text = sub.name;
+                                                        _miniCategoryController.text = mini.name;
+                                                      });
+                                                      Navigator.pop(context);
+                                                    },
+                                                  );
+                                                }).toList(),
+                                              ),
+                                            );
+                                          }).toList(),
+                                        );
+                                      },
+                                    ),
                                   ),
                                 );
-                              }).toList(),
+                              },
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade400),
+                              borderRadius: BorderRadius.circular(8),
+                              color: Colors.white,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    selectedMiniCategory != null
+                                        ? "${selectedCategory?.name} → ${selectedMiniCategory?.name}"
+                                        : "Select Sub Category",
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: selectedMiniCategory != null ? Colors.black : Colors.grey.shade600,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const Icon(Icons.arrow_drop_down, color: Colors.grey),
+                              ],
                             ),
                           ),
+                        ),
                       ],
                     ),
                   ),
+
 
 
                 ],
@@ -400,12 +533,45 @@ class _AddItemDialogState extends State<AddItemDialog> {
               // ===== THIRD ROW: Stock + Price + Notes =====
               Row(
                 children: [
+                  // Expanded(
+                  //   child: _buildLabeledField(
+                  //     label: "Stock Quantity",
+                  //     controller: _unitsController,
+                  //     hint: "Enter quantity",
+                  //     isNumber: true,
+                  //   ),
+                  // ),
                   Expanded(
                     child: _buildLabeledField(
-                      label: "Stock Quantity",
-                      controller: _unitsController,
-                      hint: "Enter quantity",
-                      isNumber: true,
+                      label: "SKU Code",
+                      controller: _skuController,
+                      hint: "Enter SKU code",
+                      suffix: GestureDetector(
+                        onTap: () {
+                          _skuController.text =
+                          "SKU-${DateTime.now().millisecondsSinceEpoch}";
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: ShapeDecoration(
+                            color: const Color(0xFFFE6464),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text(
+                            "Generate",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -463,6 +629,16 @@ class _AddItemDialogState extends State<AddItemDialog> {
                             ),
                           ),
                       ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: _buildLabeledField(
+                      label: "Stock Quantity",
+                      controller: _unitsController,
+                      hint: "Enter quantity",
+                      isNumber: true,
                     ),
                   ),
 
@@ -666,6 +842,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
 
           try {
             final response = await _repository.addOrUpdateItem(
+              token: token,
               itemName: _nameController.text.trim(),
               categoryId: selectedCategory?.id ?? 0,
               miniCategoryId: selectedMiniCategory?.id,
@@ -675,6 +852,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
               int.tryParse(_thresholdController.text.trim()) ?? 0,
               itemNote: _notesController.text.trim(),
               itemSku: _skuController.text.trim(),
+              imagePath: _pickedImage?.path,
             );
 
             if (!mounted) return;
@@ -689,7 +867,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
                 soldTotal: 0,
                 statusLabel: "Normal",
                 statusColor: "#4CAF50",
-                image: _imageUrlController.text.trim(),
+                image: null,
                 sku: '',
               );
 

@@ -61,7 +61,7 @@ class _DashboardState extends State<Dashboard> {
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFE6E6E6),
+      backgroundColor: const Color(0xFFFFFFFF),
       appBar: TopBar(
         token: widget.token,
         pin: widget.pin,
@@ -92,12 +92,13 @@ class _DashboardState extends State<Dashboard> {
             //   ),
             // ),
 
-            const SizedBox(height: 12),
+            // const SizedBox(height: 12),
 
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: Container(
+                  height: size.height * 0.75,
                   clipBehavior: Clip.antiAlias,
                   decoration: ShapeDecoration(
                     color: const Color(0xFFE6ECFF),
@@ -115,6 +116,7 @@ class _DashboardState extends State<Dashboard> {
           ],
         ),
       ),
+
       bottomNavigationBar: BottomNavBar(
         selectedIndex: 8,
         userPermissions: _userPermissions,

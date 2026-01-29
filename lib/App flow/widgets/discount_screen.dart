@@ -222,7 +222,10 @@ class _DiscountPopupState extends State<DiscountPopup> {
           // ✅ save discount in PaymentBloc
           context.read<PaymentBloc>().add(UpdateMerchantDiscount(appliedDiscount));
 
-          Navigator.pop(context, appliedDiscount);
+          Navigator.pop(context, {
+            "amount": appliedDiscount,
+            "isNc": isNCSelected,
+          });
         }
 
 
