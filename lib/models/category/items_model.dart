@@ -11,6 +11,8 @@ class Product {
   final List<String> modifiers;
   final List<String> addOns;
   final bool hasOptions;
+  final bool isVariantProduct;
+
 
   // Constructor
   Product({
@@ -24,6 +26,7 @@ class Product {
     List<String>? addOns,
     bool? hasOptions,
     String? image,
+    this.isVariantProduct = false,
   })  : images = images ?? [],
         image = image ?? (images != null && images.isNotEmpty ? images.first : ''),
         modifiers = modifiers ?? [],
@@ -42,6 +45,7 @@ class Product {
     List<String>? modifiers,
     List<String>? addOns,
     bool? hasOptions,
+    bool? isVariantProduct,
   }) {
     return Product(
       id: id ?? this.id,
@@ -55,6 +59,7 @@ class Product {
       addOns: addOns ?? this.addOns,
       hasOptions: hasOptions ?? ((modifiers ?? this.modifiers).isNotEmpty ||
           (addOns ?? this.addOns).isNotEmpty),
+      isVariantProduct: isVariantProduct ?? this.isVariantProduct, // 👈
     );
   }
 
@@ -102,6 +107,9 @@ class Product {
     // Parse hasOptions safely
     final hasOptionsParsed = (modifiers.isNotEmpty || addOns.isNotEmpty) ||
         (json['hasOptions'] == true);
+    final rawIsVariant = json['is_variant']?.toString().toLowerCase();
+    final bool parsedIsVariant = rawIsVariant == 'yes' || rawIsVariant == 'true' || rawIsVariant == '1';
+
 
     return Product(
       id: json['id'] is int
@@ -117,6 +125,7 @@ class Product {
       modifiers: modifiers,
       addOns: addOns,
       hasOptions: hasOptionsParsed,
+        isVariantProduct: parsedIsVariant,
     );
   }
 

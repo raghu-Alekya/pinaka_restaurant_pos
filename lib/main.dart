@@ -170,6 +170,12 @@ class MyApp extends StatelessWidget {
               ),
             ),
           ),
+    // / ✅ ADD THIS
+    BlocProvider<DiscountBloc>(
+    create: (_) => DiscountBloc(
+    AddDiscountRepository(),
+    ),
+    ),
           BlocProvider(
             create: (_) => RemoveDiscountBloc(
               RemoveDiscountRepository(

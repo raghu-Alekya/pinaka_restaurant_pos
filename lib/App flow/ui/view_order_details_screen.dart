@@ -4,6 +4,7 @@ import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/material.dart';
 import '../../models/UserPermissions.dart';
 import '../../models/order_list/order_list_model.dart';
+// import '../../repositories/cancel_order_list_repository.dart';
 import '../../repositories/order_list_repository.dart';
 import '../widgets/navigationhelper.dart';
 import '../widgets/top_bar.dart';
@@ -78,36 +79,102 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
         return Colors.grey;
     }
   }
+  //
+  // Future<void> cancelOrder(OrderlistModel orderModel) async {
+  //   final orderId = orderModel.orderId!;
+  //   final restaurantId = orderModel.restaurantId!;
+  //   final zoneId = orderModel.zoneId!;
+  //
+  //   print("🟥 CANCEL FLOW STARTED");
+  //   print("📌 Order ID: $orderId");
+  //   print("🏪 Restaurant ID: $restaurantId");
+  //   print("📍 Zone ID: $zoneId");
+  //
+  //   final repo = CancelOrderRepository();
+  //
+  //   if (orderModel.kotOrders != null && orderModel.kotOrders!.isNotEmpty) {
+  //     print("🍽 Total KOTs: ${orderModel.kotOrders!.length}");
+  //
+  //     for (final kot in orderModel.kotOrders!) {
+  //       if (kot.kotOrderId != null) {
+  //         print("🔄 Cancelling KOT: ${kot.kotOrderId}");
+  //
+  //         await repo.cancelKot(
+  //           kotOrderId: kot.kotOrderId!,
+  //           restaurantId: restaurantId,
+  //           zoneId: zoneId,
+  //           token: widget.token,
+  //         );
+  //       }
+  //     }
+  //   }
+  //
+  //   print("🎯 All KOTs cancelled → Cancelling Parent Order");
+  //
+  //   await repo.cancelOrder(
+  //     orderId: orderId,
+  //     restaurantId: restaurantId,
+  //     zoneId: zoneId,
+  //     token: widget.token,
+  //   );
+  //
+  //   print("🎉 FULL ORDER CANCELLED SUCCESSFULLY");
+  // }
 
-  void cancelOrder(int orderId) {
-    print("Cancel order triggered: $orderId");
-    // Call your API here
-  }
   List<String> extractModifierNames(Map<String, dynamic> item) {
-    // Try all possible keys
-    final raw = item['modifiers'] ?? item['modifier'] ?? item['addons'];
+    debugPrint("🟡 FULL ITEM MAP → $item");
 
-    if (raw == null) return [];
+    dynamic raw =
+        item['modifiers'] ??
+            item['modifier'] ??
+            item['addons'] ??
+            item['item_modifiers'] ??
+            item['modifier_details'] ??
+            item['modifiers_json'];
+
+    debugPrint("🟠 RAW MODIFIER DATA → $raw");
+
+    if (raw == null) {
+      debugPrint("🔴 No modifier field found");
+      return [];
+    }
 
     List modifiersList = [];
 
-    if (raw is String) {
-      try {
+    try {
+      if (raw is String) {
+        debugPrint("🔵 RAW TYPE → String");
         modifiersList = List<dynamic>.from(jsonDecode(raw));
-      } catch (e) {
-        modifiersList = [];
+      } else if (raw is List) {
+        debugPrint("🔵 RAW TYPE → List");
+        modifiersList = raw;
+      } else if (raw is Map) {
+        debugPrint("🔵 RAW TYPE → Map");
+        modifiersList = raw.values.toList();
       }
-    } else if (raw is List) {
-      modifiersList = raw;
+    } catch (e) {
+      debugPrint("❌ Modifier parse error: $e");
+      modifiersList = [];
     }
 
-    // Extract modifier names safely
-    return modifiersList.map<String>((m) {
+    debugPrint("🟢 PARSED MODIFIER LIST → $modifiersList");
+
+    final names = modifiersList.map<String>((m) {
       if (m is String) return m;
-      if (m is Map) return m['name']?.toString() ?? '';
+      if (m is Map) {
+        return m['name']?.toString() ??
+            m['modifier_name']?.toString() ??
+            m['title']?.toString() ??
+            '';
+      }
       return '';
     }).where((e) => e.isNotEmpty).toList();
+
+    debugPrint("✅ FINAL MODIFIER NAMES → $names");
+
+    return names;
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -404,7 +471,8 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                                   Navigator.pop(context);
 
                                                                   if (orderModel.orderId != null) {
-                                                                    cancelOrder(orderModel.orderId!);
+                                                                    // cancelOrder(orderModel);
+
                                                                   }
                                                                 },
                                                                 child: const Text(
@@ -902,16 +970,21 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                               ),
                                               Expanded(
                                                 child: Text(
-                                                  (order['updatedRemarks'] != null && order['updatedRemarks'].toString().trim().isNotEmpty)
+                                                  (order['is_updated'] == 'yes' &&
+                                                      order['updatedRemarks'] != null &&
+                                                      order['updatedRemarks'].toString().trim().isNotEmpty)
                                                       ? order['updatedRemarks'].toString()
                                                       : '-',
+
                                                   style: const TextStyle(
                                                     fontSize: 14,
                                                     fontWeight: FontWeight.w500,
                                                   ),
+                                                  maxLines: 3, // or null for unlimited
                                                   overflow: TextOverflow.ellipsis,
                                                 ),
                                               ),
+
                                             ],
                                           ),
                                         ),
@@ -1090,78 +1163,81 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
           ),
 
           /// 🔹 Items List
-          Column(
-            children: items.asMap().entries.map((entry) {
+          /// 🔹 Items List (SCROLLABLE)
+          SizedBox(
+            height: 300, // 🔥 adjust based on your UI layout
+            child: ListView.builder(
+              itemCount: items.length,
+              itemBuilder: (context, index) {
+                final item = items[index];
+                bool isLast = index == items.length - 1;
 
-              int index = entry.key;
-              var item = entry.value;
-              bool isLast = index == items.length - 1;
+                final List<String> modifierNames =
+                extractModifierNames(item as Map<String, dynamic>);
 
-              final List<String> modifierNames = extractModifierNames(item);
-
-
-
-              return Container(
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: const BorderSide(color: Color(0xFFB9B9B9)),
-                    left: const BorderSide(color: Color(0xFFB9B9B9)),
-                    right: const BorderSide(color: Color(0xFFB9B9B9)),
+                return Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: const BorderSide(color: Color(0xFFB9B9B9)),
+                      left: const BorderSide(color: Color(0xFFB9B9B9)),
+                      right: const BorderSide(color: Color(0xFFB9B9B9)),
+                    ),
+                    borderRadius: isLast
+                        ? const BorderRadius.only(
+                      bottomLeft: Radius.circular(8),
+                      bottomRight: Radius.circular(8),
+                    )
+                        : BorderRadius.zero,
                   ),
-                  borderRadius: isLast
-                      ? const BorderRadius.only(
-                    bottomLeft: Radius.circular(8),
-                    bottomRight: Radius.circular(8),
-                  )
-                      : BorderRadius.zero,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(flex: 1, child: Text("$index")),
-                    Expanded(
-                      flex: 3,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item['name']?.toString() ?? "-",
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
+                  child: Row(
+                    children: [
+                      Expanded(flex: 1, child: Text("${index + 1}")),
+                      Expanded(
+                        flex: 3,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item['name']?.toString() ?? "-",
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                            ),
 
-                          if (modifierNames.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 2),
-                              child: Text(
-                                modifierNames.join(", "), // Display all modifiers
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey,
+                            if (modifierNames.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(
+                                  modifierNames.join(", "),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
                                 ),
                               ),
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        "${item['qty'] ?? 0} x ${item['item_price'] ?? 0}",
-                        style: const TextStyle(fontSize: 14),
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          "${item['qty'] ?? 0} x ${item['item_price'] ?? 0}",
+                          style: const TextStyle(fontSize: 14),
+                        ),
                       ),
-                    ),
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        item['amount']?.toString() ?? "-",
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          item['amount']?.toString() ?? "-",
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
+                    ],
+                  ),
+                );
+              },
+            ),
           )
+
 
         ],
       ),

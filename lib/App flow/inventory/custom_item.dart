@@ -42,6 +42,9 @@ class _AddItemDialogState extends State<AddItemDialog> {
   bool showTaxList = false;
   File? _pickedImage;
   final ImagePicker _picker = ImagePicker();
+  OverlayEntry? _taxOverlay;
+  final LayerLink _taxLayerLink = LayerLink();
+
 
   // Categories
   CategorySublistResponse? categoryResponse;
@@ -242,7 +245,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
       backgroundColor: Color(0xFFFFFFFF),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       title: const Center(
-        child: Text("Add Stock", style: TextStyle(fontWeight: FontWeight.w600)),
+        child: Text("Add New Stock", style: TextStyle(fontWeight: FontWeight.w600)),
       ),
       content: SizedBox(
         width: 500,
@@ -297,7 +300,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(6),
                                   child: Image.asset(
-                                    'assets/uploadimage.png',
+                                    'assets/uploadimg.png',
                                     fit: BoxFit.contain,
                                   ),
                                 ),
@@ -370,35 +373,67 @@ class _AddItemDialogState extends State<AddItemDialog> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text("Category", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        const Text(
+                          "Category",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
                         const SizedBox(height: 4),
-                        DropdownButtonFormField<CategorySublistResponse>(
-                          isExpanded: true,
-                          value: selectedParentCategory,
-                          hint: const Text("Select Category"),
-                          items: parentCategories.map((parent) {
-                            return DropdownMenuItem(
-                              value: parent,
-                              child: Text(parent.parentName),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              selectedParentCategory = value;
-                              _categoryController.text = value?.parentName ?? '';
 
-                              // Reset sub & mini
-                              selectedCategory = null;
-                              selectedMiniCategory = null;
-                              _subCategoryController.clear();
-                              _miniCategoryController.clear();
-                            });
-                          },
-                          decoration: InputDecoration(
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        SizedBox(
+                          height: 40, // ✅ exact height
+                          child: DropdownButtonFormField<CategorySublistResponse>(
+                            isExpanded: true,
+                            value: selectedParentCategory,
+                            hint: Text(
+                              "Select Category",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade400,
+                              ),
+                            ),
+
+
+                            items: parentCategories.map((parent) {
+                              return DropdownMenuItem(
+                                value: parent,
+                                child: Text(
+                                  parent.parentName,
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                              );
+                            }).toList(),
+
+                            onChanged: (value) {
+                              setState(() {
+                                selectedParentCategory = value;
+                                _categoryController.text = value?.parentName ?? '';
+
+                                selectedCategory = null;
+                                selectedMiniCategory = null;
+                                _subCategoryController.clear();
+                                _miniCategoryController.clear();
+                              });
+                            },
+
+                            decoration: InputDecoration(
+                              isDense: true,
+                              contentPadding:
+                              const EdgeInsets.symmetric(horizontal: 14, vertical: 11), // 🔥 perfect center
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderSide: const BorderSide(color: Colors.grey),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderSide: const BorderSide(color: Colors.black),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+
+                            dropdownColor: Colors.white,
                           ),
-                          dropdownColor: Colors.white,
                         ),
                       ],
                     ),
@@ -408,7 +443,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
 
 // ===== SUBCATEGORY DROPDOWN WITH INLINE MINI CATEGORIES =====
                   SizedBox(
-                    width: 250,
+                    width: 245,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -420,105 +455,134 @@ class _AddItemDialogState extends State<AddItemDialog> {
 
                         // Dropdown-like container
                         GestureDetector(
-                          onTap: () async {
-                            if (selectedParentCategory == null) return;
+                            onTap: () async {
+                              if (selectedParentCategory == null) return;
 
-                            await showModalBottomSheet(
-                              context: context,
-                              isScrollControlled: true,
-                              backgroundColor: Colors.transparent,
-                              builder: (context) {
-                                return Align(
-                                  alignment: const Alignment(0.6, 0.6),
-                                  child: Container(
-                                    width: 250,
-                                    margin: const EdgeInsets.only(bottom: 19),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(8),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.15),
-                                          blurRadius: 12,
-                                        ),
-                                      ],
-                                    ),
-                                    child: DraggableScrollableSheet(
-                                      expand: false,
-                                      initialChildSize: 0.45,
-                                      minChildSize: 0.3,
-                                      maxChildSize: 0.7,
-                                      builder: (context, scrollController) {
-                                        return ListView(
-                                          controller: scrollController,
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-                                          children: selectedParentCategory!.categories.map((sub) {
-                                            return Theme(
-                                              data: Theme.of(context).copyWith(
-                                                dividerColor: Colors.transparent,
-                                                visualDensity: VisualDensity.compact,
-                                              ),
-                                              child: ExpansionTile(
-                                                tilePadding: const EdgeInsets.symmetric(horizontal: 6),
-                                                dense: true,
-                                                title: Text(sub.name, style: const TextStyle(fontSize: 13)),
-                                                children: sub.children.map((mini) {
-                                                  return ListTile(
-                                                    dense: true,
+                              await showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                backgroundColor: Colors.transparent,
+                                builder: (context) {
+                                  return Align(
+                                    alignment: const Alignment(0.6, 0.6),
+                                    child: Container(
+                                      width: 250,
+                                      margin: const EdgeInsets.only(bottom: 19),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(8),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(0.15),
+                                            blurRadius: 12,
+                                          ),
+                                        ],
+                                      ),
+                                      child: DraggableScrollableSheet(
+                                        expand: false,
+                                        initialChildSize: 0.45,
+                                        minChildSize: 0.3,
+                                        maxChildSize: 0.7,
+                                        builder: (context, scrollController) {
+                                          return ListView(
+                                            controller: scrollController,
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                                            children: selectedParentCategory!.categories.map((sub) {
+                                              if (sub.children.isEmpty) {
+                                                // No mini categories: select subcategory directly
+                                                return ListTile(
+                                                  dense: true,
+                                                  visualDensity: VisualDensity.compact,
+                                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                                                  title: Text(sub.name, style: const TextStyle(fontSize: 13)),
+                                                  selected: selectedCategory?.id == sub.id,
+                                                  selectedTileColor: Colors.blue.withOpacity(0.1),
+                                                  onTap: () {
+                                                    setState(() {
+                                                      selectedCategory = sub;
+                                                      selectedMiniCategory = null;
+
+                                                      _subCategoryController.text = sub.name;
+                                                      _miniCategoryController.text = "";
+                                                    });
+                                                    Navigator.pop(context);
+                                                  },
+                                                );
+                                              } else {
+                                                // Has mini categories: show ExpansionTile
+                                                return Theme(
+                                                  data: Theme.of(context).copyWith(
+                                                    dividerColor: Colors.transparent,
                                                     visualDensity: VisualDensity.compact,
-                                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                                                    title: Text(mini.name, style: const TextStyle(fontSize: 12)),
-                                                    selected: selectedMiniCategory?.id == mini.id,
-                                                    selectedTileColor: Colors.blue.withOpacity(0.1),
-                                                    onTap: () {
-                                                      setState(() {
-                                                        selectedCategory = sub;
-                                                        selectedMiniCategory = mini;
+                                                  ),
+                                                  child: ExpansionTile(
+                                                    tilePadding: const EdgeInsets.symmetric(horizontal: 6),
+                                                    dense: true,
+                                                    title: Text(sub.name, style: const TextStyle(fontSize: 13)),
+                                                    children: sub.children.map((mini) {
+                                                      return ListTile(
+                                                        dense: true,
+                                                        visualDensity: VisualDensity.compact,
+                                                        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                                                        title: Text(mini.name, style: const TextStyle(fontSize: 12)),
+                                                        selected: selectedMiniCategory?.id == mini.id,
+                                                        selectedTileColor: Colors.blue.withOpacity(0.1),
+                                                        onTap: () {
+                                                          setState(() {
+                                                            selectedCategory = sub;
+                                                            selectedMiniCategory = mini;
 
-                                                        _subCategoryController.text = sub.name;
-                                                        _miniCategoryController.text = mini.name;
-                                                      });
-                                                      Navigator.pop(context);
-                                                    },
-                                                  );
-                                                }).toList(),
-                                              ),
-                                            );
-                                          }).toList(),
-                                        );
-                                      },
+                                                            _subCategoryController.text = sub.name;
+                                                            _miniCategoryController.text = mini.name;
+                                                          });
+                                                          Navigator.pop(context);
+                                                        },
+                                                      );
+                                                    }).toList(),
+                                                  ),
+                                                );
+                                              }
+                                            }).toList(),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                            child: Container(
+                              height: 39,
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey.shade400),
+                                borderRadius: BorderRadius.circular(8),
+                                color: Colors.white,
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      selectedMiniCategory != null
+                                          ? "${selectedCategory?.name} → ${selectedMiniCategory?.name}"
+                                          : (selectedCategory != null
+                                          ? selectedCategory!.name
+                                          : "Select Sub Category"),
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: selectedCategory != null
+                                            ? Colors.black
+                                            : Colors.grey.shade600,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                );
-                              },
-                            );
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey.shade400),
-                              borderRadius: BorderRadius.circular(8),
-                              color: Colors.white,
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    selectedMiniCategory != null
-                                        ? "${selectedCategory?.name} → ${selectedMiniCategory?.name}"
-                                        : "Select Sub Category",
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: selectedMiniCategory != null ? Colors.black : Colors.grey.shade600,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                const Icon(Icons.arrow_drop_down, color: Colors.grey),
-                              ],
-                            ),
-                          ),
+                                  const Icon(Icons.arrow_drop_down, color: Colors.grey),
+                                ],
+                              ),
+                            )
+
                         ),
                       ],
                     ),
@@ -546,34 +610,38 @@ class _AddItemDialogState extends State<AddItemDialog> {
                       label: "SKU Code",
                       controller: _skuController,
                       hint: "Enter SKU code",
-                      suffix: GestureDetector(
-                        onTap: () {
-                          _skuController.text =
-                          "SKU-${DateTime.now().millisecondsSinceEpoch}";
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: ShapeDecoration(
-                            color: const Color(0xFFFE6464),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                      suffix: Padding(
+                        padding: const EdgeInsets.all(6), // space from field edge
+                        child: GestureDetector(
+                          onTap: () {
+                            _skuController.text =
+                            "SKU-${DateTime.now().millisecondsSinceEpoch}";
+                          },
+                          child: Container(
+                            width: 100,
+                            height: 35, // fixed height
+                            decoration: ShapeDecoration(
+                              color: const Color(0xFFFE6464),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
                             ),
-                          ),
-                          child: const Text(
-                            "Generate",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
+                            alignment: Alignment.center,
+                            child: const Text(
+                              "Generate",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
+
                   ),
+
                   const SizedBox(width: 12),
                   Expanded(
                     child: _buildLabeledField(
@@ -591,49 +659,63 @@ class _AddItemDialogState extends State<AddItemDialog> {
                 children: [
                   //  Tax dropdown
                   Expanded(
-                    flex: 2,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildPickerField(
-                          label: "Tax",
-                          controller: _taxController,
-                          onTap: () {
-                            setState(() => showTaxList = !showTaxList);
-                          },
+                        const Text(
+                          "Tax",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                         ),
-                        if (showTaxList)
-                          Container(
-                            margin: const EdgeInsets.only(top: 1),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey),
-                              borderRadius: BorderRadius.circular(8),
-                              color: Colors.white,
-                            ),
-                            constraints: const BoxConstraints(maxHeight: 150),
-                            child: ListView(
-                              shrinkWrap: true,
-                              children: taxes.map((tax) {
-                                return ListTile(
-                                  title: Text(tax.name),
-                                  onTap: () {
-                                    setState(() {
-                                      selectedTax = tax;
-                                      _taxController.text = tax.name;
+                        const SizedBox(height: 6),
 
-                                      showTaxList = false;
-                                    });
-                                  },
-                                );
-                              }).toList(),
+                        SizedBox(
+                          height: 40,
+                          child: DropdownButtonFormField<TaxInventoryModel>(
+                            isExpanded: true,
+                            value: selectedTax,
+                            hint: const Text("Select Tax", style: TextStyle(fontSize: 12,   color: Color(0xFF949494),)),
+
+                            items: taxes.map((tax) {
+                              return DropdownMenuItem(
+                                value: tax,
+                                child: Text(tax.name, style: const TextStyle(fontSize: 13)),
+                              );
+                            }).toList(),
+
+                            onChanged: (tax) {
+                              setState(() {
+                                selectedTax = tax;
+                                _taxController.text = tax?.name ?? '';
+                              });
+                            },
+
+                            decoration: InputDecoration(
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderSide: const BorderSide(color: Colors.grey),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderSide: const BorderSide(color: Colors.black),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
                             ),
+
+                            dropdownColor: Colors.white,
                           ),
+                        ),
                       ],
                     ),
                   ),
+
+
                   const SizedBox(width: 12),
                   Expanded(
-                    flex: 2,
+
                     child: _buildLabeledField(
                       label: "Stock Quantity",
                       controller: _unitsController,
@@ -642,7 +724,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
                     ),
                   ),
 
-                  const SizedBox(width: 12),
+                  // const SizedBox(width: 12),
 
                   // ===== NOTES =====
                   // Expanded(
@@ -663,7 +745,6 @@ class _AddItemDialogState extends State<AddItemDialog> {
       actions: [_buildCancelButton(context), _buildAddButton(context)],
     );
   }
-
   Widget _buildLabeledField({
     required String label,
     required TextEditingController controller,
@@ -679,19 +760,18 @@ class _AddItemDialogState extends State<AddItemDialog> {
           label,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6), // consistent vertical spacing
         SizedBox(
           height: 38.0 * (maxLines > 1 ? maxLines : 1),
           child: TextField(
             controller: controller,
             keyboardType: isNumber ? TextInputType.number : TextInputType.text,
             maxLines: maxLines,
+            style: const TextStyle(fontSize: 13), // smaller font inside
             decoration: InputDecoration(
               hintText: hint,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 8,
-              ),
+              hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), // reduced padding
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -723,7 +803,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
           label,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6), // consistent spacing
         SizedBox(
           height: 38,
           child: GestureDetector(
@@ -732,12 +812,11 @@ class _AddItemDialogState extends State<AddItemDialog> {
               child: TextField(
                 controller: controller,
                 readOnly: true,
+                style: const TextStyle(fontSize: 13),
                 decoration: InputDecoration(
                   hintText: "Select $label",
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
+                  hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -749,7 +828,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
                     borderSide: const BorderSide(color: Colors.black),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  suffixIcon: const Icon(Icons.keyboard_arrow_down),
+                  suffixIcon: const Icon(Icons.keyboard_arrow_down, size: 20),
                 ),
               ),
             ),
@@ -765,7 +844,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
         height: 40,
-        width: 160,
+        width:180,
         padding: const EdgeInsets.all(8),
         decoration: ShapeDecoration(
           color: Colors.white,
@@ -790,7 +869,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
 
   Widget _buildAddButton(BuildContext context) {
     return SizedBox(
-      width: 160,
+      width: 180,
       height: 40,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(

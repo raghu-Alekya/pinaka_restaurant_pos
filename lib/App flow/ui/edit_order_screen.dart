@@ -38,11 +38,15 @@ class EditOrdersListScreen extends StatefulWidget {
 class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
   final OrderstatusRepository _orderRepo = OrderstatusRepository();
   List<String> voidReasons = [
-    "Wrong Order",
-    "Customer Cancelled",
-    "Payment Failed",
-    "Item Not Available",
+    "Wrong Item Added",
+    "Customer requested item change",
+    "Quantity Correction",
+    "Item Preparation Error",
+    "Unavailable Item Replacement",
+    "Wrong Table or Order Mapped",
+    "Manual Entry Mistakes",
   ];
+
 
   String? selectedReason;
   final TextEditingController _remarksController = TextEditingController();
@@ -57,23 +61,10 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
   int? _selectedKotId;
   KotOrder? _selectedKot;
 
-  String getUpdatedNetPayable(OrderlistModel order) {
-    // Start with original net payable
-    double currentNet = (order.netPayable ?? 0).toDouble();
-
-    // Calculate delta from all left panel items
-    double delta = 0.0;
-
-    for (final item in _leftPanelItems) {
-      final originalQty = (item.quantity ?? 0);
-      final originalAmount = (item.originalAmount ?? 0).toDouble();
-      final currentAmount = (item.amount ?? 0).toDouble();
-
-      delta += (currentAmount - originalAmount); // positive or negative
-    }
-
-    final updatedNet = currentNet + delta;
-    return "₹${updatedNet.toStringAsFixed(2)}";
+// Step 1: Just fetch net payable (no calculation)
+  String getNetPayable(OrderlistModel order) {
+    double netPayable = (order.netPayable ?? 0).toDouble();
+    return "₹${netPayable.toStringAsFixed(2)}";
   }
 
   List<LineItem> _leftPanelItems = [];
@@ -100,21 +91,23 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
     setState(() => _selectedIndex = index);
   }
 
-  // Central KOT selection handler
+
+// Central KOT selection handler
+// Central KOT selection handler
   void _onKotSelected(int kotId, List<KotOrder> kots) {
     setState(() {
       _selectedKotId = kotId;
       _selectedKot = kots.firstWhere((k) => k.kotOrderId == kotId);
 
-      // Deep copy for left panel WITH lineItemId
       _leftPanelItems = (_selectedKot?.lineItems ?? [])
           .map((item) => LineItem(
-        lineItemId: item.lineItemId, // ✅ important
+        lineItemId: item.lineItemId,
         itemId: item.itemId,
         name: item.name,
         quantity: item.quantity,
         amount: item.amount,
-        modifiers: List<String>.from(item.modifiers ?? []),
+        // Keep modifiers for UI only
+        modifiers: parseModifiers(item.modifiers),
       ))
           .toList();
 
@@ -122,6 +115,8 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
           "Selected KOT: $_selectedKotId with ${_selectedKot?.lineItems?.length ?? 0} items");
     });
   }
+
+
   List<String> parseModifiers(dynamic raw) {
     if (raw == null) return [];
 
@@ -153,9 +148,16 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
     return [];
   }
-
   Future<void> _updateKot() async {
     if (_selectedKot == null) return;
+
+    if (selectedReason == null || selectedReason!.isEmpty) {
+      print("⚠️ No reason selected");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please select a reason")),
+      );
+      return;
+    }
 
     final repo = EditOrderlistRepository(
       baseUrl: AppConstants.baseApiPath,
@@ -163,28 +165,30 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
     );
 
     final kotId = _selectedKot!.kotOrderId;
+
     print("🔵 Preparing to update KOT");
     print("📌 Order ID: ${widget.orderId}");
     print("📌 Selected KOT ID: $kotId");
+    print("📌 Selected Reason: $selectedReason");
+    print("📌 Remarks: ${_remarksController.text.trim()}");
 
     try {
       // 1️⃣ Fetch full parent order
       final order = await repo.fetchOrder(widget.orderId);
+      // print("✅ Fetched order successfully: Order ID ${order.id}");
 
-      // 2️⃣ Find selected KOT inside parent order
+      // 2️⃣ Find selected KOT
       final selectedKotInOrder = order.kotOrders?.firstWhere(
             (k) => k.kotOrderId == kotId,
-        orElse: () => throw Exception("Selected KOT not found in parent order"),
+        orElse: () => throw Exception("Selected KOT not found"),
       );
+      print("✅ Selected KOT found: Status ${selectedKotInOrder?.status}");
 
-      // 3️⃣ Build payload
+      // 3️⃣ Build line items payload
       final List<Map<String, dynamic>> lineItemsPayload = [];
-
       for (final item in _leftPanelItems) {
         final qty = item.quantity?.toInt() ?? 0;
-
         if (item.lineItemId != null) {
-          // ✅ Existing item → update or delete
           lineItemsPayload.add({
             "id": item.lineItemId,
             "quantity": qty,
@@ -193,7 +197,6 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
               ? "🗑 Deleting item => line_item_id: ${item.lineItemId}"
               : "✏️ Updating item => line_item_id: ${item.lineItemId}, qty: $qty, name: ${item.name}");
         } else if (item.itemId != null && item.itemId != 0 && qty > 0) {
-          // ✅ New item → add
           lineItemsPayload.add({
             "product_id": item.itemId,
             "quantity": qty,
@@ -211,25 +214,26 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         return;
       }
 
-      // 4️⃣ Meta data
-      final metaDataPayload = _remarksController.text.trim().isNotEmpty
-          ? [
-        {"key": "kot_remarks", "value": _remarksController.text.trim()}
-      ]
-          : [];
+      // 4️⃣ Meta data payload
+      final metaDataPayload = [
+        if (_remarksController.text.trim().isNotEmpty)
+          {"key": "kot_remarks", "value": _remarksController.text.trim()},
+        {"key": "void_reason", "value": selectedReason},
+      ];
+
+      print("📤 Meta Data Payload: ${jsonEncode(metaDataPayload)}");
 
       final payload = {
         "line_items": lineItemsPayload,
         "meta_data": metaDataPayload,
       };
 
-      print("📤 Final payload:");
-      print(jsonEncode(payload));
+      print("📤 Final Payload Sent to Backend: ${jsonEncode(payload)}");
 
-      // 5️⃣ Temporarily handle completed KOTs
+      // 5️⃣ Handle completed KOTs
       final originalStatus = _selectedKot?.status ?? "processing";
       if (originalStatus == "completed") {
-        print("⚡ Switching completed → processing");
+        print("⚡ Changing status from completed → processing");
         await repo.updateOrderRaw(
           orderId: widget.orderId,
           kotOrderId: kotId,
@@ -240,15 +244,16 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       // 6️⃣ Update KOT
       final success = await repo.updateOrderRaw(
         orderId: widget.orderId,
-        kotOrderId: kotId, // ✅ Send KOT ID in URL
+        kotOrderId: kotId,
         payload: payload,
       );
 
       if (!success) throw Exception("Update failed");
+      print("✅ KOT Updated Successfully");
 
-      // 7️⃣ Restore original status if needed
+      // 7️⃣ Restore original status
       if (originalStatus == "completed") {
-        print("⚡ Restoring processing → completed");
+        print("⚡ Restoring status from processing → completed");
         await repo.updateOrderRaw(
           orderId: widget.orderId,
           kotOrderId: kotId,
@@ -256,12 +261,9 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         );
       }
 
-      print("✅ KOT Updated Successfully for KOT $kotId");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("✅ KOT Updated Successfully")),
       );
-
-      // Navigator.pop(context, true);
     } catch (e) {
       print("❌ KOT Update Failed => $e");
       ScaffoldMessenger.of(context).showSnackBar(
@@ -269,7 +271,6 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       );
     }
   }
-
 
   @override
   void dispose() {
@@ -444,11 +445,12 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: _infoRow(
-                              "Updated Net Payable",
-                              getUpdatedNetPayable(order),  // example adjustment
+                              "Net Payable",
+                              getNetPayable(order),  // initially shows original net payable
                               bold: true,
                             ),
                           ),
+
 
 
 
@@ -810,6 +812,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                   itemBuilder: (context, index) {
                     final item = items[index];
                     final unitPrice = (item.amount ?? 0) / ((item.quantity ?? 1));
+                    final modifiers = parseModifiers(item.modifiers); // same function as left panel
 
                     return Container(
                       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
@@ -821,7 +824,29 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                       child: Row(
                         children: [
                           Expanded(flex: 1, child: Text("${index + 1}")),
-                          Expanded(flex: 3, child: Text(item.name ?? "-")),
+                          Expanded(
+                            flex: 3,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item.name ?? "-",
+                                  style: const TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                                if (modifiers.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 2),
+                                    child: Text(
+                                      modifiers.join(", "),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
                           Expanded(
                             flex: 2,
                             child: Row(
@@ -835,9 +860,9 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                                       item.quantity = (item.quantity ?? 0) - 1;
                                       item.amount = unitPrice * item.quantity!;
                                     });
-                                    setState(() {});
+                                    setState(() {}); // triggers UI update including Net Payable
                                   }
-                                      : null, // disable if 0
+                                      : null,
                                 ),
                                 Padding(
                                   padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -859,7 +884,6 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                               ],
                             ),
                           ),
-
                           Expanded(
                             flex: 2,
                             child: Text("₹${(item.amount ?? 0).toStringAsFixed(2)}"),
@@ -870,6 +894,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                   },
                 ),
               ),
+
 
               const SizedBox(height: 12),
 

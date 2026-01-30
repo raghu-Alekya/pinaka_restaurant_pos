@@ -143,38 +143,54 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
   }
 
   void _onFolderTap(MiniSubCategory folder) async {
+    // if same folder tapped again → do nothing (keep it selected)
+    if (selectedFolder?.id == folder.id) {
+      return;
+    }
+
+    // select the new folder
     setState(() {
-      selectedFolder = selectedFolder == folder ? null : folder;
+      selectedFolder = folder;
     });
+
     widget.onFolderSelected?.call(folder);
 
-    if (selectedFolder != null && selectedFolder!.products.isEmpty) {
-      try {
-        final products = await widget.fetchProducts(selectedFolder!.id);
+    // if products already loaded, no need to fetch again
+    if (folder.products.isNotEmpty) return;
 
-        final folderName = selectedFolder!.name.toLowerCase();
-        final updatedProducts = products.map((p) {
-          if (folderName.contains('veg')) return p.copyWith(isVeg: true);
-          if (folderName.contains('non veg')) return p.copyWith(isVeg: false);
-          return p;
+    try {
+      final products = await widget.fetchProducts(folder.id);
+
+      final folderName = folder.name.toLowerCase();
+      final updatedProducts = products.map((p) {
+        if (folderName.contains('non veg')) {
+          return p.copyWith(isVeg: false);
+        } else if (folderName.contains('veg')) {
+          return p.copyWith(isVeg: true);
+        }
+        return p;
+      }).toList();
+
+      final newFolder = folder.copyWith(
+        products: updatedProducts,
+        count: updatedProducts.length,
+      );
+
+      setState(() {
+        // keep this folder selected and update its data
+        selectedFolder = newFolder;
+
+        // update it inside your list also
+        currentSubCategories = currentSubCategories.map((e) {
+          return e.id == newFolder.id ? newFolder : e;
         }).toList();
-
-        final newFolder = selectedFolder!.copyWith(
-          products: updatedProducts,
-          count: updatedProducts.length,
-        );
-
-        setState(() {
-          selectedFolder = newFolder;
-          currentSubCategories = currentSubCategories.map((e) {
-            return e.id == newFolder.id ? newFolder : e;
-          }).toList();
-        });
-      } catch (e) {
-        print("[MiniSubCategoryWidget] Error fetching folder products: $e");
-      }
+      });
+    } catch (e) {
+      print("[MiniSubCategoryWidget] Error fetching folder products: $e");
     }
   }
+
+
 
 
 
@@ -352,6 +368,8 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       ),
       itemBuilder: (context, index) {
         final item = items[index];
+        // 🔍 Debug print
+        print("Product: ${item.name} | isVariantProduct: ${item.isVariantProduct}");
         final backgroundColor = tileColors[index % tileColors.length];
 
         return GestureDetector(
@@ -393,32 +411,52 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
                           const SizedBox(height: 4),
                           Text(
                             '₹${item.price.toStringAsFixed(0)}',
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ],
                       ),
                     ),
                   ],
                 ),
+
                 // Veg/Non-Veg icon at top-right
                 Positioned(
                   top: 2,
                   right: 2,
                   child: Builder(
                     builder: (_) {
-                      final bool? isVeg = item.isVeg; // or item.isVegFolder for folder
-                      if (isVeg == null) return const SizedBox.shrink(); // No icon
+                      final bool? isVeg = item.isVeg;
+                      if (isVeg == null) return const SizedBox.shrink();
                       return Image.asset(
-                        isVeg ? 'assets/icon/veg_icon.png' : 'assets/icon/nonveg_icon.png',
+                        isVeg
+                            ? 'assets/icon/veg_icon.png'
+                            : 'assets/icon/nonveg_icon.png',
                         width: 15,
                         height: 15,
                       );
                     },
                   ),
-                )
+                ),
+
+                // 🔹 Variant icon just below veg/non-veg icon (right corner)
+                if (item.isVariantProduct)
+                  Positioned(
+                    top: 60, // below the veg/non-veg icon
+                    right: 2,
+                    child: Image.asset(
+                      'assets/variant_icon.png',
+                      width: 16,
+                      height: 16,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
 
               ],
             ),
+
           ),
         );
       },

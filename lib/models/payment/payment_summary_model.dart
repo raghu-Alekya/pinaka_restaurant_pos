@@ -11,6 +11,8 @@ class PaymentSummary {
   final int tableId;
   final int zoneId;
   final bool modifiersTaxable;
+  final bool isNoCharge;
+
 
 
   PaymentSummary({
@@ -26,6 +28,7 @@ class PaymentSummary {
     required this.tableId,
     required this.zoneId,
     required this.modifiersTaxable,
+    required this.isNoCharge,
   });
 
   factory PaymentSummary.fromJson(Map<String, dynamic> json) {
@@ -56,6 +59,12 @@ class PaymentSummary {
       // ✅ ADD THIS
       modifiersTaxable:
       (json['modifiers_taxable'] ?? 'no').toString().toLowerCase() == 'yes',
+      // 👇 new: NC comes from backend, not UI
+      // ✅ CORRECT mapping of NC flag
+      isNoCharge:
+      (json['is_nc'] ?? 'no')
+          .toString()
+          .toLowerCase() == 'yes',
     );
   }
 }

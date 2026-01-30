@@ -253,7 +253,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           return Row(
             children: [
               GestureDetector(
-                onTap: isLast ? null : () => _onBreadcrumbTap(index),
+                onTap: (isLast || index == 0) ? null : () => _onBreadcrumbTap(index),
                 child: Text(
                   name,
                   style: TextStyle(
@@ -262,6 +262,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
               ),
+
               if (!isLast)
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 4),

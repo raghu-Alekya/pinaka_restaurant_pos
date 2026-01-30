@@ -72,6 +72,8 @@ class _paymentsummaryState extends State<paymentsummary> {
   double _splitAmount = 0.0;
   double merchantDiscount = 0.0;
   double _lastNetPayable = 0.0;
+  bool _isNcDiscount = false;
+
 
 
 
@@ -260,23 +262,35 @@ class _paymentsummaryState extends State<paymentsummary> {
   List<double> buildPresetAmounts(double total) {
     if (total <= 0) return [];
 
-    final Set<double> presets = {};
+    final List<double> result = [];
+    final Set<double> seen = {};
 
-    // Always include exact total (NO rounding)
-    presets.add(total);
+    void add(double value) {
+      if (seen.add(value)) {
+        result.add(value);
+      }
+    }
 
-    final next50 = (total / 50).ceil() * 50;
-    final next100 = (total / 100).ceil() * 100;
-    final next200 = (total / 200).ceil() * 200;
+    // 1) exact total
+    add(total);
 
-    if (next50 > total) presets.add(next50.toDouble());
-    if (next100 > total) presets.add(next100.toDouble());
-    if (next200 > total) presets.add(next200.toDouble());
+    // 2) keep adding next rounded multiples until we have 4 values
+    int step = 50;
+    double current = total;
 
-    // Convert to sorted list
-    final result = presets.toList()
-      ..sort();
+    while (result.length < 3) {
+      final next = (current / step).ceil() * step;
+      if (next > total) {
+        add(next.toDouble());
+      }
+      current = next + 1; // move forward to avoid same rounding again
 
+      // after some iterations increase step to get bigger jumps
+      if (result.length == 2) step = 100;
+      if (result.length == 3) step = 200;
+    }
+
+    result.sort();
     return result;
   }
 
@@ -315,24 +329,37 @@ class _paymentsummaryState extends State<paymentsummary> {
         // ✅ ADD THIS LISTENER HERE (PaymentBloc)
         BlocListener<PaymentBloc, PaymentState>(
           listener: (context, state) {
-            debugPrint("🟣 PaymentBloc Listener state = ${state.runtimeType}");
             if (state is PaymentSummaryLoaded) {
-              debugPrint("🟣 PaymentSummaryLoaded merchantDiscount = ${state.merchantDiscount}");
               final discount = state.merchantDiscount;
 
-              // ✅ Restore discount textfield after refresh
+              debugPrint("🟢 BlocListener triggered");
+              debugPrint("🟢 Backend merchantDiscount = $discount");
+              debugPrint("🟢 Backend isNoCharge (NC) = ${state.isNoCharge}");
+
               discountController.text =
               discount != 0 ? discount.abs().toStringAsFixed(2) : "";
 
+              final newIsDiscountApplied = discount != 0;
+
+              debugPrint("🟣 Before setState:");
+              debugPrint("   _isDiscountApplied (old) = $_isDiscountApplied");
+              debugPrint("   _isNcDiscount (old) = $_isNcDiscount");
+
               setState(() {
-                _isDiscountApplied = discount != 0;
+                _isDiscountApplied = newIsDiscountApplied;
                 merchantDiscount = discount;
+
+                _isNcDiscount = state.isNoCharge;
+
               });
 
-              debugPrint("🔄 Restored Discount TextField = $discount");
+              debugPrint("🟣 After setState:");
+              debugPrint("   _isDiscountApplied (new) = $_isDiscountApplied");
+              debugPrint("   _isNcDiscount (new) = $_isNcDiscount");
             }
           },
         ),
+
 
 
         /// ✅ PAYMENT LISTENER
@@ -385,22 +412,24 @@ class _paymentsummaryState extends State<paymentsummary> {
         BlocListener<RemoveDiscountBloc, RemoveDiscountState>(
           listener: (context, state) {
             if (state is RemoveDiscountSuccess) {
-              context.read<PaymentBloc>().add(UpdateMerchantDiscount(0.0)); // ✅ add this
-
-              widget.onMerchantDiscountChanged(0.0);
-
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text(state.response.message)),
               );
 
+              // Now clear everything only after backend confirmed removal
               setState(() {
                 _isDiscountApplied = false;
+                _isNcDiscount = false;   // ✅ reset NC here
                 _discountAmount = 0;
                 merchantDiscount = 0.0;
-                discountController.clear(); // ✅ clears UI
+                discountController.clear();
               });
 
-              /// 🔥 Refresh payment summary
+              // // sync bloc and parent after state is cleaned
+              // context.read<PaymentBloc>().add(UpdateMerchantDiscount(0.0));
+              // widget.onMerchantDiscountChanged(0.0);
+
+              // finally refresh summary from server
               context.read<PaymentBloc>().add(
                 LoadPaymentSummary(
                   token: widget.token,
@@ -410,6 +439,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                 ),
               );
             }
+
 
             if (state is RemoveDiscountFailure) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -697,23 +727,26 @@ class _paymentsummaryState extends State<paymentsummary> {
 
                                 // ===== APPLY CALLBACKS =====
 
-                                /// ✅ FIXED: receives discount amount
-                                onDiscountApplied: (double amount) {
-                                  debugPrint("🟠 onDiscountApplied called with amount = $amount");
+                                  onDiscountApplied: (double amount, bool isNc) {
+                                    debugPrint("🟠 onDiscountApplied amount=$amount isNc=$isNc");
 
-                                  setState(() {
-                                    _isDiscountApplied = true;
-                                    merchantDiscount = amount;
+                                    // Only update the field visually for instant feedback
                                     discountController.text = amount.toStringAsFixed(2);
-                                  });
 
-                                  debugPrint("🟢 paymentsummary discountController.text = ${discountController.text}");
-                                  debugPrint("🟢 paymentsummary merchantDiscount = $merchantDiscount");
+                                    // DO NOT touch _isDiscountApplied, merchantDiscount or _isNcDiscount here
 
-                                  widget.onMerchantDiscountChanged(amount);
-                                },
+                                    // Always refresh from backend so real NC + discount come from API
+                                    context.read<PaymentBloc>().add(
+                                      LoadPaymentSummary(
+                                        token: widget.token,
+                                        orderId: widget.orderId,
+                                        restaurantId: widget.restaurantId,
+                                        orderType: "Dine In",
+                                      ),
+                                    );
+                                  },
 
-                                onCouponApplied: (coupon) {
+                                  onCouponApplied: (coupon) {
                                   setState(() {
                                     _isCouponApplied = true;
                                     _appliedCoupon = coupon;
@@ -740,19 +773,33 @@ class _paymentsummaryState extends State<paymentsummary> {
                                 },
 
                                 // ===== DELETE CALLBACKS =====
-
                                 onDiscountDelete: () {
-                                  // ✅ reset local discount value immediately
-                                  widget.onMerchantDiscountChanged(0.0);
+                                  final paymentState = context.read<PaymentBloc>().state;
+
+                                  String isNcFlag = "no";
+
+                                  if (paymentState is PaymentSummaryLoaded) {
+                                    // ✅ always take NC flag from backend-loaded state
+                                    isNcFlag = paymentState.isNoCharge ? "yes" : "no";
+                                  }
+
+                                  debugPrint("🧨 Deleting discount with isNc = $isNcFlag");
 
                                   context.read<RemoveDiscountBloc>().add(
                                     RemoveDiscountRequested(
-                                      token: widget.token,
                                       orderId: widget.orderId,
-                                      isNc: "no",
+                                      isNc: isNcFlag,
+                                      token: widget.token,
                                     ),
                                   );
                                 },
+
+
+                                //   // reset local NC flag after sending request
+                                //   setState(() {
+                                //     _isNcDiscount = false;
+                                //   });
+                                // },
 
                                 onCouponDelete: () {
                                   setState(() {
@@ -1082,7 +1129,8 @@ Widget _buildPaymentDiscountItem(
       required bool isTipApplied,
       required bool isSplitApplied,
 
-      required ValueChanged<double> onDiscountApplied,
+      required void Function(double amount, bool isNc) onDiscountApplied,
+
       required ValueChanged<String> onCouponApplied,
       required ValueChanged<double> onTipApplied,
       required ValueChanged<double> onSplitApplied,
@@ -1125,88 +1173,49 @@ Widget _buildPaymentDiscountItem(
                 onTap: isDiscountApplied
                     ? null
                     : () async {
-                  print('🟢 Discount field tapped');
-                  print('➡️ isDiscountApplied: $isDiscountApplied');
-                  print('➡️ netPayable: $netPayable');
-                  // print('➡️ authToken present: ${authToken != null}');
-
-                  final discountAmount = await showDialog<double>(
+                  final result = await showDialog<Map<String, dynamic>>(
                     context: context,
                     barrierDismissible: false,
                     builder: (_) {
-                      print('📦 Opening DiscountPopup dialog');
-
                       return MultiBlocProvider(
                         providers: [
                           BlocProvider(
-                            create: (_) {
-                              print('🧱 Creating DiscountReasonBloc');
-                              return DiscountReasonBloc(
-                                DiscountReasonRepository(),
-                              );
-                            },
+                            create: (_) => DiscountReasonBloc(
+                              DiscountReasonRepository(),
+                            ),
                           ),
-                          BlocProvider(
-                            create: (_) {
-                              print('🧱 Creating DiscountBloc');
-                              return DiscountBloc(
-                                AddDiscountRepository(),
-                              );
-                            },
+                          BlocProvider.value(
+                            value: context.read<DiscountBloc>(), // ✅ reuse same instance
                           ),
+
                         ],
                         child: DiscountPopup(
                           netPayable: netPayable,
-                          // authToken: authToken,
                           orderId: orderId,
                         ),
                       );
                     },
                   );
 
-                  print('⬅️ Dialog closed');
-                  print('⬅️ Returned discountAmount: $discountAmount');
-                  /// ✅ ADD THIS HERE
-                  if (discountAmount != null && discountAmount > 0) {
-                    final applied = discountAmount.abs();
+                  if (result != null) {
+                    final double applied =
+                    (result["amount"] as double).abs();
+                    final bool isNc = result["isNc"] == true;
 
-                    print("✅ APPLYING DISCOUNT = $applied");
-                    print("🟡 BEFORE update controller text = ${discountController.text}");
 
-                    // update textfield immediately
-                    discountController.text = applied.toStringAsFixed(2);
+                    // update only the field UI here
+                    discountController.text =
+                        applied.toStringAsFixed(2);
 
-                    print("🟢 AFTER update controller text = ${discountController.text}");
-
-                    // ✅ update merchant discount in bloc
-                    context.read<PaymentBloc>().add(UpdateMerchantDiscount(applied));
-                    print("📤 Sent UpdateMerchantDiscount($applied) to PaymentBloc");
-
-                    // ✅ NOW refresh payment summary so netPayable updates
-                    context.read<PaymentBloc>().add(
-                      LoadPaymentSummary(
-                        token: token,
-                        orderId: orderId,
-                        restaurantId: restaurantId,
-                        orderType: "Dine In",
-                      ),
-                    );
-                    print("🔄 Sent LoadPaymentSummary after discount apply");
-
-                    onDiscountApplied(applied);
-                  } else {
-                    print('❌ Discount not applied / dialog cancelled');
+                    // tell parent “a discount was applied”
+                    onDiscountApplied(applied, isNc);
                   }
-
-
-
                 },
                 child: AbsorbPointer(
                   child: _inputField(
                     controller: discountController,
                     hint: '0.00',
                     enabled: true,
-
                   ),
                 ),
               ),
@@ -1214,17 +1223,14 @@ Widget _buildPaymentDiscountItem(
             const SizedBox(width: 6),
             if (isDiscountApplied)
               _deleteButton(() {
-                print('🗑️ Discount delete button pressed');
-
-                // ✅ Reset discount in PaymentBloc
-                context.read<PaymentBloc>().add(UpdateMerchantDiscount(0.0));
-
-                // ✅ Call your API remove
+                debugPrint("🔥 Delete icon tapped");
+                // just inform parent to delete
                 onDiscountDelete();
               }),
-
           ],
         ),
+
+
 
 
 

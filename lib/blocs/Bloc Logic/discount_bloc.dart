@@ -44,8 +44,9 @@ class DiscountBloc extends Bloc<DiscountEvent, DiscountState> {
         // token: event.token,
         request: event.request,
       );
+      final isNcApplied = event.request.isNc == "yes";
 
-      emit(DiscountSuccess(response));
+      emit(DiscountSuccess(response,isNcApplied: isNcApplied,));
     } catch (e) {
       emit(DiscountFailure(e.toString()));
     }

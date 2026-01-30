@@ -43,8 +43,6 @@ class _CustomBoxState extends State<CustomBox> {
   bool _barcodeLocked = false;
   bool _isFromBarcode = false;
   int _searchSession = 0;
-  bool _isProgrammaticChange = false;
-
 
   // sort
   String _getApiFilter(String sort) {
@@ -83,8 +81,7 @@ class _CustomBoxState extends State<CustomBox> {
               child: Material(
                 color: Colors.transparent,
                 child: Container(
-                  width: 240,
-                  height: 40,
+                  width: 260,
                   padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
                   decoration: ShapeDecoration(
                     color: Colors.white,
@@ -244,18 +241,17 @@ class _CustomBoxState extends State<CustomBox> {
       ),
     );
   }
+
   void _onSearchChanged() {
-    if (_isProgrammaticChange) {
-      print("🚫 Skipping programmatic text change");
-      return;
-    }
-
     final query = _searchController.text.trim();
-    print("🔍 SEARCH INPUT: '$query'");
 
+    // 🔥 Cancel debounce
     _debounce?.cancel();
+
+    // 🔥 New search session
     _searchSession++;
 
+    // ✅ HANDLE CLEAR SEARCH
     if (query.isEmpty) {
       setState(() {
         filteredBeverages.clear();
@@ -263,22 +259,33 @@ class _CustomBoxState extends State<CustomBox> {
         _popupShown = false;
         isLoading = false;
       });
+
+      // 🔥 CLOSE ANY OPEN DIALOG (Manage / AddItem / Custom Item)
+      if (Navigator.canPop(context)) {
+        Navigator.of(context, rootNavigator: true)
+            .popUntil((route) => route.isFirst);
+      }
       return;
     }
 
     final isNumeric = RegExp(r'^\d+$').hasMatch(query);
-    final int session = _searchSession;
 
     setState(() => showCustomCard = true);
 
-    // 🔒 Barcode protection
-    if (isNumeric && query.length < 5) return;
+    // 🔒 Prevent partial barcode calls
+    if (isNumeric && query.length < 8) return;
 
-    _debounce = Timer(const Duration(milliseconds: 350), () {
+    final int session = _searchSession;
+
+    if (isNumeric) {
+      _fetchProducts(searchOrSku: query, session: session);
+      return;
+    }
+
+    _debounce = Timer(const Duration(milliseconds: 400), () {
       _fetchProducts(searchOrSku: query, session: session);
     });
   }
-
 
 
   // ---------------- FETCH PRODUCTS ----------------
@@ -317,25 +324,6 @@ class _CustomBoxState extends State<CustomBox> {
         _popupShown = true;
         _showCustomItemAlert(searchOrSku);
       }
-
-      // ✅ Update search field with SKU + Product Name if exact match found
-      if (filteredBeverages.isNotEmpty && searchOrSku != null) {
-        final firstProduct = filteredBeverages.first;
-        final displayText =
-            '${firstProduct.sku ?? searchOrSku} - ${firstProduct.itemName}';
-
-        _isProgrammaticChange = true;
-
-        _searchController.text = displayText;
-        _searchController.selection =
-            TextSelection.collapsed(offset: displayText.length);
-
-        Future.microtask(() => _isProgrammaticChange = false);
-
-        _searchController.selection = TextSelection.collapsed(
-          offset: displayText.length,
-        );
-      }
     } catch (e) {
       debugPrint('❌ Fetch error: $e');
     } finally {
@@ -346,33 +334,32 @@ class _CustomBoxState extends State<CustomBox> {
   }
 
   // ================= BARCODE LISTENER =================
+
   void _onBarcodeScanned(String barcode) async {
     if (_barcodeLocked || barcode.isEmpty) return;
 
     _barcodeLocked = true;
+
     debugPrint('📸 BARCODE SCANNED: $barcode');
 
-    _isProgrammaticChange = true;
+    // 🚫 Stop text change listener
+    _searchController.removeListener(_onSearchChanged);
 
     setState(() {
+      _searchController.text = barcode;
       showCustomCard = true;
       _popupShown = false;
-      _searchController.text = barcode;
     });
 
-    final int session = ++_searchSession;
+    //  Single API call
+    await _fetchProducts( searchOrSku: barcode,
+      session: _searchSession,);
 
-    await _fetchProducts(
-      searchOrSku: barcode,
-      session: session,
-    );
-
-    Future.microtask(() => _isProgrammaticChange = false);
+    //  Re-attach listener
+    _searchController.addListener(_onSearchChanged);
 
     _barcodeLocked = false;
   }
-
-
 
   // ---------------- CUSTOM ITEM POPUP ----------------
   void _showCustomItemAlert(String scannedCode) {
@@ -661,13 +648,14 @@ class _CustomBoxState extends State<CustomBox> {
                   children: [
                     // The Row with internal padding
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8), // space from vertical edges
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           // Search Box
                           SizedBox(
                             width: 300,
+                            height: 40,
                             child: TextField(
                               controller: _searchController,
                               focusNode: _searchFocusNode,

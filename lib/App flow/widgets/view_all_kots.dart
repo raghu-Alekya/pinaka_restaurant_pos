@@ -49,7 +49,7 @@ class ViewAllKOTDropdown extends StatefulWidget {
 }
 
 class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
-  bool _expanded = false;
+  bool _expanded = true;
   final Map<String, bool> _kotExpanded = {};
   int _previousOrderItemCount = 0;
 

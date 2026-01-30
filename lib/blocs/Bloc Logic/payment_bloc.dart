@@ -22,14 +22,17 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
           orderType: event.orderType,
         );
         debugPrint("🔥 API returned merchant_discount = ${summary.discount}");
+        debugPrint("🔥 API returned isNoCharge (NC) = ${summary.isNoCharge}");
 
         emit(
           PaymentSummaryLoaded(
             summary: summary,
-            merchantDiscount: summary.discount, // ✅ from API
+            merchantDiscount: summary.discount,
+            isNoCharge: summary.isNoCharge,// ✅ from API
           ),
         );
         debugPrint("🟥 PaymentBloc emitted merchantDiscount(from API) = ${summary.discount}");
+        debugPrint("🟥 PaymentBloc emitted isNoCharge (NC) = ${summary.isNoCharge}");
       } catch (e) {
         emit(PaymentFailure(e.toString()));
       }
@@ -44,7 +47,8 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
           PaymentSummaryLoaded(
             summary: current.summary,
             selectedMethod: event.method,
-            merchantDiscount: current.merchantDiscount, // ✅ keep it
+            merchantDiscount: current.merchantDiscount,
+            isNoCharge: current.isNoCharge,// ✅ keep it
           ),
         );
       }
@@ -75,6 +79,7 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
             summary: current.summary,
             selectedMethod: current.selectedMethod,
             merchantDiscount: event.value,
+            isNoCharge: current.isNoCharge,
           ),
         );
 
