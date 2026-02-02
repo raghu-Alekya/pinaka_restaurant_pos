@@ -37,7 +37,7 @@ class EditOrdersListScreen extends StatefulWidget {
 
 class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
   final OrderstatusRepository _orderRepo = OrderstatusRepository();
-  List<String> voidReasons = [
+  List<String> kot_remarks= [
     "Wrong Item Added",
     "Customer requested item change",
     "Quantity Correction",
@@ -47,6 +47,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
     "Manual Entry Mistakes",
   ];
 
+  double _fixedTotalTax = 0.0;
 
   String? selectedReason;
   final TextEditingController _remarksController = TextEditingController();
@@ -60,6 +61,9 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
   int? _selectedKotId;
   KotOrder? _selectedKot;
+  double _dynamicNetPayable = 0.0;
+  bool _netPayableInitialized = false;
+  String? _updateMessage; // null when no message
 
 // Step 1: Just fetch net payable (no calculation)
   String getNetPayable(OrderlistModel order) {
@@ -93,7 +97,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
 
 // Central KOT selection handler
-// Central KOT selection handler
+
   void _onKotSelected(int kotId, List<KotOrder> kots) {
     setState(() {
       _selectedKotId = kotId;
@@ -106,6 +110,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         name: item.name,
         quantity: item.quantity,
         amount: item.amount,
+        unitPrice: (item.amount ?? 0) / (item.quantity ?? 1), // store base price
         // Keep modifiers for UI only
         modifiers: parseModifiers(item.modifiers),
       ))
@@ -148,6 +153,16 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
     return [];
   }
+  void _refreshOrders() {
+    setState(() {
+      _netPayableInitialized = false; // re-init tax & net payable
+      _selectedKotId = null;
+      _selectedKot = null;
+      _leftPanelItems.clear();
+      _ordersFuture = _orderRepo.fetchOrders(widget.token);
+    });
+  }
+
   Future<void> _updateKot() async {
     if (_selectedKot == null) return;
 
@@ -186,25 +201,35 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
       // 3️⃣ Build line items payload
       final List<Map<String, dynamic>> lineItemsPayload = [];
+
       for (final item in _leftPanelItems) {
-        final qty = item.quantity?.toInt() ?? 0;
+        final qty = item.quantity ?? 0;
+
+        // 🟢 EXISTING ITEM
         if (item.lineItemId != null) {
-          lineItemsPayload.add({
-            "id": item.lineItemId,
-            "quantity": qty,
-          });
-          print(qty == 0
-              ? "🗑 Deleting item => line_item_id: ${item.lineItemId}"
-              : "✏️ Updating item => line_item_id: ${item.lineItemId}, qty: $qty, name: ${item.name}");
-        } else if (item.itemId != null && item.itemId != 0 && qty > 0) {
+          if (qty > 0) {
+            lineItemsPayload.add({
+              "id": item.lineItemId,   // ✅ preserve ID
+              "quantity": qty,
+            });
+          } else {
+            lineItemsPayload.add({
+              "id": item.lineItemId,
+              "quantity": qty,
+              // "_destroy": true,       // ✅ explicit delete (IMPORTANT)
+            });
+          }
+        }
+
+        // 🟢 NEW ITEM
+        else if (item.itemId != null && qty > 0) {
           lineItemsPayload.add({
             "product_id": item.itemId,
             "quantity": qty,
           });
-          print(
-              "➕ Adding new item => product_id: ${item.itemId}, qty: $qty, name: ${item.name}");
         }
       }
+
 
       if (lineItemsPayload.isEmpty) {
         print("⚠️ No valid line items to update.");
@@ -218,7 +243,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       final metaDataPayload = [
         if (_remarksController.text.trim().isNotEmpty)
           {"key": "kot_remarks", "value": _remarksController.text.trim()},
-        {"key": "void_reason", "value": selectedReason},
+        {"key": "kot_remarks", "value": selectedReason},
       ];
 
       print("📤 Meta Data Payload: ${jsonEncode(metaDataPayload)}");
@@ -250,7 +275,11 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
       if (!success) throw Exception("Update failed");
       print("✅ KOT Updated Successfully");
-
+      setState(() {
+        _updateMessage = "KOT updated Successfully. Final Net payable updated.";
+      });
+// 🔄 REFRESH SCREEN DATA
+      _refreshOrders();
       // 7️⃣ Restore original status
       if (originalStatus == "completed") {
         print("⚡ Restoring status from processing → completed");
@@ -261,9 +290,9 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         );
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("✅ KOT Updated Successfully")),
-      );
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   const SnackBar(content: Text("✅ KOT Updated Successfully")),
+      // );
     } catch (e) {
       print("❌ KOT Update Failed => $e");
       ScaffoldMessenger.of(context).showSnackBar(
@@ -281,7 +310,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE1E1E1),
+      backgroundColor: const Color(0xFFF1F1F3),
 
 
       appBar: TopBar(
@@ -301,6 +330,11 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
           final order = snapshot.data!
               .firstWhere((o) => o.orderId == widget.orderId);
+          if (!_netPayableInitialized) {
+            _fixedTotalTax = order.totalTax?.toDouble() ?? 0.0; // 🔒 LOCK TAX
+            _dynamicNetPayable = order.netPayable?.toDouble() ?? 0.0;
+            _netPayableInitialized = true;
+          }
 
           final kots = order.kotOrders ?? [];
 
@@ -317,6 +351,10 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
               name: item.name,
               quantity: item.quantity,
               amount: item.amount,
+              unitPrice: (item.quantity ?? 0) > 0
+                  ? (item.amount ?? 0) / item.quantity!
+                  : 0.0,
+              // unitPrice: item.amount / item.quantity,
               modifiers: parseModifiers(item.modifiers),
 
             ))
@@ -344,27 +382,45 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                       ),
                     ],
                   ),
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-
-
+                      const SizedBox(width:  42),
                       Row(
                         children: [
-                          IconButton(
-                            icon: const Icon(Icons.arrow_back, size: 20),
-                            onPressed: () => Navigator.pop(context, true),
-
-                          ),
-                          const SizedBox(width: 6),
-                          const Text(
-                            "Edit Order",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                          SizedBox(
+                            width: 110, // button width
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF3B4259), // dark button color
+                                minimumSize: const Size(110, 40),
+                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              onPressed: () {
+                                Navigator.pop(context, true); // navigate back
+                              },
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: const [
+                                  Icon(Icons.arrow_back, size: 20, color: Colors.white),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    "Edit Order",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white, // white text
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
+
                           const Spacer(),
                           if (kots.isNotEmpty)
                             Container(
@@ -435,21 +491,25 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
+                          const SizedBox(width: 15),
                           Expanded(
                             child: _infoRow(
                               "Net Payable",
-                              "₹${(order.netPayable ?? 0).toStringAsFixed(2)}",
+                              "₹${(order.netPayable ?? 0).round()}",
                               bold: true,
                             ),
                           ),
-                          const SizedBox(width: 12),
+
+                          const SizedBox(width: 30),
                           Expanded(
                             child: _infoRow(
-                              "Net Payable",
-                              getNetPayable(order),  // initially shows original net payable
+                              "Updated Net Payable",
+                              "₹${_dynamicNetPayable.round()}",
                               bold: true,
                             ),
                           ),
+
+
 
 
 
@@ -460,93 +520,118 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
 
                       Row(
-
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          if (voidReasons.isNotEmpty) ...[
-                            Expanded(
-                                child: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Color(0xFFE5EFFF),
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(color: const Color(0xFFE5EFFF)),
+                          // ✅ Enter Reason (fixed width, doesn't shrink)
+                          if (kot_remarks.isNotEmpty) ...[
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE5EFFF),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: const Color(0xFFE5EFFF)),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Text(
+                                    "Enter Reason:",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF393A3B),
+                                    ),
                                   ),
-                                  child: Row(
-                                    children: [
-                                      const Text(
-                                        "Enter Reason:",
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                          color: Color(0xFF393A3B),
-                                        ),
+                                  const SizedBox(width: 20),
+                                  SizedBox(
+                                    width: 450, // fixed width for dropdown
+                                    height: 30,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(color: const Color(0xFFE0E0E0)),
                                       ),
-
-                                      const SizedBox(width: 20),
-
-                                      Expanded(
-                                        child: Container(
-                                          height: 30,
-                                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius: BorderRadius.circular(6),
-                                            border: Border.all(color: const Color(0xFFE0E0E0)),
-                                          ),
-                                          child: DropdownButtonHideUnderline(
-                                            child: DropdownButton<String>(
-                                              value: selectedReason,
-                                              hint: const Text(
-                                                "Select Reason",
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: Color(0xFF9E9E9E),
-                                                ),
-                                              ),
-                                              isExpanded: true,
-                                              dropdownColor: Colors.white,
-                                              icon: const Icon(
-                                                Icons.keyboard_arrow_down,
-                                                color: Color(0xFF757575),
-                                              ),
-                                              style: const TextStyle(
-                                                fontSize: 12,
-                                                color: Color(0xFF212121),
-                                              ),
-                                              items: voidReasons.map((reason) {
-                                                return DropdownMenuItem<String>(
-                                                  value: reason,
-                                                  child: Text(
-                                                    reason,
-                                                    style: const TextStyle(
-                                                      fontSize: 12,
-                                                      color: Color(0xFF212121),
-                                                    ),
-                                                  ),
-                                                );
-                                              }).toList(),
-                                              onChanged: (value) {
-                                                setState(() {
-                                                  selectedReason = value;
-                                                });
-                                              },
+                                      child: DropdownButtonHideUnderline(
+                                        child: DropdownButton<String>(
+                                          value: selectedReason,
+                                          hint: const Text(
+                                            "Select Reason",
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Color(0xFF9E9E9E),
                                             ),
                                           ),
+                                          isExpanded: true,
+                                          dropdownColor: Colors.white,
+                                          icon: const Icon(
+                                            Icons.keyboard_arrow_down,
+                                            color: Color(0xFF757575),
+                                          ),
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Color(0xFF212121),
+                                          ),
+                                          items: kot_remarks.map((reason) {
+                                            return DropdownMenuItem<String>(
+                                              value: reason,
+                                              child: Text(
+                                                reason,
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: Color(0xFF212121),
+                                                ),
+                                              ),
+                                            );
+                                          }).toList(),
+                                          onChanged: (value) {
+                                            setState(() {
+                                              selectedReason = value;
+                                            });
+                                          },
                                         ),
                                       ),
-                                      const SizedBox(width: 12),
-                                    ],
+                                    ),
                                   ),
-                                )
-
+                                ],
+                              ),
                             ),
-
-                            const Spacer() // ✅ Correct spacing instead of Spacer
                           ],
 
-                          //  Update details Button
+                          // ✅ Spacer only if no success message
+                          if (_updateMessage == null) const Spacer(),
+
+                          // ✅ Success message (Flexible)
+                          if (_updateMessage != null) ...[
+                            const SizedBox(width: 12), // small space before message
+                            Flexible(
+                              child: Row(
+                                children: [
+                                  Image.asset(
+                                    "assets/success_tick.png",
+                                    width: 20,
+                                    height: 20,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Flexible(
+                                    child: Text(
+                                      _updateMessage!,
+                                      style: const TextStyle(
+                                        color: Colors.green,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                          ],
+
+                          // ✅ Update KOT button
                           ElevatedButton(
-                            onPressed: _updateKot,   // ✅ call API directly
+                            onPressed: _updateKot,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF4C5F7D),
                               padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 18),
@@ -563,11 +648,10 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                               ),
                             ),
                           ),
-
-
-                          const SizedBox(width: 12),
                         ],
                       )
+
+
 
                     ],
                   ),
@@ -811,7 +895,9 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                   itemCount: items.length,
                   itemBuilder: (context, index) {
                     final item = items[index];
-                    final unitPrice = (item.amount ?? 0) / ((item.quantity ?? 1));
+                    // final double unitPrice =
+                    //     (item.amount ?? 0).toDouble() / ((item.quantity ?? 1).toDouble());
+
                     final modifiers = parseModifiers(item.modifiers); // same function as left panel
 
                     return Container(
@@ -851,19 +937,30 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                             flex: 2,
                             child: Row(
                               children: [
-                                // Decrement
+
+                                // Decrement button
                                 _qtyButton(
                                   Icons.remove,
                                   onTap: (item.quantity ?? 0) > 0
                                       ? () {
                                     setInnerState(() {
                                       item.quantity = (item.quantity ?? 0) - 1;
-                                      item.amount = unitPrice * item.quantity!;
+                                      item.amount = item.unitPrice! * item.quantity!;
                                     });
-                                    setState(() {}); // triggers UI update including Net Payable
+
+                                    setState(() {
+                                      final subTotal = _leftPanelItems.fold<double>(
+                                        0.0,
+                                            (sum, i) => sum + (i.amount ?? 0),
+                                      );
+
+                                      _dynamicNetPayable = subTotal + _fixedTotalTax;
+                                    });
                                   }
                                       : null,
                                 ),
+
+
                                 Padding(
                                   padding: const EdgeInsets.symmetric(horizontal: 8),
                                   child: Text("${item.quantity ?? 0}"),
@@ -871,16 +968,25 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                                 // Increment
                                 _qtyButton(
                                   Icons.add,
-                                  onTap: (item.quantity ?? 0) < (item.quantity ?? 0) // restrict to backend value
-                                      ? () {
+                                  onTap: () {
                                     setInnerState(() {
                                       item.quantity = (item.quantity ?? 0) + 1;
-                                      item.amount = unitPrice * item.quantity!;
+                                      item.amount = item.unitPrice! * item.quantity!;
                                     });
-                                    setState(() {});
-                                  }
-                                      : null, // disable if reached backend value
+
+                                    setState(() {
+                                      final subTotal = _leftPanelItems.fold<double>(
+                                        0.0,
+                                            (sum, i) => sum + (i.amount ?? 0),
+                                      );
+
+                                      _dynamicNetPayable = subTotal + _fixedTotalTax;
+                                    });
+                                  },
                                 ),
+
+
+
                               ],
                             ),
                           ),

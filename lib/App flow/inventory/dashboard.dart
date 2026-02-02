@@ -107,8 +107,8 @@ class _DashboardState extends State<Dashboard> {
                     ),
                   ),
                   child: BlocProvider(
-                    create: (context) => ProductBloc(ProductRepository()),
-                    child: CustomBox(),
+                    create: (context) => ProductBloc(ProductRepository(token:  widget.token,)),
+                    child: CustomBox(token: widget.token),
                   ),
                 ),
               ),

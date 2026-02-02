@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/order/KOT_model.dart';
+import '../models/order/transfer_table_model.dart';
 import '../utils/logger.dart'; // make sure your AppLogger is here
 
 class KotRepository {
@@ -56,3 +57,41 @@ class KotRepository {
     }
   }
 }
+
+class KotTransferRepository {
+  final String baseUrl =
+      "https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1";
+
+  Future<KotTransferResponse> transferKot({
+    required int orderId,
+    required int kotId,
+    required int fromTableId,
+    required int toTableId,
+    required int restaurantId,
+    required int zoneId,
+    required String token,
+  }) async {
+    final response = await http.post(
+      Uri.parse("$baseUrl/kot/kot-transfer"),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
+      },
+      body: jsonEncode({
+        "order_id": orderId,
+        "kot_id": kotId,
+        "from_table_id": fromTableId,
+        "to_table_id": toTableId,
+        "restaurant_id": restaurantId,
+        "zone_id": zoneId,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return KotTransferResponse.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception("KOT transfer failed");
+    }
+  }
+}
+

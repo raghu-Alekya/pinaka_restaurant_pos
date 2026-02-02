@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class OrderlistModel {
   int? orderId;
   String? orderType;
@@ -20,7 +22,7 @@ class OrderlistModel {
   num? orderPrevTotal;
 
   String? isUpdated;
-  String? updatedRemarks;
+  String? updated_remarks;
 
   int? restaurantId;
   int? zoneId;
@@ -54,7 +56,7 @@ class OrderlistModel {
     this.total,
     this.orderPrevTotal,
     this.isUpdated,
-    this.updatedRemarks,
+    this.updated_remarks,
     this.restaurantId,
     this.zoneId,
     this.tableId,
@@ -91,7 +93,7 @@ class OrderlistModel {
       orderPrevTotal: num.tryParse(json['order_prev_total']?.toString() ?? "0") ?? 0,
 
       isUpdated: json['is_updated']?.toString(),
-      updatedRemarks: json['updated_remarks']?.toString(),
+      updated_remarks: json['updated_remarks']?.toString(),
 
       restaurantId: json['restaurant_id'],
       zoneId: json['zone_id'],
@@ -119,6 +121,7 @@ class KotOrder {
   String? createdAt;
   bool? isParent;
   List<LineItem>? lineItems;
+  List<Map<String, dynamic>>? metaData;
 
   KotOrder({
     this.kotOrderId,
@@ -127,11 +130,12 @@ class KotOrder {
     this.createdAt,
     this.isParent,
     this.lineItems,
+    this.metaData,
   });
 
   factory KotOrder.fromJson(Map<String, dynamic> json) {
     return KotOrder(
-      kotOrderId: json['kot_order_id'],
+      kotOrderId: json['id'] ?? json['kot_order_id'],
       status: json['status'],
       total: num.tryParse(json['total']?.toString() ?? "0") ?? 0,
       createdAt: json['created_at'],
@@ -139,6 +143,9 @@ class KotOrder {
 
       lineItems: (json['line_items'] as List?)
           ?.map((v) => LineItem.fromJson(v))
+          .toList(),
+      metaData: (json['meta_data'] as List?)
+          ?.map((e) => Map<String, dynamic>.from(e))
           .toList(),
     );
   }
@@ -157,6 +164,7 @@ class LineItem {
   num? itemPrice;
   List<String>? modifiers;
   double? originalAmount;
+  double? unitPrice;
 
   LineItem({
     this.lineItemId,
@@ -169,9 +177,36 @@ class LineItem {
     this.modifiers,
     this.itemPrice,
     this.originalAmount,
+    this.unitPrice,
   });
 
   factory LineItem.fromJson(Map<String, dynamic> json) {
+    List<String> parsedModifiers = [];
+
+    // Case 1: direct array
+    if (json['modifiers'] != null && (json['modifiers'] as List).isNotEmpty) {
+      parsedModifiers = (json['modifiers'] as List)
+          .map((e) => e is Map ? e['name'].toString() : e.toString())
+          .toList();
+    }
+    // Case 2: in meta_data
+    else if (json['meta_data'] != null && json['meta_data'] is List) {
+      for (var meta in json['meta_data']) {
+        if (meta['key'] == 'modifiers' && meta['value'] != null) {
+          try {
+            final decoded = jsonDecode(meta['value']);
+            if (decoded is List) {
+              parsedModifiers.addAll(decoded
+                  .map<String>((e) => e is Map ? e['name'].toString() : e.toString())
+                  .toList());
+            }
+          } catch (e) {
+            print("⚠️ Failed to parse modifiers from meta_data: $e");
+          }
+        }
+      }
+    }
+
     return LineItem(
       lineItemId: json['line_item_id'],
       itemId: json['product_id'] ?? json['item_id'],
@@ -181,14 +216,10 @@ class LineItem {
       total: num.tryParse(json['total']?.toString() ?? "0") ?? 0,
       modifierAmount: num.tryParse(json['modifier_amount']?.toString() ?? "0") ?? 0,
       itemPrice: num.tryParse(json['item_price']?.toString() ?? "0") ?? 0,
-
-      // 🔥 SAFELY PARSE MODIFIERS (STRING or OBJECT)
-      modifiers: (json['modifiers'] as List?)
-          ?.map((e) => e is Map ? e['name'].toString() : e.toString())
-          .toList() ??
-          [],
+      modifiers: parsedModifiers,
     );
   }
+
 }
 
 // ================== VIEW MAPPING =====================
@@ -205,7 +236,7 @@ extension OrderModelMapping on OrderlistModel {
       "customerContact": customerPhone,
       "status": status,
       "order_prev_total": orderPrevTotal ?? 0,
-      "updatedRemarks": updatedRemarks,
+      "updatedRemarks": updated_remarks,
       "kots": kotOrders?.map((k) => k.toMapForView()).toList() ?? [],
     };
   }
@@ -277,15 +308,15 @@ extension LineItemUpdateMapping on LineItem {
       "total": total,
       "modifier_amount": modifierAmount ?? 0,
       "item_price": itemPrice ?? 0,
-
-      // 🔥 MODIFIER SAFE FORMAT
-      "modifiers": modifiers
-          ?.map((m) => {
-        "name": m,
-        "amount": 0,
-      })
-          .toList() ??
-          [],
+      "modifier_amount": modifierAmount ?? 0,
+      // // 🔥 MODIFIER SAFE FORMAT
+      // "modifiers": modifiers
+      //     ?.map((m) => {
+      //   "name": m,
+      //   "amount": 0,
+      // })
+      //     .toList() ??
+      //     [],
     };
   }
 }

@@ -9,9 +9,10 @@ import '../../repositories/inventory_repository/manage_stock _repository.dart';
 
 class ManageStockDialog extends StatefulWidget {
   final Products beverage;
+  final String token;
   // final  beverage;
 
-  const ManageStockDialog({Key? key, required this.beverage}) : super(key: key);
+  const ManageStockDialog({Key? key, required this.beverage, required this.token,}) : super(key: key);
 
   @override
   State<ManageStockDialog> createState() => _ManageStockDialogState();
@@ -19,7 +20,7 @@ class ManageStockDialog extends StatefulWidget {
 
 class _ManageStockDialogState extends State<ManageStockDialog> {
   final TextEditingController quantityController = TextEditingController();
-  final ManageStockRepository _repository = ManageStockRepository();
+  late final ManageStockRepository _repository;
 
   bool isAddingStock = true;
   bool isLoading = false;
@@ -34,6 +35,9 @@ class _ManageStockDialogState extends State<ManageStockDialog> {
   @override
   void initState() {
     super.initState();
+
+    _repository = ManageStockRepository(token: widget.token);
+
     reduceSelected = {for (var r in reduceReasons) r: false};
     addSelected = {for (var r in addReasons) r: false};
   }
@@ -79,12 +83,15 @@ class _ManageStockDialogState extends State<ManageStockDialog> {
         isAdd: isAddingStock,           // Add / Reduce
         reason: reasons.first,          // API expects SINGLE reason
       );
-
       if (response.success) {
-        Navigator.of(context).pop(true);
+        Navigator.of(context).pop({
+          'qty': quantity,
+          'isAdd': isAddingStock,
+        });
       } else {
         throw Exception('Stock update failed');
       }
+
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString())),

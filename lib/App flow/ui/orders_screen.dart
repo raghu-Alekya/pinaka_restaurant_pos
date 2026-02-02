@@ -523,7 +523,7 @@ class OrderPanel extends StatelessWidget {
                               restaurantId: int.parse(restaurantId),
                               zoneId: orderState.zoneId,
                               token: token,
-                              tableNo: tableId.toString(),
+                              tableNo: orderState.tableName,
                             ),
                           ),
                         );

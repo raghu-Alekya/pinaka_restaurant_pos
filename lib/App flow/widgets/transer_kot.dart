@@ -1,4 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../blocs/Bloc Event/transfer_kot_event.dart';
+import '../../blocs/Bloc Logic/transfer_kot_bloc.dart';
+import '../../blocs/Bloc State/transfer_kot_state.dart';
+import '../../utils/TableStatusColors.dart';
 
 class TransferKotItem {
   String name;
@@ -17,22 +23,47 @@ class TransferKotItem {
 }
 
 class TransferKOTDialog extends StatefulWidget {
-  final String tableNo;
+  // UI
+  final String tableName;
   final String kotNo;
   final DateTime dateTime;
   final List<TransferKotItem> items;
 
-  /// zoneId -> tableNames
+  /// zoneName -> tableNames
   final Map<String, List<String>> zoneTables;
+
+  // 🔥 REQUIRED FOR API
+  final int orderId;
+  final int kotId;
+  final int fromTableId;
+  final int restaurantId;
+  final String authToken;
+
+  /// zoneName -> zoneId
+  final Map<String, int> zoneIds;
+
+  /// tableName -> tableId
+  final Map<String, int> tableIds;
+  final Map<String, String> tableStatus; // tableName → status
+
 
   const TransferKOTDialog({
     super.key,
-    required this.tableNo,
+    required this.tableName,
     required this.kotNo,
     required this.dateTime,
     required this.items,
     required this.zoneTables,
-    // required List<String> tables,
+
+    // API
+    required this.orderId,
+    required this.kotId,
+    required this.fromTableId,
+    required this.restaurantId,
+    required this.authToken,
+    required this.zoneIds,
+    required this.tableIds,
+    required this.tableStatus,
   });
 
   @override
@@ -118,7 +149,7 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
       child: Row(
         children: [
           Text(
-            "Table : #${widget.tableNo}",
+            "Table : #${widget.tableName}",
             style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
           ),
           const SizedBox(width: 18),
@@ -242,14 +273,14 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
       height: 36,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF125BCE),
+        color: const Color(0xFFFFFF),
         borderRadius: BorderRadius.circular(6),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: selectedZone,
           dropdownColor: Colors.white,
-          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
+          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black),
           style: const TextStyle(
               color: Colors.white, fontWeight: FontWeight.w600),
           onChanged: (value) {
@@ -262,7 +293,7 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
             return DropdownMenuItem(
               value: zone,
               child: Text("Zone $zone",
-                  style: const TextStyle(color: Colors.white)),
+                  style: const TextStyle(color: Colors.black)),
             );
           }).toList(),
         ),
@@ -286,32 +317,68 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
         final table = tables[index];
         final isSelected = selectedTable == table;
 
-        return InkWell(
-          onTap: () => setState(() => selectedTable = table),
-          child: Container(
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: const Color(0xFF4CAF50),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(
+        // ✅ normalize status
+        final rawStatus = widget.tableStatus[table] ?? "Available";
+        final status = rawStatus.trim().toLowerCase();
+
+        // 🎨 colors only (NO blocking)
+        final tableColor = TableStatusColors.getTableColor(status);
+        final textColor  = TableStatusColors.getChairColor(status);
+
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(6),
+            onTap: () {
+              debugPrint("🟢 Table selected for transfer: $table");
+              setState(() {
+                selectedTable = table;
+              });
+            },
+            child: Container(
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
                 color: isSelected
-                    ? const Color(0xFF1E63FF)
-                    : const Color(0xFF4CAF50),
-                width: isSelected ? 2 : 1,
+                    ? const Color(0xFF1E63FF) // 🔵 selected
+                    : tableColor,             // 🎨 status color
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: isSelected
+                      ? const Color(0xFF1E63FF)
+                      : Colors.transparent,
+                  width: 2,
+                ),
               ),
-            ),
-            child: Text(
-              table,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    table,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : textColor,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    rawStatus, // show status text
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: isSelected
+                          ? Colors.white70
+                          : textColor.withOpacity(0.8),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
       },
     );
   }
+
 
   // ================= RIGHT PANEL =================
 
@@ -342,32 +409,43 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
           child: SizedBox(
             width: 140,
             height: 40,
-            child: ElevatedButton(
+            child:ElevatedButton(
               onPressed: selectedTable == null
                   ? null
                   : () {
-                Navigator.pop(context, {
-                  "zone": selectedZone,
-                  "table": selectedTable,
-                  "items":
-                  items.where((e) => e.selected).toList(),
-                });
+                final selectedItems =
+                items.where((e) => e.selected).toList();
+
+                if (selectedItems.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Select at least one item"),
+                    ),
+                  );
+                  return;
+                }
+
+                context.read<TransferKotBloc>().add(
+                  TransferKotEvent(
+                    orderId: widget.orderId,
+                    kotId: widget.kotId,
+                    fromTableId: widget.fromTableId,
+                    toTableId:
+                    widget.tableIds[selectedTable!]!,
+                    restaurantId: widget.restaurantId,
+                    zoneId: widget.zoneIds[selectedZone!]!,
+                    token: widget.authToken,
+                  ),
+                );
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFE6464),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                elevation: 0,
-              ),
-              child: const Text(
-                "Yes, Continue",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
+              style: ButtonStyle(
+                backgroundColor: MaterialStateProperty.all(
+                  const Color(0xFFFE6464),
                 ),
               ),
+              child: const Text("Yes, Continue"),
             ),
+
           ),
         ),
       ],
@@ -379,7 +457,26 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
+    return BlocListener<TransferKotBloc, TransferKotState>(
+        listener: (context, state) {
+          if (state is KotTransferSuccess) {
+            Navigator.pop(context, {
+              "newParentId": state.newParentId,
+              "toTableId": state.toTableId,
+            });
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.message)),
+            );
+          }
+
+          if (state is KotTransferFailure) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.error)),
+            );
+          }
+        },
+     child: Dialog(
       backgroundColor: Colors.white,
       insetPadding:
       const EdgeInsets.symmetric(horizontal: 26, vertical: 16),
@@ -423,6 +520,7 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
           ],
         ),
       ),
-    );
+    ));
+
   }
 }

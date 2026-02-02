@@ -713,7 +713,13 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                       _row("Net Total", netTotal, isBold: true),
                       _row("Merchant Discount", merchantDiscount, color: Colors.blue),
                       const DottedLine(),
-                      _row("Net Payable", calculatedNetPayable, isBold: true, fontSize: 18),
+                      _row(
+                        "Net Payable",
+                        calculatedNetPayable.roundToDouble(),
+                        isBold: true,
+                        fontSize: 18,
+                      ),
+
                     ],
                   );
                 }
@@ -763,8 +769,9 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
               const Spacer(),
 
               /// NET PAYABLE
+              /// NET PAYABLE (ROUNDED)
               Text(
-                "Net Payable : ${ calculatedNetPayable.toStringAsFixed(2)}",
+                "Net Payable : ${calculatedNetPayable.roundToDouble().toStringAsFixed(2)}",
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,

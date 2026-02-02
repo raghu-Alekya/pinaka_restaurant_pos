@@ -19,8 +19,8 @@ import 'custom_item.dart';
 
 
 class CustomBox extends StatefulWidget {
-  const CustomBox({super.key});
-
+  final String token;
+  const CustomBox({super.key, required this.token});
   @override
   State<CustomBox> createState() => _CustomBoxState();
 }
@@ -35,7 +35,7 @@ class _CustomBoxState extends State<CustomBox> {
 
   List<Products> allBeverages = [];
   List<Products> filteredBeverages = [];
-  final ProductRepository _repository = ProductRepository();
+  late final ProductRepository _repository;
   bool isLoading = false;
   bool _popupShown = false;
   bool _isScanning = false;
@@ -68,6 +68,8 @@ class _CustomBoxState extends State<CustomBox> {
     super.initState();
     _searchController.addListener(_onSearchChanged);
     _searchFocusNode.requestFocus();
+    // Initialize repository with token
+    _repository = ProductRepository(token: widget.token);
   }
 
   void _showSortPopup() {
@@ -508,6 +510,7 @@ class _CustomBoxState extends State<CustomBox> {
     showDialog(
       context: context,
       builder: (context) => AddItemDialog(
+        token: widget.token,
         onItemAdded: (Products product) async {
           Navigator.pop(context);
 
@@ -533,7 +536,7 @@ class _CustomBoxState extends State<CustomBox> {
         onBarcodeScanned: _onBarcodeScanned,
         child: Container(
           color: const Color(0xFFE7EDFF),
-          padding: const EdgeInsets.all(6),
+          padding: const EdgeInsets.all(10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -825,36 +828,37 @@ class _CustomBoxState extends State<CustomBox> {
                   children: [
                     // Grid container
                     Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 2), // padding for vertical lines
-                      child: isLoading
-                          ? const Center(child: CircularProgressIndicator())
-                          : filteredBeverages.isEmpty
-                          ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Image.asset(
-                              'assets/emptyinventory.png',
-                              width: 140,
-                              height: 140,
-                              fit: BoxFit.contain,
-                            ),
-                            const SizedBox(height: 16),
-                            const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 24),
-                              child: Text(
-                                "Use the search bar or barcode scanner to view product details and manage inventory.",
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey,
+                        margin: const EdgeInsets.symmetric(horizontal: 2), // padding for vertical lines
+                        child: isLoading
+                            ? const Center(child: CircularProgressIndicator())
+                            : filteredBeverages.isEmpty
+                            ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Image.asset(
+                                'assets/emptyinventory.png',
+                                width: 140,
+                                height: 140,
+                                fit: BoxFit.contain,
+                              ),
+                              const SizedBox(height: 16),
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 24),
+                                child: Text(
+                                  "Use the search bar or barcode scanner to view product details and manage inventory.",
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      )
-                          : BeverageGrid(beverages: filteredBeverages),
+                            ],
+                          ),
+                        )
+                            : BeverageGrid(beverages: filteredBeverages, token: widget.token)
+
                     ),
 
                     // Left vertical line

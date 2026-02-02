@@ -35,3 +35,38 @@ class TableModel {
     );
   }
 }
+class KotTransferResponse {
+  final bool success;
+  final String message;
+  final int kotOrderId;
+  final int fromTableId;
+  final int toTableId;
+  final int newParentId;
+  final int restaurantId;
+  final int zoneId;
+
+  KotTransferResponse({
+    required this.success,
+    required this.message,
+    required this.kotOrderId,
+    required this.fromTableId,
+    required this.toTableId,
+    required this.newParentId,
+    required this.restaurantId,
+    required this.zoneId,
+  });
+
+  factory KotTransferResponse.fromJson(Map<String, dynamic> json) {
+    return KotTransferResponse(
+      success: json['success'] ?? false,
+      message: json['message'] ?? '',
+      kotOrderId: json['kot_order_id'],
+      fromTableId: json['from_table_id'],
+      toTableId: json['to_table_id'],
+      newParentId: json['new_parent_id'],
+      restaurantId: json['restaurant_id'],
+      zoneId: json['zone_id'],
+    );
+  }
+}
+

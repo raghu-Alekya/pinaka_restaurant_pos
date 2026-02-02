@@ -6,10 +6,13 @@ import 'manage_stock.dart';
 
 class BeverageGrid extends StatelessWidget {
   final List<Products> beverages;
+  final String token;
+
 
   const BeverageGrid({
     Key? key,
     required this.beverages,
+    required this.token,
   }) : super(key: key);
 
   @override
@@ -33,7 +36,7 @@ class BeverageGrid extends StatelessWidget {
       ),
       itemCount: beverages.length,
       itemBuilder: (context, index) {
-        return BeverageCard(beverage: beverages[index]);
+        return BeverageCard(beverage: beverages[index],  token: token, );
       },
     );
   }
@@ -41,10 +44,12 @@ class BeverageGrid extends StatelessWidget {
 
 class BeverageCard extends StatelessWidget {
   final Products beverage;
+  final String token;
 
   const BeverageCard({
     Key? key,
     required this.beverage,
+    required this.token,
   }) : super(key: key);
 
 
@@ -69,7 +74,7 @@ class BeverageCard extends StatelessWidget {
         showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (_) => ManageStockDialog(beverage: beverage),
+          builder: (_) => ManageStockDialog(beverage: beverage,  token: token,),
         );
       },
       child: Container(

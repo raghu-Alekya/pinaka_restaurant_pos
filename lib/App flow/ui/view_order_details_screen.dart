@@ -2,9 +2,12 @@ import 'dart:convert';
 
 import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/material.dart';
+import '../../constants/constants.dart';
 import '../../models/UserPermissions.dart';
+import '../../models/order/order_model.dart';
 import '../../models/order_list/order_list_model.dart';
 // import '../../repositories/cancel_order_list_repository.dart';
+import '../../repositories/cancel_order_list_repository.dart';
 import '../../repositories/order_list_repository.dart';
 import '../widgets/navigationhelper.dart';
 import '../widgets/top_bar.dart';
@@ -120,6 +123,98 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
   //
   //   print("🎉 FULL ORDER CANCELLED SUCCESSFULLY");
   // }
+  Future<void> _cancelCompletedOrder(OrderlistModel orderModel) async {
+    if (orderModel.orderId == null) return;
+
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+
+      final repo = CancelOrderRepository();
+
+      // =================== Step 1: Cancel child KOTs ===================
+      if (orderModel.kotOrders != null && orderModel.kotOrders!.isNotEmpty) {
+        for (var kot in orderModel.kotOrders!) {
+          if (kot.status != "cancelled") {
+            print("📌 Attempting to cancel KOT → ID: ${kot.kotOrderId}");
+            print("📌 KOT Status: ${kot.status}");
+            print("📌 Endpoint: ${AppConstants.cancelOrder(kot.kotOrderId!)}");
+            print("📌 Payload: ${jsonEncode({
+              "flag_type": "update_kot_status",
+              "status": "cancelled",
+              "restaurant_id": orderModel.restaurantId,
+              "zone_id": orderModel.zoneId,
+            })}");
+
+            await repo.cancelKot(
+              parentOrderId: orderModel.orderId!, // endpoint now uses parent order
+              kotOrderId: kot.kotOrderId!,        // optional for backend reference
+              restaurantId: orderModel.restaurantId!,
+              zoneId: orderModel.zoneId!,
+              token: widget.token,
+            );
+
+
+            print("✅ KOT Cancelled → ID: ${kot.kotOrderId}");
+            kot.status = "cancelled"; // update local state
+          }
+        }
+      }
+
+      // =================== Step 2: Cancel parent order ===================
+      print("📌 Attempting to cancel parent order → ID: ${orderModel.orderId}");
+      print("📌 Parent Endpoint: ${AppConstants.cancelOrder(orderModel.orderId!)}");
+      print("📌 Parent Payload: ${jsonEncode({
+        "flag_type": "cancel_parent_order",
+        "restaurant_id": orderModel.restaurantId,
+        "zone_id": orderModel.zoneId,
+      })}");
+
+      final response = await repo.cancelOrder(
+        orderId: orderModel.orderId!,
+        restaurantId: orderModel.restaurantId!,
+        zoneId: orderModel.zoneId!,
+        token: widget.token,
+      );
+
+      Navigator.pop(context); // close loader
+
+      print("✅ Parent Order Cancelled → ID: ${orderModel.orderId}");
+      print("📥 Response: ${response.message}");
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(response.message.isNotEmpty
+              ? response.message
+              : "✅ Order cancelled successfully"),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      // =================== Step 3: Update parent order status ===================
+      setState(() {
+        orderModel.status = "cancelled";
+      });
+
+    } catch (e) {
+      Navigator.pop(context); // close loader if error
+      print("❌ Failed to cancel order: $e");
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("❌ Failed to cancel order: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+
+
+
 
   List<String> extractModifierNames(Map<String, dynamic> item) {
     debugPrint("🟡 FULL ITEM MAP → $item");
@@ -468,13 +563,10 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                                   ),
                                                                 ),
                                                                 onPressed: () {
-                                                                  Navigator.pop(context);
-
-                                                                  if (orderModel.orderId != null) {
-                                                                    // cancelOrder(orderModel);
-
-                                                                  }
+                                                                  Navigator.pop(context); // close confirmation dialog
+                                                                  _cancelCompletedOrder(orderModel); // <-- make sure this is OrderlistModel
                                                                 },
+
                                                                 child: const Text(
                                                                   'Yes, Done',
                                                                   style: TextStyle(fontSize: 15,color: Colors.white,),
@@ -954,9 +1046,9 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                         Container(
                                           width: 1,
                                           color: Colors.grey[300],
-                                          margin: const EdgeInsets.symmetric(horizontal: 12),
+                                          margin: const EdgeInsets.symmetric(horizontal: 2),
                                         ),
-
+                                        const SizedBox(width: 8),
                                         // Reason for edit
                                         Expanded(
                                           child: Row(
@@ -964,26 +1056,28 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                               const Text(
                                                 "Reason for edit- ",
                                                 style: TextStyle(
-                                                  fontSize: 14,
+                                                  fontSize: 12,
                                                   fontWeight: FontWeight.w400,
+                                                  color: Color(0xFF7A7A7A),
                                                 ),
                                               ),
                                               Expanded(
                                                 child: Text(
-                                                  (order['is_updated'] == 'yes' &&
-                                                      order['updatedRemarks'] != null &&
-                                                      order['updatedRemarks'].toString().trim().isNotEmpty)
-                                                      ? order['updatedRemarks'].toString()
+                                                  (orderModel.isUpdated?.toLowerCase() == 'yes' &&
+                                                      orderModel.updated_remarks != null &&
+                                                      orderModel.updated_remarks!.trim().isNotEmpty)
+                                                      ? orderModel.updated_remarks!
                                                       : '-',
 
                                                   style: const TextStyle(
                                                     fontSize: 14,
                                                     fontWeight: FontWeight.w500,
                                                   ),
-                                                  maxLines: 3, // or null for unlimited
+                                                  maxLines: 1,
                                                   overflow: TextOverflow.ellipsis,
                                                 ),
                                               ),
+
 
                                             ],
                                           ),

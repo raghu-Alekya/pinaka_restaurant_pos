@@ -14,10 +14,10 @@ import '../../repositories/inventory_repository/tax_inventory_repository.dart';
 import 'dashboard.dart';
 
 class AddItemDialog extends StatefulWidget {
-
+  final String token;
   final Function(Products product) onItemAdded;
 
-  const AddItemDialog({super.key, required this.onItemAdded});
+  const AddItemDialog({super.key, required this.onItemAdded,   required this.token,});
 
   @override
   State<AddItemDialog> createState() => _AddItemDialogState();
@@ -45,6 +45,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
   OverlayEntry? _taxOverlay;
   final LayerLink _taxLayerLink = LayerLink();
 
+  String? _selectedImagePath;
 
   // Categories
   CategorySublistResponse? categoryResponse;
@@ -64,9 +65,9 @@ class _AddItemDialogState extends State<AddItemDialog> {
   bool isLoading = false;
   String? error;
 
-
-  final String token =
-      'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvbWVyY2hhbnRyZXN0YXVyYW50LmFsZWt0YXNvbHV0aW9ucy5jb20iLCJpYXQiOjE3NjgyMDMwNjQsIm5iZiI6MTc2ODIwMzA2NCwiZXhwIjoxNzcwNzk1MDY0LCJkYXRhIjp7InVzZXIiOnsiaWQiOjUsImRldmljZSI6IiIsInBhc3MiOiIyYjhlMjJlOTM2ZTY0N2JhNDRmOWJhMmY3Y2Q1ZmFjNiJ9fX0.vBVcnan6C9hN-ZDGN1vgpN_MkuT4twI-_WqXGOTgAio';
+  //
+  // final String token =
+  //     'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvbWVyY2hhbnRyZXN0YXVyYW50LmFsZWt0YXNvbHV0aW9ucy5jb20iLCJpYXQiOjE3NjgyMDMwNjQsIm5iZiI6MTc2ODIwMzA2NCwiZXhwIjoxNzcwNzk1MDY0LCJkYXRhIjp7InVzZXIiOnsiaWQiOjUsImRldmljZSI6IiIsInBhc3MiOiIyYjhlMjJlOTM2ZTY0N2JhNDRmOWJhMmY3Y2Q1ZmFjNiJ9fX0.vBVcnan6C9hN-ZDGN1vgpN_MkuT4twI-_WqXGOTgAio';
 
   @override
   void initState() {
@@ -107,7 +108,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
 
   Future<void> fetchTaxes() async {
     try {
-      final repo =TaxinventoryRepository(token);
+      final repo =TaxinventoryRepository(widget.token);
       final data = await repo.fetchTaxes();
       setState(() => taxes = data);
     } catch (e) {
@@ -127,11 +128,11 @@ class _AddItemDialogState extends State<AddItemDialog> {
 
       final alcohol = await repo.fetchCategorySublist(
         categoryId: 131,
-        token: token,
+        token: widget.token,
       );
       final beverages = await repo.fetchCategorySublist(
         categoryId: 228,
-        token: token,
+        token: widget.token,
       );
 
       setState(() {
@@ -227,7 +228,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
   Future<void> fetchProducts({required int categoryId}) async {
     try {
       setState(() => isLoading = true);
-      final repo = ProductRepository();
+      final repo = ProductRepository( token: widget.token,);
       final model = await repo.getProducts(categoryId: categoryId);
       if (model.products.isNotEmpty) widget.onItemAdded(model.products.first);
     } catch (e) {
@@ -300,7 +301,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(6),
                                   child: Image.asset(
-                                    'assets/uploadimg.png',
+                                    'assets/uploadimage.png',
                                     fit: BoxFit.contain,
                                   ),
                                 ),
@@ -883,6 +884,8 @@ class _AddItemDialogState extends State<AddItemDialog> {
           print("🟢 ADD BUTTON PRESSED");
           setState(() => isSubmitting = true);
 
+          print("🧪 Selected image path = $_selectedImagePath");
+
           // Validation
           if (_nameController.text.isEmpty ||
               _skuController.text.isEmpty ||
@@ -918,10 +921,22 @@ class _AddItemDialogState extends State<AddItemDialog> {
           print(" Notes: ${_notesController.text.trim()}");
           print("📤 category_id (sub): ${selectedCategory?.id}");
           print("📤 mini_category_id: ${selectedMiniCategory?.id}");
+          int? imageId;
 
           try {
+            // 🔼 STEP 1: Upload image if selected
+            if (_selectedImagePath != null &&
+                _selectedImagePath!.isNotEmpty) {
+              imageId = await _repository.uploadImageToMedia(
+                token: widget.token,
+                imagePath: _selectedImagePath!,
+              );
+              print("🖼️ Image uploaded. Media ID: $imageId");
+            }
+
+            // 🔼 STEP 2: Create / Update Item
             final response = await _repository.addOrUpdateItem(
-              token: token,
+              token: widget.token,
               itemName: _nameController.text.trim(),
               categoryId: selectedCategory?.id ?? 0,
               miniCategoryId: selectedMiniCategory?.id,
@@ -931,44 +946,23 @@ class _AddItemDialogState extends State<AddItemDialog> {
               int.tryParse(_thresholdController.text.trim()) ?? 0,
               itemNote: _notesController.text.trim(),
               itemSku: _skuController.text.trim(),
-              imagePath: _pickedImage?.path,
+              imageId: imageId, // ✅ NOW SENT
             );
 
             if (!mounted) return;
 
             if (response.isCreated) {
-              // Create product object
-              final product = Products(
-                id: response.itemId,
-                itemName: _nameController.text.trim(),
-                threshold: response.itemPrice,
-                remaining: _unitsController.text.trim(),
-                soldTotal: 0,
-                statusLabel: "Normal",
-                statusColor: "#4CAF50",
-                image: null,
-                sku: '',
-              );
-
-              // Call parent callback
-              widget.onItemAdded(product);
-
-              // ✅ Pop dialog
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const Dashboard(token: '', pin: '', restaurantId: '', restaurantName: '',)),
-              );
-            } else {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("Failed: ${response.message}")),
+                const SnackBar(content: Text("✅ Item added successfully")),
               );
+              Navigator.pop(context);
             }
           } catch (e) {
-            if (mounted) {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text("Error: $e")));
-            }
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("❌ Error: $e")),
+            );
+
+
           } finally {
             if (mounted) setState(() => isSubmitting = false);
           }
