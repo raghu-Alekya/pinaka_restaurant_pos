@@ -290,7 +290,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
-  void _onNavItemTapped(int index) {
+  void _onNavItemTapped(int index) async {
+    final permissions =
+        widget.userPermissions ?? await SessionManager.loadPermissions();
+    // 🔍 DEBUG LINE — ADD IT HERE
+    debugPrint("BOTTOM NAV PERMS: ${permissions?.displayName}");
+
+
     NavigationHelper.handleNavigation(
       context,
       _bottomNavIndex,
@@ -299,9 +305,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       widget.token,
       widget.restaurantId,
       widget.restaurantName,
-      widget.userPermissions,
+      permissions, // ✅ NEVER NULL NOW
     );
   }
+
   Future<void> _loadPermissions() async {
     final savedPermissions = await SessionManager.loadPermissions();
     if (savedPermissions != null) {
@@ -326,11 +333,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         onPermissionsReceived: (permissions) async {
           setState(() {
             _userPermissions = permissions;
-            _selectedUser = {
-              "id": permissions.userId,
-              "name": permissions.displayName,
-              "role": permissions.role,
-            };
+            // _selectedUser = {
+            //   "id": permissions.userId,
+            //   "name": permissions.displayName,
+            //   "role": permissions.role,
+            // };
           });
         },
       ),

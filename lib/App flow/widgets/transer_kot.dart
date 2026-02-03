@@ -99,8 +99,15 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
   String get onlyTime =>
       TimeOfDay.fromDateTime(widget.dateTime).format(context);
 
-  List<String> get tables =>
-      widget.zoneTables[selectedZone] ?? [];
+  List<String> get tables {
+    final allTables = widget.zoneTables[selectedZone] ?? [];
+
+    return allTables.where((tableName) {
+      final tableId = widget.tableIds[tableName];
+      return tableId != widget.fromTableId; // ❌ hide same table
+    }).toList();
+  }
+
 
   // ================= HEADER =================
 
@@ -443,7 +450,13 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
                   const Color(0xFFFE6464),
                 ),
               ),
-              child: const Text("Yes, Continue"),
+              child: const Text(
+                "Yes, Continue",
+                style: TextStyle(
+                  color: Colors.white,
+                ),
+              ),
+
             ),
 
           ),
@@ -465,9 +478,9 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
               "toTableId": state.toTableId,
             });
 
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message)),
-            );
+            // ScaffoldMessenger.of(context).showSnackBar(
+            //   SnackBar(content: Text(state.message)),
+            // );
           }
 
           if (state is KotTransferFailure) {

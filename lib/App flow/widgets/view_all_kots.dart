@@ -529,7 +529,10 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                 ),
                                 child: TransferKOTDialog(
                                   tableName: widget.tableNo,
-                                  kotNo: kot.kotId.toString(),
+                                  kotNo: (kot.kotNumber?.isNotEmpty ?? false)
+                                      ? kot.kotNumber!
+                                      : "KOT#${kot.kotId}",
+
                                   dateTime: kot.time ?? DateTime.now(),
                                   items: transferItems,
                                   zoneTables: zoneTables,
@@ -548,18 +551,20 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                             },
                           );
                           if (result != null && result is Map) {
-                            final newParentId = result["newParentId"];
+                            // final newParentId = result["newParentId"];
 
-                            debugPrint("🔁 Transfer done → refreshing View All KOTs");
+                            debugPrint("🔁 Transfer done → refreshing KOT list");
 
                             context.read<KotBloc>().add(
                               FetchKots(
-                                parentOrderId: newParentId,
+                                parentOrderId: widget.parentOrderId, // ✅ SAME ID
                                 restaurantId: widget.restaurantId!,
                                 zoneId: widget.zoneId,
                                 token: widget.token,
+                                // forceRefresh: true,
                               ),
                             );
+
                           }
 
 

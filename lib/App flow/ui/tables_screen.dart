@@ -968,7 +968,7 @@ class _TablesScreenState extends State<TablesScreen> {
             ),
           ));
 
-          Navigator.pushReplacement(
+          Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => MultiBlocProvider(
@@ -1209,7 +1209,7 @@ class _TablesScreenState extends State<TablesScreen> {
           ));
 
           // Navigate to DashboardScreen
-          Navigator.pushReplacement(
+          Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => MultiBlocProvider(
@@ -1360,7 +1360,7 @@ class _TablesScreenState extends State<TablesScreen> {
             // guests: [guestDetails],
           ));
 
-          Navigator.pushReplacement(
+          Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => MultiBlocProvider(

@@ -42,7 +42,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
   String? _selectedStatus;
   String? _selectedDate;
 
-  final List<String> statusOptions = ['All', 'Completed', 'Pending', 'Declined'];
+  final List<String> statusOptions = ['All', 'Completed', 'Processing', 'cancelled'];
   DateTime? selectedDate;
 
   void _onItemTapped(int index) {

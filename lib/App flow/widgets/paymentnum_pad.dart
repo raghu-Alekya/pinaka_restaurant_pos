@@ -77,6 +77,7 @@ class _paymentsummaryState extends State<paymentsummary> {
 
 
 
+
   final TextEditingController discountController =
   TextEditingController();
   final TextEditingController couponController =
@@ -138,6 +139,19 @@ class _paymentsummaryState extends State<paymentsummary> {
 
   Future<void> _submitPayment() async {
     debugPrint("🟡 SUBMIT PAYMENT CALLED");
+    // debugPrint("🟡 SUBMIT PAYMENT CALLED");
+
+    // ✅ BLOCK PAYMENT WHEN NET PAYABLE IS ZERO
+    final paymentState = context.read<PaymentBloc>().state;
+    if (paymentState is PaymentSummaryLoaded &&
+        paymentState.summary.netTotal <= 0) {
+      debugPrint("⛔ Net payable is zero — payment not required");
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("No payment required for this order")),
+      );
+      return;
+    }
 
     final orderBloc = context.read<OrderBloc>();
 
@@ -207,6 +221,17 @@ class _paymentsummaryState extends State<paymentsummary> {
 
 
   Future<void> handleKeyPress(String key) async {
+    final netPayable =
+    (context.read<PaymentBloc>().state is PaymentSummaryLoaded)
+        ? (context.read<PaymentBloc>().state as PaymentSummaryLoaded)
+        .summary
+        .netTotal
+        : 0.0;
+
+    if (netPayable <= 0) {
+      // ❌ completely block keypad when no payment needed
+      return;
+    }
     // ✅ PAY BUTTON
     if (key == "Pay") {
       if (amount.isEmpty) {
@@ -316,6 +341,7 @@ class _paymentsummaryState extends State<paymentsummary> {
           ? (bloc.state as PaymentSummaryLoaded).summary.netTotal
           : 0.0,
     );
+    final bool isPaymentDisabled = netPayable <= 0;
 
 
 
@@ -566,37 +592,28 @@ class _paymentsummaryState extends State<paymentsummary> {
                                       ),
                                       SizedBox(height: 8),
                                       Container(
-                                        height:
-                                        MediaQuery
-                                            .of(context)
-                                            .size
-                                            .height *
-                                            0.07,
-                                        width:
-                                        MediaQuery
-                                            .of(context)
-                                            .size
-                                            .width *
-                                            0.38,
+                                        height: MediaQuery.of(context).size.height * 0.07,
+                                        width: MediaQuery.of(context).size.width * 0.38,
                                         decoration: BoxDecoration(
-                                          color: Color(0xFFFFFDFD),
-                                          borderRadius: BorderRadius.circular(
-                                              5),
+                                          color: isPaymentDisabled
+                                              ? Colors.grey.shade200   // 👈 disabled look
+                                              : const Color(0xFFFFFDFD),
+                                          borderRadius: BorderRadius.circular(5),
                                           border: Border.all(
-                                            color: Color(
-                                              0xFFF2EEEE,
-                                            ).withOpacity(0.5),
+                                            color: const Color(0xFFF2EEEE).withOpacity(0.5),
                                             width: 0.8,
                                           ),
                                         ),
                                         child: Padding(
-                                          padding: EdgeInsets.only(right: 8.0),
+                                          padding: const EdgeInsets.only(right: 8.0),
                                           child: Align(
                                             alignment: Alignment.centerRight,
                                             child: Text(
-                                              amount.isNotEmpty ? amount : '',
+                                              isPaymentDisabled ? "0.00" : amount,
                                               style: TextStyle(
-                                                color: Color(0xFF4C5F7D),
+                                                color: isPaymentDisabled
+                                                    ? Colors.grey
+                                                    : const Color(0xFF4C5F7D),
                                                 fontSize: 15,
                                                 fontFamily: 'Inter',
                                                 fontWeight: FontWeight.w500,
@@ -606,6 +623,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                                           ),
                                         ),
                                       ),
+
                                       SizedBox(height: 5),
                                       Padding(
                                         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -624,12 +642,17 @@ class _paymentsummaryState extends State<paymentsummary> {
                                               runSpacing: 10,
                                               children: presetAmounts.map((value) {
                                                 return GestureDetector(
-                                                  onTap: () => _onPresetAmountTap(value.toStringAsFixed(0)),
+                                                  onTap: isPaymentDisabled
+                                                      ? null
+                                                      : () => _onPresetAmountTap(value.toStringAsFixed(0)),
+
                                                   child: Container(
                                                     height: MediaQuery.of(context).size.height * 0.05,
                                                     width: MediaQuery.of(context).size.width * 0.10,
                                                     decoration: BoxDecoration(
-                                                      color: amount == value.toStringAsFixed(0)
+                                                      color: isPaymentDisabled
+                                                          ? Colors.grey.shade300
+                                                          : amount == value.toStringAsFixed(0)
                                                           ? const Color(0xFFDFF5E1)
                                                           : const Color(0xFFE1F9DA),
                                                       borderRadius: BorderRadius.circular(5),
@@ -1486,12 +1509,24 @@ Widget _buildPaymentModeItem(
     String selectedOption,
     Function(String) onSelect,
     ) {
-  final List<Map<String, String>> options = [
-    {"label": "Cash", "image": "assets/cash.png"},
-    {"label": "Card", "image": "assets/card.png"},
-    {"label": "UPI", "image": "assets/icon/upi.png"},
-    //{"label": "EBT", "image": "assets/images/EDA.png"},
+  final List<Map<String, dynamic>> options = [
+    {
+      "label": "Cash",
+      "image": "assets/cash.png",
+      "enabled": true,
+    },
+    {
+      "label": "Card",
+      "image": "assets/card.png",
+      "enabled": false, // ❌ disabled
+    },
+    {
+      "label": "UPI",
+      "image": "assets/icon/upi.png",
+      "enabled": false, // ❌ disabled
+    },
   ];
+
 
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1524,59 +1559,70 @@ Widget _buildPaymentModeItem(
           children:
           options.map((option) {
             final bool isSelected = selectedOption == option['label'];
+            final bool isEnabled = option['enabled'] == true;
+
             return GestureDetector(
-              onTap: () => onSelect(option['label']!),
-              child: Container(
-                margin: EdgeInsets.symmetric(vertical: 5),
-                height: 35,
-                width: 120,
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isSelected ? Color(0xFFFCDFDC) : Color(0xFFFFFFFF),
-                  borderRadius: BorderRadius.circular(0),
-                  border:
-                  isSelected
-                      ? Border.all(color: Color(0xFFFE6464))
-                      : null,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x10000000),
-                      offset: Offset(0, 1),
-                      blurRadius: 10,
-                      spreadRadius: 0,
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Image.asset(
-                      option['image']!,
-                      width: 30,
-                      height: 30,
-                    ),
-                    SizedBox(width: 0),
-                    Text(
-                      option['label']!,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color:
-                        isSelected
-                            ? Color(0xFFFE6464)
-                            : Color(0xFF4147D5),
-                        fontSize: 13,
-                        fontFamily: 'Montserrat',
-                        fontWeight: FontWeight.w500,
-                        height: 1.50,
-                        letterSpacing: 0.60,
-                        decoration: TextDecoration.none,
+              onTap: isEnabled ? () => onSelect(option['label']!) : null,
+              child: Opacity(
+                opacity: isEnabled ? 1.0 : 0.4, // 👈 disabled look
+                child: Container(
+                  margin: const EdgeInsets.symmetric(vertical: 5),
+                  height: 35,
+                  width: 120,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color(0xFFFCDFDC)
+                        : const Color(0xFFFFFFFF),
+                    borderRadius: BorderRadius.circular(0),
+                    border: isSelected
+                        ? Border.all(color: const Color(0xFFFE6464))
+                        : Border.all(color: Colors.grey.shade300),
+                    boxShadow: [
+                      BoxShadow(
+                        color: isEnabled
+                            ? const Color(0x10000000)
+                            : Colors.transparent,
+                        offset: const Offset(0, 1),
+                        blurRadius: 10,
+                        spreadRadius: 0,
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image.asset(
+                        option['image']!,
+                        width: 30,
+                        height: 30,
+                        color: isEnabled ? null : Colors.grey, // 👈 grey icon
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        option['label']!,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: !isEnabled
+                              ? Colors.grey
+                              : isSelected
+                              ? const Color(0xFFFE6464)
+                              : const Color(0xFF4147D5),
+                          fontSize: 13,
+                          fontFamily: 'Montserrat',
+                          fontWeight: FontWeight.w500,
+                          height: 1.50,
+                          letterSpacing: 0.60,
+                          decoration: TextDecoration.none,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
           }).toList(),
+
         ),
       ),
     ],

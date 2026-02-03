@@ -6,12 +6,12 @@ import '../../constants/constants.dart';
 import '../../models/UserPermissions.dart';
 import '../../models/order/order_model.dart';
 import '../../models/order_list/order_list_model.dart';
-// import '../../repositories/cancel_order_list_repository.dart';
 import '../../repositories/cancel_order_list_repository.dart';
 import '../../repositories/order_list_repository.dart';
 import '../widgets/navigationhelper.dart';
 import '../widgets/top_bar.dart';
 import '../widgets/bottom_nav_bar.dart';
+import 'CheckinPopup.dart';
 import 'edit_order_screen.dart';
 // import 'edit_kots_screen.dart';
 // import 'edit_order_list.dart';
@@ -23,6 +23,7 @@ class OrdersDetailsScreen extends StatefulWidget {
   final String restaurantName;
   final int orderId; // 👈 Pass selected order ID
   final UserPermissions? userPermissions;
+  final Function(UserPermissions)? onPermissionsReceived;
 
   const OrdersDetailsScreen({
     super.key,
@@ -32,6 +33,7 @@ class OrdersDetailsScreen extends StatefulWidget {
     required this.restaurantName,
     required this.orderId,
     this.userPermissions,
+    this.onPermissionsReceived, Map<String, dynamic>? selectedUser,
   });
 
   @override
@@ -45,6 +47,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
   Future<List<OrderlistModel>>? _ordersFuture;
   int? selectedKotId;
   bool _justUpdated = false;
+  UserPermissions? _permissions;
 
 
   @override
@@ -81,6 +84,12 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
       default:
         return Colors.grey;
     }
+  }
+  void _handlePermissions(UserPermissions permissions) {
+    setState(() {
+      _permissions = permissions; // store locally if needed
+    });
+    widget.onPermissionsReceived?.call(permissions); // optional callback to parent
   }
   //
   // Future<void> cancelOrder(OrderlistModel orderModel) async {
@@ -416,27 +425,48 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                     if ((orderModel.status ?? '').toLowerCase() == 'completed')
                                       ElevatedButton(
                                         onPressed: () async {
-                                          final bool? updated = await Navigator.push<bool>(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) => EditOrdersListScreen(
-                                                token: widget.token,
-                                                pin: widget.pin,
-                                                restaurantId: widget.restaurantId,
-                                                restaurantName: widget.restaurantName,
-                                                userPermissions: widget.userPermissions,
-                                                orderId: orderModel.orderId!,
-                                              ),
+                                          // 1️⃣ Show Check-in popup first
+                                          final bool? isCheckedIn = await showDialog<bool>(
+                                            context: context,
+                                            barrierDismissible: true,
+                                            builder: (_) => Checkinpopup(
+                                              token: widget.token,
+                                              onCheckIn: () {
+                                                Navigator.of(context).pop(true); // user checked in
+                                              },
+                                              onCancel: () => Navigator.of(context).pop(false),
+                                              onPermissionsReceived: (permissions) {
+                                                _handlePermissions(permissions);
+                                              },
                                             ),
                                           );
 
-                                          if (updated == true) {
-                                            debugPrint("🔁 Refreshing View Order Screen");
+                                          // 2️⃣ Only proceed if PIN/check-in was successful
+                                          if (isCheckedIn == true) {
+                                            // Navigate to Edit Orders screen
+                                            final bool? updated = await Navigator.push<bool>(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) => EditOrdersListScreen(
+                                                  token: widget.token,
+                                                  pin: widget.pin,
+                                                  restaurantId: widget.restaurantId,
+                                                  restaurantName: widget.restaurantName,
+                                                  userPermissions: widget.userPermissions,
+                                                  orderId: orderModel.orderId!,
+                                                ),
+                                              ),
+                                            );
 
-                                            setState(() {
-                                              _ordersFuture = _orderRepo.fetchOrders(widget.token);
-                                              _justUpdated = true;
-                                            });
+                                            // 3️⃣ Refresh parent if order was updated
+                                            if (updated == true) {
+                                              debugPrint("🔁 Refreshing View Order Screen");
+
+                                              setState(() {
+                                                _ordersFuture = _orderRepo.fetchOrders(widget.token);
+                                                _justUpdated = true;
+                                              });
+                                            }
                                           }
                                         },
                                         style: ElevatedButton.styleFrom(
@@ -466,6 +496,8 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                           ],
                                         ),
                                       ),
+
+
 
                                     const SizedBox(width: 12),
 
@@ -672,7 +704,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
                                               // Order Details (Order Type + Table)
                                               Text(
-                                                "Order Type  ${orderModel.orderType ?? '-'}${orderModel.tableName != null ? ', ${orderModel.tableName}' : ''}",
+                                                "Order Type : ${orderModel.orderType ?? '-'}${orderModel.tableName != null ? ', ${orderModel.tableName}' : ''}",
                                                 style: const TextStyle(color: Colors.grey),
                                               ),
                                               const SizedBox(height: 4),
@@ -688,7 +720,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
                                               // Payment Type
                                               Text(
-                                                "Payment Type  ${orderModel.paymentType ?? '-'}",
+                                                "Payment Type :  ${orderModel.paymentType ?? '-'}",
                                                 style: const TextStyle(color: Colors.grey),
                                               ),
                                             ],
@@ -710,7 +742,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                           child: Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
-
+                                              // Status badge
                                               Align(
                                                 alignment: Alignment.topRight,
                                                 child: Container(
@@ -728,7 +760,6 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                   ),
                                                 ),
                                               ),
-
                                               const SizedBox(height: 8),
 
                                               const Text(
@@ -736,25 +767,46 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                 style: TextStyle(fontWeight: FontWeight.bold),
                                               ),
                                               const SizedBox(height: 4),
-                                              Text(
-                                                (orderModel.customerName != null &&
-                                                    orderModel.customerName!.trim().isNotEmpty)
-                                                    ? orderModel.customerName!
-                                                    : "Customer Name",
-                                                style: const TextStyle(color: Colors.grey),
-                                              ),
-                                              Text(
-                                                (orderModel.customerPhone != null &&
-                                                    orderModel.customerPhone!.trim().isNotEmpty)
-                                                    ? orderModel.customerPhone!
-                                                    : "Customer Number",
-                                                style: const TextStyle(color: Colors.grey),
+
+                                              // Customer Name
+                                              Row(
+                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                children: [
+                                                  const Text(
+                                                    "Customer Name :",
+                                                    style: TextStyle(color: Colors.grey),
+                                                  ),
+                                                  Text(
+                                                    orderModel.customerName != null && orderModel.customerName!.trim().isNotEmpty
+                                                        ? orderModel.customerName!
+                                                        : "-", // fallback if empty
+                                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                                  ),
+                                                ],
                                               ),
 
+                                              const SizedBox(height: 4),
+
+                                              // Customer Phone
+                                              Row(
+                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                children: [
+                                                  const Text(
+                                                    "Contact Number :",
+                                                    style: TextStyle(color: Colors.grey),
+                                                  ),
+                                                  Text(
+                                                    orderModel.customerPhone != null && orderModel.customerPhone!.trim().isNotEmpty
+                                                        ? orderModel.customerPhone!
+                                                        : "-", // fallback if empty
+                                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                                  ),
+                                                ],
+                                              ),
                                             ],
                                           ),
                                         ),
-                                      ),
+                                      )
                                     ],
                                   ),
 
@@ -1256,10 +1308,10 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
             ),
           ),
 
-          /// 🔹 Items List
-          /// 🔹 Items List (SCROLLABLE)
+
+          ///  Items List (SCROLLABLE)
           SizedBox(
-            height: 300, // 🔥 adjust based on your UI layout
+            height: 300, // adjust based on your UI layout
             child: ListView.builder(
               itemCount: items.length,
               itemBuilder: (context, index) {

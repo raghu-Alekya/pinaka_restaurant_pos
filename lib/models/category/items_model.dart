@@ -6,6 +6,11 @@ class Product {
   final String image; // first image or fallback
   final bool? isVeg;
   final List<Variant> variants;
+  // 🔥 COMBO SUPPORT
+  // final List<ComboItem> subItems;
+  // ✅ ADD THIS
+  final bool isCombo;
+
 
   // ✅ New fields
   final List<String> modifiers;
@@ -21,6 +26,9 @@ class Product {
     required this.price,
     List<String>? images,
      this.isVeg,
+    required this.isCombo,
+    // ✅ default false (VERY IMPORTANT)
+    // this.subItems = const [],
     required this.variants,
     List<String>? modifiers,
     List<String>? addOns,
@@ -41,6 +49,7 @@ class Product {
     List<String>? images,
     String? image,
     bool? isVeg,
+    bool? isCombo,
     List<Variant>? variants,
     List<String>? modifiers,
     List<String>? addOns,
@@ -54,6 +63,8 @@ class Product {
       images: images ?? this.images,
       image: image ?? (images != null && images.isNotEmpty ? images.first : this.image),
       isVeg: isVeg ?? this.isVeg,
+      isCombo: isCombo ?? this.isCombo,
+
       variants: variants ?? this.variants,
       modifiers: modifiers ?? this.modifiers,
       addOns: addOns ?? this.addOns,
@@ -70,6 +81,13 @@ class Product {
         ?.map((e) => e.toString())
         .toList() ??
         [];
+    // 🔹 Parse sub-items (COMBO)
+    final List<ComboProduct> parsedSubItems =
+        (json['sub-items'] as List<dynamic>?)
+            ?.map((e) => ComboProduct.fromJson(e))
+            .toList() ??
+            [];
+
 
     // Parse modifiers and addOns safely
     final modifiers = (json['modifiers'] as List<dynamic>?)
@@ -80,6 +98,7 @@ class Product {
         ?.map((e) => e.toString())
         .toList() ??
         [];
+
 
     // Unified isVeg parsing
     bool? parsedIsVeg;
@@ -118,7 +137,9 @@ class Product {
       name: json['name'] ?? '',
       price: double.tryParse(json['price']?.toString() ?? '0.0') ?? 0.0,
       images: images,
+      // subItems: parsedSubItems,
       isVeg: parsedIsVeg,
+      isCombo: json['is_combo']?.toString().toLowerCase() == 'yes',
       variants: parsedVariants,
       image: json['image'] ??
           (images.isNotEmpty ? images.first : ''), // fallback image
@@ -207,3 +228,50 @@ class Variant {
     'quantity': quantity,
   };
 }
+class ComboProduct {
+  final int id;
+  final String name;
+  final double price;
+  final List<ComboSubItem> subItems;
+
+  ComboProduct({
+    required this.id,
+    required this.name,
+    required this.price,
+    required this.subItems,
+  });
+
+  factory ComboProduct.fromJson(Map<String, dynamic> json) {
+    return ComboProduct(
+      id: json['item id'],
+      name: json['item name'],
+      price: (json['item price'] as num).toDouble(),
+      subItems: (json['sub-items'] as List)
+          .map((e) => ComboSubItem.fromJson(e))
+          .toList(),
+    );
+  }
+}
+class ComboSubItem {
+  final int id;
+  final String name;
+  final double price;
+  final int quantity;
+
+  ComboSubItem({
+    required this.id,
+    required this.name,
+    required this.price,
+    required this.quantity,
+  });
+
+  factory ComboSubItem.fromJson(Map<String, dynamic> json) {
+    return ComboSubItem(
+      id: json['id'] ?? 0,               // ✅ FIX
+      name: json['name'] ?? '',
+      price: (json['price'] ?? 0).toDouble(),
+      quantity: json['quantity'] ?? 1,
+    );
+  }
+}
+

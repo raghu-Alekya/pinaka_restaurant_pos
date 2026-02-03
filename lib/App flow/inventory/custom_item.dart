@@ -86,7 +86,12 @@ class _AddItemDialogState extends State<AddItemDialog> {
     if (image != null) {
       setState(() {
         _pickedImage = File(image.path);
+        _selectedImagePath = image.path; // 🔥 THIS WAS MISSING
       });
+
+      print("🖼 Image selected → ${image.path}");
+    } else {
+      print("⚠️ Image picking cancelled");
     }
   }
 
@@ -277,45 +282,91 @@ class _AddItemDialogState extends State<AddItemDialog> {
                             dashPattern: const [6, 4],
                             borderType: BorderType.RRect,
                             radius: const Radius.circular(8),
-                            child: Container(
-                              width: 70,
-                              height: 70,
-                              alignment: Alignment.center,
-                              child: _pickedImage == null
-                                  ? Container(
-                                width: 48,
-                                height: 48,
-                                decoration: ShapeDecoration(
-                                  gradient: const LinearGradient(
-                                    begin: Alignment(0.0, 0.0),
-                                    end: Alignment(1.0, 1.0),
-                                    colors: [
-                                      Color(0xFFEEF5FE),
-                                      Color(0xFFDAEAFE),
-                                    ],
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(6),
-                                  child: Image.asset(
-                                    'assets/uploadimage.png',
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
-                              )
-                                  : ClipRRect(
-                                borderRadius: BorderRadius.circular(6),
-                                child: Image.file(
-                                  _pickedImage!,
-                                  width: 60,
-                                  height: 60,
-                                  fit: BoxFit.cover,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: SizedBox(
+                                width: 70,
+                                height: 70,
+                                child: Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    // IMAGE / PLACEHOLDER
+                                    Center(
+                                      child: _pickedImage == null
+                                          ? Container(
+                                        width: 48,
+                                        height: 48,
+                                        decoration: ShapeDecoration(
+                                          gradient: const LinearGradient(
+                                            begin: Alignment(0.0, 0.0),
+                                            end: Alignment(1.0, 1.0),
+                                            colors: [
+                                              Color(0xFFEEF5FE),
+                                              Color(0xFFDAEAFE),
+                                            ],
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                        ),
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(6),
+                                          child: Image.asset(
+                                            'assets/uploadimage.png',
+                                            fit: BoxFit.contain,
+                                          ),
+                                        ),
+                                      )
+                                          : Image.file(
+                                        _pickedImage!,
+                                        fit: BoxFit.cover, // ✅ fills & clips perfectly
+                                      ),
+                                    ),
+
+                                    /// DELETE OVERLAY
+                                    if (_pickedImage != null)
+                                      Positioned(
+                                        left: 0,
+                                        right: 0,
+                                        bottom: 0,
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            setState(() {
+                                              _pickedImage = null;
+                                            });
+                                          },
+                                          child: Container(
+                                            height: 18,
+                                            color: const Color(0xFFFFF7F7),
+                                            child: Row(
+                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              children: const [
+                                                Icon(
+                                                  Icons.delete_outline,
+                                                  size: 12,
+                                                  color: Color(0xFFEF4444),
+                                                ),
+                                                SizedBox(width: 4),
+                                                Text(
+                                                  'Delete',
+                                                  style: TextStyle(
+                                                    color: Color(0xFFEF4444),
+                                                    fontSize: 10,
+                                                    fontFamily: 'Kumbh Sans',
+                                                    fontWeight: FontWeight.w500,
+                                                    height: 0.94,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               ),
                             ),
+
                           ),
                         ),
 

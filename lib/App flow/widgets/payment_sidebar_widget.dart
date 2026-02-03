@@ -715,10 +715,11 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                       const DottedLine(),
                       _row(
                         "Net Payable",
-                        calculatedNetPayable.roundToDouble(),
+                        calculatedNetPayable.abs().roundToDouble(),
                         isBold: true,
                         fontSize: 18,
                       ),
+
 
                     ],
                   );
@@ -771,12 +772,13 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
               /// NET PAYABLE
               /// NET PAYABLE (ROUNDED)
               Text(
-                "Net Payable : ${calculatedNetPayable.roundToDouble().toStringAsFixed(2)}",
+                "Net Payable : ${calculatedNetPayable.abs().roundToDouble().toStringAsFixed(2)}",
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
                 ),
               ),
+
 
 
               const SizedBox(width: 6),

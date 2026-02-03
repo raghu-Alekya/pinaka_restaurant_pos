@@ -70,6 +70,127 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       _autoSelectAndLoad();
     });
   }
+  bool isComboItem(Product item) {
+    return item.isCombo;
+  }
+
+
+  Future<void> _openComboDetails(
+      BuildContext context,
+      Product product,
+      ) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final comboRepo = ComboRepository(
+        baseUrl: widget.repository.baseUrl,
+      );
+
+      final comboProduct =
+      await comboRepo.fetchComboDetails(product.id);
+
+      if (!context.mounted) return;
+      Navigator.pop(context);
+
+      showDialog(
+        context: context,
+        builder: (_) => Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: SizedBox(
+            height : 170,
+            width: 100, // 🔥 reduce width here (try 240–280)
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // HEADER
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          comboProduct.name,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () => Navigator.pop(context),
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.close,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                        ),
+                      ),
+
+                    ],
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // SUB ITEMS
+                  comboItemsList(comboProduct),
+                ],
+              ),
+            ),
+          ),
+        ),
+
+      );
+    } catch (e) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+  Widget comboItemsList(ComboProduct comboProduct) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF6C6FF7),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: comboProduct.subItems.map((item) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            child: Text(
+              "${item.quantity} × ${item.name}",
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+
+
 
   Future<void> _autoSelectAndLoad() async {
     final folders = currentSubCategories.where((e) => e.isFolder).toList();
@@ -359,12 +480,12 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: items.length,
-      padding: const EdgeInsets.all(6),
+      padding: const EdgeInsets.fromLTRB(6, 6, 6, 22),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 4,
         mainAxisSpacing: 12,
         crossAxisSpacing: 12,
-        childAspectRatio: 1.5,
+        childAspectRatio: 1.25,
       ),
       itemBuilder: (context, index) {
         final item = items[index];
@@ -444,13 +565,34 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
                 // 🔹 Variant icon just below veg/non-veg icon (right corner)
                 if (item.isVariantProduct)
                   Positioned(
-                    top: 60, // below the veg/non-veg icon
+                    top: 70, // below the veg/non-veg icon
                     right: 2,
                     child: Image.asset(
                       'assets/variant_icon.png',
                       width: 16,
                       height: 16,
                       fit: BoxFit.contain,
+                    ),
+                  ),
+                // 🔥 VIEW MORE (combo only)
+                if (isComboItem(item))
+                  Positioned(
+                    bottom: 0.5,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: InkWell(
+                        onTap: () => _openComboDetails(context, item),
+                        child: const Text(
+                          "View more",
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Color(0xFF191919),
+                            fontWeight: FontWeight.w600,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
 
@@ -462,5 +604,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       },
     );
   }
+
+
 
 }

@@ -279,7 +279,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         _updateMessage = "KOT updated Successfully. Final Net payable updated.";
       });
 // 🔄 REFRESH SCREEN DATA
-      _refreshOrders();
+//       _refreshOrders();
       // 7️⃣ Restore original status
       if (originalStatus == "completed") {
         print("⚡ Restoring status from processing → completed");
@@ -288,6 +288,9 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
           kotOrderId: kotId,
           payload: {"status": "completed"},
         );
+
+// 🔄 THEN refresh UI
+        _refreshOrders();
       }
 
       // ScaffoldMessenger.of(context).showSnackBar(
@@ -331,7 +334,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
           final order = snapshot.data!
               .firstWhere((o) => o.orderId == widget.orderId);
           if (!_netPayableInitialized) {
-            _fixedTotalTax = order.totalTax?.toDouble() ?? 0.0; // 🔒 LOCK TAX
+            _fixedTotalTax = order.totalTax?.toDouble() ?? 0.0; //  LOCK TAX
             _dynamicNetPayable = order.netPayable?.toDouble() ?? 0.0;
             _netPayableInitialized = true;
           }

@@ -124,10 +124,17 @@ class BeverageCard extends StatelessWidget {
               height: 70,
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) =>
-              const Icon(Icons.broken_image, size: 60),
+                  Image.asset(
+                    'assets/placeholder.png',
+                    height: 70,
+                    fit: BoxFit.cover,
+                  ),
             )
-                : const Icon(Icons.broken_image, size: 60),
-
+                : Image.asset(
+              'assets/placeholder.png',
+              height: 70,
+              fit: BoxFit.cover,
+            ),
             const SizedBox(height: 8),
 
             // NAME

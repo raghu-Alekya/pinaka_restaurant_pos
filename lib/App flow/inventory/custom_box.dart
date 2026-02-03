@@ -247,13 +247,9 @@ class _CustomBoxState extends State<CustomBox> {
   void _onSearchChanged() {
     final query = _searchController.text.trim();
 
-    // 🔥 Cancel debounce
     _debounce?.cancel();
-
-    // 🔥 New search session
     _searchSession++;
 
-    // ✅ HANDLE CLEAR SEARCH
     if (query.isEmpty) {
       setState(() {
         filteredBeverages.clear();
@@ -262,7 +258,6 @@ class _CustomBoxState extends State<CustomBox> {
         isLoading = false;
       });
 
-      // 🔥 CLOSE ANY OPEN DIALOG (Manage / AddItem / Custom Item)
       if (Navigator.canPop(context)) {
         Navigator.of(context, rootNavigator: true)
             .popUntil((route) => route.isFirst);
@@ -271,24 +266,38 @@ class _CustomBoxState extends State<CustomBox> {
     }
 
     final isNumeric = RegExp(r'^\d+$').hasMatch(query);
-
-    setState(() => showCustomCard = true);
-
-    // 🔒 Prevent partial barcode calls
-    if (isNumeric && query.length < 8) return;
-
     final int session = _searchSession;
 
+    // 🔢 NUMERIC → instant search
     if (isNumeric) {
-      _fetchProducts(searchOrSku: query, session: session);
+      setState(() => showCustomCard = true);
+      _fetchProducts(
+        searchOrSku: query,
+        session: session,
+      );
       return;
     }
 
+    // 🔤 TEXT → minimum 3 characters
+    if (query.length < 3) {
+      setState(() {
+        showCustomCard = false; // ❌ hide results until 3 chars
+        filteredBeverages.clear();
+        isLoading = false;
+      });
+      return;
+    }
+
+    // 🔤 TEXT search with debounce
+    setState(() => showCustomCard = true);
+
     _debounce = Timer(const Duration(milliseconds: 400), () {
-      _fetchProducts(searchOrSku: query, session: session);
+      _fetchProducts(
+        searchOrSku: query,
+        session: session,
+      );
     });
   }
-
 
   // ---------------- FETCH PRODUCTS ----------------
   Future<void> _fetchProducts({

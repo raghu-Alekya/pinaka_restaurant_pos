@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../../models/inventory/manage_stock_model.dart';
 // import '../models/inventory/manage_stock.dart';
@@ -15,7 +16,7 @@ class AddUpdateItemRepository {
     required int itemPrice,
     required String itemNote,
     required String itemSku,
-    int? imageId, // ✅ image ID only
+    int? imageId,
     int? miniCategoryId,
     String? taxClass,
   }) async {
@@ -28,7 +29,7 @@ class AddUpdateItemRepository {
       'item_price': itemPrice,
       'category_id': categoryId,
       'item_note': itemNote,
-      if (imageId != null) 'image_id': imageId, // 🔥 ONLY ID
+      if (imageId != null) 'image_id': imageId,
       if (miniCategoryId != null) 'mini_category_id': miniCategoryId,
       if (taxClass != null) ...{
         'tax_status': 'taxable',
@@ -54,10 +55,74 @@ class AddUpdateItemRepository {
   }
 
 
+
   Future<int> uploadImageToMedia({
     required String token,
     required String imagePath,
   }) async {
+    try {
+      final file = File(imagePath);
+      final fileName = file.path.split('/').last;
+
+      final uri = Uri.parse(
+        'https://merchantrestaurant.alektasolutions.com/wp-json/wp/v2/media',
+      );
+
+      final request = http.MultipartRequest('POST', uri);
+
+      // Headers
+      request.headers.addAll({
+        'Authorization': 'Bearer $token',
+        'Content-Disposition': 'attachment; filename="$fileName"',
+      });
+
+      // File
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'file',
+          file.path,
+          filename: fileName,
+        ),
+      );
+
+      if (kDebugMode) {
+        print('📤 Uploading image → $fileName');
+      }
+
+      final streamedResponse = await request.send();
+      final responseBody = await streamedResponse.stream.bytesToString();
+
+      if (streamedResponse.statusCode == 201 ||
+          streamedResponse.statusCode == 200) {
+        final jsonData = jsonDecode(responseBody);
+
+        final int mediaId = jsonData['id'];
+        final String? imageUrl = jsonData['source_url'];
+
+        if (kDebugMode) {
+          print('✅ Image uploaded');
+          print('🆔 Media ID → $mediaId');
+          print('🌐 Image URL → $imageUrl');
+        }
+
+        return mediaId;
+      } else {
+        if (kDebugMode) {
+          print(
+            '❌ Image upload failed → '
+                '${streamedResponse.statusCode}\n$responseBody',
+          );
+        }
+        return -1;
+      }
+    } catch (e, stack) {
+      if (kDebugMode) {
+        print('🔥 Image upload exception: $e');
+        print(stack);
+      }
+      return -1;
+    }
+
     print("🖼️ uploadImageToMedia CALLED");
     print("📁 Image path: $imagePath");
 
