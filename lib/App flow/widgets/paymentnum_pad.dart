@@ -73,6 +73,8 @@ class _paymentsummaryState extends State<paymentsummary> {
   double merchantDiscount = 0.0;
   double _lastNetPayable = 0.0;
   bool _isNcDiscount = false;
+  bool _isPaying = false;
+
 
 
 
@@ -141,17 +143,18 @@ class _paymentsummaryState extends State<paymentsummary> {
     debugPrint("🟡 SUBMIT PAYMENT CALLED");
     // debugPrint("🟡 SUBMIT PAYMENT CALLED");
 
-    // ✅ BLOCK PAYMENT WHEN NET PAYABLE IS ZERO
-    final paymentState = context.read<PaymentBloc>().state;
-    if (paymentState is PaymentSummaryLoaded &&
-        paymentState.summary.netTotal <= 0) {
-      debugPrint("⛔ Net payable is zero — payment not required");
+    // // ✅ BLOCK PAYMENT WHEN NET PAYABLE IS ZERO
+    // final paymentState = context.read<PaymentBloc>().state;
+    // if (paymentState is PaymentSummaryLoaded &&
+    //     paymentState.summary.netTotal <= 0) {
+    //   debugPrint("⛔ Net payable is zero — payment not required");
+    //
+    //   ScaffoldMessenger.of(context).showSnackBar(
+    //     const SnackBar(content: Text("No payment required for this order")),
+    //   );
+    //   return;
+    // }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("No payment required for this order")),
-      );
-      return;
-    }
 
     final orderBloc = context.read<OrderBloc>();
 
@@ -228,21 +231,30 @@ class _paymentsummaryState extends State<paymentsummary> {
         .netTotal
         : 0.0;
 
-    if (netPayable <= 0) {
-      // ❌ completely block keypad when no payment needed
-      return;
+    if (netPayable <= 0 && key != "Pay") {
+      return; // ⛔ block digits, allow Pay
     }
+
+    // ✅ PAY BUTTON
     // ✅ PAY BUTTON
     if (key == "Pay") {
-      if (amount.isEmpty) {
+      if (_isPaying) return; // ⛔ prevent double tap
+
+      if (amount.isEmpty && netPayable > 0) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Please enter amount")),
         );
         return;
       }
+
+      setState(() {
+        _isPaying = true; // 🔄 start loading
+      });
+
       await _submitPayment();
       return;
     }
+
 
     // ✅ CLEAR
     if (key == "C") {
@@ -392,10 +404,16 @@ class _paymentsummaryState extends State<paymentsummary> {
         BlocListener<CreatePaymentBloc, CreatePaymentState>(
           listener: (context, state) async {
             if (state is CreatePaymentLoading) {
+              setState(() {
+                _isPaying = true; // 🔄 keep loading
+              });
               // Optional loader
             }
 
             if (state is CreatePaymentSuccess) {
+              setState(() {
+                _isPaying = false; // ✅ stop loading
+              });
               await showDialog(
                 context: context,
                 barrierDismissible: false,
@@ -427,6 +445,9 @@ class _paymentsummaryState extends State<paymentsummary> {
             }
 
             if (state is CreatePaymentFailure) {
+              setState(() {
+                _isPaying = false; // ❌ stop loading on error
+              });
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text(state.error)),
               );
@@ -691,6 +712,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                                             onKeyPressed: handleKeyPress,
                                             selectedPaymentMode:
                                             selectedPaymentMode,
+                                            isPaying: _isPaying,
                                           ),
                                         ),
                                       ),
@@ -969,11 +991,14 @@ Widget buildPayment(
 class NumberPad extends StatelessWidget {
   final Function(String) onKeyPressed;
   final String selectedPaymentMode;
+  final bool isPaying;
 
   const NumberPad({
     super.key,
     required this.onKeyPressed,
     required this.selectedPaymentMode,
+    required this.isPaying,
+
   });
 
   @override
@@ -1004,7 +1029,8 @@ class NumberPad extends StatelessWidget {
                 child: Padding(
                   padding: EdgeInsets.all(8.0),
                   child: GestureDetector(
-                    onTap: () => onKeyPressed("Pay"),
+                    onTap: isPaying ? null : () => onKeyPressed("Pay"),
+
                     child: Container(
                       decoration: BoxDecoration(
                         color:
@@ -1021,17 +1047,26 @@ class NumberPad extends StatelessWidget {
                         ],
                       ),
                       alignment: Alignment.center,
-                      child: Text(
+                      child: isPaying
+                          ? const SizedBox(
+                        height: 26,
+                        width: 26,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 3,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                          : Text(
                         "PAY",
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color:
-                          selectedPaymentMode.isNotEmpty
+                          color: selectedPaymentMode.isNotEmpty
                               ? Colors.white
-                              : Color(0xFF4C5F7D),
+                              : const Color(0xFF4C5F7D),
                         ),
                       ),
+
                     ),
                   ),
                 ),

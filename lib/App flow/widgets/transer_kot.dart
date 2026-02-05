@@ -44,7 +44,9 @@ class TransferKOTDialog extends StatefulWidget {
 
   /// tableName -> tableId
   final Map<String, int> tableIds;
-  final Map<String, String> tableStatus; // tableName → status
+  final Map<String, String> tableStatus;
+  final String kotZone;// tableName → status
+  final Map<String, String> zoneNames;
 
 
   const TransferKOTDialog({
@@ -64,6 +66,8 @@ class TransferKOTDialog extends StatefulWidget {
     required this.zoneIds,
     required this.tableIds,
     required this.tableStatus,
+    required this.kotZone,
+    required this.zoneNames,
   });
 
   @override
@@ -79,15 +83,21 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
   final ScrollController _tableScrollController = ScrollController();
   final ScrollController _itemsScrollController = ScrollController();
 
+  // @override
   @override
   void initState() {
     super.initState();
-    items = widget.items.map((e) => e).toList();
 
-    if (widget.zoneTables.isNotEmpty) {
-      selectedZone = widget.zoneTables.keys.first;
-    }
+    items = widget.items.toList();
+
+    selectedZone = widget.kotZone;
+    debugPrint("🧪 kotZone = ${widget.kotZone}");
+    debugPrint("🧪 zoneNames = ${widget.zoneNames}");
+    debugPrint("🧪 selectedZone = $selectedZone");
+// 🔥 THIS WAS REQUIRED
   }
+
+
 
   @override
   void dispose() {
@@ -275,38 +285,38 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
 
   // ================= ZONE DROPDOWN =================
 
-  Widget _zoneDropdown() {
-    return Container(
-      height: 36,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFFF),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: selectedZone,
-          dropdownColor: Colors.white,
-          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black),
-          style: const TextStyle(
-              color: Colors.white, fontWeight: FontWeight.w600),
-          onChanged: (value) {
-            setState(() {
-              selectedZone = value;
-              selectedTable = null;
-            });
-          },
-          items: widget.zoneTables.keys.map((zone) {
-            return DropdownMenuItem(
-              value: zone,
-              child: Text("Zone $zone",
-                  style: const TextStyle(color: Colors.black)),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
+  // Widget _zoneDropdown() {
+  //   return Container(
+  //     height: 36,
+  //     padding: const EdgeInsets.symmetric(horizontal: 12),
+  //     decoration: BoxDecoration(
+  //       color: const Color(0xFFFFFF),
+  //       borderRadius: BorderRadius.circular(6),
+  //     ),
+  //     child: DropdownButtonHideUnderline(
+  //       child: DropdownButton<String>(
+  //         value: selectedZone,
+  //         dropdownColor: Colors.white,
+  //         icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black),
+  //         style: const TextStyle(
+  //             color: Colors.white, fontWeight: FontWeight.w600),
+  //         onChanged: (value) {
+  //           setState(() {
+  //             selectedZone = value;
+  //             selectedTable = null;
+  //           });
+  //         },
+  //         items: widget.zoneTables.keys.map((zone) {
+  //           return DropdownMenuItem(
+  //             value: zone,
+  //             child: Text("Zone $zone",
+  //                 style: const TextStyle(color: Colors.black)),
+  //           );
+  //         }).toList(),
+  //       ),
+  //     ),
+  //   );
+  // }
 
   // ================= TABLE GRID =================
 
@@ -391,18 +401,32 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
 
   Widget _rightPanel() {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // 🔹 Header + Zone info
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const Text(
               "Select Table",
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
             ),
-            _zoneDropdown(),
+            Text(
+              "Zone : ${widget.zoneNames[selectedZone] ?? ''}",
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF6B7280),
+              ),
+            ),
           ],
         ),
+
+
         const SizedBox(height: 12),
+
+        // 🔹 Tables grid
         Expanded(
           child: Scrollbar(
             controller: _tableScrollController,
@@ -410,13 +434,16 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
             child: _tableGrid(),
           ),
         ),
+
         const SizedBox(height: 14),
+
+        // 🔹 Action button
         Align(
           alignment: Alignment.centerRight,
           child: SizedBox(
             width: 140,
             height: 40,
-            child:ElevatedButton(
+            child: ElevatedButton(
               onPressed: selectedTable == null
                   ? null
                   : () {
@@ -452,18 +479,15 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
               ),
               child: const Text(
                 "Yes, Continue",
-                style: TextStyle(
-                  color: Colors.white,
-                ),
+                style: TextStyle(color: Colors.white),
               ),
-
             ),
-
           ),
         ),
       ],
     );
   }
+
 
 
   // ================= BUILD =================

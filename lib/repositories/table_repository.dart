@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:ui';
+import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:pinaka_restaurant_pos/repositories/zone_repository.dart';
@@ -46,9 +47,21 @@ class TableRepository {
       },
     );
 
+    // 🔍 PRINT RAW RESPONSE
+    debugPrint("🧪 getAllTables statusCode = ${response.statusCode}");
+    debugPrint("🧪 getAllTables raw body = ${response.body}");
+
     if (response.statusCode == 200) {
       final decoded = jsonDecode(response.body);
+
+      // 🔍 PRINT DECODED JSON
+      debugPrint("🧪 getAllTables decoded = $decoded");
+
       final tableList = decoded['table_details'];
+
+      // 🔍 PRINT TABLE DETAILS
+      debugPrint("🧪 table_details = $tableList");
+
       if (tableList != null && tableList is List) {
         return List<Map<String, dynamic>>.from(tableList);
       } else {
@@ -58,6 +71,7 @@ class TableRepository {
       throw Exception("Failed to fetch tables: ${response.body}");
     }
   }
+
 
   Future<List<Map<String, dynamic>>> getTablesByTime({
     required String token,

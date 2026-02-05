@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/widgets/transer_kot.dart';
@@ -19,6 +21,7 @@ import '../../models/order/void_kot_items.dart';
 import '../../repositories/auth_repository.dart';
 import '../../repositories/kot_repository.dart';
 import '../../repositories/table_repository.dart';
+import '../../repositories/zone_repository.dart';
 import '../../utils/SessionManager.dart';
 
 const Color kHeaderBlue = Color(0xFF152148);
@@ -80,19 +83,38 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
       _expanded = false;
     }
   }
+  Map<String, String> extractZoneNames(dynamic zoneResponse) {
+    // ✅ CASE 1: API already returns List<Map>
+    if (zoneResponse is List) {
+      return buildZoneNameMapFromZones(
+        List<Map<String, dynamic>>.from(zoneResponse),
+      );
+    }
+
+    // ✅ CASE 2: API returns Map with zone_details
+    if (zoneResponse is Map<String, dynamic> &&
+        zoneResponse['zone_details'] is List) {
+      return buildZoneNameMapFromZones(
+        List<Map<String, dynamic>>.from(zoneResponse['zone_details']),
+      );
+    }
+
+    return {};
+  }
+
   /// zoneId -> zoneName
-  Map<String, String> buildZoneNameMap(
-      List<Map<String, dynamic>> tables) {
+  Map<String, String> buildZoneNameMapFromZones(
+      List<Map<String, dynamic>> zones) {
 
     final Map<String, String> zoneNames = {};
 
-    for (final table in tables) {
-      final zoneId = table['zone_id']?.toString();
-      final zoneName = table['zone_name']?.toString();
+    for (final zone in zones) {
+      final zoneId = zone['zone_id']?.toString();
+      final zoneName = zone['zone_name']?.toString();
 
       if (zoneId == null || zoneName == null) continue;
 
-      zoneNames[zoneId] = zoneName; // overwrite is fine
+      zoneNames[zoneId] = zoneName;
     }
 
     return zoneNames;
@@ -464,18 +486,38 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                           );
                           }).toList();
 
-                          // ✅ STEP 3: FETCH TABLES
+                          final zoneRepository = ZoneRepository();
+                          final zoneResponse = await zoneRepository.getAllZones(token);
+                          // 🔍 DEBUG HERE (IMPORTANT)
+                          debugPrint("🧪 zoneResponse runtimeType = ${zoneResponse.runtimeType}");
+                          debugPrint("🧪 zoneResponse value = $zoneResponse");
+
+// ✅ FIXED
+//                             final zoneResponse = await zoneRepository.getAllZones(token);
+
+                            final Map<String, String> zoneNames =
+                            extractZoneNames(zoneResponse);
+
+                            // ✅ STEP 3: FETCH TABLES
                           final tableRepository = TableRepository();
-                          final tableResponse =
-                          await tableRepository.getAllTables(token);
+                          final tableResponse = await tableRepository.getAllTables(token);
+
+                          debugPrint("🧪 TABLE RESPONSE FIRST ITEM = ${tableResponse.isNotEmpty ? tableResponse.first : 'EMPTY'}");
+
+
 
                           // ✅ STEP 4: BUILD ZONE → TABLE MAP (String keys)
                           final Map<String, List<String>> zoneTables = {};
                           final Map<String, int> tableIds = {};
                           final Map<String, int> zoneIds = {};
                           final Map<String, String> tableStatus = {};
+                          // final Map<String, String> zoneNames =
+                          // buildZoneNameMap(tableResponse);
+                          //   final zoneNames = buildZoneNameMapFromZones(zoneDetails);
 
-                          for (final table in tableResponse) {
+
+
+                            for (final table in tableResponse) {
                           final zoneId = table['zone_id'];
                           final tableName = table['table_name'];
                           final tableId = table['table_id'];
@@ -517,6 +559,22 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                           debugPrint("❌ Missing required IDs");
                           return;
                           }
+                          String getZoneFromTable(
+                              String tableName,
+                              Map<String, List<String>> zoneTables,
+                              ) {
+                            for (final entry in zoneTables.entries) {
+                              if (entry.value.contains(tableName)) {
+                                return entry.key;
+                              }
+                            }
+                            return '';
+                          }
+                          final kotZone = getZoneFromTable(
+                            widget.tableNo,
+                            zoneTables,
+                          );
+
 
                           // ✅ STEP 5: OPEN DIALOG
                           final result = await showDialog(
@@ -527,26 +585,34 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                 create: (_) => TransferKotBloc(
                                   repository: KotTransferRepository(),
                                 ),
-                                child: TransferKOTDialog(
-                                  tableName: widget.tableNo,
-                                  kotNo: (kot.kotNumber?.isNotEmpty ?? false)
-                                      ? kot.kotNumber!
-                                      : "KOT#${kot.kotId}",
+                              //     final kotZone = findZoneForTable(
+                              // widget.tableNo,
+                              // zoneTables,
+                              // );
 
-                                  dateTime: kot.time ?? DateTime.now(),
-                                  items: transferItems,
-                                  zoneTables: zoneTables,
+                              child: TransferKOTDialog(
+                                tableName: widget.tableNo,
+                                kotNo: (kot.kotNumber?.isNotEmpty ?? false)
+                                    ? kot.kotNumber!
+                                    : "KOT#${kot.kotId}",
+                                dateTime: kot.time ?? DateTime.now(),
+                                items: transferItems,
+                                zoneTables: zoneTables,
 
-                                  orderId: widget.parentOrderId!,
-                                  kotId: kot.kotId!,
-                                  fromTableId: tableIds[widget.tableNo]!,
-                                  restaurantId: widget.restaurantId!,
-                                  authToken: widget.token,
+                                orderId: widget.parentOrderId!,
+                                kotId: kot.kotId!,
+                                fromTableId: tableIds[widget.tableNo]!,
+                                restaurantId: widget.restaurantId!,
+                                authToken: widget.token,
 
-                                  zoneIds: zoneIds,
-                                  tableIds: tableIds,
-                                  tableStatus: tableStatus,
-                                ),
+                                zoneIds: zoneIds,
+                                tableIds: tableIds,
+                                tableStatus: tableStatus,
+
+                                kotZone: kotZone,
+                                zoneNames: zoneNames,
+                              ),
+
                               );
                             },
                           );

@@ -158,6 +158,7 @@ class LineItem {
   int? itemId;
   String? name;
   num? quantity;
+  num? maxQty;
   num? amount;
   num? total;
   num? modifierAmount;
@@ -165,12 +166,14 @@ class LineItem {
   List<String>? modifiers;
   double? originalAmount;
   double? unitPrice;
+  num? totalWoTax;
 
   LineItem({
     this.lineItemId,
     this.itemId,
     this.name,
     this.quantity,
+    this.maxQty,
     this.amount,
     this.total,
     this.modifierAmount,
@@ -178,6 +181,7 @@ class LineItem {
     this.itemPrice,
     this.originalAmount,
     this.unitPrice,
+    this.totalWoTax,
   });
 
   factory LineItem.fromJson(Map<String, dynamic> json) {
@@ -217,6 +221,7 @@ class LineItem {
       modifierAmount: num.tryParse(json['modifier_amount']?.toString() ?? "0") ?? 0,
       itemPrice: num.tryParse(json['item_price']?.toString() ?? "0") ?? 0,
       modifiers: parsedModifiers,
+      totalWoTax: num.tryParse(json['total_wo_tax']?.toString() ?? "0") ?? 0,
     );
   }
 
@@ -262,6 +267,7 @@ extension LineItemMapping on LineItem {
       "amount": amount,
       "modifiers": modifiers ?? [],
       "item_price": itemPrice,
+      "total_wo_tax": totalWoTax,
     };
   }
 }

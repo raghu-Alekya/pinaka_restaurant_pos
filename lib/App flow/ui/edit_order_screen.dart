@@ -72,6 +72,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
   }
 
   List<LineItem> _leftPanelItems = [];
+  double _selectedKotOriginalTotal = 0.0;
 
 
   @override
@@ -97,29 +98,32 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
 
 // Central KOT selection handler
-
   void _onKotSelected(int kotId, List<KotOrder> kots) {
     setState(() {
-      _selectedKotId = kotId;
       _selectedKot = kots.firstWhere((k) => k.kotOrderId == kotId);
 
-      _leftPanelItems = (_selectedKot?.lineItems ?? [])
-          .map((item) => LineItem(
-        lineItemId: item.lineItemId,
-        itemId: item.itemId,
-        name: item.name,
-        quantity: item.quantity,
-        amount: item.amount,
-        unitPrice: (item.amount ?? 0) / (item.quantity ?? 1), // store base price
-        // Keep modifiers for UI only
-        modifiers: parseModifiers(item.modifiers),
-      ))
-          .toList();
+      _selectedKotOriginalTotal = (_selectedKot?.lineItems ?? [])
+          .fold(0.0, (sum, i) => sum + (i.totalWoTax ?? 0));
 
-      print(
-          "Selected KOT: $_selectedKotId with ${_selectedKot?.lineItems?.length ?? 0} items");
+      _leftPanelItems = (_selectedKot?.lineItems ?? []).map((item) {
+        final qty = item.quantity ?? 1;
+        final totalWoTax = item.totalWoTax ?? 0.0;
+
+        return LineItem(
+          lineItemId: item.lineItemId,
+          itemId: item.itemId,
+          name: item.name,
+          quantity: qty,
+          maxQty: qty,
+          totalWoTax: totalWoTax,
+          amount: item.amount,
+          unitPrice: qty > 0 ? totalWoTax / qty : 0.0, // 🔒 LOCKED
+          modifiers: parseModifiers(item.modifiers),
+        );
+      }).toList();
     });
   }
+
 
 
   List<String> parseModifiers(dynamic raw) {
@@ -347,21 +351,23 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
             _selectedKot = kots.first;
 
             // Populate left panel items for default KOT
-            _leftPanelItems = (_selectedKot?.lineItems ?? [])
-                .map((item) => LineItem(
-              lineItemId: item.lineItemId,
-              itemId: item.itemId,
-              name: item.name,
-              quantity: item.quantity,
-              amount: item.amount,
-              unitPrice: (item.quantity ?? 0) > 0
-                  ? (item.amount ?? 0) / item.quantity!
-                  : 0.0,
-              // unitPrice: item.amount / item.quantity,
-              modifiers: parseModifiers(item.modifiers),
+            _leftPanelItems = (_selectedKot?.lineItems ?? []).map((item) {
+              final qty = item.quantity ?? 1;
+              final totalWoTax = item.totalWoTax ?? 0.0;
 
-            ))
-                .toList();
+              return LineItem(
+                lineItemId: item.lineItemId,
+                itemId: item.itemId,
+                name: item.name,
+                quantity: qty,
+                maxQty: qty,
+                totalWoTax: totalWoTax,
+                amount: item.amount,
+                unitPrice: qty > 0 ? totalWoTax / qty : 0.0, // 🔒 SAME LOGIC
+                modifiers: parseModifiers(item.modifiers),
+              );
+            }).toList();
+
           }
 
           return Padding(
@@ -463,23 +469,114 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                           children: [
                             Flexible(
                               flex: 1,
-                              child: _buildLeftPanel(order, kots),
+                              child: Container(
+                                margin: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE5EFFF),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Stack(
+                                  children: [
+                                    // Left panel content
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        top: 0,
+                                        left: 0,
+                                        right: 0,
+                                        bottom: 20, // leave space for overlay summary
+                                      ),
+                                      child: _selectedKot == null
+                                          ? const Center(child: Text("Select a KOT"))
+                                          : _buildLeftPanel(order, kots), // your existing left panel content
+                                    ),
+
+                                    // Overlay summary inside the container
+                                    if (_selectedKot != null)
+                                      Positioned(
+                                        left: 0,
+                                        right: 0,
+                                        bottom: 0,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(vertical: 0, horizontal: 0),
+                                          decoration: BoxDecoration(
+                                            color: Colors.transparent,
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child:_summaryRow(
+                                            "KOT #${_selectedKot?.kotOrderId ?? '-'} - Amount",
+                                            "₹${(_selectedKot?.lineItems ?? [])
+                                                .fold<double>(
+                                              0.0,
+                                                  (sum, item) => sum + (item.totalWoTax ?? 0),
+                                            )
+                                                .toStringAsFixed(2)}",
+                                            bold: true,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
                             ),
+
                             const SizedBox(width: 12),
                             Flexible(
                               flex: 1,
                               child: Container(
                                 margin: const EdgeInsets.all(8),
-                                padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFE5EFFF),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: _selectedKot == null
-                                    ? const Center(child: Text("Select a KOT"))
-                                    : buildSelectedKotCard(_selectedKot!),
+                                child: Stack(
+                                  children: [
+                                    // KOT Card content
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        top: 12,
+                                        left: 12,
+                                        right: 12,
+                                        bottom: 30, // leave space for overlay summary inside the container
+                                      ),
+                                      child: _selectedKot == null
+                                          ? const Center(child: Text("Select a KOT"))
+                                          : buildSelectedKotCard(_selectedKot!),
+                                    ),
+
+                                    // Overlay summary row inside the container
+                                    if (_selectedKot != null)
+                                      Positioned(
+                                        left: 0,
+                                        right: 0,
+                                        bottom: 0, // stays inside the container
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(vertical: 0, horizontal: 0),
+                                          decoration: BoxDecoration(
+                                            color: Colors.transparent,
+                                            borderRadius: BorderRadius.circular(12),
+                                            // boxShadow: const [
+                                            //   BoxShadow(
+                                            //     color: Colors.black26,
+                                            //     blurRadius: 6,
+                                            //     offset: Offset(0, 2),
+                                            //   ),
+                                            // ],
+                                          ),
+                                          child: _summaryRow(
+                                            "KOT #${_selectedKot?.kotOrderId ?? '-'} - Amount",
+                                            "₹${_leftPanelItems.fold<double>(
+                                              0.0,
+                                                  (sum, i) => sum + (i.totalWoTax ?? 0),
+                                            ).toStringAsFixed(2)}",
+                                            bold: true,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ),
                             ),
+
                           ],
                         ),
                       ),
@@ -497,7 +594,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                           const SizedBox(width: 15),
                           Expanded(
                             child: _infoRow(
-                              "Net Payable",
+                              "Order Net Payable",
                               "₹${(order.netPayable ?? 0).round()}",
                               bold: true,
                             ),
@@ -506,7 +603,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                           const SizedBox(width: 30),
                           Expanded(
                             child: _infoRow(
-                              "Updated Net Payable",
+                              "Order Updated Net Payable",
                               "₹${_dynamicNetPayable.round()}",
                               bold: true,
                             ),
@@ -685,7 +782,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
     return Container(
       margin: const EdgeInsets.all(8),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: const Color(0xFFE5EFFF),
         borderRadius: BorderRadius.circular(12),
@@ -743,10 +840,10 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
               child: const Row(
                 children: [
-                  Expanded(flex: 1, child: Text("#", style: TextStyle(fontWeight: FontWeight.bold))),
-                  Expanded(flex: 3, child: Text("Item", style: TextStyle(fontWeight: FontWeight.bold))),
-                  Expanded(flex: 2, child: Text("Qty", style: TextStyle(fontWeight: FontWeight.bold))),
-                  Expanded(flex: 2, child: Text("Amount", style: TextStyle(fontWeight: FontWeight.bold))),
+                  Expanded(flex: 1, child: Text("#", style: TextStyle(fontWeight:FontWeight.w400,color: Color(0xFFF5F5F5)))),
+                  Expanded(flex: 3, child: Text("Item", style: TextStyle(fontWeight: FontWeight.w400,color: Color(0xFFF5F5F5)))),
+                  Expanded(flex: 2, child: Text("Quantity", style: TextStyle(fontWeight: FontWeight.w400,color: Color(0xFFF5F5F5)))),
+                  Expanded(flex: 2, child: Text("Amount", style: TextStyle(fontWeight: FontWeight.w400,color: Color(0xFFF5F5F5)))),
                 ],
               ),
             ),
@@ -762,6 +859,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                   return Container(
                     padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
                     decoration: BoxDecoration(
+                      color:Color(0xFFFBFBFC),
                       border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
                     ),
                     child: Row(
@@ -791,13 +889,55 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                           ),
                         ),
                         Expanded(flex: 2, child: Text("${item.quantity ?? 0}")),
-                        Expanded(flex: 2, child: Text("₹${(item.amount ?? 0).toStringAsFixed(2)}")),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            "₹${(item.totalWoTax ?? 0).toStringAsFixed(2)}",
+                          ),
+                        ),
+
+
                       ],
                     ),
                   );
                 },
               ),
             ),
+
+            // const SizedBox(height: 12),
+            //
+            // // Summary Row: Updated Net Payable
+            // Row(
+            //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            //   children: [
+            //     _summaryRow(
+            //       "KOT #${_selectedKot?.kotOrderId ?? '-'} - Amount",
+            //       "₹${_leftPanelItems.fold<double>(0.0, (sum, i) => sum + (i.amount ?? 0)).toStringAsFixed(2)}",
+            //       bold: true,
+            //     ),
+            //
+            //
+            //     // Update KOT Button
+            //     // ElevatedButton(
+            //     //   onPressed: _updateKot, // uses updated _leftPanelItems
+            //     //   style: ElevatedButton.styleFrom(
+            //     //     backgroundColor: const Color(0xFF125BCE),
+            //     //     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            //     //     shape: RoundedRectangleBorder(
+            //     //       borderRadius: BorderRadius.circular(8),
+            //     //     ),
+            //     //   ),
+            //     //   child: const Text(
+            //     //     "Update KOT",
+            //     //     style: TextStyle(
+            //     //       fontSize: 14,
+            //     //       fontWeight: FontWeight.w600,
+            //     //       color: Colors.white,
+            //     //     ),
+            //     //   ),
+            //     // ),
+            //   ],
+            // ),
           ],
         ),
       ),
@@ -881,13 +1021,13 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                     topRight: Radius.circular(8),
                   ),
                 ),
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                 child: const Row(
                   children: [
-                    Expanded(flex: 1, child: Text("#")),
-                    Expanded(flex: 3, child: Text("Item")),
-                    Expanded(flex: 2, child: Text("Qty")),
-                    Expanded(flex: 2, child: Text("Amount")),
+                    Expanded(flex: 1, child: Text("#",style: TextStyle(fontWeight: FontWeight.w400,color: Color(0xFFF5F5F5)))),
+                    Expanded(flex: 3, child: Text("Item",style: TextStyle(fontWeight:FontWeight.w400,color: Color(0xFFF5F5F5)))),
+                    Expanded(flex: 2, child: Text("Quantity",style: TextStyle(fontWeight:FontWeight.w400,color: Color(0xFFF5F5F5)))),
+                    Expanded(flex: 2, child: Text("Amount",style: TextStyle(fontWeight: FontWeight.w400,color: Color(0xFFF5F5F5)))),
                   ],
                 ),
               ),
@@ -904,8 +1044,9 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                     final modifiers = parseModifiers(item.modifiers); // same function as left panel
 
                     return Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                       decoration: BoxDecoration(
+                        color:Color(0xFFFBFBFC),
                         border: Border(
                           bottom: BorderSide(color: Colors.grey[300]!),
                         ),
@@ -948,20 +1089,16 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                                       ? () {
                                     setInnerState(() {
                                       item.quantity = (item.quantity ?? 0) - 1;
-                                      item.amount = item.unitPrice! * item.quantity!;
+                                      item.totalWoTax = item.unitPrice! * item.quantity!;
                                     });
 
                                     setState(() {
-                                      final subTotal = _leftPanelItems.fold<double>(
-                                        0.0,
-                                            (sum, i) => sum + (i.amount ?? 0),
-                                      );
-
-                                      _dynamicNetPayable = subTotal + _fixedTotalTax;
+                                      _dynamicNetPayable -= item.unitPrice!;
                                     });
                                   }
                                       : null,
                                 ),
+
 
 
                                 Padding(
@@ -971,22 +1108,21 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                                 // Increment
                                 _qtyButton(
                                   Icons.add,
-                                  onTap: () {
+                                  onTap: (item.quantity ?? 0) < (item.maxQty ?? 0)
+                                      ? () {
                                     setInnerState(() {
                                       item.quantity = (item.quantity ?? 0) + 1;
-                                      item.amount = item.unitPrice! * item.quantity!;
+                                      item.totalWoTax = item.unitPrice! * item.quantity!;
                                     });
 
                                     setState(() {
-                                      final subTotal = _leftPanelItems.fold<double>(
-                                        0.0,
-                                            (sum, i) => sum + (i.amount ?? 0),
-                                      );
-
-                                      _dynamicNetPayable = subTotal + _fixedTotalTax;
+                                      _dynamicNetPayable += item.unitPrice!;
                                     });
-                                  },
+                                  }
+                                      : null, // 🔒 stops increase above original qty
                                 ),
+
+
 
 
 
@@ -995,7 +1131,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                           ),
                           Expanded(
                             flex: 2,
-                            child: Text("₹${(item.amount ?? 0).toStringAsFixed(2)}"),
+                            child: Text("₹${( item.totalWoTax ?? 0).toStringAsFixed(2)}"),
                           ),
                         ],
                       ),
@@ -1012,30 +1148,34 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
               //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
               //   children: [
               //     _summaryRow(
-              //       "Updated Net Payable",
-              //       "₹${_leftPanelItems.fold<double>(0.0, (sum, i) => sum + (i.amount ?? 0)).toStringAsFixed(2)}",
+              //       "KOT #${_selectedKot?.kotOrderId ?? '-'} - Amount",
+              //       "₹${_leftPanelItems.fold<double>(
+              //         0.0,
+              //             (sum, i) => sum + (i.totalWoTax ?? 0),
+              //       ).toStringAsFixed(2)}",
               //       bold: true,
               //     ),
               //
+              //
               //     // Update KOT Button
-              //     ElevatedButton(
-              //       onPressed: _updateKot, // uses updated _leftPanelItems
-              //       style: ElevatedButton.styleFrom(
-              //         backgroundColor: const Color(0xFF125BCE),
-              //         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              //         shape: RoundedRectangleBorder(
-              //           borderRadius: BorderRadius.circular(8),
-              //         ),
-              //       ),
-              //       child: const Text(
-              //         "Update KOT",
-              //         style: TextStyle(
-              //           fontSize: 14,
-              //           fontWeight: FontWeight.w600,
-              //           color: Colors.white,
-              //         ),
-              //       ),
-              //     ),
+              //     // ElevatedButton(
+              //     //   onPressed: _updateKot, // uses updated _leftPanelItems
+              //     //   style: ElevatedButton.styleFrom(
+              //     //     backgroundColor: const Color(0xFF125BCE),
+              //     //     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              //     //     shape: RoundedRectangleBorder(
+              //     //       borderRadius: BorderRadius.circular(8),
+              //     //     ),
+              //     //   ),
+              //     //   child: const Text(
+              //     //     "Update KOT",
+              //     //     style: TextStyle(
+              //     //       fontSize: 14,
+              //     //       fontWeight: FontWeight.w600,
+              //     //       color: Colors.white,
+              //     //     ),
+              //     //   ),
+              //     // ),
               //   ],
               // ),
             ],
@@ -1053,32 +1193,55 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       String label,
       String value, {
         bool bold = false,
-        Color labelColor = Colors.black,
-        Color valueColor = Colors.black,
+        Color labelColor = const Color(0xFF252525),
+        Color valueColor = const Color(0xFF373535),
       }) {
-    return Row(
-      mainAxisSize: MainAxisSize.min, // 🔹 shrink to content
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontWeight: bold ? FontWeight.bold : FontWeight.normal,
-            color: labelColor,
+    return Container(
+
+      clipBehavior: Clip.antiAlias,
+      decoration: ShapeDecoration(
+        color: const Color(0xFFECECEC),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.only(
+            bottomLeft: Radius.circular(14),
+            bottomRight: Radius.circular(14),
           ),
         ),
-        const SizedBox(width: 4), // 🔹 small gap between label & value
-        Text(
-          value,
-          style: TextStyle(
-            fontWeight: bold ? FontWeight.bold : FontWeight.normal,
-            color: valueColor,
+        shadows: [
+          BoxShadow(
+            color: Color(0x3F000000),
+            blurRadius: 6,
+            offset: Offset(0, -4),
+            spreadRadius: 0,
           ),
-        ),
-      ],
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 35, vertical: 12),
+      child: Row(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: bold ? FontWeight.w500 : FontWeight.normal,
+              fontSize: 12, // reduced from 19
+              fontFamily: 'Inter',
+              color: labelColor,
+            ),
+          ),
+          const SizedBox(width: 280), // fixed width gap
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: bold ? FontWeight.w500 : FontWeight.normal,
+              fontSize: 14, // reduced from 24
+              fontFamily: 'Inter',
+              color: valueColor,
+            ),
+          ),
+        ],
+      ),
     );
   }
-
-
 
 
   Widget _qtyButton(IconData icon, {VoidCallback? onTap, bool enabled = true}) {
