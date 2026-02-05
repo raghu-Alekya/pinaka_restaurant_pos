@@ -522,7 +522,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     return GridView.builder(
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
-        childAspectRatio: 2.0,
+        childAspectRatio: 1.8,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
       ),
@@ -620,10 +620,15 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     );
   }
 
-  Widget _buildDineInCard(Map<String, dynamic> order,
+  Widget _buildDineInCard(
+      Map<String, dynamic> order,
       int kotCount,
-      bool isSelected,) {
+      bool isSelected,
+      ) {
     return Container(
+      constraints: const BoxConstraints(
+        minHeight: 160, // 🔼 increase height here
+      ),
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
         color: isSelected ? const Color(0xFF0C6FDB) : Colors.white,
@@ -633,6 +638,8 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 6),
+
+          // ───────── Table + Time ─────────
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -653,17 +660,43 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
               ),
             ],
           ),
+
           const SizedBox(height: 6),
+
+          // ───────── Order ID + KOT ─────────
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                "Order ID: ${order['order_id']}",
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isSelected ? Colors.white : Colors.black,
-                ),
+              // LEFT SIDE (Order ID + Zone)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Order ID: ${order['order_id']}",
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isSelected ? Colors.white : Colors.black,
+                    ),
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  // ✅ Zone Name (NEW)
+                  Text(
+                    "Zone: ${order['zone_name'] ?? '-'}",
+                    style: TextStyle(
+                      fontSize: 14,
+                      // fontWeight: FontWeight.w500,
+                      color: isSelected
+                          ? Colors.white
+                          : Colors.black,
+                    ),
+                  ),
+                ],
               ),
+
+              // RIGHT SIDE (KOT + Remaining)
               Row(
                 children: [
                   _buildKotCircleWithOverlap(
@@ -676,7 +709,8 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                     Text(
                       "+${order['remaining_count']}",
                       style: TextStyle(
-                        color: isSelected ? Colors.white : Colors.black87,
+                        color:
+                        isSelected ? Colors.white : Colors.black87,
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),

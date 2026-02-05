@@ -388,9 +388,9 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                   ),
                                                 );
 
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  const SnackBar(content: Text("KOT Updated Successfully")),
-                                                );
+                                                // ScaffoldMessenger.of(context).showSnackBar(
+                                                //   const SnackBar(content: Text("KOT Updated Successfully")),
+                                                // );
                                               }
 
                                               if (state is UpdatekotFailure) {

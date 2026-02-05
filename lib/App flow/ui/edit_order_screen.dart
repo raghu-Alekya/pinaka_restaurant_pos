@@ -74,12 +74,14 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
   List<LineItem> _leftPanelItems = [];
   double _selectedKotOriginalTotal = 0.0;
 
-
+// EDITABLE PER KOT (persisted)
+  final Map<int, List<LineItem>> _editedKotItems = {};
   @override
   void initState() {
     super.initState();
     _userPermissions = widget.userPermissions;
     _ordersFuture = _orderRepo.fetchOrders(widget.token);
+
   }
 
   void _onItemTapped(int index) {
@@ -100,11 +102,13 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 // Central KOT selection handler
   void _onKotSelected(int kotId, List<KotOrder> kots) {
     setState(() {
+      _selectedKotId = kotId;
       _selectedKot = kots.firstWhere((k) => k.kotOrderId == kotId);
 
       _selectedKotOriginalTotal = (_selectedKot?.lineItems ?? [])
           .fold(0.0, (sum, i) => sum + (i.totalWoTax ?? 0));
 
+      // ✅ LEFT PANEL (always original snapshot)
       _leftPanelItems = (_selectedKot?.lineItems ?? []).map((item) {
         final qty = item.quantity ?? 1;
         final totalWoTax = item.totalWoTax ?? 0.0;
@@ -117,12 +121,34 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
           maxQty: qty,
           totalWoTax: totalWoTax,
           amount: item.amount,
-          unitPrice: qty > 0 ? totalWoTax / qty : 0.0, // 🔒 LOCKED
+          unitPrice: qty > 0 ? totalWoTax / qty : 0.0,
           modifiers: parseModifiers(item.modifiers),
         );
       }).toList();
+
+      // ✅ RIGHT PANEL (restore edits OR create editable copy)
+      _editedKotItems.putIfAbsent(
+        kotId,
+            () => _selectedKot!.lineItems!.map((item) {
+          final qty = item.quantity ?? 1;
+          final totalWoTax = item.totalWoTax ?? 0.0;
+
+          return LineItem(
+            lineItemId: item.lineItemId,
+            itemId: item.itemId,
+            name: item.name,
+            quantity: qty,
+            maxQty: qty,
+            totalWoTax: totalWoTax,
+            amount: item.amount,
+            unitPrice: qty > 0 ? totalWoTax / qty : 0.0,
+            modifiers: parseModifiers(item.modifiers),
+          );
+        }).toList(),
+      );
     });
   }
+
 
 
 
@@ -192,24 +218,24 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
     print("📌 Remarks: ${_remarksController.text.trim()}");
 
     try {
-      // 1️⃣ Fetch full parent order
+      // 1️ Fetch full parent order
       final order = await repo.fetchOrder(widget.orderId);
       // print("✅ Fetched order successfully: Order ID ${order.id}");
 
-      // 2️⃣ Find selected KOT
+      // 2️ Find selected KOT
       final selectedKotInOrder = order.kotOrders?.firstWhere(
             (k) => k.kotOrderId == kotId,
         orElse: () => throw Exception("Selected KOT not found"),
       );
       print("✅ Selected KOT found: Status ${selectedKotInOrder?.status}");
 
-      // 3️⃣ Build line items payload
+      // 3️ Build line items payload
       final List<Map<String, dynamic>> lineItemsPayload = [];
 
       for (final item in _leftPanelItems) {
         final qty = item.quantity ?? 0;
 
-        // 🟢 EXISTING ITEM
+        //  EXISTING ITEM
         if (item.lineItemId != null) {
           if (qty > 0) {
             lineItemsPayload.add({
@@ -225,7 +251,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
           }
         }
 
-        // 🟢 NEW ITEM
+        //  NEW ITEM
         else if (item.itemId != null && qty > 0) {
           lineItemsPayload.add({
             "product_id": item.itemId,
@@ -243,7 +269,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         return;
       }
 
-      // 4️⃣ Meta data payload
+      // 4️ Meta data payload
       final metaDataPayload = [
         if (_remarksController.text.trim().isNotEmpty)
           {"key": "kot_remarks", "value": _remarksController.text.trim()},
@@ -259,7 +285,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
       print("📤 Final Payload Sent to Backend: ${jsonEncode(payload)}");
 
-      // 5️⃣ Handle completed KOTs
+      // 5 Handle completed KOTs
       final originalStatus = _selectedKot?.status ?? "processing";
       if (originalStatus == "completed") {
         print("⚡ Changing status from completed → processing");
@@ -270,7 +296,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         );
       }
 
-      // 6️⃣ Update KOT
+      // 6️ Update KOT
       final success = await repo.updateOrderRaw(
         orderId: widget.orderId,
         kotOrderId: kotId,
@@ -367,6 +393,33 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                 modifiers: parseModifiers(item.modifiers),
               );
             }).toList();
+            if (_selectedKot != null) {
+              final kotId = _selectedKot!.kotOrderId!;
+
+              _editedKotItems.putIfAbsent(
+                kotId,
+                    () => _selectedKot!.lineItems!.map((item) {
+                  final qty = item.quantity ?? 1;
+                  final totalWoTax = item.totalWoTax ?? 0.0;
+
+                  return LineItem(
+                    lineItemId: item.lineItemId,
+                    itemId: item.itemId,
+                    name: item.name,
+                    quantity: qty,
+                    maxQty: qty,
+                    totalWoTax: totalWoTax,
+                    amount: item.amount,
+                    unitPrice: qty > 0 ? totalWoTax / qty : 0.0,
+                    modifiers: parseModifiers(item.modifiers),
+                  );
+                }).toList(),
+              );
+
+              // Initialize dynamic net payable for the right panel
+              // _dynamicNetPayable = _editedKotItems[kotId]!
+              //     .fold(0.0, (sum, i) => sum + (i.totalWoTax ?? 0));
+            }
 
           }
 
@@ -502,7 +555,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                                             color: Colors.transparent,
                                             borderRadius: BorderRadius.circular(12),
                                           ),
-                                          child:_summaryRow(
+                                          child:  _summaryRow(
                                             "KOT #${_selectedKot?.kotOrderId ?? '-'} - Amount",
                                             "₹${(_selectedKot?.lineItems ?? [])
                                                 .fold<double>(
@@ -562,12 +615,11 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                                             //   ),
                                             // ],
                                           ),
-                                          child: _summaryRow(
+                                          child:_summaryRow(
                                             "KOT #${_selectedKot?.kotOrderId ?? '-'} - Amount",
-                                            "₹${_leftPanelItems.fold<double>(
-                                              0.0,
-                                                  (sum, i) => sum + (i.totalWoTax ?? 0),
-                                            ).toStringAsFixed(2)}",
+                                            "₹${(_editedKotItems[_selectedKotId] ?? [])
+                                                .fold<double>(0.0, (sum, i) => sum + (i.totalWoTax ?? 0))
+                                                .toStringAsFixed(2)}",
                                             bold: true,
                                           ),
                                         ),
@@ -982,8 +1034,9 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
   // RIGHT PANEL (Editable KOT)
 
   Widget buildSelectedKotCard(KotOrder kot) {
+
     // Use the editable copy
-    final items = _leftPanelItems;
+    final items = _editedKotItems[_selectedKotId] ?? [];
 
     return StatefulBuilder(
       builder: (context, setInnerState) {
@@ -1101,6 +1154,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
 
 
+
                                 Padding(
                                   padding: const EdgeInsets.symmetric(horizontal: 8),
                                   child: Text("${item.quantity ?? 0}"),
@@ -1119,7 +1173,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                                       _dynamicNetPayable += item.unitPrice!;
                                     });
                                   }
-                                      : null, // 🔒 stops increase above original qty
+                                      : null, //  stops increase above original qty
                                 ),
 
 

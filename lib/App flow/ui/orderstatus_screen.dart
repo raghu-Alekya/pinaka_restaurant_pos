@@ -63,7 +63,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
   }
 
   int _currentPage = 0;
-  final int _rowsPerPage = 6;
+  final int _rowsPerPage = 10;
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _dateController = TextEditingController();
 

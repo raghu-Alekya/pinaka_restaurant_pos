@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 class OrderlistModel {
+  final String? completedByUserId;
   int? orderId;
   String? orderType;
   String? date;
@@ -37,6 +38,7 @@ class OrderlistModel {
   List<KotOrder>? kotOrders;
 
   OrderlistModel({
+    this.completedByUserId,
     this.orderId,
     this.orderType,
     this.date,
@@ -70,6 +72,7 @@ class OrderlistModel {
 
   factory OrderlistModel.fromJson(Map<String, dynamic> json) {
     return OrderlistModel(
+      completedByUserId: json['completed_by_user_id']?.toString(),
       orderId: json['order_id'],
       orderType: json['order_type'],
       date: json['date'],
