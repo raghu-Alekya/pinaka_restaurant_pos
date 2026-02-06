@@ -48,6 +48,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
   ];
 
   double _fixedTotalTax = 0.0;
+  bool _justUpdated = false;
 
   String? selectedReason;
   final TextEditingController _remarksController = TextEditingController();
@@ -195,9 +196,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
   Future<void> _updateKot() async {
     if (_selectedKot == null) return;
-
     if (selectedReason == null || selectedReason!.isEmpty) {
-      print("⚠️ No reason selected");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please select a reason")),
       );
@@ -211,48 +210,28 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
     final kotId = _selectedKot!.kotOrderId;
 
-    print("🔵 Preparing to update KOT");
-    print("📌 Order ID: ${widget.orderId}");
-    print("📌 Selected KOT ID: $kotId");
-    print("📌 Selected Reason: $selectedReason");
-    print("📌 Remarks: ${_remarksController.text.trim()}");
-
     try {
-      // 1️ Fetch full parent order
       final order = await repo.fetchOrder(widget.orderId);
-      // print("✅ Fetched order successfully: Order ID ${order.id}");
 
-      // 2️ Find selected KOT
       final selectedKotInOrder = order.kotOrders?.firstWhere(
             (k) => k.kotOrderId == kotId,
         orElse: () => throw Exception("Selected KOT not found"),
       );
-      print("✅ Selected KOT found: Status ${selectedKotInOrder?.status}");
 
-      // 3️ Build line items payload
+      final List items = _editedKotItems[_selectedKotId] ?? [];
+
       final List<Map<String, dynamic>> lineItemsPayload = [];
 
-      for (final item in _leftPanelItems) {
+      for (final item in items) {
         final qty = item.quantity ?? 0;
 
-        //  EXISTING ITEM
         if (item.lineItemId != null) {
-          if (qty > 0) {
-            lineItemsPayload.add({
-              "id": item.lineItemId,   // ✅ preserve ID
-              "quantity": qty,
-            });
-          } else {
-            lineItemsPayload.add({
-              "id": item.lineItemId,
-              "quantity": qty,
-              // "_destroy": true,       // ✅ explicit delete (IMPORTANT)
-            });
-          }
-        }
-
-        //  NEW ITEM
-        else if (item.itemId != null && qty > 0) {
+          lineItemsPayload.add({
+            "id": item.lineItemId,
+            "quantity": qty,
+            if (qty == 0) "_destroy": true,
+          });
+        } else if (item.itemId != null && qty > 0) {
           lineItemsPayload.add({
             "product_id": item.itemId,
             "quantity": qty,
@@ -260,35 +239,26 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         }
       }
 
-
       if (lineItemsPayload.isEmpty) {
-        print("⚠️ No valid line items to update.");
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("⚠️ No valid items to update")),
         );
         return;
       }
 
-      // 4️ Meta data payload
       final metaDataPayload = [
         if (_remarksController.text.trim().isNotEmpty)
           {"key": "kot_remarks", "value": _remarksController.text.trim()},
         {"key": "kot_remarks", "value": selectedReason},
       ];
 
-      print("📤 Meta Data Payload: ${jsonEncode(metaDataPayload)}");
-
       final payload = {
         "line_items": lineItemsPayload,
         "meta_data": metaDataPayload,
       };
 
-      print("📤 Final Payload Sent to Backend: ${jsonEncode(payload)}");
-
-      // 5 Handle completed KOTs
       final originalStatus = _selectedKot?.status ?? "processing";
       if (originalStatus == "completed") {
-        print("⚡ Changing status from completed → processing");
         await repo.updateOrderRaw(
           orderId: widget.orderId,
           kotOrderId: kotId,
@@ -296,7 +266,6 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         );
       }
 
-      // 6️ Update KOT
       final success = await repo.updateOrderRaw(
         orderId: widget.orderId,
         kotOrderId: kotId,
@@ -304,33 +273,30 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       );
 
       if (!success) throw Exception("Update failed");
-      print("✅ KOT Updated Successfully");
+
       setState(() {
-        _updateMessage = "KOT updated Successfully. Final Net payable updated.";
+        // items.removeWhere((i) => i.quantity == 0); // remove deleted items locally
+        // _updateMessage = "KOT updated Successfully.";
+        _justUpdated = true;
       });
-// 🔄 REFRESH SCREEN DATA
-//       _refreshOrders();
-      // 7️⃣ Restore original status
+
+      _refreshOrders();
+
       if (originalStatus == "completed") {
-        print("⚡ Restoring status from processing → completed");
         await repo.updateOrderRaw(
           orderId: widget.orderId,
           kotOrderId: kotId,
           payload: {"status": "completed"},
         );
-
-// 🔄 THEN refresh UI
-        _refreshOrders();
       }
 
-      // ScaffoldMessenger.of(context).showSnackBar(
-      //   const SnackBar(content: Text("✅ KOT Updated Successfully")),
-      // );
-    } catch (e) {
-      print("❌ KOT Update Failed => $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("❌ Update failed: $e")),
+        const SnackBar(content: Text("✅ KOT Updated Successfully")),
       );
+    } catch (e) {
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   SnackBar(content: Text("❌ Update failed: $e")),
+      // );
     }
   }
 
