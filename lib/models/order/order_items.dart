@@ -5,7 +5,7 @@ class OrderItems {
   final int? variationId;     // ✅ optional (null if not applicable)
   final String name;
   final double price;
-  final Category section;
+  final Category ?section;
   final int quantity;
   final List<String> modifiers;
   final Map<String, Map<String, dynamic>> addOns; // {'Cheese': {'quantity': 2, 'price': 20.0}}
@@ -26,7 +26,7 @@ class OrderItems {
     this.modifiers = const [],
     this.addOns = const {},
     this.note = '',
-    required this.section,
+     this.section,
     this.taxClass,
     this.hasOptions = false,
     required this.amount,// default false
@@ -117,7 +117,9 @@ class OrderItems {
       'addOns': serializedAddOns,
       'note': note,
       'tax_class': taxClass,
-      'section': section.toJson(),
+      // 'section': section.toJson(),
+      // ✅ SAFE: only include section if not null
+      if (section != null) 'section': section!.toJson(),
     };
   }
 

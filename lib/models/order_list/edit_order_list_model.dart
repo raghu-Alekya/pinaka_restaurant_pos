@@ -67,3 +67,58 @@ class KotEditReasonModel {
     );
   }
 }
+class VoidedItemsResponse {
+  final int kotId;
+  final int count;
+  final List<VoidedItem> items;
+
+  VoidedItemsResponse({
+    required this.kotId,
+    required this.count,
+    required this.items,
+  });
+
+  factory VoidedItemsResponse.fromJson(Map<String, dynamic> json) {
+    return VoidedItemsResponse(
+      kotId: json['kot_id'] ?? 0,
+      count: json['count'] ?? 0,
+      items: (json['items'] as List<dynamic>? ?? [])
+          .map((e) => VoidedItem.fromJson(e))
+          .toList(),
+    );
+  }
+}
+class VoidedItem {
+  final int itemId;
+  final String product;
+  final int origQty;
+  final int newQty;
+  final double itemTotal;
+  final String remarks;
+  final int voidedBy;
+  final DateTime voidedAt;
+
+  VoidedItem({
+    required this.itemId,
+    required this.product,
+    required this.origQty,
+    required this.newQty,
+    required this.itemTotal,
+    required this.remarks,
+    required this.voidedBy,
+    required this.voidedAt,
+  });
+
+  factory VoidedItem.fromJson(Map<String, dynamic> json) {
+    return VoidedItem(
+      itemId: json['item_id'] ?? 0,
+      product: json['product'] ?? '',
+      origQty: json['orig_qty'] ?? 0,
+      newQty: json['new_qty'] ?? 0,
+      itemTotal: double.tryParse(json['item_total']?.toString() ?? '0') ?? 0.0,
+      remarks: json['remarks'] ?? '',
+      voidedBy: json['voided_by'] ?? 0,
+      voidedAt: DateTime.parse(json['voided_at']),
+    );
+  }
+}

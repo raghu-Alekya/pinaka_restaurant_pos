@@ -96,13 +96,15 @@ class _TopBarState extends State<TopBar> {
               const Spacer(),
 
               /// RIGHT SIDE — ACTIONS
-              _buildExitIconButton(),
-              const SizedBox(width: 10),
+              // _buildExitIconButton(),
+              // const SizedBox(width: 10),
 
               if (widget.userPermissions?.canUpdateShiftAttendance ?? false) ...[
                 _buildAttendanceIconButton(context),
                 const SizedBox(width: 10),
               ],
+              _buildExitIconButton(),
+              const SizedBox(width: 10),
 
               _buildNotificationIconButton(),
               const SizedBox(width: 10),
@@ -410,7 +412,7 @@ class _TopBarState extends State<TopBar> {
       onTap: onPressed,
       child: Container(
         width: 70, // ⬅ slightly wider like image
-        height: 65,
+        height: 60,
         margin: const EdgeInsets.only(right: 14),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -491,7 +493,7 @@ class _TopBarState extends State<TopBar> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                widget.userPermissions?.displayName ?? "Mohan Krishna",
+                widget.userPermissions?.displayName ?? "username",
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -500,7 +502,7 @@ class _TopBarState extends State<TopBar> {
               ),
               const SizedBox(height: 2),
               Text(
-                widget.userPermissions?.role ?? "I am manager",
+                widget.userPermissions?.role ?? "role",
                 style: TextStyle(
                   fontSize: 12,
                   color: Colors.grey.shade600,

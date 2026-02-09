@@ -1,29 +1,41 @@
+// blocs/search/search_product_bloc.dart
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../repositories/search_repository.dart';
 import '../Bloc Event/serach_product_event.dart';
 import '../Bloc State/search_product_state.dart';
-// import 'product_event.dart';
-// import 'product_state.dart';
-// import '../repositories/product_repository.dart';
+// import 'search_product_event.dart';
+// import 'search_product_state.dart';
+// import '../../repositories/search_product_repository.dart';
 
-class ProductBloc extends Bloc<SearchProductEvent, SearchProductState> {
-  final Search_ProductRepository  repository;
+class SearchProductBloc
+    extends Bloc<SearchProductEvent, SearchProductState> {
+  final Search_ProductRepository repository;
 
-  ProductBloc(this.repository) : super(SearchProductInitial()) {
-    on<SearchFetchProducts>(_onFetchProducts);
-    on<SearchClearProducts>((event, emit) => emit(SearchProductInitial()));
+  SearchProductBloc(this.repository) : super(SearchProductInitial()) {
+    on<SearchFetchProducts>(_onSearchFetchProducts);
+    on<SearchClearProducts>(_onSearchClearProducts);
   }
 
-  Future<void> _onFetchProducts(
+  Future<void> _onSearchFetchProducts(
       SearchFetchProducts event,
       Emitter<SearchProductState> emit,
       ) async {
-    emit(SearchProductLoading());
-
     try {
+      // ✅ Normalize + null-safety
+      final query = (event.search ?? '').trim().toLowerCase();
+
+      // 🚫 Do nothing if less than 2 characters
+      if (query.length < 2) {
+        emit(SearchProductInitial());
+        return;
+      }
+
+      emit(SearchProductLoading());
+
       final products =
-      await repository.SearchfetchProducts(search: event.search);
+      await repository.SearchfetchProducts(search: query);
 
       if (products.isEmpty) {
         emit(SearchProductEmpty());
@@ -33,5 +45,13 @@ class ProductBloc extends Bloc<SearchProductEvent, SearchProductState> {
     } catch (e) {
       emit(SearchProductError(e.toString()));
     }
+  }
+
+
+  void _onSearchClearProducts(
+      SearchClearProducts event,
+      Emitter<SearchProductState> emit,
+      ) {
+    emit(SearchProductInitial());
   }
 }
