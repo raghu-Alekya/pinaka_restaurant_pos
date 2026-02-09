@@ -94,7 +94,7 @@ class NavigationHelper {
               restaurantId: restaurantId,
               restaurantName: restaurantName,
               userPermissions: userPermissions,
-              orders: [], // you can pass empty; Bloc will fetch
+              // orders: [], // you can pass empty; Bloc will fetch
             ),
           ),
         ),

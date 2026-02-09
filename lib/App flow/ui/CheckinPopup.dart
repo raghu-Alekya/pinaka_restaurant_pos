@@ -136,7 +136,7 @@ class _CheckinpopupState extends State<Checkinpopup> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
-                  'Captain Check-In',
+                  'Check-In',
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,

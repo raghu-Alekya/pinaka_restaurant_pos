@@ -1,18 +1,23 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/ui/tables_screen.dart';
+import '../../blocs/Bloc Logic/order_list_bloc.dart';
 import '../../local database/table_dao.dart';
 import '../../models/UserPermissions.dart';
 import '../../repositories/dashboard_repository.dart';
+import '../../repositories/order_list_repository.dart';
 import '../../utils/logger.dart';
 import '../widgets/NavigationHelper.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/top_bar.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'EmployeeListScreen.dart';
+// import 'order_list_screen.dart';
+import 'orderstatus_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final String pin;
@@ -1213,25 +1218,49 @@ class _DashboardScreenState extends State<DashboardScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           /// 🔹 Title + View All
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Text(
-                "Recent Transactions",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              Text(
-                "View All →",
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.blue,
-                ),
-              ),
-            ],
+        Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            "Recent Transactions",
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
+          InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => BlocProvider(
+                    create: (_) => OrderstatusBloc(
+                      OrderstatusRepository(),
+                    ),
+                    child:OrdersListTable(
+                      // orders: state.orders,
+                      pin: widget.pin,
+                      token: widget.token,
+                      restaurantId: widget.restaurantId,
+                      restaurantName: widget.restaurantName,
+                      userPermissions: widget.userPermissions,
+                      // orders: [],
+                    ),
+                  ),
+                ),
+              );
+            },
+            child: const Text(
+              "View All →",
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.blue,
+              ),
+            ),
+          ),
+        ],
+      ),
 
-          const SizedBox(height: 15),
+
+        const SizedBox(height: 15),
 
           Expanded(
             child: Column(

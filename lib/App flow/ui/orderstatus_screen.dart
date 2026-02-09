@@ -25,7 +25,7 @@ class OrdersListTable extends StatefulWidget {
   final UserPermissions? userPermissions;
 
   const OrdersListTable({super.key,required this.token,
-    required List orders,
+    // required List orders,
     required this.pin,
     required this.restaurantId,
     required this.restaurantName,
@@ -101,9 +101,9 @@ class _OrdersListTableState extends State<OrdersListTable> {
     switch (status.toLowerCase()) {
       case "completed":
         return Colors.green;
-      case "pending":
+      case "processing":
         return Colors.orange;
-      case "declined":
+      case "cancelled":
         return Colors.red;
       default:
         return Colors.grey;

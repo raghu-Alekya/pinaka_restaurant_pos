@@ -76,11 +76,11 @@ class _TopBarState extends State<TopBar> {
         elevation: 0,
         scrolledUnderElevation: 0.0,
         titleSpacing: 0,
-        title: Padding(
+        title:Padding(
           padding: const EdgeInsets.symmetric(horizontal: 15),
           child: Row(
             children: [
-              /// Logo
+              /// LEFT SIDE — Logo
               Image.asset(
                 'assets/pinaka.png',
                 height: 40,
@@ -88,128 +88,108 @@ class _TopBarState extends State<TopBar> {
                 fit: BoxFit.contain,
               ),
 
-              SizedBox(width: 15),
+              const SizedBox(width: 15),
 
-              /// Search Box
-              Container(
-                width: screenWidth * 0.40,
-                height: 40,
-                padding: EdgeInsets.symmetric(horizontal: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(color: Color(0xFFECEBEB)),
-                  borderRadius: BorderRadius.circular(15),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x19000000),
-                      blurRadius: 10,
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.search, color: Color(0xFFA19999), size: 20),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: TextField(
-                        style: TextStyle(
-                          color: Color(0xFFA19999),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          height: 1,
-                        ),
-                        decoration: InputDecoration(
-                          hintText: 'Search item or short code....',
-                          border: InputBorder.none,
-                          isDense: true,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              /// (Optional) Search box here later 👈
 
-              SizedBox(width: 110),
+              /// PUSH EVERYTHING ELSE TO RIGHT
+              const Spacer(),
 
-              /// Icon Buttons
-              _buildModeToggle(),
-              SizedBox(width: 15),
-              _buildIconButton(Icons.light_mode),
-              SizedBox(width: 15),
+              /// RIGHT SIDE — ACTIONS
               _buildExitIconButton(),
-              SizedBox(width: 15),
+              const SizedBox(width: 10),
 
-              if (widget.userPermissions?.canUpdateShiftAttendance ??
-                  false) ...[
+              if (widget.userPermissions?.canUpdateShiftAttendance ?? false) ...[
                 _buildAttendanceIconButton(context),
+                const SizedBox(width: 10),
               ],
 
-              SizedBox(width: 10),
               _buildNotificationIconButton(),
-              SizedBox(width: 15),
-              _buildIconButton(
-                Icons.settings,
-                onPressed: () {
-                  final userId = widget.userPermissions?.userId ?? '';
-                  final displayName = widget.userPermissions?.displayName ?? '';
-                  final role = widget.userPermissions?.role ?? '';
+              const SizedBox(width: 10),
 
+              _buildIconButton(
+                label: "Settings",
+                color: const Color(0xFF4CAF50),
+                icon: Image.asset(
+                  'assets/setting.png', // 👈 your asset path
+                  width: 20,
+                  height: 20,
+                  color: const Color(0xFF4CAF50), // optional (remove if image already colored)
+                ),
+                onPressed: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) => SettingsScreen(
                         token: widget.token,
                         pin: widget.pin,
-                        userId: userId,
-                        displayName: displayName,
-                        role: role,
+                        userId: widget.userPermissions?.userId ?? '',
+                        displayName: widget.userPermissions?.displayName ?? '',
+                        role: widget.userPermissions?.role ?? '',
                       ),
                     ),
                   );
                 },
               ),
-              SizedBox(width: 15),
-              _buildIconButton(Icons.logout, onPressed: () async {
-                final result = await showDialog<bool>(
-                  context: context,
-                  barrierDismissible: true,
-                  builder: (_) =>
-                      LogoutConfirmationDialog(
-                        onCancel: () => Navigator.pop(context, false),
-                        onConfirm: () => Navigator.pop(context, true),
-                      ),
-                );
 
-                if (result == true) {
-                  final prefs = await SharedPreferences.getInstance();
-                  final token = prefs.getString('token') ?? "";
+              const SizedBox(width: 10),
 
-                  final authRepository = AuthRepository();
-                  final success = await authRepository.logout(token);
+    _buildIconButton(
+    label: "Logout",
+    color: const Color(0xFFFF9800),
+    icon: Image.asset(
+    'assets/logout.png',
+    width: 24,
+    height: 24,
+    color: const Color(0xFFFF9800),
+    ),
+    onPressed: () async {
+    final result = await showDialog<bool>(
+    context: context,
+    barrierDismissible: true,
+    builder: (_) => LogoutConfirmationDialog(
+    onCancel: () => Navigator.pop(context, false),
+    onConfirm: () => Navigator.pop(context, true),
+    ),
+    );
 
-                  if (success && context.mounted) {
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const EmployeeLoginPage()),
-                          (route) => false,
-                    );
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content: Text('Logout failed. Please try again.')),
-                    );
-                  }
-                }
-              }),
-              SizedBox(width: 10),
+    if (result != true) return;
 
-              /// Profile Info
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token') ?? "";
+
+    final authRepository = AuthRepository();
+    final success = await authRepository.logout(token);
+
+    if (!context.mounted) return;
+
+    if (success) {
+    Navigator.pushAndRemoveUntil(
+    context,
+    MaterialPageRoute(
+    builder: (_) => const EmployeeLoginPage(),
+    ),
+    (route) => false,
+    );
+    } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+    content: Text('Logout failed. Please try again.'),
+    ),
+    );
+    }
+    },
+    ),
+
+
+    const SizedBox(width: 10),
+
+              /// PROFILE — LAST (Right aligned)
               _buildProfileSection(),
-              SizedBox(width: 15),
             ],
           ),
-        ),
+        )
+
       ),
     );
   }
@@ -222,6 +202,7 @@ class _TopBarState extends State<TopBar> {
         setState(() {
           _isAttendanceDialogOpen = true;
         });
+
         showDialog(
           context: context,
           barrierDismissible: false,
@@ -231,6 +212,7 @@ class _TopBarState extends State<TopBar> {
         try {
           final repository = EmployeeRepository();
           final response = await repository.getAllEmployees(widget.token);
+
           final List<Employee> employees = response.map((e) {
             return Employee(
               id: e['ID'].toString(),
@@ -238,12 +220,14 @@ class _TopBarState extends State<TopBar> {
             );
           }).toList();
 
-          final currentShift = await repository.getCurrentShift(widget.token);
+          final currentShift =
+          await repository.getCurrentShift(widget.token);
 
           if (currentShift != null) {
-            final presentIds = List<int>.from(currentShift['shift_emp'] ?? []);
-            final absentIds = List<int>.from(
-                currentShift['shift_absent_emp'] ?? []);
+            final presentIds =
+            List<int>.from(currentShift['shift_emp'] ?? []);
+            final absentIds =
+            List<int>.from(currentShift['shift_absent_emp'] ?? []);
 
             for (var emp in employees) {
               final empId = int.tryParse(emp.id);
@@ -256,29 +240,29 @@ class _TopBarState extends State<TopBar> {
               }
             }
           }
+
           if (context.mounted) {
             Navigator.pop(context);
 
-            final shiftData = await EmployeeRepository().getCurrentShift(
-                widget.token);
+            final shiftData =
+            await EmployeeRepository().getCurrentShift(widget.token);
 
             await showDialog(
               context: context,
               barrierDismissible: false,
-              builder: (_) =>
-                  AttendancePopup(
-                    token: widget.token,
-                    employees: employees,
-                    isUpdateMode: true,
-                    currentShiftData: shiftData,
-                  ),
+              builder: (_) => AttendancePopup(
+                token: widget.token,
+                employees: employees,
+                isUpdateMode: true,
+                currentShiftData: shiftData,
+              ),
             );
           }
         } catch (e) {
           if (context.mounted) {
             Navigator.pop(context);
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Failed to load employees')),
+              const SnackBar(content: Text('Failed to load employees')),
             );
           }
         } finally {
@@ -289,26 +273,21 @@ class _TopBarState extends State<TopBar> {
           }
         }
       },
-      child: Container(
-        width: 34,
-        height: 34,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(color: Colors.grey.shade300, blurRadius: 5),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(7.0),
-          child: Image.asset(
-            'assets/attendance.png',
-            fit: BoxFit.contain,
-          ),
+
+      /// ✅ NEW DASHBOARD TILE UI
+      child: _buildIconButton(
+        label: "Attendance",
+        color: const Color(0xFF4F7CFF),
+        icon: Image.asset(
+          'assets/attendance.png',
+          width: 20,
+          height: 20,
+          color: const Color(0xFF4F7CFF),
         ),
       ),
     );
   }
+
 
   Widget _buildExitIconButton() {
     return GestureDetector(
@@ -316,185 +295,215 @@ class _TopBarState extends State<TopBar> {
         showDialog(
           context: context,
           barrierDismissible: true,
-          builder: (context) =>
-              Checkinpopup(
-                token: widget.token,
-                onCheckIn: () {
-                  Navigator.of(context).pop();
-                  setState(() {
-                    _isCheckInDone = true;
-                  });
-                },
-                onCancel: () {
-                  Navigator.of(context).pop();
-                },
-                onPermissionsReceived: (permissions) {
-                  _handlePermissions(permissions);
-                },
-              ),
-
+          builder: (context) => Checkinpopup(
+            token: widget.token,
+            onCheckIn: () {
+              Navigator.of(context).pop();
+              setState(() {
+                _isCheckInDone = true;
+              });
+            },
+            onCancel: () {
+              Navigator.of(context).pop();
+            },
+            onPermissionsReceived: (permissions) {
+              _handlePermissions(permissions);
+            },
+          ),
         );
       },
-      child: Container(
-        width: 34,
-        height: 34,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(color: Colors.grey.shade300, blurRadius: 5),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(7.0),
-          child: Image.asset(
-            'assets/logout.png',
-            fit: BoxFit.contain,
-          ),
+
+      /// ✅ DASHBOARD TILE UI
+      child: _buildIconButton(
+        label: "CheckIn",
+        color: const Color(0xFFFF5A3C),
+        icon: Image.asset(
+          'assets/checkin.png', // or checkin icon if you have
+          width: 20,
+          height: 20,
+          color: const Color(0xFFFF5A3C),
         ),
       ),
     );
   }
 
-  Widget _buildModeToggle() {
-    return GestureDetector(
-      onTap: toggleMode,
-      child: Container(
-        width: 34,
-        height: 34,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(color: Colors.grey.shade300, blurRadius: 5),
-          ],
-        ),
-        child: Center(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CustomPaint(
-                size: Size(7, 14),
-                painter: TrianglePainter(
-                  isLeft: true,
-                  fillColor: isLightMode ? Colors.white : Colors.black,
-                ),
-              ),
-              SizedBox(width: 4),
-              CustomPaint(
-                size: Size(7, 14),
-                painter: TrianglePainter(
-                  isLeft: false,
-                  fillColor: isLightMode ? Colors.black : Colors.white,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  // Widget _buildModeToggle() {
+  //   return GestureDetector(
+  //     onTap: toggleMode,
+  //     child: Container(
+  //       width: 34,
+  //       height: 34,
+  //       decoration: BoxDecoration(
+  //         color: Colors.white,
+  //         shape: BoxShape.circle,
+  //         boxShadow: [
+  //           BoxShadow(color: Colors.grey.shade300, blurRadius: 5),
+  //         ],
+  //       ),
+  //       child: Center(
+  //         child: Row(
+  //           mainAxisSize: MainAxisSize.min,
+  //           children: [
+  //             CustomPaint(
+  //               size: Size(7, 14),
+  //               painter: TrianglePainter(
+  //                 isLeft: true,
+  //                 fillColor: isLightMode ? Colors.white : Colors.black,
+  //               ),
+  //             ),
+  //             SizedBox(width: 4),
+  //             CustomPaint(
+  //               size: Size(7, 14),
+  //               painter: TrianglePainter(
+  //                 isLeft: false,
+  //                 fillColor: isLightMode ? Colors.black : Colors.white,
+  //               ),
+  //             ),
+  //           ],
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
 
-  Widget _buildNotificationIconButton() {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(color: Colors.grey.shade300, blurRadius: 5),
-            ],
-          ),
-          child: Icon(
+  Widget _buildNotificationIconButton({VoidCallback? onPressed}) {
+    return _buildIconButton(
+      label: "Notification",
+      color: const Color(0xFFFFC107),
+      onPressed: onPressed,
+      icon: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          const Icon(
             Icons.notifications_none_outlined,
-            size: 20,
-            color: Colors.black,
+            size: 24,
+            color: Color(0xFFFFC107),
           ),
-        ),
-        Positioned(
-          top: 8,
-          right: 8,
-          child: Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: Colors.red,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 1.5),
+
+          /// 🔴 Notification Dot
+          Positioned(
+            top: -2,
+            right: -2,
+            child: Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(
+                color: Colors.red,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 1.5),
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _buildIconButton(IconData icon, {VoidCallback? onPressed}) {
+
+  Widget _buildIconButton({
+    required Widget icon,
+    required String label,
+    required Color color,
+    VoidCallback? onPressed,
+  }) {
     return GestureDetector(
       onTap: onPressed,
       child: Container(
-        width: 34,
-        height: 34,
+        width: 70, // ⬅ slightly wider like image
+        height: 65,
+        margin: const EdgeInsets.only(right: 14),
         decoration: BoxDecoration(
           color: Colors.white,
-          shape: BoxShape.circle,
+          borderRadius: BorderRadius.circular(18),
+          // border: Border.all(
+          //   color: color.withOpacity(0.35),
+          //   width: 1,
+          // ),
           boxShadow: [
-            BoxShadow(color: Colors.grey.shade300, blurRadius: 5),
+            /// MAIN soft shadow
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 6),
+            ),
+
+            /// COLORED glow shadow (very subtle)
+            BoxShadow(
+              color: color.withOpacity(0.10),
+              blurRadius: 12,
+              spreadRadius: 1,
+            ),
           ],
         ),
-        child: Icon(
-          icon,
-          size: 18,
-          color: Colors.black,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            icon,
+            const SizedBox(height: 6),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
+
 
   Widget _buildProfileSection() {
     final avatarUrl = widget.userPermissions?.avatar;
 
     return Container(
-      width: 160,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      height: 60, // matches image height
+      padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(40),
+        borderRadius: BorderRadius.circular(14), // 🔥 rectangle with rounded corners
         boxShadow: [
-          BoxShadow(color: Colors.grey.shade300, blurRadius: 7),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           CircleAvatar(
-            radius: 14,
+            radius: 20,
+            backgroundColor: Colors.grey.shade200,
             backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
                 ? NetworkImage(avatarUrl)
                 : const AssetImage('assets/loginname.png') as ImageProvider,
-            onBackgroundImageError: (_, __) {
-              debugPrint("⚠️ Failed to load avatar image");
-            },
           ),
-          const SizedBox(width: 8),
+
+          const SizedBox(width: 12),
+
           Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                widget.userPermissions?.displayName ?? "User Name",
+                widget.userPermissions?.displayName ?? "Mohan Krishna",
                 style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
                 ),
               ),
+              const SizedBox(height: 2),
               Text(
-                widget.userPermissions?.role ?? "Role",
-                style: const TextStyle(
-                  color: Colors.grey,
-                  fontSize: 11,
+                widget.userPermissions?.role ?? "I am manager",
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
                 ),
               ),
             ],
@@ -503,6 +512,10 @@ class _TopBarState extends State<TopBar> {
       ),
     );
   }
+
+
+
+
 }
 class TrianglePainter extends CustomPainter {
   final bool isLeft;

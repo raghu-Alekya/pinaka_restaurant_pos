@@ -49,6 +49,8 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
   int? selectedKotId;
   bool _justUpdated = false;
   UserPermissions? _permissions;
+  double? _oldNetPayable;
+  String? _oldEditReason;
 
 
 
@@ -80,9 +82,9 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
     switch ((status ?? '').toLowerCase()) {
       case "completed":
         return Colors.green;
-      case "pending":
+      case "processing":
         return Colors.orange;
-      case "declined":
+      case "cancelled":
         return Colors.red;
       default:
         return Colors.grey;
@@ -433,7 +435,21 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                     if ((orderModel.status ?? '').toLowerCase() == 'completed')
                                       ElevatedButton(
                                         onPressed: () async {
-                                          // 1️⃣ TOP-BAR ROLE CHECK (blocks captains)
+                                          // order with merchant discount
+                                          if ((orderModel.merchantDiscount ?? 0) > 0) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(
+                                                content: const Text(
+                                                  'Order with Merchant Discount is not editable',
+                                                  style: TextStyle(color: Colors.white),
+                                                ),
+                                                backgroundColor: Colors.redAccent,
+                                              ),
+                                            );
+                                            return;
+                                          }
+
+                                          // 1 TOP-BAR ROLE CHECK (blocks captains)
                                           if ((widget.userPermissions?.role ?? '').toLowerCase() != 'manager') {
                                             ScaffoldMessenger.of(context).showSnackBar(
                                               const SnackBar(content: Text('Only managers can edit orders')),
@@ -444,7 +460,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                           final String originalLoggedInUserId =
                                               widget.userPermissions!.userId;
 
-                                          // 2️⃣ PIN VERIFICATION
+                                          // 2️ PIN VERIFICATION
                                           final bool? isCheckedIn = await showDialog<bool>(
                                             context: context,
                                             barrierDismissible: true,
@@ -467,7 +483,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                             return;
                                           }
 
-                                          // 3️⃣ PIN-ENTERED USER MUST BE MANAGER
+                                          // 3️ PIN-ENTERED USER MUST BE MANAGER
                                           if ((_permissions?.role ?? '').toLowerCase() != 'manager') {
                                             ScaffoldMessenger.of(context).showSnackBar(
                                               const SnackBar(content: Text('Invalid manager PIN')),
@@ -475,7 +491,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                             return;
                                           }
 
-                                          // 4️⃣ SAME MANAGER DOUBLE CHECK
+                                          // 4️ SAME MANAGER DOUBLE CHECK
                                           final String pinEnteredManagerId = _permissions!.userId;
                                           final String? orderCompletedById =
                                               orderModel.completedByUserId;
@@ -492,7 +508,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                             return;
                                           }
 
-                                          // 🔐 OPTIONAL: ensure same top-bar manager & PIN manager
+                                          //  OPTIONAL: ensure same top-bar manager & PIN manager
                                           if (pinEnteredManagerId != originalLoggedInUserId) {
                                             ScaffoldMessenger.of(context).showSnackBar(
                                               const SnackBar(
@@ -504,7 +520,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                             return;
                                           }
 
-                                          // 5️⃣ NAVIGATE
+                                          // 5️ Navigation
                                           final bool? updated = await Navigator.push<bool>(
                                             context,
                                             MaterialPageRoute(
@@ -1017,12 +1033,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                               ),
 
                                               // Show "Updated" if either the backend says yes OR _justUpdated is true
-                                              if (_justUpdated ||
-                                                  (order['is_updated']
-                                                      ?.toString()
-                                                      .toLowerCase() ??
-                                                      '') ==
-                                                      'yes')
+                                              if (orderModel.isUpdated?.toLowerCase() == 'yes')
                                                 Row(
                                                   children: [
                                                     Image.asset(
@@ -1220,10 +1231,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // ✅ Only show summary if updated
-                          if ((_justUpdated) ||
-                              ((order['is_updated']?.toString().toLowerCase() ??
-                                  '') ==
-                                  'yes'))
+                          if (orderModel.isUpdated?.toLowerCase() == 'yes')
                             Container(
                               width: double.infinity,
                               padding: const EdgeInsets.all(12),
@@ -1242,21 +1250,13 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Top label
                                   const Text(
                                     "Old payment Details",
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.black,
-                                    ),
+                                    style: TextStyle(fontSize: 12),
                                   ),
                                   const SizedBox(height: 8),
-
-                                  // Bottom row with values and vertical divider
                                   IntrinsicHeight(
                                     child: Row(
-                                      crossAxisAlignment:
-                                      CrossAxisAlignment.center,
                                       children: [
                                         // Net Payable
                                         Expanded(
@@ -1264,13 +1264,10 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                             children: [
                                               const Text(
                                                 "Net Payable Amount- ",
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w400,
-                                                ),
+                                                style: TextStyle(fontSize: 14),
                                               ),
                                               Text(
-                                                "₹${order['order_prev_total']?.toStringAsFixed(2) ?? '0.00'}",
+                                                "₹${orderModel.orderPrevTotal?.toStringAsFixed(2) ?? '0.00'}",
                                                 style: const TextStyle(
                                                   fontSize: 14,
                                                   fontWeight: FontWeight.w500,
@@ -1280,16 +1277,13 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                           ),
                                         ),
 
-                                        // Vertical Divider
                                         Container(
                                           width: 1,
                                           color: Colors.grey[300],
-                                          margin: const EdgeInsets.symmetric(
-                                            horizontal: 2,
-                                          ),
+                                          margin: const EdgeInsets.symmetric(horizontal: 8),
                                         ),
-                                        const SizedBox(width: 8),
-                                        // Reason for edit
+
+                                        // Reason
                                         Expanded(
                                           child: Row(
                                             children: [
@@ -1297,33 +1291,20 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                 "Reason for edit- ",
                                                 style: TextStyle(
                                                   fontSize: 12,
-                                                  fontWeight: FontWeight.w400,
                                                   color: Color(0xFF7A7A7A),
                                                 ),
                                               ),
                                               Expanded(
                                                 child: Text(
-                                                  (orderModel.isUpdated
-                                                      ?.toLowerCase() ==
-                                                      'yes' &&
-                                                      orderModel
-                                                          .updated_remarks !=
-                                                          null &&
-                                                      orderModel
-                                                          .updated_remarks!
-                                                          .trim()
-                                                          .isNotEmpty)
-                                                      ? orderModel
-                                                      .updated_remarks!
+                                                  orderModel.updated_remarks?.isNotEmpty == true
+                                                      ? orderModel.updated_remarks!
                                                       : '-',
-
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
                                                   style: const TextStyle(
                                                     fontSize: 14,
                                                     fontWeight: FontWeight.w500,
                                                   ),
-                                                  maxLines: 1,
-                                                  overflow:
-                                                  TextOverflow.ellipsis,
                                                 ),
                                               ),
                                             ],
@@ -1335,6 +1316,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                 ],
                               ),
                             ),
+
 
                           // 🔹 KOT TABLE
                           Expanded(child: buildSelectedKotCard(order)),
@@ -1414,6 +1396,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               Container(
+                height: 40,
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
                   color: const Color(0xFF125BCE), // blue background
@@ -1460,7 +1443,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
           ),
           const SizedBox(height: 10),
 
-          /// 🔹 Table Header
+          // Table Header
           Container(
             decoration: BoxDecoration(
               color: const Color(0xFF999393),
@@ -1476,28 +1459,28 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                   flex: 1,
                   child: Text(
                     "#",
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(fontWeight: FontWeight.w400,color: Color(0xFFF5F5F5)),
                   ),
                 ),
                 Expanded(
                   flex: 3,
                   child: Text(
                     "Item Name",
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(fontWeight: FontWeight.w400,color: Color(0xFFF5F5F5)),
                   ),
                 ),
                 Expanded(
                   flex: 2,
                   child: Text(
                     "Quantity",
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(fontWeight: FontWeight.w400,color: Color(0xFFF5F5F5)),
                   ),
                 ),
                 Expanded(
-                  flex: 2,
+                  flex: 1,
                   child: Text(
                     "Amount",
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(fontWeight: FontWeight.w400,color: Color(0xFFF5F5F5)),
                   ),
                 ),
               ],
@@ -1568,9 +1551,9 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                         ),
                       ),
                       Expanded(
-                        flex: 2,
+                        flex: 1,
                         child: Text(
-                          item['total_wo_tax']?.toString() ?? "-",
+                          item['total_wo_tax']?.toStringAsFixed(2)?? "-",
                           style: const TextStyle(fontWeight: FontWeight.w400),
                         ),
                       ),

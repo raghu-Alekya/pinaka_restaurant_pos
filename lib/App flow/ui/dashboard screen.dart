@@ -244,36 +244,81 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
 
   Widget _buildBreadcrumbs() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
-        children: List.generate(breadcrumbNames.length, (index) {
-          final name = breadcrumbNames[index];
-          final isLast = index == breadcrumbNames.length - 1;
-          return Row(
-            children: [
-              GestureDetector(
-                onTap: (isLast || index == 0) ? null : () => _onBreadcrumbTap(index),
-                child: Text(
-                  name,
-                  style: TextStyle(
-                    color: isLast ? Colors.red : Colors.black,
-                    fontWeight: isLast ? FontWeight.w600 : FontWeight.bold,
-                  ),
-                ),
-              ),
+        children: [
+          // LEFT: Scrollable Breadcrumbs
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: List.generate(breadcrumbNames.length, (index) {
+                  final name = breadcrumbNames[index];
+                  final isLast = index == breadcrumbNames.length - 1;
 
-              if (!isLast)
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 4),
-                  child: Icon(Icons.chevron_right, size: 16),
+                  return Row(
+                    children: [
+                      GestureDetector(
+                        onTap: (isLast || index == 0)
+                            ? null
+                            : () => _onBreadcrumbTap(index),
+                        child: Text(
+                          name,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: isLast ? Colors.red : Colors.black,
+                            fontWeight:
+                            isLast ? FontWeight.w600 : FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      if (!isLast)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 6),
+                          child: Icon(Icons.chevron_right, size: 16),
+                        ),
+                    ],
+                  );
+                }),
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 18),
+
+          // RIGHT: Search Bar (Fixed Position)
+          Container(
+            width: 300,
+            height: 35,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
                 ),
-            ],
-          );
-        }),
+              ],
+            ),
+            child: TextField(
+              decoration: const InputDecoration(
+                hintText: "Search item or short code....",
+                prefixIcon: Icon(Icons.search, size: 18),
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(vertical: 10),
+              ),
+              onChanged: (value) {
+                // connect to search bloc / filter
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
+
 
   void _onBreadcrumbTap(int index) {
     setState(() {
@@ -333,11 +378,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         onPermissionsReceived: (permissions) async {
           setState(() {
             _userPermissions = permissions;
-            // _selectedUser = {
-            //   "id": permissions.userId,
-            //   "name": permissions.displayName,
-            //   "role": permissions.role,
-            // };
+
           });
         },
       ),
@@ -381,6 +422,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     crossAxisAlignment:
                                     CrossAxisAlignment.start,
                                     children: [
+                                      const SizedBox(height: 8),
+                                      if (breadcrumbNames.isNotEmpty) ...[
+                                        _buildBreadcrumbs(),
+                                        const SizedBox(height: 8),
+                                      ],
                                       SubCategoryTabWidget(
                                         subCategories: category.subCategories ?? [],
                                         selectedIndex: category.subCategories != null
@@ -397,10 +443,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       ),
 
                                       const SizedBox(height: 8),
-                                      if (breadcrumbNames.isNotEmpty) ...[
-                                        _buildBreadcrumbs(),
-                                        const SizedBox(height: 8),
-                                      ],
+                                      // if (breadcrumbNames.isNotEmpty) ...[
+                                      //   _buildBreadcrumbs(),
+                                      //   const SizedBox(height: 8),
+                                      // ],
                                       Expanded(
                                         child: BlocBuilder<
                                             MiniSubCategoryBloc,

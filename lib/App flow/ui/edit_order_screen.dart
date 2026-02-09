@@ -49,6 +49,8 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
   double _fixedTotalTax = 0.0;
   bool _justUpdated = false;
+  double? _previousNetPayable;
+  bool _kotUpdatedOnce = false;
 
   String? selectedReason;
   final TextEditingController _remarksController = TextEditingController();
@@ -65,6 +67,8 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
   double _dynamicNetPayable = 0.0;
   bool _netPayableInitialized = false;
   String? _updateMessage; // null when no message
+  bool _kotUpdated = false;
+
 
 // Step 1: Just fetch net payable (no calculation)
   String getNetPayable(OrderlistModel order) {
@@ -186,16 +190,18 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
   }
   void _refreshOrders() {
     setState(() {
-      _netPayableInitialized = false; // re-init tax & net payable
+      // _netPayableInitialized = false; // re-init tax & net payable
       _selectedKotId = null;
       _selectedKot = null;
       _leftPanelItems.clear();
       _ordersFuture = _orderRepo.fetchOrders(widget.token);
+
     });
   }
 
   Future<void> _updateKot() async {
     if (_selectedKot == null) return;
+
     if (selectedReason == null || selectedReason!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please select a reason")),
@@ -209,29 +215,46 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
     );
 
     final kotId = _selectedKot!.kotOrderId;
+    print("🔵 Preparing to update KOT");
+    print("📌 Order ID: ${widget.orderId}");
+    print("📌 Selected KOT ID: $kotId");
+    print("📌 Selected Reason: $selectedReason");
+    print("📌 Remarks: ${_remarksController.text.trim()}");
 
     try {
+      // 1️⃣ Fetch order (validation only)
       final order = await repo.fetchOrder(widget.orderId);
 
-      final selectedKotInOrder = order.kotOrders?.firstWhere(
+      order.kotOrders?.firstWhere(
             (k) => k.kotOrderId == kotId,
         orElse: () => throw Exception("Selected KOT not found"),
       );
 
-      final List items = _editedKotItems[_selectedKotId] ?? [];
+      // 2️⃣ ONLY edited KOT items
+      final items = _editedKotItems[_selectedKotId];
 
+      if (items == null || items.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("⚠️ No items to update")),
+        );
+        return;
+      }
+
+      // 3️⃣ Build payload
       final List<Map<String, dynamic>> lineItemsPayload = [];
 
       for (final item in items) {
         final qty = item.quantity ?? 0;
 
+        // EXISTING ITEM
         if (item.lineItemId != null) {
           lineItemsPayload.add({
             "id": item.lineItemId,
-            "quantity": qty,
-            if (qty == 0) "_destroy": true,
+            "quantity": qty, // qty = 0 → remove
           });
-        } else if (item.itemId != null && qty > 0) {
+        }
+        // NEW ITEM
+        else if (item.itemId != null && qty > 0) {
           lineItemsPayload.add({
             "product_id": item.itemId,
             "quantity": qty,
@@ -246,10 +269,17 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         return;
       }
 
+      // 4️⃣ Meta data
       final metaDataPayload = [
         if (_remarksController.text.trim().isNotEmpty)
-          {"key": "kot_remarks", "value": _remarksController.text.trim()},
-        {"key": "kot_remarks", "value": selectedReason},
+          {
+            "key": "kot_remarks",
+            "value": _remarksController.text.trim(),
+          },
+        {
+          "key": "kot_remarks",
+          "value": selectedReason,
+        },
       ];
 
       final payload = {
@@ -257,6 +287,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         "meta_data": metaDataPayload,
       };
 
+      // 5️⃣ Handle completed KOT
       final originalStatus = _selectedKot?.status ?? "processing";
       if (originalStatus == "completed") {
         await repo.updateOrderRaw(
@@ -266,6 +297,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         );
       }
 
+      // 6️⃣ Update KOT
       final success = await repo.updateOrderRaw(
         orderId: widget.orderId,
         kotOrderId: kotId,
@@ -274,14 +306,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
       if (!success) throw Exception("Update failed");
 
-      setState(() {
-        // items.removeWhere((i) => i.quantity == 0); // remove deleted items locally
-        // _updateMessage = "KOT updated Successfully.";
-        _justUpdated = true;
-      });
-
-      _refreshOrders();
-
+      // 7️⃣ Restore status
       if (originalStatus == "completed") {
         await repo.updateOrderRaw(
           orderId: widget.orderId,
@@ -290,15 +315,23 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         );
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("✅ KOT Updated Successfully")),
-      );
+      _refreshOrders();
+
+      setState(() {
+        _updateMessage = "KOT updated Successfully. Final Net payable updated.";
+      });
+
     } catch (e) {
-      // ScaffoldMessenger.of(context).showSnackBar(
-      //   SnackBar(content: Text("❌ Update failed: $e")),
-      // );
+      print("❌ KOT Update Failed => $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("❌ Update failed: $e")),
+      );
     }
+    // _refreshOrders();
   }
+
+
+
 
   @override
   void dispose() {
@@ -417,6 +450,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                       const SizedBox(width:  42),
                       Row(
                         children: [
+                          const SizedBox(width:  10),
                           SizedBox(
                             width: 110, // button width
                             child: ElevatedButton(
@@ -581,13 +615,14 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                                             //   ),
                                             // ],
                                           ),
-                                          child:_summaryRow(
+                                          child: _summaryRow(
                                             "KOT #${_selectedKot?.kotOrderId ?? '-'} - Amount",
                                             "₹${(_editedKotItems[_selectedKotId] ?? [])
                                                 .fold<double>(0.0, (sum, i) => sum + (i.totalWoTax ?? 0))
                                                 .toStringAsFixed(2)}",
                                             bold: true,
                                           ),
+
                                         ),
                                       ),
                                   ],
@@ -610,28 +645,32 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           const SizedBox(width: 15),
+
                           Expanded(
                             child: _infoRow(
                               "Order Net Payable",
-                              "₹${(order.netPayable ?? 0).round()}",
+                              "₹${(order.orderPrevTotal ?? 0).round()}",
                               bold: true,
+                              labelColor: Colors.black87,
+                              valueColor: Colors.black87,
+                              labelFontWeight: FontWeight.w600,
+                              valueFontWeight: FontWeight.w600,
                             ),
                           ),
 
-                          const SizedBox(width: 30),
+                          const SizedBox(width: 34),
+
                           Expanded(
                             child: _infoRow(
                               "Order Updated Net Payable",
                               "₹${_dynamicNetPayable.round()}",
                               bold: true,
+                              labelColor: Colors.black87,
+                              valueColor: Colors.black87, //  second value color valueColor: Color(0xFF086888),
+                              labelFontWeight: FontWeight.w700,  // Label weight: light
+                              valueFontWeight: FontWeight.w700,
                             ),
                           ),
-
-
-
-
-
-
                         ],
                       ),
 
@@ -640,10 +679,13 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          // ✅ Enter Reason (fixed width, doesn't shrink)
+                          //  Enter Reason
+
                           if (kot_remarks.isNotEmpty) ...[
+                            const SizedBox(width: 10,),
                             Container(
-                              padding: const EdgeInsets.all(8),
+                              padding: const EdgeInsets.fromLTRB(24, 8, 8, 8),
+
                               decoration: BoxDecoration(
                                 color: const Color(0xFFE5EFFF),
                                 borderRadius: BorderRadius.circular(10),
@@ -660,8 +702,9 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                                     ),
                                   ),
                                   const SizedBox(width: 20),
+                                  // dropdown
                                   SizedBox(
-                                    width: 450, // fixed width for dropdown
+                                    width: 450,
                                     height: 30,
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -716,10 +759,10 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                             ),
                           ],
 
-                          // ✅ Spacer only if no success message
+                          //  Spacer only if no success message
                           if (_updateMessage == null) const Spacer(),
 
-                          // ✅ Success message (Flexible)
+                          // Success message (Flexible)
                           if (_updateMessage != null) ...[
                             const SizedBox(width: 12), // small space before message
                             Flexible(
@@ -747,7 +790,8 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                             const SizedBox(width: 12),
                           ],
 
-                          // ✅ Update KOT button
+                          //  Update KOT button
+
                           ElevatedButton(
                             onPressed: _updateKot,
                             style: ElevatedButton.styleFrom(
@@ -766,6 +810,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                               ),
                             ),
                           ),
+                          const SizedBox(width:  10),
                         ],
                       )
 
@@ -861,7 +906,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                   Expanded(flex: 1, child: Text("#", style: TextStyle(fontWeight:FontWeight.w400,color: Color(0xFFF5F5F5)))),
                   Expanded(flex: 3, child: Text("Item", style: TextStyle(fontWeight: FontWeight.w400,color: Color(0xFFF5F5F5)))),
                   Expanded(flex: 2, child: Text("Quantity", style: TextStyle(fontWeight: FontWeight.w400,color: Color(0xFFF5F5F5)))),
-                  Expanded(flex: 2, child: Text("Amount", style: TextStyle(fontWeight: FontWeight.w400,color: Color(0xFFF5F5F5)))),
+                  Expanded(flex: 1, child: Text("Amount", style: TextStyle(fontWeight: FontWeight.w400,color: Color(0xFFF5F5F5)))),
                 ],
               ),
             ),
@@ -908,7 +953,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                         ),
                         Expanded(flex: 2, child: Text("${item.quantity ?? 0}")),
                         Expanded(
-                          flex: 2,
+                          flex: 1,
                           child: Text(
                             "₹${(item.totalWoTax ?? 0).toStringAsFixed(2)}",
                           ),
@@ -962,18 +1007,27 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
     );
   }
 
-
-  Widget _infoRow(String label, String value, {bool bold = false}) {
+  Widget _infoRow(
+      String label,
+      String value, {
+        bool bold = false,
+        Color labelColor = Colors.black87,
+        Color valueColor = Colors.black87,
+        FontWeight labelFontWeight = FontWeight.normal, // Default to normal
+        FontWeight valueFontWeight = FontWeight.normal, // Default to normal
+      }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 4.0),
+      padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
       child: Row(
         children: [
+          const SizedBox(width: 20),
+
           Text(
             label,
             style: TextStyle(
-              fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+              fontWeight: labelFontWeight, // Apply labelFontWeight
               fontSize: 14,
-              color: Colors.black87,
+              color: labelColor,
             ),
           ),
 
@@ -984,12 +1038,14 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
               value,
               textAlign: TextAlign.right,
               style: TextStyle(
-                fontWeight: bold ? FontWeight.bold : FontWeight.normal,
-                fontSize: 14,
-                color: Colors.black87,
+                fontWeight: valueFontWeight, // Apply valueFontWeight
+                fontSize: 16,
+                color: valueColor,
               ),
             ),
           ),
+
+          const SizedBox(width: 65),
         ],
       ),
     );
@@ -1046,7 +1102,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                     Expanded(flex: 1, child: Text("#",style: TextStyle(fontWeight: FontWeight.w400,color: Color(0xFFF5F5F5)))),
                     Expanded(flex: 3, child: Text("Item",style: TextStyle(fontWeight:FontWeight.w400,color: Color(0xFFF5F5F5)))),
                     Expanded(flex: 2, child: Text("Quantity",style: TextStyle(fontWeight:FontWeight.w400,color: Color(0xFFF5F5F5)))),
-                    Expanded(flex: 2, child: Text("Amount",style: TextStyle(fontWeight: FontWeight.w400,color: Color(0xFFF5F5F5)))),
+                    Expanded(flex: 1, child: Text("Amount",style: TextStyle(fontWeight: FontWeight.w400,color: Color(0xFFF5F5F5)))),
                   ],
                 ),
               ),
@@ -1150,7 +1206,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                             ),
                           ),
                           Expanded(
-                            flex: 2,
+                            flex: 1,
                             child: Text("₹${( item.totalWoTax ?? 0).toStringAsFixed(2)}"),
                           ),
                         ],
@@ -1236,24 +1292,26 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
           ),
         ],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 35, vertical: 12),
+      padding: const EdgeInsets.fromLTRB(30, 12, 50, 8),
+
       child: Row(
         children: [
           Text(
             label,
             style: TextStyle(
               fontWeight: bold ? FontWeight.w500 : FontWeight.normal,
-              fontSize: 12, // reduced from 19
+              fontSize: 12,
               fontFamily: 'Inter',
               color: labelColor,
             ),
           ),
-          const SizedBox(width: 280), // fixed width gap
+          // const SizedBox(width: 280), // fixed width gap
+          const Spacer(),
           Text(
             value,
             style: TextStyle(
               fontWeight: bold ? FontWeight.w500 : FontWeight.normal,
-              fontSize: 14, // reduced from 24
+              fontSize: 14,
               fontFamily: 'Inter',
               color: valueColor,
             ),
