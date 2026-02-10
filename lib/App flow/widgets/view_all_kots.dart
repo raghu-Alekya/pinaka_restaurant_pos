@@ -1,10 +1,14 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/widgets/transer_kot.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/widgets/void_items.dart';
 import '../../blocs/Bloc Event/kot_event.dart';
 import '../../blocs/Bloc Event/void_item_evnts.dart';
+import '../../blocs/Bloc Logic/auth_bloc.dart';
 import '../../blocs/Bloc Logic/kot_bloc.dart';
+import '../../blocs/Bloc Logic/transfer_kot_bloc.dart';
 import '../../blocs/Bloc Logic/void_item_bloc.dart';
 import '../../blocs/Bloc State/kot_state.dart';
 import '../../blocs/Bloc Event/order_event.dart';
@@ -14,6 +18,11 @@ import '../../blocs/Bloc State/order_state.dart';
 import '../../blocs/Bloc State/void_item_state.dart';
 import '../../models/order/KOT_model.dart';
 import '../../models/order/void_kot_items.dart';
+import '../../repositories/auth_repository.dart';
+import '../../repositories/kot_repository.dart';
+import '../../repositories/table_repository.dart';
+import '../../repositories/zone_repository.dart';
+import '../../utils/SessionManager.dart';
 
 const Color kHeaderBlue = Color(0xFF152148);
 const Color kKotHeaderBg = Color(0xFFECEEFB);
@@ -45,7 +54,7 @@ class ViewAllKOTDropdown extends StatefulWidget {
 }
 
 class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
-  bool _expanded = false;
+  bool _expanded = true;
   final Map<String, bool> _kotExpanded = {};
   int _previousOrderItemCount = 0;
 
@@ -74,6 +83,63 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
       _expanded = false;
     }
   }
+  Map<String, String> extractZoneNames(dynamic zoneResponse) {
+    // ✅ CASE 1: API already returns List<Map>
+    if (zoneResponse is List) {
+      return buildZoneNameMapFromZones(
+        List<Map<String, dynamic>>.from(zoneResponse),
+      );
+    }
+
+    // ✅ CASE 2: API returns Map with zone_details
+    if (zoneResponse is Map<String, dynamic> &&
+        zoneResponse['zone_details'] is List) {
+      return buildZoneNameMapFromZones(
+        List<Map<String, dynamic>>.from(zoneResponse['zone_details']),
+      );
+    }
+
+    return {};
+  }
+
+  /// zoneId -> zoneName
+  Map<String, String> buildZoneNameMapFromZones(
+      List<Map<String, dynamic>> zones) {
+
+    final Map<String, String> zoneNames = {};
+
+    for (final zone in zones) {
+      final zoneId = zone['zone_id']?.toString();
+      final zoneName = zone['zone_name']?.toString();
+
+      if (zoneId == null || zoneName == null) continue;
+
+      zoneNames[zoneId] = zoneName;
+    }
+
+    return zoneNames;
+  }
+
+  /// zoneId -> tableNames
+  Map<String, List<String>> buildZoneTableMap(
+      List<Map<String, dynamic>> tables) {
+
+    final Map<String, List<String>> zoneMap = {};
+
+    for (final table in tables) {
+      final zoneId = table['zone_id']?.toString();
+      final tableName = table['table_name']?.toString();
+
+      if (zoneId == null || tableName == null) continue;
+
+      zoneMap.putIfAbsent(zoneId, () => []);
+      zoneMap[zoneId]!.add(tableName);
+    }
+
+    return zoneMap;
+  }
+
+
 
 
   @override
@@ -322,9 +388,9 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                   ),
                                                 );
 
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  const SnackBar(content: Text("KOT Updated Successfully")),
-                                                );
+                                                // ScaffoldMessenger.of(context).showSnackBar(
+                                                //   const SnackBar(content: Text("KOT Updated Successfully")),
+                                                // );
                                               }
 
                                               if (state is UpdatekotFailure) {
@@ -395,61 +461,212 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                 const SizedBox(width: 10),
 
                                 // ✅ Transfer KOT Button
-                                SizedBox(
-                                  height: 32,
-                                  child: ElevatedButton.icon(
-                                    onPressed: () async {
-                                      final transferItems = kot.items.map((e) {
-                                        return TransferKotItem(
-                                          name: e.itemName ?? "",
-                                          note: e.note.isNotEmpty
-                                              ? e.note
-                                              : (e.modifiers.isNotEmpty ? e.modifiers.join(", ") : ""),
-                                          qty: e.quantity ?? 1,
-                                          amount: e.totalWithAddons,
-                                        );
-                                      }).toList();
+                          SizedBox(
+                          height: 32,
+                          child: ElevatedButton.icon(
+                          onPressed: () async {
+                          debugPrint("🔥 STEP 0: Transfer KOT button tapped");
 
-                                      final tableList = List.generate(24, (i) => "Table-${i + 1}");
+                          try {
+                          // ✅ STEP 1: TOKEN
+                          final token = await SessionManager.getToken();
+                          if (token == null || token.isEmpty) return;
 
-                                      await showDialog(
-                                        context: context,
-                                        barrierDismissible: false,
-                                        builder: (_) => TransferKOTDialog(
-                                          tableNo: widget.tableNo,
-                                          kotNo: kot.kotId.toString(),
-                                          dateTime: kot.time ?? DateTime.now(),
-                                          items: transferItems,
-                                          tables: tableList,
-                                          zoneTables: {},
-                                        ),
-                                      );
-                                    },
-                                    icon: Image.asset(
-                                      "assets/icon/Void.png",
-                                      height: 16,
-                                      width: 16,
-                                      color: Colors.black,
-                                    ),
-                                    label: const Text(
-                                      "Transfer KOT",
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFFFFC107),
-                                      elevation: 0,
-                                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                    ),
-                                  ),
+                          // ✅ STEP 2: ITEMS
+                          final transferItems = kot.items.map((e) {
+                          return TransferKotItem(
+                          name: e.itemName ?? "",
+                          note: e.note.isNotEmpty
+                          ? e.note
+                              : (e.modifiers.isNotEmpty
+                          ? e.modifiers.join(", ")
+                              : ""),
+                          qty: e.quantity ?? 1,
+                          amount: e.totalWithAddons,
+                          );
+                          }).toList();
+
+                          final zoneRepository = ZoneRepository();
+                          final zoneResponse = await zoneRepository.getAllZones(token);
+                          // 🔍 DEBUG HERE (IMPORTANT)
+                          debugPrint("🧪 zoneResponse runtimeType = ${zoneResponse.runtimeType}");
+                          debugPrint("🧪 zoneResponse value = $zoneResponse");
+
+// ✅ FIXED
+//                             final zoneResponse = await zoneRepository.getAllZones(token);
+
+                            final Map<String, String> zoneNames =
+                            extractZoneNames(zoneResponse);
+
+                            // ✅ STEP 3: FETCH TABLES
+                          final tableRepository = TableRepository();
+                          final tableResponse = await tableRepository.getAllTables(token);
+
+                          debugPrint("🧪 TABLE RESPONSE FIRST ITEM = ${tableResponse.isNotEmpty ? tableResponse.first : 'EMPTY'}");
+
+
+
+                          // ✅ STEP 4: BUILD ZONE → TABLE MAP (String keys)
+                          final Map<String, List<String>> zoneTables = {};
+                          final Map<String, int> tableIds = {};
+                          final Map<String, int> zoneIds = {};
+                          final Map<String, String> tableStatus = {};
+                          // final Map<String, String> zoneNames =
+                          // buildZoneNameMap(tableResponse);
+                          //   final zoneNames = buildZoneNameMapFromZones(zoneDetails);
+
+
+
+                            for (final table in tableResponse) {
+                          final zoneId = table['zone_id'];
+                          final tableName = table['table_name'];
+                          final tableId = table['table_id'];
+                          final status = table['status'];
+
+                          if (zoneId != null && tableName != null) {
+                          final key = zoneId.toString();
+                          zoneTables.putIfAbsent(key, () => []);
+                          zoneTables[key]!.add(tableName);
+                          }
+
+                          if (tableName != null && tableId != null) {
+                          tableIds[tableName] = tableId;
+                          }
+
+                          if (zoneId != null) {
+                          zoneIds[zoneId.toString()] = zoneId;
+                          }
+                          if (tableName != null && status != null) {
+                            tableStatus[tableName] = status; // ✅ STORE STATUS
+                          }
+                          }
+
+                          debugPrint("🟢 ZONE TABLES = $zoneTables");
+                          debugPrint("🟢 TABLE IDS = $tableIds");
+                          debugPrint("🟢 ZONE IDS = $zoneIds");
+                          debugPrint("🧪 widget.tableNo = '${widget.tableNo}'");
+                          debugPrint("🧪 tableIds keys = ${tableIds.keys.toList()}");
+                          debugPrint("🟢 TABLE STATUS = $tableStatus");
+
+
+                          // ✅ STEP 4.9: HARD GUARDS
+                          if (!context.mounted) return;
+
+                          if (widget.parentOrderId == null ||
+                          widget.restaurantId == null ||
+                          kot.kotId == null ||
+                          !tableIds.containsKey(widget.tableNo)) {
+                          debugPrint("❌ Missing required IDs");
+                          return;
+                          }
+                          String getZoneFromTable(
+                              String tableName,
+                              Map<String, List<String>> zoneTables,
+                              ) {
+                            for (final entry in zoneTables.entries) {
+                              if (entry.value.contains(tableName)) {
+                                return entry.key;
+                              }
+                            }
+                            return '';
+                          }
+                          final kotZone = getZoneFromTable(
+                            widget.tableNo,
+                            zoneTables,
+                          );
+
+
+                          // ✅ STEP 5: OPEN DIALOG
+                          final result = await showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (dialogContext) {
+                              return BlocProvider(
+                                create: (_) => TransferKotBloc(
+                                  repository: KotTransferRepository(),
                                 ),
-                              ],
+                              //     final kotZone = findZoneForTable(
+                              // widget.tableNo,
+                              // zoneTables,
+                              // );
+
+                              child: TransferKOTDialog(
+                                tableName: widget.tableNo,
+                                kotNo: (kot.kotNumber?.isNotEmpty ?? false)
+                                    ? kot.kotNumber!
+                                    : "KOT#${kot.kotId}",
+                                dateTime: kot.time ?? DateTime.now(),
+                                items: transferItems,
+                                zoneTables: zoneTables,
+
+                                orderId: widget.parentOrderId!,
+                                kotId: kot.kotId!,
+                                fromTableId: tableIds[widget.tableNo]!,
+                                restaurantId: widget.restaurantId!,
+                                authToken: widget.token,
+
+                                zoneIds: zoneIds,
+                                tableIds: tableIds,
+                                tableStatus: tableStatus,
+
+                                kotZone: kotZone,
+                                zoneNames: zoneNames,
+                              ),
+
+                              );
+                            },
+                          );
+                          if (result != null && result is Map) {
+                            // final newParentId = result["newParentId"];
+
+                            debugPrint("🔁 Transfer done → refreshing KOT list");
+
+                            context.read<KotBloc>().add(
+                              FetchKots(
+                                parentOrderId: widget.parentOrderId, // ✅ SAME ID
+                                restaurantId: widget.restaurantId!,
+                                zoneId: widget.zoneId,
+                                token: widget.token,
+                                // forceRefresh: true,
+                              ),
+                            );
+
+                          }
+
+
+
+                          } catch (e, s) {
+                          debugPrint("❌ Transfer KOT failed: $e");
+                          debugPrintStack(stackTrace: s);
+                          }
+                          },
+                          icon: Image.asset(
+                          "assets/icon/Void.png",
+                          height: 16,
+                          width: 16,
+                          color: Colors.black,
+                          ),
+                          label: const Text(
+                          "Transfer KOT",
+                          style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black,
+                          ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFFC107),
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          ),
+                          ),
+                          ),
+                          ),
+
+
+                          ],
                             ),
                           ),
 
@@ -552,14 +769,14 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                   ),
                                                                 ),
                                                                 const SizedBox(height: 2),
-                                                                Text(
-                                                                  item.amount.toStringAsFixed(2),
-                                                                  style: const TextStyle(
-                                                                    fontSize: 11,
-                                                                    color: Colors.grey,
-                                                                    fontWeight: FontWeight.w500,
-                                                                  ),
-                                                                ),
+                                                                // Text(
+                                                                //   item.amount.toStringAsFixed(2),
+                                                                //   style: const TextStyle(
+                                                                //     fontSize: 11,
+                                                                //     color: Colors.grey,
+                                                                //     fontWeight: FontWeight.w500,
+                                                                //   ),
+                                                                // ),
                                                               ],
                                                             ),
                                                           ),

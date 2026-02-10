@@ -26,9 +26,11 @@ class DiscountLoading extends DiscountState {}
 
 class DiscountSuccess extends DiscountState {
   final AddDiscountResponse response;
+  final bool isNcApplied;
 
-  DiscountSuccess(this.response);
+  DiscountSuccess(this.response, {required this.isNcApplied});
 }
+
 
 class DiscountFailure extends DiscountState {
   final String error;

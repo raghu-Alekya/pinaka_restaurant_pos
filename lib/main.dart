@@ -12,6 +12,7 @@ import 'package:pinaka_restaurant_pos/repositories/order_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/payment_summary_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/product_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/repeat_kot_repository.dart';
+import 'package:pinaka_restaurant_pos/repositories/search_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/subcategory_repository.dart';
 import 'package:pinaka_restaurant_pos/utils/GlobalReservationMonitor.dart';
 import 'package:pinaka_restaurant_pos/utils/ShiftMonitor.dart';
@@ -35,6 +36,7 @@ import 'blocs/Bloc Logic/minisubcategory_bloc.dart';
 import 'blocs/Bloc Logic/order_bloc.dart';
 import 'blocs/Bloc Logic/payment_bloc.dart';
 import 'blocs/Bloc Logic/product_bloc.dart';
+import 'blocs/Bloc Logic/search_product_bloc.dart';
 import 'blocs/Bloc Logic/subcategory_bloc.dart';
 import 'blocs/Bloc Logic/table_bloc.dart';
 import 'blocs/Bloc Logic/zone_bloc.dart';
@@ -114,6 +116,11 @@ class MyApp extends StatelessWidget {
               ),
             ),
           ),
+          BlocProvider<SearchProductBloc>(
+            create: (_) => SearchProductBloc(
+            Search_ProductRepository(),
+            ),
+          ),
 
           // 2️⃣ SubCategoryBloc depends on MiniSubCategoryBloc
           BlocProvider<SubCategoryBloc>(
@@ -170,6 +177,12 @@ class MyApp extends StatelessWidget {
               ),
             ),
           ),
+    // / ✅ ADD THIS
+    BlocProvider<DiscountBloc>(
+    create: (_) => DiscountBloc(
+    AddDiscountRepository(),
+    ),
+    ),
           BlocProvider(
             create: (_) => RemoveDiscountBloc(
               RemoveDiscountRepository(

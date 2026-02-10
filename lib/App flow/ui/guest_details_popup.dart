@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../blocs/Bloc Logic/order_bloc.dart';
 import '../../blocs/Bloc Event/order_event.dart';
+import '../../models/UserPermissions.dart';
 import '../../models/order/guest_details.dart';
 import '../../models/order/order_model.dart';
 import '../../repositories/order_repository.dart';
 import 'dashboard screen.dart';
 
 class GuestDetailsPopup extends StatefulWidget {
+  final UserPermissions? userPermissions;
   final int index;
   final String pin;
   final Map<String, dynamic> tableData;
@@ -27,6 +29,7 @@ class GuestDetailsPopup extends StatefulWidget {
     required this.token,
     required this.restaurantId,
     required this.loadedTables,
+    this.userPermissions,
   }) : super(key: key);
 
   @override
@@ -215,7 +218,8 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                                 zoneName: zoneName, kotList: [],
                                 pin: widget.pin,
                                 restaurantName: widget.restaurantId,
-                                userPermissions: null, tableData: {},
+                                userPermissions: widget.userPermissions,
+                                tableData: {},
                               ),
                             ),
                           );

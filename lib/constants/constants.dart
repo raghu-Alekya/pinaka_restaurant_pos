@@ -29,7 +29,12 @@ class AppConstants {
   static const String createMergeTablesWithStatusEndpoint = '$baseApiPath/tables/create-merge-tables-with-table-status';
   static const String updateMergeTablesWithStatusEndpoint = '$baseApiPath/tables/update-merge-tables-with-table-status';
   static const String deleteMergeTablesWithStatusEndpoint = '$baseApiPath/tables/delete-merge-tables-with-table-status';
-  static String getAllTablesByTime(String reservationTime, String reservationDate) => '$baseApiPath/tables/get-all-tables-by-time?reservation_time=${Uri.encodeComponent(reservationTime)}&reservation_date=${Uri.encodeComponent(reservationDate)}';
+
+  static String getAllTablesByTime(String reservationTime,
+      String reservationDate) =>
+      '$baseApiPath/tables/get-all-tables-by-time?reservation_time=${Uri
+          .encodeComponent(reservationTime)}&reservation_date=${Uri
+          .encodeComponent(reservationDate)}';
 
   // Employee Management
   static const String getAllEmployeesEndpoint = '$baseApiPath/users/get-all-employees';
@@ -65,7 +70,14 @@ class AppConstants {
   static const String getGeneralSettingsEndpoint = '$baseApiPath/settings/get-general-settings';
 
   // Slots
-  static String getAllSlotsByDate(String formattedDate) => '$baseApiPath/slots/get-all-slots?reservation_date=$formattedDate';
+  static String getAllSlotsByDate(String formattedDate) =>
+      '$baseApiPath/slots/get-all-slots?reservation_date=$formattedDate';
+
   //  orders list
   static const String getAllOrdersList = '$baseApiPath/kot/get-all-orders';
+
+  // Cancel an order
+  static String cancelOrder(int orderId) {
+    return '$baseApiPath/orders/$orderId';
+  }
 }

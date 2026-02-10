@@ -77,8 +77,8 @@ class _SubCategoryTabWidgetState extends State<SubCategoryTabWidget> {
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
         color: Color(0XFFDEE8FF),
-        // border: Border.all(color: Colors.grey.shade300, width: 1),
-        // borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Color(0xFFFFFFFF), width: 1),
+        borderRadius: BorderRadius.circular(12),
         // boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 0, offset: Offset(1, 2))],
       ),
       height: 120,

@@ -11,6 +11,7 @@ import '../../blocs/Bloc State/order_list_state.dart';
 import '../../models/UserPermissions.dart';
 // import '../../models/orderslist/orders_list_model.dart';
 import '../../models/order_list/order_list_model.dart';
+import '../../utils/SessionManager.dart';
 import '../widgets/NavigationHelper.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/top_bar.dart';
@@ -24,7 +25,7 @@ class OrdersListTable extends StatefulWidget {
   final UserPermissions? userPermissions;
 
   const OrdersListTable({super.key,required this.token,
-    required List orders,
+    // required List orders,
     required this.pin,
     required this.restaurantId,
     required this.restaurantName,
@@ -41,7 +42,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
   String? _selectedStatus;
   String? _selectedDate;
 
-  final List<String> statusOptions = ['All', 'Completed', 'Pending', 'Declined'];
+  final List<String> statusOptions = ['All', 'Completed', 'Processing', 'cancelled'];
   DateTime? selectedDate;
 
   void _onItemTapped(int index) {
@@ -62,7 +63,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
   }
 
   int _currentPage = 0;
-  final int _rowsPerPage = 6;
+  final int _rowsPerPage = 10;
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _dateController = TextEditingController();
 
@@ -74,8 +75,10 @@ class _OrdersListTableState extends State<OrdersListTable> {
     super.initState();
     _userPermissions = widget.userPermissions;
     // Trigger fetch
+    _loadPermissions();
     context.read<OrderstatusBloc>().add(
       FetchOrders(token: widget.token),
+
     );
 
     _searchController.addListener(() {
@@ -85,14 +88,22 @@ class _OrdersListTableState extends State<OrdersListTable> {
       });
     });
   }
+  Future<void> _loadPermissions() async {
+    final savedPermissions = await SessionManager.loadPermissions();
+    if (savedPermissions != null) {
+      setState(() {
+        _userPermissions = savedPermissions;
+      });
+    }
+  }
 
   Color _statusColor(String status) {
     switch (status.toLowerCase()) {
       case "completed":
         return Colors.green;
-      case "pending":
+      case "processing":
         return Colors.orange;
-      case "declined":
+      case "cancelled":
         return Colors.red;
       default:
         return Colors.grey;
@@ -186,12 +197,12 @@ class _OrdersListTableState extends State<OrdersListTable> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey,
+      backgroundColor: Colors.white,
       appBar: TopBar(
         token: widget.token,
         pin: widget.pin,
         userPermissions: _userPermissions,
-        onPermissionsReceived: (permissions) async {
+        onPermissionsReceived: (permissions) {
           setState(() {
             _userPermissions = permissions;
           });
@@ -499,8 +510,9 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                 ],
                                 rows: pageOrders.map((order) {
                                   return DataRow(
-                                    onSelectChanged: (_) {
-                                      Navigator.push(
+                                    onSelectChanged: (_) async {
+                                      // Wait for the OrdersDetailsScreen to return a value
+                                      final bool? didUpdate = await Navigator.push<bool>(
                                         context,
                                         MaterialPageRoute(
                                           builder: (_) => OrdersDetailsScreen(
@@ -513,6 +525,11 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                           ),
                                         ),
                                       );
+
+                                      // If the screen returned true (order was updated), refetch
+                                      if (didUpdate == true) {
+                                        context.read<OrderstatusBloc>().add(FetchOrders(token: widget.token));
+                                      }
                                     },
                                     cells: [
                                       DataCell(Text(order.orderId?.toString() ?? '-')),
@@ -633,7 +650,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
       /// 🔹 BOTTOM NAV BAR
       bottomNavigationBar: BottomNavBar(
         selectedIndex: 4,
-        userPermissions: null,
+        userPermissions: _userPermissions,
         onItemTapped: (int index) {
           NavigationHelper.handleNavigation(
             context,
@@ -643,7 +660,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
             widget.token,
             widget.restaurantId,
             widget.restaurantName,
-            null,
+            _userPermissions,
           );
         },
       ),

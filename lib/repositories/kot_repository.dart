@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 import '../models/order/KOT_model.dart';
+import '../models/order/transfer_table_model.dart';
 import '../utils/logger.dart'; // make sure your AppLogger is here
 
 class KotRepository {
@@ -56,3 +58,59 @@ class KotRepository {
     }
   }
 }
+
+class KotTransferRepository {
+  final String baseUrl =
+      "https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1";
+
+  Future<KotTransferResponse> transferKot({
+    required int orderId,
+    required int kotId,
+    required int fromTableId,
+    required int toTableId,
+    required int restaurantId,
+    required int zoneId,
+    required String token,
+  }) async {
+    final url = Uri.parse("$baseUrl/kot/kot-transfer");
+
+    final body = {
+      "order_id": orderId,
+      "kot_id": kotId,
+      "from_table_id": fromTableId,
+      "to_table_id": toTableId,
+      "restaurant_id": restaurantId,
+      "zone_id": zoneId,
+    };
+
+    // 🔹 REQUEST LOGS
+    debugPrint("🔵 KOT TRANSFER API CALL");
+    debugPrint("➡️ URL: $url");
+    debugPrint("➡️ Headers: Authorization: Bearer $token");
+    debugPrint("➡️ Body: ${jsonEncode(body)}");
+
+    final response = await http.post(
+      url,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
+      },
+      body: jsonEncode(body),
+    );
+
+    // 🔹 RESPONSE LOGS
+    debugPrint("🟢 RESPONSE STATUS: ${response.statusCode}");
+    debugPrint("🟢 RESPONSE BODY: ${response.body}");
+
+    if (response.statusCode == 200) {
+      return KotTransferResponse.fromJson(
+        jsonDecode(response.body),
+      );
+    } else {
+      debugPrint("🔴 KOT TRANSFER FAILED");
+      throw Exception("KOT transfer failed");
+    }
+  }
+}
+
+

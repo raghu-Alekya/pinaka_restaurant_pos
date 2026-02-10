@@ -12,11 +12,13 @@ class PaymentSummaryLoaded extends PaymentState {
 
   // ✅ ADD THIS FIELD
   final double merchantDiscount;
+  final bool isNoCharge;
 
   PaymentSummaryLoaded({
     required this.summary,
     this.selectedMethod,
-    this.merchantDiscount = 0.0, // ✅ default
+    this.merchantDiscount = 0.0,
+    this.isNoCharge = false,// ✅ default
   });
 
   // ✅ copyWith helper (recommended)
@@ -24,11 +26,13 @@ class PaymentSummaryLoaded extends PaymentState {
     PaymentSummary? summary,
     String? selectedMethod,
     double? merchantDiscount,
+    bool? isNoCharge,
   }) {
     return PaymentSummaryLoaded(
       summary: summary ?? this.summary,
       selectedMethod: selectedMethod ?? this.selectedMethod,
       merchantDiscount: merchantDiscount ?? this.merchantDiscount,
+        isNoCharge: isNoCharge ?? this.isNoCharge,
     );
   }
 }

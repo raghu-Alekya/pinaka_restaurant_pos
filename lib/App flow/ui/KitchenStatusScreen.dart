@@ -46,6 +46,8 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   Map<String, dynamic>? _selectedUser;
   List<String> _orderTypes = [];
   late KitchenRepository kitchenRepo;
+  bool _isResetEnabled = false;
+
 
   @override
   void initState() {
@@ -56,6 +58,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     _searchController.addListener(() {
       setState(() {
         searchQuery = _searchController.text.toLowerCase();
+
       });
     });
   }
@@ -226,6 +229,26 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       }
     });
   }
+  void _onResetPressed() {
+    setState(() {
+      _searchController.clear();
+      searchQuery = '';
+
+      if (_orderTypes.isNotEmpty) {
+        selectedOrderType = _orderTypes.first; // Default order type
+      }
+
+      selectedArea = _zones.isNotEmpty ? _zones.first['zone_name'] : null;
+
+      _selectedTableIndex = null;
+      _selectedTable = null;
+      _selectedKot = null;
+      _kotItems.clear();
+    });
+
+    _fetchOrders();
+  }
+
 
   String normalizeOrderType(String type) {
     return type.toLowerCase().replaceAll("-", "").replaceAll(" ", "");
@@ -278,44 +301,33 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const SizedBox(height: 12),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 15,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children:
-                                  _orderTypes.map((type) {
-                                    return Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                      ),
-                                      child: _buildOrderTypeButton(type),
-                                    );
-                                  }).toList(),
-                                ),
+
+                          // ✅ KOT LIST HEADER (Beige)
+                          _buildKotListHeader(),
+
+                          // const SizedBox(height: 8),
+
+                          // ✅ WHITE CONTAINER BELOW HEADER
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,               // 🔥 White like image
+                                borderRadius: BorderRadius.circular(3),
                               ),
-                              _buildAreaDropdown(),
-                            ],
+                              child: _buildTableList(),             // 🔥 Grid inside
+                            ),
                           ),
-                          const SizedBox(height: 15),
-                          Expanded(child: _buildTableList()),
                         ],
                       ),
                     ),
                   ),
+
+
                   Expanded(
                     flex: 4,
                     child: Padding(
-                      padding: const EdgeInsets.only(top: 15),
+                      padding: const EdgeInsets.only(top: 10),
                       child: _buildOrderDetails(),
                     ),
                   ),
@@ -343,6 +355,25 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       ),
     );
   }
+  Widget _buildKotListHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF5E8),
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: const Text(
+        "KOT list",
+        style: TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+
 
   Widget _buildAreaDropdown() {
     if (normalizeOrderType(selectedOrderType) != "dinein") {
@@ -450,10 +481,12 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   }
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(16),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(
+          /// 🔹 LEFT: Title
+          const Text(
             'Kitchen Status',
             style: TextStyle(
               fontSize: 22,
@@ -461,35 +494,110 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
               color: Colors.black87,
             ),
           ),
+
+          /// 🔥 Push everything else to the right
           const Spacer(),
-          if (_selectedTable != null) ...[
-            Container(
-              height: 50,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              alignment: Alignment.centerLeft,
-              child: Text(
-                "${_selectedTable!['table_owner'] ?? '-'}",
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.black87,
+
+          /// 🔹 RIGHT GROUP
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              /// 🔥 Order Type Tabs
+              Container(
+                height: 38,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 6,
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: _orderTypes.map((type) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: _buildOrderTypeButton(type),
+                    );
+                  }).toList(),
                 ),
               ),
-            ),
-            const SizedBox(width: 10),
-          ],
-          SizedBox(
-            width: 250,
-            child: _buildSearchBar(),
+
+              const SizedBox(width: 14),
+
+              /// 🔹 Area dropdown (only Dine-In)
+              _buildAreaDropdown(),
+
+              const SizedBox(width: 14),
+
+              /// 🔹 Selected table owner
+              if (_selectedTable != null) ...[
+                Container(
+                  height: 40,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    "${_selectedTable!['table_owner'] ?? '-'}",
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ),
+                const SizedBox(width: 14),
+              ],
+
+              /// 🔹 Search
+              SizedBox(
+                width: 260,
+                child: _buildSearchBar(),
+              ),
+              const SizedBox(width: 12),
+
+              /// 🔥 RESET BUTTON
+              _buildResetButton(),
+            ],
           ),
         ],
       ),
     );
   }
+  Widget _buildResetButton() {
+    return GestureDetector(
+      onTap: _onResetPressed,
+      child: Container(
+        height: 40,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Row(
+          children: const [
+            Icon(Icons.refresh, size: 18, color: Colors.black87),
+            SizedBox(width: 6),
+            Text(
+              'Reset',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+
+
 
   Widget _buildSearchBar() {
     return SizedBox(
@@ -522,7 +630,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     return GridView.builder(
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
-        childAspectRatio: 2.0,
+        childAspectRatio: 1.7,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
       ),
@@ -558,9 +666,18 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
               await _fetchParentKotOrders(_selectedTable!);
             }
           },
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color(0xFFD4EBFF), // ✅ #D4EBFF
+                  width: 1.2,
+                ),
+              ),
           child: normalizeOrderType(selectedOrderType) == "dinein"
               ? _buildDineInCard(table, kotCount, isSelected)
               : _buildTakeawayCard(table, kotCount, isSelected),
+        ),
         );
       },
     );
@@ -620,10 +737,15 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     );
   }
 
-  Widget _buildDineInCard(Map<String, dynamic> order,
+  Widget _buildDineInCard(
+      Map<String, dynamic> order,
       int kotCount,
-      bool isSelected,) {
+      bool isSelected,
+      ) {
     return Container(
+      constraints: const BoxConstraints(
+        minHeight: 160, // 🔼 increase height here
+      ),
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
         color: isSelected ? const Color(0xFF0C6FDB) : Colors.white,
@@ -633,6 +755,8 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 6),
+
+          // ───────── Table + Time ─────────
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -653,17 +777,43 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
               ),
             ],
           ),
+
           const SizedBox(height: 6),
+
+          // ───────── Order ID + KOT ─────────
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                "Order ID: ${order['order_id']}",
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isSelected ? Colors.white : Colors.black,
-                ),
+              // LEFT SIDE (Order ID + Zone)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Order ID: ${order['order_id']}",
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isSelected ? Colors.white : Colors.black,
+                    ),
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  // ✅ Zone Name (NEW)
+                  Text(
+                    "Zone: ${order['zone_name'] ?? '-'}",
+                    style: TextStyle(
+                      fontSize: 14,
+                      // fontWeight: FontWeight.w500,
+                      color: isSelected
+                          ? Colors.white
+                          : Colors.black,
+                    ),
+                  ),
+                ],
               ),
+
+              // RIGHT SIDE (KOT + Remaining)
               Row(
                 children: [
                   _buildKotCircleWithOverlap(
@@ -676,7 +826,8 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                     Text(
                       "+${order['remaining_count']}",
                       style: TextStyle(
-                        color: isSelected ? Colors.white : Colors.black87,
+                        color:
+                        isSelected ? Colors.white : Colors.black87,
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),
@@ -732,10 +883,10 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
+        // color: Colors.white,
+        borderRadius: BorderRadius.circular(3),
       ),
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(3),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -743,37 +894,47 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: const Color(0xFFC2DFFF),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(3),
             ),
             child: Row(
               children: [
                 if (selectedOrderType != "Takeaways") ...[
                   Text(
-                    "Table No: ${hasTable
-                        ? _selectedTable!['table_name']
-                        : '---'}",
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    "Table No: ${hasTable ? _selectedTable!['table_name'] : '---'}",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
                   ),
                 ],
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 Text(
                   "Order ID: ${hasTable ? _selectedTable!['order_id'] : '---'}",
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 Text(
                   "${_selectedKot ?? '---'}",
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
                 ),
                 const Spacer(),
+
+                // 🟢 PRINT KOT
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,
-                      vertical: 12,
+                      vertical: 6, // ⬇ reduced
                     ),
-                    minimumSize: const Size(36, 36),
+                    minimumSize: const Size(32, 32), // ⬇ reduced
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -791,23 +952,27 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                           : Colors.white,
                     ),
                   ),
-                  icon: const Icon(Icons.print, size: 15),
+                  icon: const Icon(Icons.print, size: 14), // ⬇ reduced
                   label: const Text(
                     'Print KOT',
-                    style: TextStyle(fontSize: 12),
+                    style: TextStyle(fontSize: 11), // ⬇ reduced
                   ),
                   onPressed: _selectedKot != null ? () {} : null,
                 ),
+
                 if (normalizeOrderType(selectedOrderType) == "dinein") ...[
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
+
+                  // 🔵 VOID ITEMS
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
                       elevation: 0,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,
-                        vertical: 12,
+                        vertical: 6,
                       ),
-                      minimumSize: const Size(36, 36),
+                      minimumSize: const Size(32, 32),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -825,22 +990,26 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                             : Colors.white,
                       ),
                     ),
-                    icon: const Icon(Icons.edit, size: 15),
+                    icon: const Icon(Icons.edit, size: 14),
                     label: const Text(
                       'Void Items',
-                      style: TextStyle(fontSize: 12),
+                      style: TextStyle(fontSize: 11),
                     ),
                     onPressed: _selectedKot != null ? () {} : null,
                   ),
-                  const SizedBox(width: 8),
+
+                  const SizedBox(width: 6),
+
+                  // 🟡 TRANSFER KOT
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
                       elevation: 0,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,
-                        vertical: 12,
+                        vertical: 6,
                       ),
-                      minimumSize: const Size(36, 36),
+                      minimumSize: const Size(32, 32),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -858,23 +1027,24 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                             : Colors.black87,
                       ),
                     ),
-                    icon: const Icon(Icons.edit, size: 15),
+                    icon: const Icon(Icons.edit, size: 14),
                     label: const Text(
                       'Transfer KOT',
-                      style: TextStyle(fontSize: 12),
+                      style: TextStyle(fontSize: 11),
                     ),
                     onPressed: _selectedKot != null ? () {} : null,
                   ),
                 ],
               ],
             ),
+
           ),
-          const SizedBox(height: 10),
+          // const SizedBox(height: 10),
           Expanded(
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFFD8E4FF),
+                color: const Color(0xFFFFFFFF),
                 borderRadius: BorderRadius.circular(8),
               ),
               child:
@@ -911,7 +1081,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                               color: isSelectedKot ? const Color(0xFFEAF1FF) : const Color(0xFFF5F6FA),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: isSelectedKot ? const Color(0xFF0C6FDB) : Colors.transparent,
+                                color: isSelectedKot ? const Color(0xFF0C6FDB) : Color(0XFFECEEFB),
                                 width: 1.5,
                               ),
                             ),

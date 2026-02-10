@@ -6,6 +6,21 @@ class SessionManager {
   static const _permissionsKey = 'user_permissions';
   static const _userIdKey = 'user_id';
   static const _shiftIdKey = 'shift_id';
+  static const String _tokenKey = 'auth_token';
+
+  // -------- TOKEN --------
+  static Future<void> saveToken(String token) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_tokenKey, token);
+    print("✅ TOKEN SAVED: $token");
+  }
+
+  static Future<String?> getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey);
+    print("🔍 FETCH TOKEN: $token");
+    return token;
+  }
 
   // -------- PERMISSIONS --------
   static Future<void> savePermissions(UserPermissions permissions) async {

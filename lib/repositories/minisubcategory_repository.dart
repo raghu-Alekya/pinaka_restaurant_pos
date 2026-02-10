@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/category/items_model.dart';
@@ -81,5 +82,56 @@ class MiniSubCategoryRepository {
 //     throw Exception("Failed to load products");
 //   }
 // }
+
+}
+class ComboRepository {
+  final String baseUrl;
+
+  ComboRepository({required this.baseUrl});
+
+  Future<String?> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('token');
+  }
+
+  /// 🔥 Fetch combo details by productId
+  Future<ComboProduct> fetchComboDetails(int productId) async {
+    final token = await _getToken();
+    if (token == null || token.isEmpty) {
+      throw Exception("Token not available");
+    }
+
+    final url = Uri.parse(
+      "$baseUrl/wp-json/pinaka-restaurant-pos/v1/combos/search-combos?product_id=$productId",
+    );
+
+    debugPrint("🟢 Fetching combo details: $url");
+
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception("HTTP error ${response.statusCode}");
+    }
+
+    final decoded = json.decode(response.body);
+
+    if (decoded['status'] != 'success') {
+      throw Exception(decoded['message'] ?? "Combo API error");
+    }
+
+    final List data = decoded['data'] ?? [];
+    if (data.isEmpty) {
+      throw Exception("No combo data found");
+    }
+
+    // ✅ CORRECT MODEL
+    return ComboProduct.fromJson(data.first);
+  }
 
 }

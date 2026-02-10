@@ -92,7 +92,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
 
     setState(() {
       if (value == 'Clear') {
-        // discountController.clear();
+        discountController.clear();
       } else if (value == '⌫') {
         if (discountController.text.isNotEmpty) {
           discountController.text =
@@ -222,7 +222,10 @@ class _DiscountPopupState extends State<DiscountPopup> {
           // ✅ save discount in PaymentBloc
           context.read<PaymentBloc>().add(UpdateMerchantDiscount(appliedDiscount));
 
-          Navigator.pop(context, appliedDiscount);
+          Navigator.pop(context, {
+            "amount": appliedDiscount,
+            "isNc": isNCSelected,
+          });
         }
 
 

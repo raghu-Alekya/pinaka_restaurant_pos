@@ -75,7 +75,8 @@ class TablesScreen extends StatefulWidget {
   final String token;
   final String restaurantId;
   final String restaurantName;
-  final int ?zoneId;
+  final int? zoneId;
+  final UserPermissions? userPermissions; // ✅ ADD THIS
 
   const TablesScreen({
     Key? key,
@@ -85,11 +86,13 @@ class TablesScreen extends StatefulWidget {
     required this.restaurantId,
     required this.restaurantName,
     this.zoneId,
+    this.userPermissions, // ✅ STORE IT
   }) : super(key: key);
 
   @override
   _TablesScreenState createState() => _TablesScreenState();
 }
+
 
 ViewMode _currentViewMode = ViewMode.gridCommonImage;
 
@@ -965,7 +968,7 @@ class _TablesScreenState extends State<TablesScreen> {
             ),
           ));
 
-          Navigator.pushReplacement(
+          Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => MultiBlocProvider(
@@ -987,7 +990,7 @@ class _TablesScreenState extends State<TablesScreen> {
                     kotList: orderBloc.state.kotList,
                     restaurantName: widget.restaurantName,
                     loadedTables: widget.loadedTables,
-                    userPermissions: null,
+                    userPermissions: widget.userPermissions,
                     guestDetails: orderBloc.state.guestDetails
 
                 ),
@@ -1206,7 +1209,7 @@ class _TablesScreenState extends State<TablesScreen> {
           ));
 
           // Navigate to DashboardScreen
-          Navigator.pushReplacement(
+          Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => MultiBlocProvider(
@@ -1227,7 +1230,7 @@ class _TablesScreenState extends State<TablesScreen> {
                   tableName: orderBloc.state.tableName,
                   kotList: orderBloc.state.kotList,
                   restaurantName: widget.restaurantName,
-                  userPermissions: null,
+                  userPermissions: widget.userPermissions,
                   guestDetails: tableData['guestDetails'] ?? guestDetails,
                   loadedTables: widget.loadedTables,
                 ),
@@ -1357,7 +1360,7 @@ class _TablesScreenState extends State<TablesScreen> {
             // guests: [guestDetails],
           ));
 
-          Navigator.pushReplacement(
+          Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => MultiBlocProvider(
@@ -1379,7 +1382,7 @@ class _TablesScreenState extends State<TablesScreen> {
                   kotList: orderBloc.state.kotList,
                   restaurantName: widget.restaurantName,
                   loadedTables: widget.loadedTables,
-                  userPermissions: null,
+                  userPermissions: widget.userPermissions,
                   guestDetails: tableData['guestDetails'] ?? guestDetails,
                 ),
               ),
@@ -1652,7 +1655,7 @@ class _TablesScreenState extends State<TablesScreen> {
                         kotList: [],
                         pin: widget.pin,
                         restaurantName: widget.restaurantName,
-                        userPermissions: null,
+                        userPermissions: widget.userPermissions,
                         tableData: {},
                         loadedTables: widget.loadedTables,
                       ),

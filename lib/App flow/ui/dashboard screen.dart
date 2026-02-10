@@ -4,14 +4,17 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../blocs/Bloc Event/category_event.dart';
 import '../../blocs/Bloc Event/minisubcategory_event.dart';
 import '../../blocs/Bloc Event/order_event.dart';
+import '../../blocs/Bloc Event/serach_product_event.dart';
 import '../../blocs/Bloc Event/subcategory_event.dart';
 import '../../blocs/Bloc Logic/category_bloc.dart';
 import '../../blocs/Bloc Logic/minisubcategory_bloc.dart';
 import '../../blocs/Bloc Logic/order_bloc.dart';
+import '../../blocs/Bloc Logic/search_product_bloc.dart';
 import '../../blocs/Bloc Logic/subcategory_bloc.dart';
 import '../../blocs/Bloc State/category_states.dart';
 import '../../blocs/Bloc State/minisubcategory.dart';
 import '../../blocs/Bloc State/order_state.dart';
+import '../../blocs/Bloc State/search_product_state.dart';
 import '../../blocs/Bloc State/subcategory_states.dart';
 import '../../models/UserPermissions.dart';
 import '../../models/category/items_model.dart';
@@ -19,6 +22,7 @@ import '../../models/category/minisubcategory_model.dart';
 import '../../models/category/subcategory_model.dart';
 import '../../models/order/guest_details.dart';
 import '../../models/order/order_items.dart';
+import '../../models/search/search_model.dart';
 import '../../models/sidebar/category_model_.dart';
 import '../../repositories/minisubcategory_repository.dart';
 import '../../repositories/product_repository.dart';
@@ -86,6 +90,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   late ProductRepository productRepo;
   UserPermissions? _userPermissions;
   Map<String, dynamic>? _selectedUser;
+  final LayerLink _searchLink = LayerLink();
+  OverlayEntry? _searchOverlay;
 
   @override
   void initState() {
@@ -179,6 +185,157 @@ class _DashboardScreenState extends State<DashboardScreen> {
           .toList();
     });
   }
+  void _showSearchOverlay(List<Search_ProductModel> products) {
+    _removeSearchOverlay();
+
+    _searchOverlay = OverlayEntry(
+      builder: (context) => Positioned(
+        width: 300,
+        child: CompositedTransformFollower(
+          link: _searchLink,
+          showWhenUnlinked: false,
+          offset: const Offset(0, 38),
+          child: Material(
+            elevation: 8,
+            borderRadius: BorderRadius.circular(8),
+            child: ListView.separated(
+              padding: EdgeInsets.zero,
+              shrinkWrap: true,
+              itemCount: products.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final product = products[index];
+
+                return ListTile(
+                  dense: true,
+                  title: Text(
+                    product.name,
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                  // onTap: () async {
+                  //   debugPrint("🛒 Search tap → ${product.name}");
+                  //
+                  //   final orderBloc = context.read<OrderBloc>();
+                  //
+                  //   try {
+                  //     // 🔥 Fetch FULL product (required for variants)
+                  //     final fullProduct =
+                  //     await productRepo.SearchfetchProductsById(product.id);
+                  //
+                  //     // 🧬 CASE 1: VARIANT PRODUCT → POPUP
+                  //     if (fullProduct.variants.isNotEmpty) {
+                  //       showDialog(
+                  //         context: context,
+                  //         barrierDismissible: true,
+                  //         builder: (dialogContext) {
+                  //           return VariantPopupContent(
+                  //             product: fullProduct,
+                  //             itemName: fullProduct.name,
+                  //             variants: fullProduct.variants,
+                  //             section: fullProduct.category, // Category object
+                  //             orderBloc: orderBloc,
+                  //             onSelected: (variant) {
+                  //               orderBloc.add(
+                  //                 AddOrderItem(
+                  //                   OrderItems(
+                  //                     productId: fullProduct.id,
+                  //                     variationId: variant.id,
+                  //                     name:
+                  //                     "${fullProduct.name} - ${variant.name}",
+                  //                     quantity: 1,
+                  //                     price: variant.price,
+                  //                     amount: variant.price,
+                  //                     section: fullProduct.category,
+                  //                     taxClass: fullProduct.taxClass,
+                  //                     hasOptions: true,
+                  //                   ),
+                  //                 ),
+                  //               );
+                  //               Navigator.pop(dialogContext);
+                  //             },
+                  //             onVariantSelected: (_) {},
+                  //           );
+                  //         },
+                  //       );
+                  //     }
+                  //
+                  //     // 🟢 CASE 2: SIMPLE PRODUCT → ADD DIRECTLY
+                  //     else {
+                  //       orderBloc.add(
+                  //         AddOrderItem(
+                  //           OrderItems(
+                  //             productId: fullProduct.id,
+                  //             variationId: null,
+                  //             name: fullProduct.name,
+                  //             quantity: 1,
+                  //             price: fullProduct.price,
+                  //             amount: fullProduct.price,
+                  //             section: fullProduct.category,
+                  //             taxClass: fullProduct.taxClass,
+                  //             hasOptions: false,
+                  //           ),
+                  //         ),
+                  //       );
+                  //     }
+                  //
+                  //     // 🧹 CLEANUP SEARCH
+                  //     _removeSearchOverlay();
+                  //     context.read<SearchProductBloc>().add(SearchClearProducts());
+                  //
+                  //   } catch (e) {
+                  //     debugPrint("❌ Failed to add search product: $e");
+                  //     ScaffoldMessenger.of(context).showSnackBar(
+                  //       const SnackBar(content: Text("Failed to add product")),
+                  //     );
+                  //   }
+                  // },
+                  onTap: () {
+                    print("🛒 Search tap → ${product.name}");
+
+                    final orderBloc = context.read<OrderBloc>();
+
+                    orderBloc.add(
+                      AddOrderItem(
+                        OrderItems(
+                          productId: product.id,      // ✅ product id from search
+                          variationId: null,          // ✅ simple product
+                          name: product.name,
+                          quantity: 1,
+                          price: product.price,
+                          amount: product.price,
+                          section: null,  // ✅ current selected category
+                          taxClass: product.taxClass,
+                          hasOptions: false,          // ✅ no variants / options
+                        ),
+                      ),
+                    );
+
+                    // ✅ Cleanup
+                    _removeSearchOverlay();
+                    context.read<SearchProductBloc>().add(SearchClearProducts());
+                  },
+
+
+
+
+
+
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    Overlay.of(context).insert(_searchOverlay!);
+  }
+
+  void _removeSearchOverlay() {
+    _searchOverlay?.remove();
+    _searchOverlay = null;
+  }
+
 
   void onItemSelected(Product product, Category section) {
     final orderBloc = context.read<OrderBloc>();
@@ -244,35 +401,97 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
 
   Widget _buildBreadcrumbs() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
-        children: List.generate(breadcrumbNames.length, (index) {
-          final name = breadcrumbNames[index];
-          final isLast = index == breadcrumbNames.length - 1;
-          return Row(
-            children: [
-              GestureDetector(
-                onTap: isLast ? null : () => _onBreadcrumbTap(index),
-                child: Text(
-                  name,
-                  style: TextStyle(
-                    color: isLast ? Colors.red : Colors.black,
-                    fontWeight: isLast ? FontWeight.w600 : FontWeight.bold,
-                  ),
-                ),
+        children: [
+          // LEFT: Scrollable Breadcrumbs
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: List.generate(breadcrumbNames.length, (index) {
+                  final name = breadcrumbNames[index];
+                  final isLast = index == breadcrumbNames.length - 1;
+
+                  return Row(
+                    children: [
+                      GestureDetector(
+                        onTap: (isLast || index == 0)
+                            ? null
+                            : () => _onBreadcrumbTap(index),
+                        child: Text(
+                          name,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: isLast ? Colors.red : Colors.black,
+                            fontWeight:
+                            isLast ? FontWeight.w600 : FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      if (!isLast)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 6),
+                          child: Icon(Icons.chevron_right, size: 16),
+                        ),
+                    ],
+                  );
+                }),
               ),
-              if (!isLast)
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 4),
-                  child: Icon(Icons.chevron_right, size: 16),
+            ),
+          ),
+
+          const SizedBox(width: 18),
+
+          // RIGHT: Search Bar (Fixed Position)
+          CompositedTransformTarget(
+            link: _searchLink,
+            child: Container(
+              width: 300,
+              height: 35,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: TextField(
+                decoration: const InputDecoration(
+                  hintText: "Search item or short code....",
+                  prefixIcon: Icon(Icons.search, size: 18),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(vertical: 10),
                 ),
-            ],
-          );
-        }),
+                  onChanged: (value) {
+                    final query = value.trim();
+                    print("🔍 Search Text Changed: '$query'");
+
+                    if (query.isEmpty) {
+                      _removeSearchOverlay();
+                      context.read<SearchProductBloc>().add(SearchClearProducts());
+                    } else if (query.length >= 2) {
+                      context
+                          .read<SearchProductBloc>()
+                          .add(SearchFetchProducts(search: query));
+                    }
+                  }
+
+              ),
+            ),
+          ),
+
+
+        ],
       ),
     );
   }
+
 
   void _onBreadcrumbTap(int index) {
     setState(() {
@@ -289,7 +508,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
-  void _onNavItemTapped(int index) {
+  void _onNavItemTapped(int index) async {
+    final permissions =
+        widget.userPermissions ?? await SessionManager.loadPermissions();
+    // 🔍 DEBUG LINE — ADD IT HERE
+    debugPrint("BOTTOM NAV PERMS: ${permissions?.displayName}");
+
+
     NavigationHelper.handleNavigation(
       context,
       _bottomNavIndex,
@@ -298,9 +523,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       widget.token,
       widget.restaurantId,
       widget.restaurantName,
-      widget.userPermissions,
+      permissions, // ✅ NEVER NULL NOW
     );
   }
+
   Future<void> _loadPermissions() async {
     final savedPermissions = await SessionManager.loadPermissions();
     if (savedPermissions != null) {
@@ -325,11 +551,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         onPermissionsReceived: (permissions) async {
           setState(() {
             _userPermissions = permissions;
-            _selectedUser = {
-              "id": permissions.userId,
-              "name": permissions.displayName,
-              "role": permissions.role,
-            };
+
           });
         },
       ),
@@ -373,6 +595,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     crossAxisAlignment:
                                     CrossAxisAlignment.start,
                                     children: [
+                                      const SizedBox(height: 8),
+                                      if (breadcrumbNames.isNotEmpty) ...[
+                                        _buildBreadcrumbs(),
+                                        const SizedBox(height: 8),
+                                      ],
                                       SubCategoryTabWidget(
                                         subCategories: category.subCategories ?? [],
                                         selectedIndex: category.subCategories != null
@@ -389,10 +616,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       ),
 
                                       const SizedBox(height: 8),
-                                      if (breadcrumbNames.isNotEmpty) ...[
-                                        _buildBreadcrumbs(),
-                                        const SizedBox(height: 8),
-                                      ],
+                                      // if (breadcrumbNames.isNotEmpty) ...[
+                                      //   _buildBreadcrumbs(),
+                                      //   const SizedBox(height: 8),
+                                      // ],
                                       Expanded(
                                         child: BlocBuilder<
                                             MiniSubCategoryBloc,
@@ -493,6 +720,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   },
                 ),
               ),
+            ),
+            // ✅ ADD THIS BLOCK (ONLY ONCE)
+            BlocListener<SearchProductBloc, SearchProductState>(
+              listener: (context, state) {
+                debugPrint("🧠 Search State Changed → $state");
+
+                if (state is SearchProductLoaded) {
+                  debugPrint(
+                      "📥 Overlay showing ${state.products.length} items");
+                  _showSearchOverlay(state.products);
+                }
+
+                if (state is SearchProductEmpty ||
+                    state is SearchProductInitial ||
+                    state is SearchProductError) {
+                  _removeSearchOverlay();
+                }
+              },
+              child: const SizedBox.shrink(),
             ),
           ],
         ),

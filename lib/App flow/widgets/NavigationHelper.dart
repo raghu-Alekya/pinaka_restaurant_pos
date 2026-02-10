@@ -11,7 +11,7 @@ import '../../local database/table_dao.dart';
 import '../ui/orderstatus_screen.dart';
 import '../ui/tables_screen.dart';
 import '../ui/reservation_list_screen.dart';
-import '../ui/dashboard_screen.dart';
+import '../ui/Merchant_dashboard_screen.dart';
 import '../../models/UserPermissions.dart';
 
 class NavigationHelper {
@@ -51,7 +51,7 @@ class NavigationHelper {
             pin: pin,
             token: token,
             restaurantId: restaurantId,
-            // userPermissions: userPermissions,
+            userPermissions: userPermissions,
             restaurantName: restaurantName,
           ),
         ),
@@ -94,7 +94,7 @@ class NavigationHelper {
               restaurantId: restaurantId,
               restaurantName: restaurantName,
               userPermissions: userPermissions,
-              orders: [], // you can pass empty; Bloc will fetch
+              // orders: [], // you can pass empty; Bloc will fetch
             ),
           ),
         ),

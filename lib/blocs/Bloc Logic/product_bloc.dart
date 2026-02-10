@@ -73,6 +73,8 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
             image: product.image,
             isVeg: product.isVeg,
             variants: updatedVariants,
+            isCombo: product.isCombo,
+
           );
         }
         return product;

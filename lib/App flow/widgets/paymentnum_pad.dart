@@ -72,6 +72,11 @@ class _paymentsummaryState extends State<paymentsummary> {
   double _splitAmount = 0.0;
   double merchantDiscount = 0.0;
   double _lastNetPayable = 0.0;
+  bool _isNcDiscount = false;
+  bool _isPaying = false;
+
+
+
 
 
 
@@ -136,6 +141,20 @@ class _paymentsummaryState extends State<paymentsummary> {
 
   Future<void> _submitPayment() async {
     debugPrint("🟡 SUBMIT PAYMENT CALLED");
+    // debugPrint("🟡 SUBMIT PAYMENT CALLED");
+
+    // // ✅ BLOCK PAYMENT WHEN NET PAYABLE IS ZERO
+    // final paymentState = context.read<PaymentBloc>().state;
+    // if (paymentState is PaymentSummaryLoaded &&
+    //     paymentState.summary.netTotal <= 0) {
+    //   debugPrint("⛔ Net payable is zero — payment not required");
+    //
+    //   ScaffoldMessenger.of(context).showSnackBar(
+    //     const SnackBar(content: Text("No payment required for this order")),
+    //   );
+    //   return;
+    // }
+
 
     final orderBloc = context.read<OrderBloc>();
 
@@ -205,17 +224,37 @@ class _paymentsummaryState extends State<paymentsummary> {
 
 
   Future<void> handleKeyPress(String key) async {
+    final netPayable =
+    (context.read<PaymentBloc>().state is PaymentSummaryLoaded)
+        ? (context.read<PaymentBloc>().state as PaymentSummaryLoaded)
+        .summary
+        .netTotal
+        : 0.0;
+
+    if (netPayable <= 0 && key != "Pay") {
+      return; // ⛔ block digits, allow Pay
+    }
+
+    // ✅ PAY BUTTON
     // ✅ PAY BUTTON
     if (key == "Pay") {
-      if (amount.isEmpty) {
+      if (_isPaying) return; // ⛔ prevent double tap
+
+      if (amount.isEmpty && netPayable > 0) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Please enter amount")),
         );
         return;
       }
+
+      setState(() {
+        _isPaying = true; // 🔄 start loading
+      });
+
       await _submitPayment();
       return;
     }
+
 
     // ✅ CLEAR
     if (key == "C") {
@@ -260,23 +299,35 @@ class _paymentsummaryState extends State<paymentsummary> {
   List<double> buildPresetAmounts(double total) {
     if (total <= 0) return [];
 
-    final Set<double> presets = {};
+    final List<double> result = [];
+    final Set<double> seen = {};
 
-    // Always include exact total (NO rounding)
-    presets.add(total);
+    void add(double value) {
+      if (seen.add(value)) {
+        result.add(value);
+      }
+    }
 
-    final next50 = (total / 50).ceil() * 50;
-    final next100 = (total / 100).ceil() * 100;
-    final next200 = (total / 200).ceil() * 200;
+    // 1) exact total
+    add(total);
 
-    if (next50 > total) presets.add(next50.toDouble());
-    if (next100 > total) presets.add(next100.toDouble());
-    if (next200 > total) presets.add(next200.toDouble());
+    // 2) keep adding next rounded multiples until we have 4 values
+    int step = 50;
+    double current = total;
 
-    // Convert to sorted list
-    final result = presets.toList()
-      ..sort();
+    while (result.length < 3) {
+      final next = (current / step).ceil() * step;
+      if (next > total) {
+        add(next.toDouble());
+      }
+      current = next + 1; // move forward to avoid same rounding again
 
+      // after some iterations increase step to get bigger jumps
+      if (result.length == 2) step = 100;
+      if (result.length == 3) step = 200;
+    }
+
+    result.sort();
     return result;
   }
 
@@ -302,6 +353,7 @@ class _paymentsummaryState extends State<paymentsummary> {
           ? (bloc.state as PaymentSummaryLoaded).summary.netTotal
           : 0.0,
     );
+    final bool isPaymentDisabled = netPayable <= 0;
 
 
 
@@ -315,34 +367,53 @@ class _paymentsummaryState extends State<paymentsummary> {
         // ✅ ADD THIS LISTENER HERE (PaymentBloc)
         BlocListener<PaymentBloc, PaymentState>(
           listener: (context, state) {
-            debugPrint("🟣 PaymentBloc Listener state = ${state.runtimeType}");
             if (state is PaymentSummaryLoaded) {
-              debugPrint("🟣 PaymentSummaryLoaded merchantDiscount = ${state.merchantDiscount}");
               final discount = state.merchantDiscount;
 
-              // ✅ Restore discount textfield after refresh
+              debugPrint("🟢 BlocListener triggered");
+              debugPrint("🟢 Backend merchantDiscount = $discount");
+              debugPrint("🟢 Backend isNoCharge (NC) = ${state.isNoCharge}");
+
               discountController.text =
               discount != 0 ? discount.abs().toStringAsFixed(2) : "";
 
+              final newIsDiscountApplied = discount != 0;
+
+              debugPrint("🟣 Before setState:");
+              debugPrint("   _isDiscountApplied (old) = $_isDiscountApplied");
+              debugPrint("   _isNcDiscount (old) = $_isNcDiscount");
+
               setState(() {
-                _isDiscountApplied = discount != 0;
+                _isDiscountApplied = newIsDiscountApplied;
                 merchantDiscount = discount;
+
+                _isNcDiscount = state.isNoCharge;
+
               });
 
-              debugPrint("🔄 Restored Discount TextField = $discount");
+              debugPrint("🟣 After setState:");
+              debugPrint("   _isDiscountApplied (new) = $_isDiscountApplied");
+              debugPrint("   _isNcDiscount (new) = $_isNcDiscount");
             }
           },
         ),
+
 
 
         /// ✅ PAYMENT LISTENER
         BlocListener<CreatePaymentBloc, CreatePaymentState>(
           listener: (context, state) async {
             if (state is CreatePaymentLoading) {
+              setState(() {
+                _isPaying = true; // 🔄 keep loading
+              });
               // Optional loader
             }
 
             if (state is CreatePaymentSuccess) {
+              setState(() {
+                _isPaying = false; // ✅ stop loading
+              });
               await showDialog(
                 context: context,
                 barrierDismissible: false,
@@ -374,6 +445,9 @@ class _paymentsummaryState extends State<paymentsummary> {
             }
 
             if (state is CreatePaymentFailure) {
+              setState(() {
+                _isPaying = false; // ❌ stop loading on error
+              });
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text(state.error)),
               );
@@ -385,22 +459,24 @@ class _paymentsummaryState extends State<paymentsummary> {
         BlocListener<RemoveDiscountBloc, RemoveDiscountState>(
           listener: (context, state) {
             if (state is RemoveDiscountSuccess) {
-              context.read<PaymentBloc>().add(UpdateMerchantDiscount(0.0)); // ✅ add this
-
-              widget.onMerchantDiscountChanged(0.0);
-
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text(state.response.message)),
               );
 
+              // Now clear everything only after backend confirmed removal
               setState(() {
                 _isDiscountApplied = false;
+                _isNcDiscount = false;   // ✅ reset NC here
                 _discountAmount = 0;
                 merchantDiscount = 0.0;
-                discountController.clear(); // ✅ clears UI
+                discountController.clear();
               });
 
-              /// 🔥 Refresh payment summary
+              // // sync bloc and parent after state is cleaned
+              // context.read<PaymentBloc>().add(UpdateMerchantDiscount(0.0));
+              // widget.onMerchantDiscountChanged(0.0);
+
+              // finally refresh summary from server
               context.read<PaymentBloc>().add(
                 LoadPaymentSummary(
                   token: widget.token,
@@ -410,6 +486,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                 ),
               );
             }
+
 
             if (state is RemoveDiscountFailure) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -536,37 +613,28 @@ class _paymentsummaryState extends State<paymentsummary> {
                                       ),
                                       SizedBox(height: 8),
                                       Container(
-                                        height:
-                                        MediaQuery
-                                            .of(context)
-                                            .size
-                                            .height *
-                                            0.07,
-                                        width:
-                                        MediaQuery
-                                            .of(context)
-                                            .size
-                                            .width *
-                                            0.38,
+                                        height: MediaQuery.of(context).size.height * 0.07,
+                                        width: MediaQuery.of(context).size.width * 0.38,
                                         decoration: BoxDecoration(
-                                          color: Color(0xFFFFFDFD),
-                                          borderRadius: BorderRadius.circular(
-                                              5),
+                                          color: isPaymentDisabled
+                                              ? Colors.grey.shade200   // 👈 disabled look
+                                              : const Color(0xFFFFFDFD),
+                                          borderRadius: BorderRadius.circular(5),
                                           border: Border.all(
-                                            color: Color(
-                                              0xFFF2EEEE,
-                                            ).withOpacity(0.5),
+                                            color: const Color(0xFFF2EEEE).withOpacity(0.5),
                                             width: 0.8,
                                           ),
                                         ),
                                         child: Padding(
-                                          padding: EdgeInsets.only(right: 8.0),
+                                          padding: const EdgeInsets.only(right: 8.0),
                                           child: Align(
                                             alignment: Alignment.centerRight,
                                             child: Text(
-                                              amount.isNotEmpty ? amount : '',
+                                              isPaymentDisabled ? "0.00" : amount,
                                               style: TextStyle(
-                                                color: Color(0xFF4C5F7D),
+                                                color: isPaymentDisabled
+                                                    ? Colors.grey
+                                                    : const Color(0xFF4C5F7D),
                                                 fontSize: 15,
                                                 fontFamily: 'Inter',
                                                 fontWeight: FontWeight.w500,
@@ -576,6 +644,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                                           ),
                                         ),
                                       ),
+
                                       SizedBox(height: 5),
                                       Padding(
                                         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -594,12 +663,17 @@ class _paymentsummaryState extends State<paymentsummary> {
                                               runSpacing: 10,
                                               children: presetAmounts.map((value) {
                                                 return GestureDetector(
-                                                  onTap: () => _onPresetAmountTap(value.toStringAsFixed(0)),
+                                                  onTap: isPaymentDisabled
+                                                      ? null
+                                                      : () => _onPresetAmountTap(value.toStringAsFixed(0)),
+
                                                   child: Container(
                                                     height: MediaQuery.of(context).size.height * 0.05,
                                                     width: MediaQuery.of(context).size.width * 0.10,
                                                     decoration: BoxDecoration(
-                                                      color: amount == value.toStringAsFixed(0)
+                                                      color: isPaymentDisabled
+                                                          ? Colors.grey.shade300
+                                                          : amount == value.toStringAsFixed(0)
                                                           ? const Color(0xFFDFF5E1)
                                                           : const Color(0xFFE1F9DA),
                                                       borderRadius: BorderRadius.circular(5),
@@ -638,6 +712,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                                             onKeyPressed: handleKeyPress,
                                             selectedPaymentMode:
                                             selectedPaymentMode,
+                                            isPaying: _isPaying,
                                           ),
                                         ),
                                       ),
@@ -697,23 +772,26 @@ class _paymentsummaryState extends State<paymentsummary> {
 
                                 // ===== APPLY CALLBACKS =====
 
-                                /// ✅ FIXED: receives discount amount
-                                onDiscountApplied: (double amount) {
-                                  debugPrint("🟠 onDiscountApplied called with amount = $amount");
+                                  onDiscountApplied: (double amount, bool isNc) {
+                                    debugPrint("🟠 onDiscountApplied amount=$amount isNc=$isNc");
 
-                                  setState(() {
-                                    _isDiscountApplied = true;
-                                    merchantDiscount = amount;
+                                    // Only update the field visually for instant feedback
                                     discountController.text = amount.toStringAsFixed(2);
-                                  });
 
-                                  debugPrint("🟢 paymentsummary discountController.text = ${discountController.text}");
-                                  debugPrint("🟢 paymentsummary merchantDiscount = $merchantDiscount");
+                                    // DO NOT touch _isDiscountApplied, merchantDiscount or _isNcDiscount here
 
-                                  widget.onMerchantDiscountChanged(amount);
-                                },
+                                    // Always refresh from backend so real NC + discount come from API
+                                    context.read<PaymentBloc>().add(
+                                      LoadPaymentSummary(
+                                        token: widget.token,
+                                        orderId: widget.orderId,
+                                        restaurantId: widget.restaurantId,
+                                        orderType: "Dine In",
+                                      ),
+                                    );
+                                  },
 
-                                onCouponApplied: (coupon) {
+                                  onCouponApplied: (coupon) {
                                   setState(() {
                                     _isCouponApplied = true;
                                     _appliedCoupon = coupon;
@@ -740,19 +818,33 @@ class _paymentsummaryState extends State<paymentsummary> {
                                 },
 
                                 // ===== DELETE CALLBACKS =====
-
                                 onDiscountDelete: () {
-                                  // ✅ reset local discount value immediately
-                                  widget.onMerchantDiscountChanged(0.0);
+                                  final paymentState = context.read<PaymentBloc>().state;
+
+                                  String isNcFlag = "no";
+
+                                  if (paymentState is PaymentSummaryLoaded) {
+                                    // ✅ always take NC flag from backend-loaded state
+                                    isNcFlag = paymentState.isNoCharge ? "yes" : "no";
+                                  }
+
+                                  debugPrint("🧨 Deleting discount with isNc = $isNcFlag");
 
                                   context.read<RemoveDiscountBloc>().add(
                                     RemoveDiscountRequested(
-                                      token: widget.token,
                                       orderId: widget.orderId,
-                                      isNc: "no",
+                                      isNc: isNcFlag,
+                                      token: widget.token,
                                     ),
                                   );
                                 },
+
+
+                                //   // reset local NC flag after sending request
+                                //   setState(() {
+                                //     _isNcDiscount = false;
+                                //   });
+                                // },
 
                                 onCouponDelete: () {
                                   setState(() {
@@ -899,11 +991,14 @@ Widget buildPayment(
 class NumberPad extends StatelessWidget {
   final Function(String) onKeyPressed;
   final String selectedPaymentMode;
+  final bool isPaying;
 
   const NumberPad({
     super.key,
     required this.onKeyPressed,
     required this.selectedPaymentMode,
+    required this.isPaying,
+
   });
 
   @override
@@ -934,7 +1029,8 @@ class NumberPad extends StatelessWidget {
                 child: Padding(
                   padding: EdgeInsets.all(8.0),
                   child: GestureDetector(
-                    onTap: () => onKeyPressed("Pay"),
+                    onTap: isPaying ? null : () => onKeyPressed("Pay"),
+
                     child: Container(
                       decoration: BoxDecoration(
                         color:
@@ -951,17 +1047,26 @@ class NumberPad extends StatelessWidget {
                         ],
                       ),
                       alignment: Alignment.center,
-                      child: Text(
+                      child: isPaying
+                          ? const SizedBox(
+                        height: 26,
+                        width: 26,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 3,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                          : Text(
                         "PAY",
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color:
-                          selectedPaymentMode.isNotEmpty
+                          color: selectedPaymentMode.isNotEmpty
                               ? Colors.white
-                              : Color(0xFF4C5F7D),
+                              : const Color(0xFF4C5F7D),
                         ),
                       ),
+
                     ),
                   ),
                 ),
@@ -1082,7 +1187,8 @@ Widget _buildPaymentDiscountItem(
       required bool isTipApplied,
       required bool isSplitApplied,
 
-      required ValueChanged<double> onDiscountApplied,
+      required void Function(double amount, bool isNc) onDiscountApplied,
+
       required ValueChanged<String> onCouponApplied,
       required ValueChanged<double> onTipApplied,
       required ValueChanged<double> onSplitApplied,
@@ -1125,88 +1231,49 @@ Widget _buildPaymentDiscountItem(
                 onTap: isDiscountApplied
                     ? null
                     : () async {
-                  print('🟢 Discount field tapped');
-                  print('➡️ isDiscountApplied: $isDiscountApplied');
-                  print('➡️ netPayable: $netPayable');
-                  // print('➡️ authToken present: ${authToken != null}');
-
-                  final discountAmount = await showDialog<double>(
+                  final result = await showDialog<Map<String, dynamic>>(
                     context: context,
                     barrierDismissible: false,
                     builder: (_) {
-                      print('📦 Opening DiscountPopup dialog');
-
                       return MultiBlocProvider(
                         providers: [
                           BlocProvider(
-                            create: (_) {
-                              print('🧱 Creating DiscountReasonBloc');
-                              return DiscountReasonBloc(
-                                DiscountReasonRepository(),
-                              );
-                            },
+                            create: (_) => DiscountReasonBloc(
+                              DiscountReasonRepository(),
+                            ),
                           ),
-                          BlocProvider(
-                            create: (_) {
-                              print('🧱 Creating DiscountBloc');
-                              return DiscountBloc(
-                                AddDiscountRepository(),
-                              );
-                            },
+                          BlocProvider.value(
+                            value: context.read<DiscountBloc>(), // ✅ reuse same instance
                           ),
+
                         ],
                         child: DiscountPopup(
                           netPayable: netPayable,
-                          // authToken: authToken,
                           orderId: orderId,
                         ),
                       );
                     },
                   );
 
-                  print('⬅️ Dialog closed');
-                  print('⬅️ Returned discountAmount: $discountAmount');
-                  /// ✅ ADD THIS HERE
-                  if (discountAmount != null && discountAmount > 0) {
-                    final applied = discountAmount.abs();
+                  if (result != null) {
+                    final double applied =
+                    (result["amount"] as double).abs();
+                    final bool isNc = result["isNc"] == true;
 
-                    print("✅ APPLYING DISCOUNT = $applied");
-                    print("🟡 BEFORE update controller text = ${discountController.text}");
 
-                    // update textfield immediately
-                    discountController.text = applied.toStringAsFixed(2);
+                    // update only the field UI here
+                    discountController.text =
+                        applied.toStringAsFixed(2);
 
-                    print("🟢 AFTER update controller text = ${discountController.text}");
-
-                    // ✅ update merchant discount in bloc
-                    context.read<PaymentBloc>().add(UpdateMerchantDiscount(applied));
-                    print("📤 Sent UpdateMerchantDiscount($applied) to PaymentBloc");
-
-                    // ✅ NOW refresh payment summary so netPayable updates
-                    context.read<PaymentBloc>().add(
-                      LoadPaymentSummary(
-                        token: token,
-                        orderId: orderId,
-                        restaurantId: restaurantId,
-                        orderType: "Dine In",
-                      ),
-                    );
-                    print("🔄 Sent LoadPaymentSummary after discount apply");
-
-                    onDiscountApplied(applied);
-                  } else {
-                    print('❌ Discount not applied / dialog cancelled');
+                    // tell parent “a discount was applied”
+                    onDiscountApplied(applied, isNc);
                   }
-
-
-
                 },
                 child: AbsorbPointer(
                   child: _inputField(
                     controller: discountController,
                     hint: '0.00',
                     enabled: true,
-
                   ),
                 ),
               ),
@@ -1214,17 +1281,14 @@ Widget _buildPaymentDiscountItem(
             const SizedBox(width: 6),
             if (isDiscountApplied)
               _deleteButton(() {
-                print('🗑️ Discount delete button pressed');
-
-                // ✅ Reset discount in PaymentBloc
-                context.read<PaymentBloc>().add(UpdateMerchantDiscount(0.0));
-
-                // ✅ Call your API remove
+                debugPrint("🔥 Delete icon tapped");
+                // just inform parent to delete
                 onDiscountDelete();
               }),
-
           ],
         ),
+
+
 
 
 
@@ -1480,12 +1544,24 @@ Widget _buildPaymentModeItem(
     String selectedOption,
     Function(String) onSelect,
     ) {
-  final List<Map<String, String>> options = [
-    {"label": "Cash", "image": "assets/cash.png"},
-    {"label": "Card", "image": "assets/card.png"},
-    {"label": "UPI", "image": "assets/icon/upi.png"},
-    //{"label": "EBT", "image": "assets/images/EDA.png"},
+  final List<Map<String, dynamic>> options = [
+    {
+      "label": "Cash",
+      "image": "assets/cash.png",
+      "enabled": true,
+    },
+    {
+      "label": "Card",
+      "image": "assets/card.png",
+      "enabled": false, // ❌ disabled
+    },
+    {
+      "label": "UPI",
+      "image": "assets/icon/upi.png",
+      "enabled": false, // ❌ disabled
+    },
   ];
+
 
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1518,59 +1594,70 @@ Widget _buildPaymentModeItem(
           children:
           options.map((option) {
             final bool isSelected = selectedOption == option['label'];
+            final bool isEnabled = option['enabled'] == true;
+
             return GestureDetector(
-              onTap: () => onSelect(option['label']!),
-              child: Container(
-                margin: EdgeInsets.symmetric(vertical: 5),
-                height: 35,
-                width: 120,
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isSelected ? Color(0xFFFCDFDC) : Color(0xFFFFFFFF),
-                  borderRadius: BorderRadius.circular(0),
-                  border:
-                  isSelected
-                      ? Border.all(color: Color(0xFFFE6464))
-                      : null,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x10000000),
-                      offset: Offset(0, 1),
-                      blurRadius: 10,
-                      spreadRadius: 0,
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Image.asset(
-                      option['image']!,
-                      width: 30,
-                      height: 30,
-                    ),
-                    SizedBox(width: 0),
-                    Text(
-                      option['label']!,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color:
-                        isSelected
-                            ? Color(0xFFFE6464)
-                            : Color(0xFF4147D5),
-                        fontSize: 13,
-                        fontFamily: 'Montserrat',
-                        fontWeight: FontWeight.w500,
-                        height: 1.50,
-                        letterSpacing: 0.60,
-                        decoration: TextDecoration.none,
+              onTap: isEnabled ? () => onSelect(option['label']!) : null,
+              child: Opacity(
+                opacity: isEnabled ? 1.0 : 0.4, // 👈 disabled look
+                child: Container(
+                  margin: const EdgeInsets.symmetric(vertical: 5),
+                  height: 35,
+                  width: 120,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color(0xFFFCDFDC)
+                        : const Color(0xFFFFFFFF),
+                    borderRadius: BorderRadius.circular(0),
+                    border: isSelected
+                        ? Border.all(color: const Color(0xFFFE6464))
+                        : Border.all(color: Colors.grey.shade300),
+                    boxShadow: [
+                      BoxShadow(
+                        color: isEnabled
+                            ? const Color(0x10000000)
+                            : Colors.transparent,
+                        offset: const Offset(0, 1),
+                        blurRadius: 10,
+                        spreadRadius: 0,
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image.asset(
+                        option['image']!,
+                        width: 30,
+                        height: 30,
+                        color: isEnabled ? null : Colors.grey, // 👈 grey icon
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        option['label']!,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: !isEnabled
+                              ? Colors.grey
+                              : isSelected
+                              ? const Color(0xFFFE6464)
+                              : const Color(0xFF4147D5),
+                          fontSize: 13,
+                          fontFamily: 'Montserrat',
+                          fontWeight: FontWeight.w500,
+                          height: 1.50,
+                          letterSpacing: 0.60,
+                          decoration: TextDecoration.none,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
           }).toList(),
+
         ),
       ),
     ],

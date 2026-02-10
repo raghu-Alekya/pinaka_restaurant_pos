@@ -1,4 +1,8 @@
+import 'dart:io';
+
+import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../models/inventory/category_sublist_model.dart';
 import '../../models/inventory/bev_model.dart';
 import '../../models/inventory/tax_inventory_model.dart';
@@ -10,10 +14,10 @@ import '../../repositories/inventory_repository/tax_inventory_repository.dart';
 import 'dashboard.dart';
 
 class AddItemDialog extends StatefulWidget {
-
+  final String token;
   final Function(Products product) onItemAdded;
 
-  const AddItemDialog({super.key, required this.onItemAdded});
+  const AddItemDialog({super.key, required this.onItemAdded,   required this.token,});
 
   @override
   State<AddItemDialog> createState() => _AddItemDialogState();
@@ -36,6 +40,12 @@ class _AddItemDialogState extends State<AddItemDialog> {
   List<TaxInventoryModel> taxes = [];
   TaxInventoryModel? selectedTax;
   bool showTaxList = false;
+  File? _pickedImage;
+  final ImagePicker _picker = ImagePicker();
+  OverlayEntry? _taxOverlay;
+  final LayerLink _taxLayerLink = LayerLink();
+
+  String? _selectedImagePath;
 
   // Categories
   CategorySublistResponse? categoryResponse;
@@ -55,15 +65,34 @@ class _AddItemDialogState extends State<AddItemDialog> {
   bool isLoading = false;
   String? error;
 
-
-  final String token =
-      'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvbWVyY2hhbnRyZXN0YXVyYW50LmFsZWt0YXNvbHV0aW9ucy5jb20iLCJpYXQiOjE3NjgyMDMwNjQsIm5iZiI6MTc2ODIwMzA2NCwiZXhwIjoxNzcwNzk1MDY0LCJkYXRhIjp7InVzZXIiOnsiaWQiOjUsImRldmljZSI6IiIsInBhc3MiOiIyYjhlMjJlOTM2ZTY0N2JhNDRmOWJhMmY3Y2Q1ZmFjNiJ9fX0.vBVcnan6C9hN-ZDGN1vgpN_MkuT4twI-_WqXGOTgAio';
+  //
+  // final String token =
+  //     'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvbWVyY2hhbnRyZXN0YXVyYW50LmFsZWt0YXNvbHV0aW9ucy5jb20iLCJpYXQiOjE3NjgyMDMwNjQsIm5iZiI6MTc2ODIwMzA2NCwiZXhwIjoxNzcwNzk1MDY0LCJkYXRhIjp7InVzZXIiOnsiaWQiOjUsImRldmljZSI6IiIsInBhc3MiOiIyYjhlMjJlOTM2ZTY0N2JhNDRmOWJhMmY3Y2Q1ZmFjNiJ9fX0.vBVcnan6C9hN-ZDGN1vgpN_MkuT4twI-_WqXGOTgAio';
 
   @override
   void initState() {
     super.initState();
     fetchCategories();
     fetchTaxes();
+  }
+
+  Future<void> _pickImage() async {
+    final XFile? image = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+      maxWidth: 1024,
+    );
+
+    if (image != null) {
+      setState(() {
+        _pickedImage = File(image.path);
+        _selectedImagePath = image.path; // 🔥 THIS WAS MISSING
+      });
+
+      print("🖼 Image selected → ${image.path}");
+    } else {
+      print("⚠️ Image picking cancelled");
+    }
   }
 
   @override
@@ -84,7 +113,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
 
   Future<void> fetchTaxes() async {
     try {
-      final repo =TaxinventoryRepository(token);
+      final repo =TaxinventoryRepository(widget.token);
       final data = await repo.fetchTaxes();
       setState(() => taxes = data);
     } catch (e) {
@@ -104,11 +133,11 @@ class _AddItemDialogState extends State<AddItemDialog> {
 
       final alcohol = await repo.fetchCategorySublist(
         categoryId: 131,
-        token: token,
+        token: widget.token,
       );
       final beverages = await repo.fetchCategorySublist(
         categoryId: 228,
-        token: token,
+        token: widget.token,
       );
 
       setState(() {
@@ -204,7 +233,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
   Future<void> fetchProducts({required int categoryId}) async {
     try {
       setState(() => isLoading = true);
-      final repo = ProductRepository();
+      final repo = ProductRepository( token: widget.token,);
       final model = await repo.getProducts(categoryId: categoryId);
       if (model.products.isNotEmpty) widget.onItemAdded(model.products.first);
     } catch (e) {
@@ -219,10 +248,10 @@ class _AddItemDialogState extends State<AddItemDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: Colors.white,
+      backgroundColor: Color(0xFFFFFFFF),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       title: const Center(
-        child: Text("Add Stock", style: TextStyle(fontWeight: FontWeight.w600)),
+        child: Text("Add New Stock", style: TextStyle(fontWeight: FontWeight.w600)),
       ),
       content: SizedBox(
         width: 500,
@@ -236,9 +265,147 @@ class _AddItemDialogState extends State<AddItemDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 6),
-              // ===== FIRST ROW: Product Name + SKU =====
+
               Row(
                 children: [
+
+                  Expanded(
+                    child: Row(
+                      children: [
+                        // === DASHED RECTANGLE BOX ===
+                        InkWell(
+                          onTap: _pickImage,
+                          borderRadius: BorderRadius.circular(8),
+                          child: DottedBorder(
+                            color: const Color(0xFFCAD5E2),
+                            strokeWidth: 1,
+                            dashPattern: const [6, 4],
+                            borderType: BorderType.RRect,
+                            radius: const Radius.circular(8),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: SizedBox(
+                                width: 70,
+                                height: 70,
+                                child: Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    // IMAGE / PLACEHOLDER
+                                    Center(
+                                      child: _pickedImage == null
+                                          ? Container(
+                                        width: 48,
+                                        height: 48,
+                                        decoration: ShapeDecoration(
+                                          gradient: const LinearGradient(
+                                            begin: Alignment(0.0, 0.0),
+                                            end: Alignment(1.0, 1.0),
+                                            colors: [
+                                              Color(0xFFEEF5FE),
+                                              Color(0xFFDAEAFE),
+                                            ],
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                        ),
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(6),
+                                          child: Image.asset(
+                                            'assets/uploadimage.png',
+                                            fit: BoxFit.contain,
+                                          ),
+                                        ),
+                                      )
+                                          : Image.file(
+                                        _pickedImage!,
+                                        fit: BoxFit.cover, // ✅ fills & clips perfectly
+                                      ),
+                                    ),
+
+                                    /// DELETE OVERLAY
+                                    if (_pickedImage != null)
+                                      Positioned(
+                                        left: 0,
+                                        right: 0,
+                                        bottom: 0,
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            setState(() {
+                                              _pickedImage = null;
+                                            });
+                                          },
+                                          child: Container(
+                                            height: 18,
+                                            color: const Color(0xFFFFF7F7),
+                                            child: Row(
+                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              children: const [
+                                                Icon(
+                                                  Icons.delete_outline,
+                                                  size: 12,
+                                                  color: Color(0xFFEF4444),
+                                                ),
+                                                SizedBox(width: 4),
+                                                Text(
+                                                  'Delete',
+                                                  style: TextStyle(
+                                                    color: Color(0xFFEF4444),
+                                                    fontSize: 10,
+                                                    fontFamily: 'Kumbh Sans',
+                                                    fontWeight: FontWeight.w500,
+                                                    height: 0.94,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                          ),
+                        ),
+
+
+                        const SizedBox(width: 12),
+
+                        // === TEXT OUTSIDE ===
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Text(
+                              'Upload Image',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 16,
+                                fontFamily: 'Kumbh Sans',
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              '(PNG/JPG, max 2 MB)',
+                              style: TextStyle(
+                                color: Color(0xFFB0B0B0),
+                                fontSize: 12,
+                                fontFamily: 'Kumbh Sans',
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(width: 12),
+
+                  // ===== RIGHT INPUT FIELD =====
                   Expanded(
                     child: _buildLabeledField(
                       label: "Product Name",
@@ -246,274 +413,235 @@ class _AddItemDialogState extends State<AddItemDialog> {
                       hint: "Enter Product Name",
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildLabeledField(
-                      label: "SKU Code",
-                      controller: _skuController,
-                      hint: "Enter SKU code",
-                      suffix: GestureDetector(
-                        onTap: () {
-                          _skuController.text =
-                          "SKU-${DateTime.now().millisecondsSinceEpoch}";
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: ShapeDecoration(
-                            color: const Color(0xFFFE6464),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: const Text(
-                            "Generate",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
                 ],
               ),
+
               const SizedBox(height: 10),
               // ===== SECOND ROW: Category + SubCategory =====
               Row(
                 children: [
-                  // ===== CATEGORY PICKER =====
+                  // ===== CATEGORY DROPDOWN =====
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildPickerField(
-                          label: "Category",
-                          controller: _categoryController,
-                          onTap: () {
-                            setState(() {
-                              showParentCategoryList = !showParentCategoryList;
-                              showSubCategoryList = false;
-                              showMiniCategoryList = false;
-                            });
-                          },
+                        const Text(
+                          "Category",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                         ),
-                        if (showParentCategoryList)
-                          Container(
-                            margin: const EdgeInsets.only(top: 4),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey),
-                              borderRadius: BorderRadius.circular(8),
-                              color: Colors.white,
-                            ),
-                            constraints: BoxConstraints(maxHeight: 200),
-                            child: ListView(
-                              shrinkWrap: true,
-                              children: parentCategories.map((parent) {
-                                return ListTile(
-                                  title: Text(parent.parentName),
-                                  onTap: () {
-                                    setState(() {
-                                      selectedParentCategory = parent;
-                                      _categoryController.text = parent.parentName;
+                        const SizedBox(height: 4),
 
-                                      // reset sub & mini
-                                      selectedCategory = null;
-                                      selectedMiniCategory = null;
-                                      _subCategoryController.clear();
-                                      _miniCategoryController.clear();
-
-                                      showParentCategoryList = false;
-                                    });
-                                  },
-                                );
-                              }).toList(),
+                        SizedBox(
+                          height: 40, // ✅ exact height
+                          child: DropdownButtonFormField<CategorySublistResponse>(
+                            isExpanded: true,
+                            value: selectedParentCategory,
+                            hint: Text(
+                              "Select Category",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade400,
+                              ),
                             ),
+
+
+                            items: parentCategories.map((parent) {
+                              return DropdownMenuItem(
+                                value: parent,
+                                child: Text(
+                                  parent.parentName,
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                              );
+                            }).toList(),
+
+                            onChanged: (value) {
+                              setState(() {
+                                selectedParentCategory = value;
+                                _categoryController.text = value?.parentName ?? '';
+
+                                selectedCategory = null;
+                                selectedMiniCategory = null;
+                                _subCategoryController.clear();
+                                _miniCategoryController.clear();
+                              });
+                            },
+
+                            decoration: InputDecoration(
+                              isDense: true,
+                              contentPadding:
+                              const EdgeInsets.symmetric(horizontal: 14, vertical: 11), // 🔥 perfect center
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderSide: const BorderSide(color: Colors.grey),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderSide: const BorderSide(color: Colors.black),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+
+                            dropdownColor: Colors.white,
                           ),
+                        ),
                       ],
                     ),
                   ),
 
                   const SizedBox(width: 12),
 
-                  // ===== SUBCATEGORY PICKER =====
-                  // Expanded(
-                  //   child: Column(
-                  //     crossAxisAlignment: CrossAxisAlignment.start,
-                  //     children: [
-                  //       _buildPickerField(
-                  //         label: "Sub Category",
-                  //         controller: _subCategoryController,
-                  //         onTap: () {
-                  //           if (selectedParentCategory == null) return;
-                  //           setState(() {
-                  //             showSubCategoryList = !showSubCategoryList;
-                  //             showMiniCategoryList = false;
-                  //           });
-                  //         },
-                  //       ),
-                  //       if (showSubCategoryList && selectedParentCategory != null)
-                  //         Container(
-                  //           margin: const EdgeInsets.only(top: 4),
-                  //           decoration: BoxDecoration(
-                  //             border: Border.all(color: Colors.grey),
-                  //             borderRadius: BorderRadius.circular(8),
-                  //             color: Colors.white,
-                  //           ),
-                  //           constraints: BoxConstraints(maxHeight: 200),
-                  //           child: ListView(
-                  //             shrinkWrap: true,
-                  //             children: selectedParentCategory!.categories.map((sub) {
-                  //               return ListTile(
-                  //                 title: Text(sub.name),
-                  //                 onTap: () {
-                  //                   setState(() {
-                  //                     selectedCategory = sub;
-                  //                     _subCategoryController.text = sub.name;
-                  //
-                  //                     // reset mini
-                  //                     selectedMiniCategory = null;
-                  //                     _miniCategoryController.clear();
-                  //
-                  //                     showSubCategoryList = false;
-                  //                     showMiniCategoryList = true; // optionally open mini
-                  //                   });
-                  //                 },
-                  //               );
-                  //             }).toList(),
-                  //           ),
-                  //         ),
-                  //
-                  //       // ===== MINI CATEGORY BELOW SUBCATEGORY =====
-                  //       if (selectedCategory != null && selectedCategory!.children.isNotEmpty)
-                  //         Column(
-                  //           crossAxisAlignment: CrossAxisAlignment.start,
-                  //           children: [
-                  //             const SizedBox(height: 8),
-                  //             _buildPickerField(
-                  //               label: "Mini Category",
-                  //               controller: _miniCategoryController,
-                  //               onTap: () {
-                  //                 setState(() {
-                  //                   showMiniCategoryList = !showMiniCategoryList;
-                  //                 });
-                  //               },
-                  //             ),
-                  //             if (showMiniCategoryList)
-                  //               Container(
-                  //                 margin: const EdgeInsets.only(top: 4),
-                  //                 decoration: BoxDecoration(
-                  //                   border: Border.all(color: Colors.grey),
-                  //                   borderRadius: BorderRadius.circular(8),
-                  //                   color: Colors.white,
-                  //                 ),
-                  //                 constraints: BoxConstraints(maxHeight: 200),
-                  //                 child: ListView(
-                  //                   shrinkWrap: true,
-                  //                   children: selectedCategory!.children.map((mini) {
-                  //                     return ListTile(
-                  //                       title: Text(mini.name),
-                  //                       onTap: () {
-                  //                         setState(() {
-                  //                           selectedMiniCategory = mini;
-                  //                           _miniCategoryController.text = mini.name;
-                  //                           showMiniCategoryList = false;
-                  //                         });
-                  //                       },
-                  //                     );
-                  //                   }).toList(),
-                  //                 ),
-                  //               ),
-                  //           ],
-                  //         ),
-                  //     ],
-                  //   ),
-                  // ),
-                  Expanded(
+// ===== SUBCATEGORY DROPDOWN WITH INLINE MINI CATEGORIES =====
+                  SizedBox(
+                    width: 245,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildPickerField(
-                          label: "Sub Category",
-                          controller: _subCategoryController,
-                          onTap: () {
-                            if (selectedParentCategory == null) return;
-                            setState(() {
-                              showSubCategoryList = !showSubCategoryList;
-                            });
-                          },
+                        const Text(
+                          "Sub Category",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                         ),
-                        if (showSubCategoryList && selectedParentCategory != null)
-                          Container(
-                            margin: const EdgeInsets.only(top: 4),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey),
-                              borderRadius: BorderRadius.circular(8),
-                              color: Colors.white,
-                            ),
-                            constraints: BoxConstraints(maxHeight: 300),
-                            child: ListView(
-                              shrinkWrap: true,
-                              children: selectedParentCategory!.categories.map((sub) {
-                                final bool isExpanded = selectedCategory == sub;
+                        const SizedBox(height: 4),
 
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    ListTile(
-                                      title: Text(sub.name, style: TextStyle(fontWeight: FontWeight.bold)),
-                                      trailing: sub.children.isNotEmpty
-                                          ? Icon(
-                                        isExpanded
-                                            ? Icons.keyboard_arrow_up
-                                            : Icons.keyboard_arrow_down,
-                                      )
-                                          : null,
-                                      onTap: () {
-                                        setState(() {
-                                          if (isExpanded) {
-                                            // collapse if already selected
-                                            selectedCategory = null;
-                                            selectedMiniCategory = null;
-                                            _subCategoryController.clear();
-                                          } else {
-                                            selectedCategory = sub;
-                                            selectedMiniCategory = null;
-                                            _subCategoryController.text = sub.name;
-                                          }
-                                        });
-                                      },
-                                    ),
-                                    if (isExpanded && sub.children.isNotEmpty)
-                                      Padding(
-                                        padding: const EdgeInsets.only(left: 16),
-                                        child: Column(
-                                          children: sub.children.map((mini) {
-                                            return ListTile(
-                                              title: Text(mini.name),
-                                              onTap: () {
-                                                setState(() {
-                                                  selectedMiniCategory = mini;
-                                                  _subCategoryController.text = "${sub.name} > ${mini.name}";
-                                                  showSubCategoryList = false; // close list
-                                                });
-                                              },
-                                            );
-                                          }).toList(),
-                                        ),
+                        // Dropdown-like container
+                        GestureDetector(
+                            onTap: () async {
+                              if (selectedParentCategory == null) return;
+
+                              await showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                backgroundColor: Colors.transparent,
+                                builder: (context) {
+                                  return Align(
+                                    alignment: const Alignment(0.6, 0.6),
+                                    child: Container(
+                                      width: 250,
+                                      margin: const EdgeInsets.only(bottom: 19),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(8),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(0.15),
+                                            blurRadius: 12,
+                                          ),
+                                        ],
                                       ),
-                                  ],
-                                );
-                              }).toList(),
-                            ),
-                          ),
+                                      child: DraggableScrollableSheet(
+                                        expand: false,
+                                        initialChildSize: 0.45,
+                                        minChildSize: 0.3,
+                                        maxChildSize: 0.7,
+                                        builder: (context, scrollController) {
+                                          return ListView(
+                                            controller: scrollController,
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                                            children: selectedParentCategory!.categories.map((sub) {
+                                              if (sub.children.isEmpty) {
+                                                // No mini categories: select subcategory directly
+                                                return ListTile(
+                                                  dense: true,
+                                                  visualDensity: VisualDensity.compact,
+                                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                                                  title: Text(sub.name, style: const TextStyle(fontSize: 13)),
+                                                  selected: selectedCategory?.id == sub.id,
+                                                  selectedTileColor: Colors.blue.withOpacity(0.1),
+                                                  onTap: () {
+                                                    setState(() {
+                                                      selectedCategory = sub;
+                                                      selectedMiniCategory = null;
+
+                                                      _subCategoryController.text = sub.name;
+                                                      _miniCategoryController.text = "";
+                                                    });
+                                                    Navigator.pop(context);
+                                                  },
+                                                );
+                                              } else {
+                                                // Has mini categories: show ExpansionTile
+                                                return Theme(
+                                                  data: Theme.of(context).copyWith(
+                                                    dividerColor: Colors.transparent,
+                                                    visualDensity: VisualDensity.compact,
+                                                  ),
+                                                  child: ExpansionTile(
+                                                    tilePadding: const EdgeInsets.symmetric(horizontal: 6),
+                                                    dense: true,
+                                                    title: Text(sub.name, style: const TextStyle(fontSize: 13)),
+                                                    children: sub.children.map((mini) {
+                                                      return ListTile(
+                                                        dense: true,
+                                                        visualDensity: VisualDensity.compact,
+                                                        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                                                        title: Text(mini.name, style: const TextStyle(fontSize: 12)),
+                                                        selected: selectedMiniCategory?.id == mini.id,
+                                                        selectedTileColor: Colors.blue.withOpacity(0.1),
+                                                        onTap: () {
+                                                          setState(() {
+                                                            selectedCategory = sub;
+                                                            selectedMiniCategory = mini;
+
+                                                            _subCategoryController.text = sub.name;
+                                                            _miniCategoryController.text = mini.name;
+                                                          });
+                                                          Navigator.pop(context);
+                                                        },
+                                                      );
+                                                    }).toList(),
+                                                  ),
+                                                );
+                                              }
+                                            }).toList(),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                            child: Container(
+                              height: 39,
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey.shade400),
+                                borderRadius: BorderRadius.circular(8),
+                                color: Colors.white,
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      selectedMiniCategory != null
+                                          ? "${selectedCategory?.name} → ${selectedMiniCategory?.name}"
+                                          : (selectedCategory != null
+                                          ? selectedCategory!.name
+                                          : "Select Sub Category"),
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: selectedCategory != null
+                                            ? Colors.black
+                                            : Colors.grey.shade600,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const Icon(Icons.arrow_drop_down, color: Colors.grey),
+                                ],
+                              ),
+                            )
+
+                        ),
                       ],
                     ),
                   ),
+
+
+
                 ],
               ),
 
@@ -521,14 +649,51 @@ class _AddItemDialogState extends State<AddItemDialog> {
               // ===== THIRD ROW: Stock + Price + Notes =====
               Row(
                 children: [
+                  // Expanded(
+                  //   child: _buildLabeledField(
+                  //     label: "Stock Quantity",
+                  //     controller: _unitsController,
+                  //     hint: "Enter quantity",
+                  //     isNumber: true,
+                  //   ),
+                  // ),
                   Expanded(
                     child: _buildLabeledField(
-                      label: "Stock Quantity",
-                      controller: _unitsController,
-                      hint: "Enter quantity",
-                      isNumber: true,
+                      label: "SKU Code",
+                      controller: _skuController,
+                      hint: "Enter SKU code",
+                      suffix: Padding(
+                        padding: const EdgeInsets.all(6), // space from field edge
+                        child: GestureDetector(
+                          onTap: () {
+                            _skuController.text =
+                            "SKU-${DateTime.now().millisecondsSinceEpoch}";
+                          },
+                          child: Container(
+                            width: 100,
+                            height: 35, // fixed height
+                            decoration: ShapeDecoration(
+                              color: const Color(0xFFFE6464),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            alignment: Alignment.center,
+                            child: const Text(
+                              "Generate",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
+
                   ),
+
                   const SizedBox(width: 12),
                   Expanded(
                     child: _buildLabeledField(
@@ -546,48 +711,72 @@ class _AddItemDialogState extends State<AddItemDialog> {
                 children: [
                   //  Tax dropdown
                   Expanded(
-                    flex: 2,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildPickerField(
-                          label: "Tax",
-                          controller: _taxController,
-                          onTap: () {
-                            setState(() => showTaxList = !showTaxList);
-                          },
+                        const Text(
+                          "Tax",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                         ),
-                        if (showTaxList)
-                          Container(
-                            margin: const EdgeInsets.only(top: 1),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey),
-                              borderRadius: BorderRadius.circular(8),
-                              color: Colors.white,
-                            ),
-                            constraints: const BoxConstraints(maxHeight: 150),
-                            child: ListView(
-                              shrinkWrap: true,
-                              children: taxes.map((tax) {
-                                return ListTile(
-                                  title: Text(tax.name),
-                                  onTap: () {
-                                    setState(() {
-                                      selectedTax = tax;
-                                      _taxController.text = tax.name;
+                        const SizedBox(height: 6),
 
-                                      showTaxList = false;
-                                    });
-                                  },
-                                );
-                              }).toList(),
+                        SizedBox(
+                          height: 40,
+                          child: DropdownButtonFormField<TaxInventoryModel>(
+                            isExpanded: true,
+                            value: selectedTax,
+                            hint: const Text("Select Tax", style: TextStyle(fontSize: 12,   color: Color(0xFF949494),)),
+
+                            items: taxes.map((tax) {
+                              return DropdownMenuItem(
+                                value: tax,
+                                child: Text(tax.name, style: const TextStyle(fontSize: 13)),
+                              );
+                            }).toList(),
+
+                            onChanged: (tax) {
+                              setState(() {
+                                selectedTax = tax;
+                                _taxController.text = tax?.name ?? '';
+                              });
+                            },
+
+                            decoration: InputDecoration(
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderSide: const BorderSide(color: Colors.grey),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderSide: const BorderSide(color: Colors.black),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
                             ),
+
+                            dropdownColor: Colors.white,
                           ),
+                        ),
                       ],
                     ),
                   ),
 
+
                   const SizedBox(width: 12),
+                  Expanded(
+
+                    child: _buildLabeledField(
+                      label: "Stock Quantity",
+                      controller: _unitsController,
+                      hint: "Enter quantity",
+                      isNumber: true,
+                    ),
+                  ),
+
+                  // const SizedBox(width: 12),
 
                   // ===== NOTES =====
                   // Expanded(
@@ -608,7 +797,6 @@ class _AddItemDialogState extends State<AddItemDialog> {
       actions: [_buildCancelButton(context), _buildAddButton(context)],
     );
   }
-
   Widget _buildLabeledField({
     required String label,
     required TextEditingController controller,
@@ -624,19 +812,18 @@ class _AddItemDialogState extends State<AddItemDialog> {
           label,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6), // consistent vertical spacing
         SizedBox(
           height: 38.0 * (maxLines > 1 ? maxLines : 1),
           child: TextField(
             controller: controller,
             keyboardType: isNumber ? TextInputType.number : TextInputType.text,
             maxLines: maxLines,
+            style: const TextStyle(fontSize: 13), // smaller font inside
             decoration: InputDecoration(
               hintText: hint,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 8,
-              ),
+              hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), // reduced padding
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -668,7 +855,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
           label,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6), // consistent spacing
         SizedBox(
           height: 38,
           child: GestureDetector(
@@ -677,12 +864,11 @@ class _AddItemDialogState extends State<AddItemDialog> {
               child: TextField(
                 controller: controller,
                 readOnly: true,
+                style: const TextStyle(fontSize: 13),
                 decoration: InputDecoration(
                   hintText: "Select $label",
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
+                  hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -694,7 +880,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
                     borderSide: const BorderSide(color: Colors.black),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  suffixIcon: const Icon(Icons.keyboard_arrow_down),
+                  suffixIcon: const Icon(Icons.keyboard_arrow_down, size: 20),
                 ),
               ),
             ),
@@ -710,7 +896,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
         height: 40,
-        width: 160,
+        width:180,
         padding: const EdgeInsets.all(8),
         decoration: ShapeDecoration(
           color: Colors.white,
@@ -735,7 +921,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
 
   Widget _buildAddButton(BuildContext context) {
     return SizedBox(
-      width: 160,
+      width: 180,
       height: 40,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
@@ -748,6 +934,8 @@ class _AddItemDialogState extends State<AddItemDialog> {
             : () async {
           print("🟢 ADD BUTTON PRESSED");
           setState(() => isSubmitting = true);
+
+          print("🧪 Selected image path = $_selectedImagePath");
 
           // Validation
           if (_nameController.text.isEmpty ||
@@ -784,9 +972,22 @@ class _AddItemDialogState extends State<AddItemDialog> {
           print(" Notes: ${_notesController.text.trim()}");
           print("📤 category_id (sub): ${selectedCategory?.id}");
           print("📤 mini_category_id: ${selectedMiniCategory?.id}");
+          int? imageId;
 
           try {
+            // 🔼 STEP 1: Upload image if selected
+            if (_selectedImagePath != null &&
+                _selectedImagePath!.isNotEmpty) {
+              imageId = await _repository.uploadImageToMedia(
+                token: widget.token,
+                imagePath: _selectedImagePath!,
+              );
+              print("🖼️ Image uploaded. Media ID: $imageId");
+            }
+
+            // 🔼 STEP 2: Create / Update Item
             final response = await _repository.addOrUpdateItem(
+              token: widget.token,
               itemName: _nameController.text.trim(),
               categoryId: selectedCategory?.id ?? 0,
               miniCategoryId: selectedMiniCategory?.id,
@@ -796,43 +997,23 @@ class _AddItemDialogState extends State<AddItemDialog> {
               int.tryParse(_thresholdController.text.trim()) ?? 0,
               itemNote: _notesController.text.trim(),
               itemSku: _skuController.text.trim(),
+              imageId: imageId, // ✅ NOW SENT
             );
 
             if (!mounted) return;
 
             if (response.isCreated) {
-              // Create product object
-              final product = Products(
-                id: response.itemId,
-                itemName: _nameController.text.trim(),
-                threshold: response.itemPrice,
-                remaining: _unitsController.text.trim(),
-                soldTotal: 0,
-                statusLabel: "Normal",
-                statusColor: "#4CAF50",
-                image: _imageUrlController.text.trim(),
-                sku: '',
-              );
-
-              // Call parent callback
-              widget.onItemAdded(product);
-
-              // ✅ Pop dialog
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const Dashboard(token: '', pin: '', restaurantId: '', restaurantName: '',)),
-              );
-            } else {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("Failed: ${response.message}")),
+                const SnackBar(content: Text("✅ Item added successfully")),
               );
+              Navigator.pop(context);
             }
           } catch (e) {
-            if (mounted) {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text("Error: $e")));
-            }
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("❌ Error: $e")),
+            );
+
+
           } finally {
             if (mounted) setState(() => isSubmitting = false);
           }
