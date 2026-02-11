@@ -14,6 +14,7 @@ import 'package:pinaka_restaurant_pos/repositories/product_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/repeat_kot_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/search_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/subcategory_repository.dart';
+import 'package:pinaka_restaurant_pos/repositories/variant_repository.dart';
 import 'package:pinaka_restaurant_pos/utils/GlobalReservationMonitor.dart';
 import 'package:pinaka_restaurant_pos/utils/ShiftMonitor.dart';
 import 'package:pinaka_restaurant_pos/utils/global_navigator.dart';
@@ -149,6 +150,12 @@ class MyApp extends StatelessWidget {
                 baseUrl: "https://merchantrestaurant.alektasolutions.com",
                 // token: token,
               ),
+            ),
+          ),
+          RepositoryProvider<VariantRepository>(
+            create: (context) => VariantRepository(
+              baseUrl: "https://merchantrestaurant.alektasolutions.com",
+              token: token,
             ),
           ),
 

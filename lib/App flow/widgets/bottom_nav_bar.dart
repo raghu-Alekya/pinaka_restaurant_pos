@@ -27,10 +27,11 @@ class _BottomNavBarState extends State<BottomNavBar> {
     {"label": "KOT Status", "icon": Icons.receipt_long},
     {"label": "Reservation", "icon": Icons.calendar_month},
     {"label": "Orders", "icon": Icons.list_alt},
+    {"label": "Inventory", "icon": Icons.inventory},
     {"label": "Customers", "icon": Icons.people},
     {"label": "Take Aways", "icon": Icons.inventory_2},
     {"label": "Online Orders", "icon": Icons.delivery_dining},
-    {"label": "Inventory", "icon": Icons.inventory},
+    // {"label": "Inventory", "icon": Icons.inventory},
   ];
 
   void _scrollLeft() {

@@ -25,7 +25,7 @@ class OrdersListTable extends StatefulWidget {
   final UserPermissions? userPermissions;
 
   const OrdersListTable({super.key,required this.token,
-    // required List orders,
+    required List orders,
     required this.pin,
     required this.restaurantId,
     required this.restaurantName,
@@ -539,10 +539,16 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                       DataCell(Text(order.tableName ?? '-')),
                                       DataCell(Text(
                                         order.customerName?.trim().isEmpty == true
-                                            ? ''
+                                            ? 'Guest'
                                             : order.customerName ?? '-',
                                       )),
-                                      DataCell(Text(order.customerPhone ?? '-')),
+                                      DataCell(
+                                        Text(
+                                          order.customerPhone?.trim().isEmpty == true
+                                              ? '-'
+                                              : order.customerPhone ?? '-',
+                                        ),
+                                      ),
                                       DataCell(Text(order.paymentType ?? '-')),
                                       // DataCell(Text(order.amount?.toStringAsFixed(2) ?? '0.00')),
                                       // DataCell(Text(order.discount?.toStringAsFixed(2) ?? '0.00')),
@@ -647,7 +653,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
 
       ),
 
-      /// 🔹 BOTTOM NAV BAR
+      // BOTTOM NAV BAR
       bottomNavigationBar: BottomNavBar(
         selectedIndex: 4,
         userPermissions: _userPermissions,

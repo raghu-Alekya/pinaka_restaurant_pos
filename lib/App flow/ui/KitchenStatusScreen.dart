@@ -46,7 +46,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   Map<String, dynamic>? _selectedUser;
   List<String> _orderTypes = [];
   late KitchenRepository kitchenRepo;
-  bool _isResetEnabled = false;
+  bool isResetEnabled = false;
 
 
   @override
@@ -58,6 +58,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     _searchController.addListener(() {
       setState(() {
         searchQuery = _searchController.text.toLowerCase();
+        isResetEnabled = searchQuery.isNotEmpty;
 
       });
     });
@@ -231,23 +232,34 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   }
   void _onResetPressed() {
     setState(() {
+      // 🔍 Search reset
       _searchController.clear();
       searchQuery = '';
 
-      if (_orderTypes.isNotEmpty) {
-        selectedOrderType = _orderTypes.first; // Default order type
-      }
+      // // 🔄 Order type reset
+      // selectedOrderType =
+      // // _orderTypes.isNotEmpty ? _orderTypes.first : null;
 
-      selectedArea = _zones.isNotEmpty ? _zones.first['zone_name'] : null;
+      // 📍 Area / Zone reset
+      selectedArea =
+      _zones.isNotEmpty ? _zones.first['zone_name'] : null;
 
+      // 🪑 Table / KOT reset
       _selectedTableIndex = null;
       _selectedTable = null;
       _selectedKot = null;
+
+      // 📦 Clear KOT items
       _kotItems.clear();
+
+      // 🔒 Disable reset button again
+      isResetEnabled = false;
     });
 
+    // 🔁 Reload orders with default filters
     _fetchOrders();
   }
+
 
 
   String normalizeOrderType(String type) {
@@ -570,31 +582,43 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   }
   Widget _buildResetButton() {
     return GestureDetector(
-      onTap: _onResetPressed,
-      child: Container(
-        height: 40,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.shade300),
-        ),
-        child: Row(
-          children: const [
-            Icon(Icons.refresh, size: 18, color: Colors.black87),
-            SizedBox(width: 6),
-            Text(
-              'Reset',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
+      onTap: isResetEnabled ? _onResetPressed : null,
+      child: Opacity(
+        opacity: isResetEnabled ? 1.0 : 0.5, // 🔒 visual disabled effect
+        child: Container(
+          height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: isResetEnabled ? Colors.red : Colors.grey.shade300,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isResetEnabled ? Colors.red : Colors.grey.shade300,
             ),
-          ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.refresh,
+                size: 18,
+                color: isResetEnabled ? Colors.white : Colors.grey,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Reset',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: isResetEnabled ? Colors.white : Colors.grey,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+
 
 
 

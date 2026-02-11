@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pinaka_restaurant_pos/repositories/variant_repository.dart';
 
 import '../../blocs/Bloc Event/category_event.dart';
 import '../../blocs/Bloc Event/minisubcategory_event.dart';
@@ -88,10 +89,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   late MiniSubCategoryRepository miniSubRepo;
   late ProductRepository productRepo;
+  late VariantRepository variantRepository;
+
   UserPermissions? _userPermissions;
   Map<String, dynamic>? _selectedUser;
   final LayerLink _searchLink = LayerLink();
   OverlayEntry? _searchOverlay;
+  bool _isSearchActive = false;
+  final FocusNode _searchFocusNode = FocusNode();
+
+
 
   @override
   void initState() {
@@ -104,10 +111,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
       baseUrl: "https://merchantrestaurant.alektasolutions.com",
       // token: widget.token,
     );
+    variantRepository = VariantRepository(
+      baseUrl: 'https://merchantrestaurant.alektasolutions.com',
+      token: widget.token,
+    );
+    // 🔥 Force keyboard to close when screen opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _searchFocusNode.unfocus();
+      FocusManager.instance.primaryFocus?.unfocus();
+    });
+
 
     _loadCategories();
     _loadPermissions();
   }
+  @override
+  void dispose() {
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
 
   void _loadCategories() {
     final catBloc = context.read<CategoryBloc>();
@@ -185,6 +208,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
           .toList();
     });
   }
+  void _showVariantPopup(
+      BuildContext context,
+      Product product,
+      OrderBloc orderBloc,
+      Category section,
+      ) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => VariantPopupContent(
+        key: UniqueKey(),
+        product: product,
+        itemName: product.name,
+        variants: product.variants,
+        section: section,
+        orderBloc: orderBloc,
+        onSelected: (variant) {
+          orderBloc.add(
+            AddOrderItem(
+              OrderItems(
+                productId: product.id,
+                variationId: variant.id,
+                name: "${product.name} - ${variant.name}",
+                quantity: 1,
+                price: variant.price,
+                amount: variant.price,
+                section: section,
+                hasOptions: true,
+              ),
+            ),
+          );
+          Navigator.pop(context);
+        },
+        onVariantSelected: (_) {},
+      ),
+    );
+  }
+
+
   void _showSearchOverlay(List<Search_ProductModel> products) {
     _removeSearchOverlay();
 
@@ -198,6 +260,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Material(
             elevation: 8,
             borderRadius: BorderRadius.circular(8),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxHeight: 300, // 🔽 DECREASE HEIGHT HERE
+              ),
             child: ListView.separated(
               padding: EdgeInsets.zero,
               shrinkWrap: true,
@@ -212,129 +278,120 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     product.name,
                     style: const TextStyle(fontSize: 14),
                   ),
-                  // onTap: () async {
-                  //   debugPrint("🛒 Search tap → ${product.name}");
-                  //
-                  //   final orderBloc = context.read<OrderBloc>();
-                  //
-                  //   try {
-                  //     // 🔥 Fetch FULL product (required for variants)
-                  //     final fullProduct =
-                  //     await productRepo.SearchfetchProductsById(product.id);
-                  //
-                  //     // 🧬 CASE 1: VARIANT PRODUCT → POPUP
-                  //     if (fullProduct.variants.isNotEmpty) {
-                  //       showDialog(
-                  //         context: context,
-                  //         barrierDismissible: true,
-                  //         builder: (dialogContext) {
-                  //           return VariantPopupContent(
-                  //             product: fullProduct,
-                  //             itemName: fullProduct.name,
-                  //             variants: fullProduct.variants,
-                  //             section: fullProduct.category, // Category object
-                  //             orderBloc: orderBloc,
-                  //             onSelected: (variant) {
-                  //               orderBloc.add(
-                  //                 AddOrderItem(
-                  //                   OrderItems(
-                  //                     productId: fullProduct.id,
-                  //                     variationId: variant.id,
-                  //                     name:
-                  //                     "${fullProduct.name} - ${variant.name}",
-                  //                     quantity: 1,
-                  //                     price: variant.price,
-                  //                     amount: variant.price,
-                  //                     section: fullProduct.category,
-                  //                     taxClass: fullProduct.taxClass,
-                  //                     hasOptions: true,
-                  //                   ),
-                  //                 ),
-                  //               );
-                  //               Navigator.pop(dialogContext);
-                  //             },
-                  //             onVariantSelected: (_) {},
-                  //           );
-                  //         },
-                  //       );
-                  //     }
-                  //
-                  //     // 🟢 CASE 2: SIMPLE PRODUCT → ADD DIRECTLY
-                  //     else {
-                  //       orderBloc.add(
-                  //         AddOrderItem(
-                  //           OrderItems(
-                  //             productId: fullProduct.id,
-                  //             variationId: null,
-                  //             name: fullProduct.name,
-                  //             quantity: 1,
-                  //             price: fullProduct.price,
-                  //             amount: fullProduct.price,
-                  //             section: fullProduct.category,
-                  //             taxClass: fullProduct.taxClass,
-                  //             hasOptions: false,
-                  //           ),
-                  //         ),
-                  //       );
-                  //     }
-                  //
-                  //     // 🧹 CLEANUP SEARCH
-                  //     _removeSearchOverlay();
-                  //     context.read<SearchProductBloc>().add(SearchClearProducts());
-                  //
-                  //   } catch (e) {
-                  //     debugPrint("❌ Failed to add search product: $e");
-                  //     ScaffoldMessenger.of(context).showSnackBar(
-                  //       const SnackBar(content: Text("Failed to add product")),
-                  //     );
-                  //   }
-                  // },
-                  onTap: () {
-                    print("🛒 Search tap → ${product.name}");
 
-                    final orderBloc = context.read<OrderBloc>();
+                    onTap: () async {
+                      FocusScope.of(context).unfocus();
 
-                    orderBloc.add(
-                      AddOrderItem(
-                        OrderItems(
-                          productId: product.id,      // ✅ product id from search
-                          variationId: null,          // ✅ simple product
-                          name: product.name,
-                          quantity: 1,
-                          price: product.price,
-                          amount: product.price,
-                          section: null,  // ✅ current selected category
-                          taxClass: product.taxClass,
-                          hasOptions: false,          // ✅ no variants / options
+                      final orderBloc = context.read<OrderBloc>();
+
+                      // 🔵 VARIATION PRODUCT
+                      if (product.type == 'variation' && product.parentId != null) {
+                        // 🔄 Show loader
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (_) => const Center(child: CircularProgressIndicator()),
+                        );
+
+                        try {
+                          final variants =
+                          await variantRepository.fetchVariantsByProduct(product.parentId!);
+
+                          Navigator.pop(context); // close loader
+
+                          if (variants.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('No variants available')),
+                            );
+                            return;
+                          }
+
+                          // ✅ Convert to Product (NOW variants exist)
+                          final productForSelection = Product(
+                            id: product.parentId!,
+                            name: product.name,
+                            price: product.price.toDouble(),
+                            variants: variants,
+                            images: const [],
+                            modifiers: const [],
+                            addOns: const [],
+                            isCombo: false,
+                            hasOptions: true,
+                            isVariantProduct: true,
+                          );
+
+                          // 🔥 Reuse SAME logic
+                          onItemSelected(
+                            productForSelection,
+                            Category(
+                              id: '-1',
+                              name: 'Search',
+                              imagepath: '',
+                              subCategories: const [],
+                            ),
+                          );
+
+                        } catch (e) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Failed to load variants')),
+                          );
+                        }
+
+                        _removeSearchOverlay();
+                        context.read<SearchProductBloc>().add(SearchClearProducts());
+                        return;
+                      }
+
+                      // 🟢 SIMPLE PRODUCT
+                      final simpleProduct = Product(
+                        id: product.id,
+                        name: product.name,
+                        price: product.price.toDouble(),
+                        variants: const [],
+                        images: const [],
+                        modifiers: const [],
+                        addOns: const [],
+                        isCombo: false,
+                        hasOptions: false,
+                        isVariantProduct: false,
+                      );
+
+                      onItemSelected(
+                        simpleProduct,
+                        Category(
+                          id: '-1',
+                          name: 'Search',
+                          imagepath: '',
+                          subCategories: const [],
                         ),
-                      ),
-                    );
+                      );
 
-                    // ✅ Cleanup
-                    _removeSearchOverlay();
-                    context.read<SearchProductBloc>().add(SearchClearProducts());
-                  },
+                      _removeSearchOverlay();
+                      context.read<SearchProductBloc>().add(SearchClearProducts());
+                    }
 
 
 
-
-
-
-                );
-              },
+                );},
             ),
           ),
         ),
       ),
-    );
+    ));
 
     Overlay.of(context).insert(_searchOverlay!);
   }
 
   void _removeSearchOverlay() {
+    // ✅ CLOSE KEYBOARD
+    FocusScope.of(context).unfocus();
+
+    // ✅ REMOVE OVERLAY IF EXISTS
     _searchOverlay?.remove();
     _searchOverlay = null;
   }
+
 
 
   void onItemSelected(Product product, Category section) {
@@ -442,49 +499,62 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
 
-          const SizedBox(width: 18),
+          const SizedBox(width: 3),
 
           // RIGHT: Search Bar (Fixed Position)
-          CompositedTransformTarget(
-            link: _searchLink,
-            child: Container(
-              width: 300,
-              height: 35,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: TextField(
-                decoration: const InputDecoration(
-                  hintText: "Search item or short code....",
-                  prefixIcon: Icon(Icons.search, size: 18),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 10),
+          Align(
+            alignment: Alignment.centerRight,
+            child: CompositedTransformTarget(
+              link: _searchLink,
+              child: Container(
+                width: 230,
+                height: 35,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
+                child:TextField(
+                  focusNode: _searchFocusNode,
+                  autofocus: false, // 🚫 VERY IMPORTANT
+                  decoration: const InputDecoration(
+                    hintText: "Search item",
+                    prefixIcon: Icon(Icons.search, size: 18),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(vertical: 10),
+                  ),
+                  onTap: () {
+                    // ✅ Keyboard opens ONLY here
+                    _searchFocusNode.requestFocus();
+                  },
                   onChanged: (value) {
                     final query = value.trim();
-                    print("🔍 Search Text Changed: '$query'");
+                    _isSearchActive = query.isNotEmpty;
 
                     if (query.isEmpty) {
                       _removeSearchOverlay();
                       context.read<SearchProductBloc>().add(SearchClearProducts());
-                    } else if (query.length >= 2) {
-                      context
-                          .read<SearchProductBloc>()
+                      return;
+                    }
+
+                    if (query.length >= 2) {
+                      context.read<SearchProductBloc>()
                           .add(SearchFetchProducts(search: query));
                     }
-                  }
+                  },
+                ),
+
 
               ),
             ),
-          ),
+          )
+
 
 
         ],
@@ -509,6 +579,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _onNavItemTapped(int index) async {
+    _searchFocusNode.unfocus();
+    FocusManager.instance.primaryFocus?.unfocus();
     final permissions =
         widget.userPermissions ?? await SessionManager.loadPermissions();
     // 🔍 DEBUG LINE — ADD IT HERE
@@ -543,7 +615,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () {
+          _searchFocusNode.unfocus();
+          FocusManager.instance.primaryFocus?.unfocus();
+        },
+    child: Scaffold(
       appBar: TopBar(
         token: widget.token,
         pin: widget.pin,
@@ -575,11 +653,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             restaurantId: widget.restaurantId,
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 5),
                         Expanded(
                           flex: 55,
                           child: Padding(
-                            padding: const EdgeInsets.all(8.0),
+                            padding: const EdgeInsets.fromLTRB(2, 8, 2, 8),
+
                             child: BlocBuilder<CategoryBloc, CategoryState>(
                               builder: (context, catState) {
                                 if (catState is CategoryLoading) {
@@ -615,7 +694,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         },
                                       ),
 
-                                      const SizedBox(height: 8),
+                                      const SizedBox(height: 6),
                                       // if (breadcrumbNames.isNotEmpty) ...[
                                       //   _buildBreadcrumbs(),
                                       //   const SizedBox(height: 8),
@@ -696,7 +775,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Expanded(
               flex: 49,
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.fromLTRB(6, 12, 12, 12),
                 child: BlocBuilder<OrderBloc, OrderState>(
                   builder: (context, state) {
                     return OrderPanel(
@@ -725,6 +804,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             BlocListener<SearchProductBloc, SearchProductState>(
               listener: (context, state) {
                 debugPrint("🧠 Search State Changed → $state");
+                if (!_isSearchActive) {
+                  _removeSearchOverlay();
+                  return;
+                }
 
                 if (state is SearchProductLoaded) {
                   debugPrint(
@@ -743,6 +826,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
       ),
-    );
+    ));
   }
 }

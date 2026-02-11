@@ -182,7 +182,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
               GestureDetector(
                 onTap: () => setState(() => _expanded = !_expanded),
                 child: Container(
-                  height: 36,
+                  height: 30,
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(

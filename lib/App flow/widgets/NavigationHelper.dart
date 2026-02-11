@@ -94,14 +94,14 @@ class NavigationHelper {
               restaurantId: restaurantId,
               restaurantName: restaurantName,
               userPermissions: userPermissions,
-              // orders: [], // you can pass empty; Bloc will fetch
+              orders: [], // you can pass empty; Bloc will fetch
             ),
           ),
         ),
       );
     }
 
-    else if (tappedIndex == 8) {
+    else if (tappedIndex == 5) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(

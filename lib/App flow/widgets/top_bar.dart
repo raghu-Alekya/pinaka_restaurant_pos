@@ -64,7 +64,7 @@ class _TopBarState extends State<TopBar> {
           BoxShadow(
             color: Colors.grey.withAlpha((0.3 * 255).toInt()),
             spreadRadius: 0,
-            blurRadius: 8,
+            blurRadius: 4,
             offset: Offset(0, 3),
           ),
         ],
@@ -411,8 +411,8 @@ class _TopBarState extends State<TopBar> {
     return GestureDetector(
       onTap: onPressed,
       child: Container(
-        width: 70, // ⬅ slightly wider like image
-        height: 60,
+        width: 65, // ⬅ slightly wider like image
+        height: 55,
         margin: const EdgeInsets.only(right: 14),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -462,7 +462,7 @@ class _TopBarState extends State<TopBar> {
     final avatarUrl = widget.userPermissions?.avatar;
 
     return Container(
-      height: 60, // matches image height
+      height: 55, // matches image height
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
         color: Colors.white,

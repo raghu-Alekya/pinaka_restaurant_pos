@@ -66,7 +66,7 @@ class OrderPanelList extends StatelessWidget {
     return ListView.separated(
       shrinkWrap: true,
       itemCount: orderItems.length,
-      separatorBuilder: (_, __) => const Divider(height: 0.5),
+      separatorBuilder: (_, __) => const Divider(height: 0),
       itemBuilder: (context, index) {
         final item = orderItems[index];
 
@@ -76,14 +76,14 @@ class OrderPanelList extends StatelessWidget {
           background: Container(
             color: Colors.red,
             alignment: Alignment.centerRight,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 5),
             child: const Icon(Icons.delete, color: Colors.white),
           ),
           onDismissed: (_) => onRemoveItem(index),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 1),
+            padding: const EdgeInsets.symmetric(vertical: 0),
             child: Container(
-              padding: const EdgeInsets.all(2), // inner padding
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),// inner padding
               decoration: BoxDecoration(
                 color: Colors.white, // white background
                 borderRadius: BorderRadius.circular(6), // rounded corners
@@ -95,31 +95,37 @@ class OrderPanelList extends StatelessWidget {
                   ),
                 ],
               ),
-              child: Row(
+              child:Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const SizedBox(width:7),
+                  const SizedBox(width: 7),
+
                   // Serial #
                   SizedBox(
-                    width: 40,
+                    width: 40, // fixed is OK
                     child: Text(
                       '${item.variationId ?? item.productId}',
-                      // ✅ use productId instead of id
                       style: const TextStyle(fontSize: 12),
                     ),
                   ),
 
+                  const SizedBox(width: 6),
 
-
-                  // Item Name + Modifiers + AddOns + Note
-                  SizedBox(
-                    width: 170,
+                  // ✅ Item name + modifiers → TAKE AVAILABLE SPACE
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(item.name,
-                            style: const TextStyle(
-                                fontSize: 14, fontWeight: FontWeight.w500)),
+                        Text(
+                          item.name,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+
                         if (item.modifiers.isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.only(top: 2),
@@ -131,8 +137,11 @@ class OrderPanelList extends StatelessWidget {
                                 fontWeight: FontWeight.w500,
                                 decoration: TextDecoration.underline,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
+
                         if (item.addOns.isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.only(top: 2),
@@ -144,11 +153,14 @@ class OrderPanelList extends StatelessWidget {
                                 fontWeight: FontWeight.w500,
                                 decoration: TextDecoration.underline,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
+
                         if (item.note.isNotEmpty)
                           Padding(
-                            padding: const EdgeInsets.only(top: 4),
+                            padding: const EdgeInsets.only(top: 2),
                             child: Text(
                               'Note: ${item.note}',
                               style: const TextStyle(
@@ -156,6 +168,8 @@ class OrderPanelList extends StatelessWidget {
                                 fontStyle: FontStyle.italic,
                                 color: Colors.black54,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                       ],
@@ -163,79 +177,66 @@ class OrderPanelList extends StatelessWidget {
                   ),
 
                   // Modifier Button
-                  SizedBox(
-                    width: 40,
-                    child: IconButton(
-                      padding: EdgeInsets.zero,
-                      icon: const Icon(Icons.add, color: Colors.red, size: 20),
-                      onPressed: () => _showModifierPopup(context, index),
-                    ),
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    icon: const Icon(Icons.add, color: Colors.red, size: 20),
+                    onPressed: () => _showModifierPopup(context, index),
                   ),
-                  // Modifier Button
-                  // SizedBox(
-                  //   width: 60,
-                  //   child: IconButton(
-                  //     padding: EdgeInsets.zero,
-                  //     icon: Icon(
-                  //       Icons.add,
-                  //       color: item.hasOptions ? Colors.red : Colors.grey, // 🔹 greyed if no options
-                  //       size: 20,
-                  //     ),
-                  //     onPressed: item.hasOptions
-                  //         ? () => _showModifierPopup(context, index)
-                  //         : null, // 🔹 disabled if no modifiers/add-ons
-                  //   ),
-                  // ),
 
-                  const SizedBox(width: 8),
-                // ✅ Unit Price
-                SizedBox(
-                  width: 70,
-                  child: Align(
-                    alignment: Alignment.centerRight,
+                  // Unit Price (fixed)
+                  SizedBox(
+                    width: 70,
                     child: Text(
                       '₹${item.price.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                     ),
                   ),
-                ),
-                  const SizedBox(width:15),
 
+                  const SizedBox(width: 30),
 
-                  // Quantity Controls
+                  // Quantity Controls (fixed)
                   Row(
                     children: [
-                      _quantityButton(Icons.remove, () => onDecreaseQuantity(index)),
+                      _quantityButton(
+                        Icons.remove,
+                            () => onDecreaseQuantity(index),
+                      ),
+
+                      const SizedBox(width: 3), // ✅ space between - and qty
+
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 6),
-                        child: Text('${item.quantity}',
-                            style: const TextStyle(fontSize: 14)),
+                        child: Text(
+                          '${item.quantity}',
+                          style: const TextStyle(fontSize: 14),
+                        ),
                       ),
-                      _quantityButton(Icons.add, () => onIncreaseQuantity(index)),
+
+                      const SizedBox(width: 3), // ✅ space between qty and +
+
+                      _quantityButton(
+                        Icons.add,
+                            () => onIncreaseQuantity(index),
+                      ),
                     ],
                   ),
-                  const SizedBox(width:10),
 
 
-                  // const SizedBox(width:10),
+                  const SizedBox(width: 5),
 
-                  // Amount
+                  // Amount (fixed)
                   SizedBox(
-                    width: 60,
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        '₹${item.totalWithAddons.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.w500),
-                      ),
+                    width: 70,
+                    child: Text(
+                      '₹${item.totalWithAddons.toStringAsFixed(2)}',
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                     ),
                   ),
                 ],
-              ),
+              )
+
             ),
           ),
         );

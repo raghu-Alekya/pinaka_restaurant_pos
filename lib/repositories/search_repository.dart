@@ -10,7 +10,8 @@ import '../models/category/items_model.dart'; // ✅ Product model
 
 class Search_ProductRepository {
   final String baseUrl =
-      "https://merchantrestaurant.alektasolutions.com/wp-json/wc/v3/products";
+      "https://merchantrestaurant.alektasolutions.com/wp-json/"
+      "pinaka-restaurant-pos/v1/products-by-category/get-products";
 
   // 🔐 TOKEN
   Future<String> _getToken() async {
@@ -26,17 +27,15 @@ class Search_ProductRepository {
         : token;
   }
 
-  // 🔎 SEARCH PRODUCTS (FAST)
-  Future<List<Search_ProductModel>> SearchfetchProducts({String? search}) async {
-    if (search == null || search.trim().length < 2) return [];
+  // 🔎 SEARCH PRODUCTS (POS API)
+  Future<List<Search_ProductModel>> SearchfetchProducts({
+    required String search,
+  }) async {
+    if (search.trim().length < 2) return [];
 
-    final query = search.trim().toLowerCase();
-    final isNumeric = RegExp(r'^\d+$').hasMatch(query);
+    final query = search.trim();
 
-    final Uri uri = isNumeric
-        ? Uri.parse("$baseUrl?sku=$query")
-        : Uri.parse("$baseUrl?search=$query&per_page=20");
-
+    final Uri uri = Uri.parse("$baseUrl?search=$query");
     final token = await _getToken();
 
     final response = await http.get(
@@ -48,41 +47,26 @@ class Search_ProductRepository {
     );
 
     if (response.statusCode != 200) {
-      throw Exception("Search failed");
+      throw Exception("Search failed: ${response.statusCode}");
     }
 
-    final List data = json.decode(response.body);
-    final products =
-    data.map((e) => Search_ProductModel.fromJson(e)).toList();
+    final decoded = json.decode(response.body);
 
-    // 🔥 STRICT FILTER
-    if (isNumeric) {
-      return products.where((p) => p.sku == query).toList();
-    }
+    // ✅ IMPORTANT FIX
+    final List data = decoded['data'] ?? [];
+
+    final products = data
+        .map((e) => Search_ProductModel.fromJson(e))
+        .toList();
+
+    // 🔍 OPTIONAL: frontend strict filtering
+    final lowerQuery = query.toLowerCase();
 
     return products.where((p) {
       final name = p.name.toLowerCase();
       final sku = p.sku.toLowerCase();
-      return name.contains(query) || sku.contains(query);
+      return name.contains(lowerQuery) || sku.contains(lowerQuery);
     }).toList();
   }
-
-  // // 🧬 FETCH FULL PRODUCT (FOR VARIANTS)
-  // Future<Product>SearchfetchProductsById(int productId) async {
-  //   final token = await _getToken();
-  //
-  //   final response = await http.get(
-  //     Uri.parse("$baseUrl/$productId"),
-  //     headers: {
-  //       "Authorization": "Bearer $token",
-  //       "Accept": "application/json",
-  //     },
-  //   );
-  //
-  //   if (response.statusCode == 200) {
-  //     return Product.fromJson(json.decode(response.body));
-  //   } else {
-  //     throw Exception("Failed to fetch product $productId");
-  //   }
-  // }
 }
+

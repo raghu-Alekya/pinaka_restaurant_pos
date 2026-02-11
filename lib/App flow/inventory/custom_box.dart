@@ -671,6 +671,8 @@ class _CustomBoxState extends State<CustomBox> {
                             child: TextField(
                               controller: _searchController,
                               focusNode: _searchFocusNode,
+                              autofocus: false,
+                              showCursor: _searchFocusNode.hasFocus,
                               onSubmitted: (value) async {
                                 if (value.trim().isEmpty) return;
 
@@ -691,7 +693,7 @@ class _CustomBoxState extends State<CustomBox> {
                                     height: 20,
                                   ),
                                 ),
-                                hintText: "Search by Beverage Name/SKU",
+                                hintText: "Search by Product Name/SKU",
                                 filled: true,
                                 fillColor: Colors.white,
                                 border: OutlineInputBorder(

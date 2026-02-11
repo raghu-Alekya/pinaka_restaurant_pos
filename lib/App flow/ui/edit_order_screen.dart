@@ -78,6 +78,14 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
   List<LineItem> _leftPanelItems = [];
   double _selectedKotOriginalTotal = 0.0;
+  List<VoidedItem> _currentVoidedItems = [];
+  List<VoidedItem> _voidedItems = [];
+  bool _isVoidedLoading = false;
+  int? _lastFetchedKotId;
+  final Map<int, List<VoidedItem>> _voidedCache = {};
+
+
+
 
 // EDITABLE PER KOT (persisted)
   final Map<int, List<LineItem>> _editedKotItems = {};
@@ -89,6 +97,36 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
     _orderStatusRepo = OrderstatusRepository();
 
   }
+  Future<void> _loadVoidedItemsForKot(KotOrder kot) async {
+    if (_lastFetchedKotId == kot.kotOrderId) return;
+
+    _lastFetchedKotId = kot.kotOrderId;
+
+    setState(() {
+      _isVoidedLoading = true;
+      _currentVoidedItems = [];
+    });
+
+    try {
+      final response = await OrderstatusRepository().fetchVoidedItems(
+        kotOrderId: kot.kotOrderId!,
+        token: widget.token,
+      );
+
+      debugPrint("🔴 Voided items fetched: ${response.items.length}");
+
+      setState(() {
+        _currentVoidedItems = response.items;
+      });
+    } catch (e) {
+      debugPrint("❌ Voided items error: $e");
+    } finally {
+      setState(() {
+        _isVoidedLoading = false;
+      });
+    }
+  }
+
   void _showVoidedItemsDialog(List<VoidedItem> items) {
     showDialog(
       context: context,
@@ -153,7 +191,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       _selectedKotOriginalTotal = (_selectedKot?.lineItems ?? [])
           .fold(0.0, (sum, i) => sum + (i.totalWoTax ?? 0));
 
-      // ✅ LEFT PANEL (always original snapshot)
+      // LEFT PANEL (always original snapshot)
       _leftPanelItems = (_selectedKot?.lineItems ?? []).map((item) {
         final qty = item.quantity ?? 1;
         final totalWoTax = item.totalWoTax ?? 0.0;
@@ -171,7 +209,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         );
       }).toList();
 
-      // ✅ RIGHT PANEL (restore edits OR create editable copy)
+      //  RIGHT PANEL (restore edits OR create editable copy)
       _editedKotItems.putIfAbsent(
         kotId,
             () => _selectedKot!.lineItems!.map((item) {
@@ -194,17 +232,18 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
     });
   }
 
-  VoidedItem? _getVoidedItem(String? productName) {
-    if (_voidedItemsResponse == null) return null;
+  VoidedItem? _getVoidedItemByItemId(int? itemId) {
+    if (itemId == null) return null;
 
     try {
-      return _voidedItemsResponse!.items.firstWhere(
-            (v) => v.product == productName && v.newQty == 0,
+      return _voidedItems.firstWhere(
+            (v) => v.itemId == itemId,
       );
     } catch (_) {
       return null;
     }
   }
+
 
 
 
@@ -239,18 +278,29 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
     return [];
   }
-  void _refreshOrders() {
-    setState(() {
-      // _netPayableInitialized = false; // re-init tax & net payable
-      _selectedKotId = null;
-      _selectedKot = null;
-      _leftPanelItems.clear();
-      _ordersFuture = _orderRepo.fetchOrders(widget.token);
+  void _refreshOrders() async {
+    final orders = await _orderRepo.fetchOrders(widget.token);
 
+    final updatedLeftPanelItems = <LineItem>[];
+    for (final order in orders) {
+      for (final kot in order.kotOrders ?? []) {
+        for (final item in kot.lineItems ?? []) {
+          if ((item.quantity ?? 0) > 0) {
+            updatedLeftPanelItems.add(item);
+          }
+        }
+      }
+    }
+
+    setState(() {
+      _leftPanelItems = updatedLeftPanelItems;
+      _ordersFuture = Future.value(orders);
     });
   }
 
+
   Future<void> _updateKot() async {
+
     if (_selectedKot == null) return;
 
     if (selectedReason == null || selectedReason!.isEmpty) {
@@ -283,7 +333,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         orElse: () => throw Exception("Selected KOT not found"),
       );
 
-      // 2️⃣ ONLY edited KOT items
+      // 2️ ONLY edited KOT items
       final items = _editedKotItems[_selectedKotId];
 
       if (items == null || items.isEmpty) {
@@ -492,7 +542,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                 maxQty: qty,
                 totalWoTax: totalWoTax,
                 amount: item.amount,
-                unitPrice: qty > 0 ? totalWoTax / qty : 0.0, // 🔒 SAME LOGIC
+                unitPrice: qty > 0 ? totalWoTax / qty : 0.0, //  SAME LOGIC
                 modifiers: parseModifiers(item.modifiers),
               );
             }).toList();
@@ -944,8 +994,25 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 // LEFT PANEL (Order info + KOT selector) - STATIC VIEW
 // =========================================================
   Widget _buildLeftPanel(OrderlistModel order, List<KotOrder> kots) {
-    final kot = _selectedKot; // selected KOT
-    final items = kot?.lineItems ?? [];
+    final kot = _selectedKot;
+
+    if (kot != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadVoidedItemsForKot(kot);
+      });
+    }
+
+//  DEFINE LISTS HERE (IMPORTANT)
+    final allItems = kot?.lineItems ?? [];
+
+// normal (not deleted)
+    final normalItems = allItems.where((item) {
+      return _getVoidedItemByItemId(item.itemId) == null;
+    }).toList();
+
+// deleted (from API)
+    final voidedItems = _currentVoidedItems;
+
 
     return Container(
       margin: const EdgeInsets.all(8),
@@ -1018,102 +1085,53 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
             // Items List (STATIC)
             Expanded(
               child: ListView.builder(
-                itemCount: items.length,
+                padding: EdgeInsets.zero,
+                itemCount: normalItems.length + voidedItems.length,
                 itemBuilder: (context, index) {
-                  final item = items[index];
-                  final modifiers = parseModifiers(item.modifiers);
+                  final bool isNormal = index < normalItems.length;
+                  final bool isLast =
+                      index == (normalItems.length + voidedItems.length - 1);
 
-                  final voidedItem = _getVoidedItem(item.name);
-                  final isVoided = voidedItem != null;
+                  // Loading state for voided items
+                  if (_isVoidedLoading && !isNormal) {
+                    return const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    );
+                  }
 
                   return Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                    padding: isNormal
+                        ? const EdgeInsets.symmetric(vertical: 8, horizontal: 16)
+                        : const EdgeInsets.symmetric(vertical: 2, horizontal: 16),
                     decoration: BoxDecoration(
-                      color: isVoided ? const Color(0xFFFFEEEE) : const Color(0xFFFBFBFC),
+                      color: isNormal ? const Color(0xFFFBFBFC) : const Color(0xFFF2F2F2),
                       border: Border(
-                        bottom: BorderSide(
-                          color: isVoided ? Colors.red.shade200 : Colors.grey[300]!,
-                        ),
+                        bottom: BorderSide(color: Colors.grey.shade300),
                       ),
+                      borderRadius: isLast
+                          ? const BorderRadius.only(
+                        bottomLeft: Radius.circular(0),
+                        bottomRight: Radius.circular(0),
+                      )
+                          : BorderRadius.zero,
                     ),
-                    child: Row(
-                      children: [
-                        Expanded(flex: 1, child: Text("${index + 1}")),
-
-                        Expanded(
-                          flex: 3,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.name ?? "-",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: isVoided ? Colors.red : Colors.black,
-                                  decoration:
-                                  isVoided ? TextDecoration.lineThrough : null,
-                                ),
-                              ),
-
-                              if (modifiers.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 2),
-                                  child: Text(
-                                    modifiers.join(", "),
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ),
-
-                              if (isVoided)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 2),
-                                  child: Text(
-                                    voidedItem != null ? " Item Deleted" : "",
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.red,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-
-                        Expanded(
-                          flex: 2,
-                          child: Text(
-                            isVoided
-                                ? "${voidedItem!.origQty} → 0"
-                                : "${item.quantity ?? 0}",
-                            style: TextStyle(
-                              color: isVoided ? Colors.red : Colors.black,
-                              fontWeight: isVoided ? FontWeight.bold : FontWeight.normal,
-                            ),
-                          ),
-                        ),
-
-                        Expanded(
-                          flex: 1,
-                          child: Text(
-                            isVoided
-                                ? "₹0.00"
-                                : "₹${(item.totalWoTax ?? 0).toStringAsFixed(2)}",
-                            style: TextStyle(
-                              color: isVoided ? Colors.red : Colors.black,
-                            ),
-                          ),
-                        ),
-                      ],
+                    child: isNormal
+                        ? _buildNormalRowUI(
+                      normalItems[index],
+                      index,
+                    )
+                        : _buildVoidedRowUI(
+                      voidedItems[index - normalItems.length],
+                      index,
                     ),
                   );
                 },
-
               ),
             ),
+
 
             // const SizedBox(height: 12),
             //
@@ -1154,6 +1172,93 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       ),
     );
   }
+  Widget _buildNormalRowUI(LineItem item, int index) {
+    final modifiers = parseModifiers(item.modifiers);
+
+    return Row(
+      children: [
+        Expanded(flex: 1, child: Text("${index + 1}")),
+        Expanded(
+          flex: 3,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                item.name ?? "-",
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              if (modifiers.isNotEmpty)
+                Text(
+                  modifiers.join(", "),
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+            ],
+          ),
+        ),
+        Expanded(flex: 2, child: Text("${item.quantity ?? 0}")),
+        Expanded(
+          flex: 1,
+          child: Text(
+            "₹${(item.totalWoTax ?? 0).toStringAsFixed(2)}",
+          ),
+        ),
+      ],
+    );
+  }
+  Widget _buildVoidedRowUI(VoidedItem item, int index) {
+    return Row(
+      children: [
+        Expanded(
+          flex: 1,
+          child: Text(
+            "${index + 1}",
+            style: const TextStyle(color: Color(0xFFB9B9B9)),
+          ),
+        ),
+        Expanded(
+          flex: 3,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                item.product,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFFB9B9B9),
+                ),
+              ),
+              const Text(
+                "Item Deleted",
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.red,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          flex: 2,
+          child: Text(
+            "${item.origQty} → 0",
+            style: const TextStyle(color: Color(0xFFB9B9B9)),
+          ),
+        ),
+        Expanded(
+          flex: 1,
+          child: Text(
+            "₹${item.itemTotal.toStringAsFixed(2)}",
+            style: const TextStyle(
+              color: Color(0xFFB9B9B9),
+              // decoration: TextDecoration.lineThrough,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
 
   Widget _infoRow(
       String label,
@@ -1262,7 +1367,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                     final modifiers = parseModifiers(item.modifiers);
 
                     // Check if this item is voided
-                    final voidedItem = _getVoidedItem(item.name);
+                    final voidedItem = _getVoidedItemByItemId(item.itemId);
                     final isVoided = voidedItem != null;
 
                     return Container(

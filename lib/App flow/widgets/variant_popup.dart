@@ -7,22 +7,22 @@ import '../../models/sidebar/category_model_.dart';
 import '../../models/order/order_items.dart';
 
 /// Function to show the variant popup
-void _showVariantPopup(
-    BuildContext context,
-    Product product,
-    OrderBloc orderBloc,
-    Category section,
-    ) {
-  showDialog(
-    context: context,
-    builder: (context) => VariantPopupContent(
-      key: UniqueKey(),
-      product: product,
-      section: section,
-      orderBloc: orderBloc, itemName: '', variants: [], onVariantSelected: (variant) {  }, onSelected: (variant) {  },
-    ),
-  );
-}
+// void _showVariantPopup(
+//     BuildContext context,
+//     Product product,
+//     OrderBloc orderBloc,
+//     Category?section,
+//     ) {
+//   showDialog(
+//     context: context,
+//     builder: (context) => VariantPopupContent(
+//       key: UniqueKey(),
+//       product: product,
+//       section: section,
+//       orderBloc: orderBloc, itemName: '', variants: [], onVariantSelected: (variant) {  }, onSelected: (variant) {  },
+//     ),
+//   );
+// }
 
 /// The popup widget itself
 class VariantPopupContent extends StatefulWidget {

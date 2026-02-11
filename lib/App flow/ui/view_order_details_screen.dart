@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../constants/constants.dart';
 import '../../models/UserPermissions.dart';
 import '../../models/order/order_model.dart';
+import '../../models/order_list/edit_order_list_model.dart';
 import '../../models/order_list/order_list_model.dart';
 import '../../repositories/cancel_order_list_repository.dart';
 import '../../repositories/order_list_repository.dart';
@@ -21,7 +22,7 @@ class OrdersDetailsScreen extends StatefulWidget {
   final String pin;
   final String restaurantId;
   final String restaurantName;
-  final int orderId; // 👈 Pass selected order ID
+  final int orderId; //  Pass selected order ID
   final UserPermissions? userPermissions;
   final Function(UserPermissions)? onPermissionsReceived;
 
@@ -51,6 +52,11 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
   UserPermissions? _permissions;
   double? _oldNetPayable;
   String? _oldEditReason;
+  VoidedItemsResponse? voidedItemsResponse;
+  bool isVoidedLoading = false;
+  int? selectedKotOrderId;
+
+
 
 
 
@@ -59,6 +65,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
     super.initState();
     _userPermissions = widget.userPermissions;
     _ordersFuture = _orderRepo.fetchOrders(widget.token);
+
   }
 
   void _onItemTapped(int index) {
@@ -98,6 +105,24 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
     widget.onPermissionsReceived?.call(
       permissions,
     ); // optional callback to parent
+  }
+  Future<void> loadVoidedItems(int kotOrderId) async {
+    setState(() => isVoidedLoading = true);
+
+    try {
+      final result = await OrderstatusRepository().fetchVoidedItems(
+        kotOrderId: kotOrderId,
+        token:  widget.token,
+      );
+
+      setState(() {
+        voidedItemsResponse = result;
+      });
+    } catch (e) {
+      debugPrint("Voided fetch error: $e");
+    } finally {
+      setState(() => isVoidedLoading = false);
+    }
   }
 
   //
@@ -293,7 +318,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFE5EFFF),
 
-      /// 🔹 TOP BAR
+      // TOP BAR
       appBar: TopBar(
         token: widget.token,
         pin: widget.pin,
@@ -305,7 +330,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
         },
       ),
 
-      /// 🔹 BODY
+      // BODY
       body: FutureBuilder<List<OrderlistModel>>(
         future: _ordersFuture,
         builder: (context, snapshot) {
@@ -317,7 +342,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
             return const Center(child: Text("No Orders Found"));
           }
 
-          // ✅ Pick the correct order by ID
+          //  Pick the correct order by ID
           final orderModel = snapshot.data!.firstWhere(
                 (o) => o.orderId == widget.orderId,
             orElse: () => snapshot.data!.first,
@@ -329,7 +354,13 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
           // Initialize selected KOT if null
           if (selectedKotId == null && kots.isNotEmpty) {
             selectedKotId = kots.first["kotNo"];
+
+            //  Fetch void items  (before dropdown selection)
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              loadVoidedItems(selectedKotId!);
+            });
           }
+
 
           Map<String, dynamic>? selectedKot = kots
               .cast<Map<String, dynamic>?>()
@@ -351,8 +382,9 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
           return Center(
             child: Container(
               width: double.infinity,
-              margin: const EdgeInsets.all(10),
-              padding: const EdgeInsets.all(10),
+              margin: const EdgeInsets.fromLTRB(4, 2, 0, 2),
+              padding: const EdgeInsets.fromLTRB(4, 2, 4, 2),
+
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
@@ -1006,13 +1038,15 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                     ],
                                   ),
 
-                                  const SizedBox(height: 10),
+                                  const SizedBox(height: 8),
 
                                   // payment summary
                                   Expanded(
                                     child: Container(
                                       width: double.infinity,
-                                      padding: const EdgeInsets.all(12),
+                                      margin: const EdgeInsets.fromLTRB(4, 2, 4, 0),
+                                      padding: const EdgeInsets.fromLTRB(4, 2, 4, 0),
+
                                       decoration: BoxDecoration(
                                         color: Colors.white,
                                         borderRadius: BorderRadius.circular(10),
@@ -1318,8 +1352,8 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                             ),
 
 
-                          // 🔹 KOT TABLE
-                          Expanded(child: buildSelectedKotCard(order)),
+                          //  KOT TABLE
+                          Expanded(child: buildSelectedKotCard(order,orderModel)),
                         ],
                       ),
                     ),
@@ -1340,12 +1374,23 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
     );
   }
 
-  Widget buildSelectedKotCard(Map<String, dynamic> order) {
+  Widget buildSelectedKotCard(
+      Map<String, dynamic> order,
+      OrderlistModel orderModel,
+      ) {
     final kots = (order["kots"] as List<dynamic>?) ?? [];
 
-    Map<String, dynamic>? selectedKot = kots
-        .cast<Map<String, dynamic>?>()
-        .firstWhere(
+    //  Auto select first KOT if not selected
+    if (selectedKotId == null && kots.isNotEmpty) {
+      selectedKotId = kots.first["kotNo"];
+
+      //  LOAD VOIDED ITEMS INITIALLY
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        loadVoidedItems(selectedKotId!);
+      });
+    }
+
+    final selectedKot = kots.cast<Map<String, dynamic>?>().firstWhere(
           (kot) => kot?["kotNo"] == selectedKotId,
       orElse: () => null,
     );
@@ -1355,21 +1400,24 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
         child: Text("No KOT Selected", style: TextStyle(color: Colors.grey)),
       );
     }
-    String kotReason = "-";
-    if (selectedKot["meta_data"] != null) {
-      final metaData = (selectedKot["meta_data"] as List<dynamic>);
-      final reasonMeta = metaData.firstWhere(
-            (m) => m["key"] == "kot_reason",
-        orElse: () => {"value": "-"},
-      );
-      kotReason = reasonMeta["value"] ?? "-";
-    }
 
-    return buildKOTCard(selectedKot, kots);
+    return buildKOTCard(selectedKot, kots, orderModel);
   }
 
-  Widget buildKOTCard(Map<String, dynamic> selectedKot, List<dynamic> kots) {
+
+  Widget buildKOTCard(Map<String, dynamic> selectedKot, List<dynamic> kots, OrderlistModel orderModel,) {
     final items = (selectedKot["items"] as List<dynamic>?) ?? [];
+    final bool showVoided =
+        orderModel.isUpdated?.toLowerCase() == 'yes';
+
+    final List<Map<String, dynamic>> normalItems =
+    items.cast<Map<String, dynamic>>();
+
+    final List<VoidedItem> voidedItems =
+    (showVoided && !isVoidedLoading && voidedItemsResponse != null)
+        ? voidedItemsResponse!.items
+        : [];
+
 
     return Container(
       decoration: BoxDecoration(
@@ -1404,38 +1452,40 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<int>(
-                    value: selectedKotId,
-                    hint: const Text(
-                      "Select KOT",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    icon: const Icon(
-                      Icons.keyboard_arrow_down,
-                      color: Colors.white,
-                    ), // white icon
-                    dropdownColor: const Color(
-                      0xFF125BCE,
-                    ), // dropdown menu blue
-                    style: const TextStyle(
-                      color: Colors.white,
-                    ), // selected text white
-                    items:
-                    kots.map((kot) {
-                      return DropdownMenuItem<int>(
-                        value: kot["kotNo"],
-                        child: Text(
-                          "KOT ${kot["kotNo"]}",
-                          style: const TextStyle(
-                            color: Colors.white,
-                          ), // dropdown items text
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        selectedKotId = value;
-                      });
-                    },
+                      value: selectedKotId,
+                      hint: const Text(
+                        "Select KOT",
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      icon: const Icon(
+                        Icons.keyboard_arrow_down,
+                        color: Colors.white,
+                      ), // white icon
+                      dropdownColor: const Color(
+                        0xFF125BCE,
+                      ), // dropdown menu blue
+                      style: const TextStyle(
+                        color: Colors.white,
+                      ), // selected text white
+                      items:
+                      kots.map((kot) {
+                        return DropdownMenuItem<int>(
+                          value: kot["kotNo"],
+                          child: Text(
+                            "KOT ${kot["kotNo"]}",
+                            style: const TextStyle(
+                              color: Colors.white,
+                            ), // dropdown items text
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          selectedKotId = value;
+                        });
+                        loadVoidedItems(value!);
+                      }
+
                   ),
                 ),
               ),
@@ -1452,7 +1502,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                 topRight: Radius.circular(8),
               ),
             ),
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
             child: Row(
               children: const [
                 Expanded(
@@ -1488,81 +1538,91 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
           ),
 
           ///  Items List (SCROLLABLE)
+// ---------------- NORMAL ITEMS LIST ----------------
           Expanded(
             child: ListView.builder(
-              itemCount: items.length,
+              padding: EdgeInsets.zero,
+              itemCount: normalItems.length + voidedItems.length,
               itemBuilder: (context, index) {
-                final item = items[index];
-                bool isLast = index == items.length - 1;
-
-                final List<String> modifierNames = extractModifierNames(item);
+                final bool isNormal = index < normalItems.length;
+                final bool isLast =
+                    index == (normalItems.length + voidedItems.length - 1);
+                if (isVoidedLoading && showVoided) {
+                  return const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  );
+                }
 
                 return Container(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 8,
-                    horizontal: 6,
-                  ),
+                  padding: isNormal
+                      ? const EdgeInsets.symmetric(vertical: 8, horizontal: 16)
+                      : const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                   decoration: BoxDecoration(
-                    border: Border(
-                      bottom: const BorderSide(color: Color(0xFFB9B9B9)),
-                      left: const BorderSide(color: Color(0xFFB9B9B9)),
-                      right: const BorderSide(color: Color(0xFFB9B9B9)),
+                    color: isNormal ? Colors.white : Colors.grey.shade200, // optional
+                    border: const Border(
+                      bottom: BorderSide(color: Color(0xFFB9B9B9)),
+                      left: BorderSide(color: Color(0xFFB9B9B9)),
+                      right: BorderSide(color: Color(0xFFB9B9B9)),
                     ),
-                    borderRadius:
-                    isLast
+                    borderRadius: isLast
                         ? const BorderRadius.only(
                       bottomLeft: Radius.circular(8),
                       bottomRight: Radius.circular(8),
                     )
                         : BorderRadius.zero,
                   ),
-                  child: Row(
-                    children: [
-                      Expanded(flex: 1, child: Text("${index + 1}")),
-                      Expanded(
-                        flex: 3,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item['name']?.toString() ?? "-",
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            if (modifierNames.isNotEmpty)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 2),
-                                child: Text(
-                                  modifierNames.join(", "),
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          "${item['qty'] ?? 0} x ${item['item_price'] ?? 0}",
-                        ),
-                      ),
-                      Expanded(
-                        flex: 1,
-                        child: Text(
-                          item['total_wo_tax']?.toStringAsFixed(2)?? "-",
-                          style: const TextStyle(fontWeight: FontWeight.w400),
-                        ),
-                      ),
-                    ],
+                  child: isNormal
+                      ? _buildNormalRow(normalItems[index], index)
+                      : _buildVoidedRow(
+                    voidedItems[index - normalItems.length],
+                    index,
                   ),
                 );
               },
             ),
-          ),
+          )
+
+// ---------------- DELETED ITEMS ----------------
+//           if (orderModel.isUpdated?.toLowerCase() == 'yes') ...[
+//             const SizedBox(height: 12),
+//             const Divider(),
+//
+//             const Text(
+//               "Deleted Items",
+//               style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+//             ),
+//             const SizedBox(height: 8),
+//
+//             if (isVoidedLoading)
+//               const Center(child: CircularProgressIndicator())
+//             else if (voidedItemsResponse == null ||
+//                 voidedItemsResponse!.items.isEmpty)
+//               const Text("No deleted items found")
+//             else
+//               ListView.separated(
+//                 shrinkWrap: true,
+//                 physics: const NeverScrollableScrollPhysics(),
+//                 itemCount: voidedItemsResponse!.items.length,
+//                 separatorBuilder: (_, __) => const Divider(),
+//                 itemBuilder: (context, index) {
+//                   final item = voidedItemsResponse!.items[index];
+//
+//                   return Row(
+//                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//                     children: [
+//                       Expanded(child: Text(item.product)),
+//                       Text(
+//                         "${item.origQty} → ${item.newQty}",
+//                         style: const TextStyle(color: Colors.red),
+//                       ),
+//                       Text("₹${item.itemTotal.toStringAsFixed(2)}"),
+//                     ],
+//                   );
+//                 },
+//               ),
+//           ]
+
         ],
       ),
     );
@@ -1601,4 +1661,81 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
       ),
     );
   }
+  Widget _buildNormalRow(Map<String, dynamic> item, int index) {
+    final modifierNames = extractModifierNames(item);
+
+    return Row(
+      children: [
+        Expanded(flex: 1, child: Text("${index + 1}")),
+        Expanded(
+          flex: 3,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(item['name'] ?? "-",
+                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              if (modifierNames.isNotEmpty)
+                Text(
+                  modifierNames.join(", "),
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+            ],
+          ),
+        ),
+        Expanded(flex: 2, child: Text("${item['qty']} x ${item['item_price']}")),
+        Expanded(
+          flex: 1,
+          child: Text(item['total_wo_tax']?.toStringAsFixed(2) ?? "-"),
+        ),
+      ],
+    );
+  }
+  Widget _buildVoidedRow(VoidedItem item, int index) {
+    return Row(
+      children: [
+        Expanded(
+          flex: 1,
+          child: Text(
+            "${index + 1}",
+            style: const TextStyle(
+              color: Color(0xFFB9B9B9),
+              // decoration: TextDecoration.lineThrough,
+            ),
+          ),
+        ),
+        Expanded(
+          flex: 3,
+          child: Text(
+            item.product,
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              color:  Color(0xFFB9B9B9),
+              // decoration: TextDecoration.lineThrough,
+            ),
+          ),
+        ),
+        Expanded(
+          flex: 2,
+          child: Text(
+            "${item.origQty}",
+            style: const TextStyle(
+              color:  Color(0xFFB9B9B9),
+              // decoration: TextDecoration.lineThrough,
+            ),
+          ),
+        ),
+        Expanded(
+          flex: 1,
+          child: Text(
+            "${item.itemTotal.toStringAsFixed(2)}",
+            style: const TextStyle(
+              color: Color(0xFFB9B9B9),
+              // decoration: TextDecoration.lineThrough,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
 }

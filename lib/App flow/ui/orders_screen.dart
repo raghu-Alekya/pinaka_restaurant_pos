@@ -116,137 +116,160 @@ class OrderPanel extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               /// Header row with badges & actions
-              Center(
-                child: SizedBox(
-                  width: 480, // Total desired width for the row
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
+              /// Header row with badges & actions (FIXED ALIGNMENT)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // LEFT: header badges
+                  // Expanded(
+                     headerBadgeRow(state),
+                  // ),
+
+
+                  const Spacer(), // 🔥 pushes buttons to the RIGHT EDGE
+
+                  // RIGHT: action buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      // Left side: header badges
-                      Flexible(
-                        fit: FlexFit.loose, // 👈 allows it to take only as much width as needed
-                        child: headerBadgeRow(state),
-                      ),
+                      SizedBox(
+                        width: 80,
+                        child: actionButton(
+                          'Cancel',
+                          'assets/icon/delete.png',
+                          Colors.red,
+                          onPressed: () async {
+                            final currentOrderId =
+                                context.read<OrderBloc>().state.orderId;
 
-                      // Right side: action buttons
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          SizedBox(
-                            width: 80, // Set desired width for Cancel button
-                            child: actionButton(
-                              'Cancel',
-                              'assets/icon/delete.png',
-                              Colors.red,
-                              onPressed: () async {
-                                final currentOrderId = context.read<OrderBloc>().state.orderId;
+                            if (currentOrderId == 0) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("No active order to cancel"),
+                                ),
+                              );
+                              return;
+                            }
 
-                                if (currentOrderId == 0) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text("No active order to cancel")),
-                                  );
-                                  return;
-                                }
+                            AppLogger.info(
+                              "Cancel order clicked → Order ID: $currentOrderId",
+                            );
 
-                                AppLogger.info("Cancel order clicked → Order ID: $currentOrderId");
+                            showDialog(
+                              context: context,
+                              barrierDismissible: false,
+                              builder: (_) =>
+                              const Center(child: CircularProgressIndicator()),
+                            );
 
-                                showDialog(
-                                  context: context,
-                                  barrierDismissible: false,
-                                  builder: (_) => const Center(child: CircularProgressIndicator()),
+                            try {
+                              final orderRepo = OrderRepository(
+                                baseUrl:
+                                'https://merchantrestaurant.alektasolutions.com',
+                              );
+
+                              final responseJson =
+                              await orderRepo.cancelOrder(
+                                parentOrderId: currentOrderId,
+                                token: token,
+                                restaurantId: restaurantId,
+                                zoneId: zoneId,
+                              );
+
+                              Navigator.of(context).pop(); // close loader
+
+                              if (responseJson['status'] == 'cancelled') {
+                                AppLogger.info(
+                                  "Order ${responseJson['order_id']} cancelled successfully",
                                 );
 
-                                try {
-                                  final orderRepo = OrderRepository(baseUrl: 'https://merchantrestaurant.alektasolutions.com');
-
-                                  final responseJson = await orderRepo.cancelOrder(
+                                context.read<OrderBloc>().add(
+                                  CancelOrder(
                                     parentOrderId: currentOrderId,
                                     token: token,
-                                    restaurantId: restaurantId,
-                                    zoneId: zoneId,
-                                  );
+                                  ),
+                                );
 
-                                  Navigator.of(context).pop(); // close loader
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      "Order ${responseJson['order_id']} cancelled successfully",
+                                    ),
+                                  ),
+                                );
 
-                                  if (responseJson['status'] == 'cancelled') {
-                                    AppLogger.info("Order ${responseJson['order_id']} cancelled successfully");
-
-                                    // update bloc
-                                    context.read<OrderBloc>().add(
-                                      CancelOrder(
-                                        parentOrderId: currentOrderId,
-                                        token: token,
-                                      ),
-                                    );
-
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text("Order ${responseJson['order_id']} cancelled successfully")),
-                                    );
-
-                                    // navigate back to tables
-                                    final tableDao = TableDao();
-                                    final tables = await tableDao.getTablesByManagerPin(pin);
-
-                                    Navigator.pushAndRemoveUntil(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => TablesScreen(
-                                          loadedTables: tables,
-                                          pin: pin,
-                                          token: token,
-                                          restaurantId: restaurantId,
-                                          restaurantName: restaurantName,
-                                        ),
-                                      ),
-                                          (Route<dynamic> route) => false,
-                                    );
-                                  } else {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text("Failed to cancel order")),
-                                    );
-                                  }
-                                } catch (e) {
-                                  Navigator.of(context).pop();
-                                  AppLogger.error("Cancel order API error: $e");
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text("Error cancelling order: $e")),
-                                  );
-                                }
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          SizedBox(
-                            width: 100, // Set desired width for Table layout button
-                            child: elevatedActionButton(
-                              'Table layout',
-                              'assets/icon/arrow.png',
-                              onPressed: () {
-                                AppLogger.info("Table layout clicked");
+                                final tableDao = TableDao();
+                                final tables =
+                                await tableDao.getTablesByManagerPin(pin);
 
                                 Navigator.pushAndRemoveUntil(
                                   context,
                                   MaterialPageRoute(
                                     builder: (_) => TablesScreen(
-                                      loadedTables: placedTables,
+                                      loadedTables: tables,
                                       pin: pin,
                                       token: token,
                                       restaurantId: restaurantId,
                                       restaurantName: restaurantName,
                                     ),
                                   ),
-                                      (route) => false,
+                                      (Route<dynamic> route) => false,
                                 );
-                              },
-                            ),
-                          ),
-                        ],
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("Failed to cancel order"),
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              Navigator.of(context).pop();
+                              AppLogger.error(
+                                "Cancel order API error: $e",
+                              );
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    "Error cancelling order: $e",
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                      ),
+
+                      const SizedBox(width: 8),
+
+                      SizedBox(
+                        width: 110,
+                        child: elevatedActionButton(
+                          'Table layout',
+                          'assets/icon/arrow.png',
+                          onPressed: () {
+                            AppLogger.info("Table layout clicked");
+
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => TablesScreen(
+                                  loadedTables: placedTables,
+                                  pin: pin,
+                                  token: token,
+                                  restaurantId: restaurantId,
+                                  restaurantName: restaurantName,
+                                ),
+                              ),
+                                  (route) => false,
+                            );
+                          },
+                        ),
                       ),
                     ],
                   ),
-                ),
+                ],
               ),
+
 
               // const SizedBox(height: 1),
 
@@ -266,9 +289,9 @@ class OrderPanel extends StatelessWidget {
                   ),
                   const Spacer(),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFF7F7),
+                      color: const Color(0xFFFFECEC),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Row(
@@ -404,7 +427,7 @@ class OrderPanel extends StatelessWidget {
               ),
 
 
-              // const SizedBox(height: 4),
+              const SizedBox(height: 4),
 
               Expanded(
                 child: Stack(
@@ -413,7 +436,7 @@ class OrderPanel extends StatelessWidget {
                     Column(
                       children: [
                         // Spacer equal to dropdown collapsed height
-                        SizedBox(height: 36),
+                        SizedBox(height: 30),
                         const SizedBox(height:6),// collapsed dropdown height
 
                         // Table header (always visible)
@@ -426,19 +449,46 @@ class OrderPanel extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           child: Row(
                             children: [
-                              SizedBox(width: 50, child: headerText('#')),
-                              SizedBox(width: 140, child: headerText('Item Name')),
-                              SizedBox(width: 90, child: headerText('Modifiers')),
+                              const SizedBox(width: 7),
 
-                              // ✅ Unit Price column
-                              SizedBox(width: 80, child: headerText('Price')),
+                              SizedBox(
+                                width: 40,
+                                child: headerText('#'),
+                              ),
 
-                              SizedBox(width: 70, child: headerText('Qty')),
+                              const SizedBox(width: 6),
 
-                              SizedBox(width: 50, child: headerText('Amount')),
+                              Expanded(
+                                child: headerText('Item Name'),
+                              ),
+
+                              const SizedBox(width: 40),
+                              SizedBox(
+                              child: headerText('Modifiers'),
+                              ),// modifier icon space
+
+                              SizedBox(
+                                width: 70,
+                                child: headerText('Price', align: TextAlign.right),
+                              ),
+
+                              const SizedBox(width: 30),
+
+                              SizedBox(
+                                width: 80,
+                                child: headerText('Qty', align: TextAlign.center),
+                              ),
+
+                              const SizedBox(width: 5),
+
+                              SizedBox(
+                                width: 70,
+                                child: headerText('Amount', align: TextAlign.right),
+                              ),
                             ],
-
                           ),
+
+
                         ),
                         const SizedBox(height: 2),
 
@@ -886,13 +936,13 @@ class OrderPanel extends StatelessWidget {
     return BlocBuilder<OrderBloc, OrderState>(
       builder: (context, state) {
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: const Color(0xFFECEEFB),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize: MainAxisSize.min, // ✅ shrink to content
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(
@@ -908,10 +958,16 @@ class OrderPanel extends StatelessWidget {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Image.asset('assets/icon/table.png', width: 18, height: 18),
+                  Image.asset(
+                    'assets/icon/table.png',
+                    width: 18,
+                    height: 18,
+                  ),
                   const SizedBox(width: 4),
                   Text(
-                    state.tableName.isNotEmpty ? state.tableName : 'Loading...',
+                    state.tableName.isNotEmpty
+                        ? state.tableName
+                        : 'Loading...',
                     style: const TextStyle(color: Colors.black87),
                   ),
                 ],
@@ -922,6 +978,7 @@ class OrderPanel extends StatelessWidget {
       },
     );
   }
+
 
 
   Widget actionButton(String text, String iconPath, Color color, {required VoidCallback onPressed}) =>
@@ -960,16 +1017,31 @@ class OrderPanel extends StatelessWidget {
 
   Widget avatarName(String imagePath, String name) => Row(
     children: [
-      CircleAvatar(radius: 12, backgroundImage: AssetImage(imagePath)),
+      CircleAvatar(
+        radius: 12,
+        backgroundColor: Colors.transparent, // ❌ no background
+        foregroundImage: AssetImage(imagePath),
+      ),
       const SizedBox(width: 4),
       Text(name),
     ],
   );
 
-  Widget headerText(String text) => Text(
-    text,
-    style: const TextStyle(color: Colors.white, fontSize: 13),
-  );
+
+  Widget headerText(
+      String text, {
+        TextAlign align = TextAlign.left,
+      }) =>
+      Text(
+        text,
+        textAlign: align,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
+      );
+
 
   Widget orderButton(String text, Color color, {required VoidCallback onPressed}) => Expanded(
     child: Padding(

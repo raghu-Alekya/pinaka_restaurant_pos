@@ -462,9 +462,15 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
                   Flexible(
                     child: Text(
                       folder.name,
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                       overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: selectedFolder?.id == folder.id
+                            ? FontWeight.w600   // ✅ selected
+                            : FontWeight.w400,  // ⬅ unselected
+                      ),
                     ),
+
                   ),
                 ],
               ),
@@ -476,16 +482,18 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
   }
 
   Widget _buildItemsGrid(List<Product> items) {
+    const double stripWidth = 0;
+    const double stripGap = 1;
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: items.length,
-      padding: const EdgeInsets.fromLTRB(6, 6, 6, 22),
+      padding: const EdgeInsets.fromLTRB(1, 6, 2, 2),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 4,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 1.25,
+        mainAxisSpacing: 8,
+        crossAxisSpacing: 8,
+        childAspectRatio: 1.8,
       ),
       itemBuilder: (context, index) {
         final item = items[index];
@@ -496,29 +504,41 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
         return GestureDetector(
           onTap: () => _onItemTap(context, item),
           child: Container(
-            padding: const EdgeInsets.all(6),
+            padding: const EdgeInsets.fromLTRB(
+              stripWidth + stripGap, // ⬅ space after strip
+              0,
+              0,
+              0,
+            ),
             decoration: BoxDecoration(
               color: backgroundColor,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.grey.shade300, width: 1),
+              border: Border.all(color: Colors.grey.shade300, width: 2),
               boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2)],
             ),
             child: Stack(
               children: [
+
                 Row(
                   children: [
+                    const SizedBox(width: 8),
                     if (item.image.isNotEmpty)
-                      Image.network(
-                        item.image,
-                        width: 60,
-                        height: 65,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Icons.fastfood, size: 40),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8), // ⬅ rounded corners
+                        child: Image.network(
+                          item.image,
+                          width: 50,
+                          height: 48,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                          const Icon(Icons.fastfood, size: 40),
+                        ),
                       )
                     else
                       const Icon(Icons.fastfood, size: 40, color: Colors.black),
+
                     const SizedBox(width: 8),
+
                     Expanded(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -527,13 +547,16 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
                           Text(
                             item.name,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             '₹${item.price.toStringAsFixed(0)}',
                             style: const TextStyle(
-                              fontSize: 13,
+                              fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -543,34 +566,42 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
                   ],
                 ),
 
+
                 // Veg/Non-Veg icon at top-right
+                // 🌱 Veg / Non-Veg LEFT STRIP (uses same logic)
                 Positioned(
-                  top: 2,
-                  right: 2,
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
                   child: Builder(
                     builder: (_) {
                       final bool? isVeg = item.isVeg;
                       if (isVeg == null) return const SizedBox.shrink();
-                      return Image.asset(
-                        isVeg
-                            ? 'assets/icon/veg_icon.png'
-                            : 'assets/icon/nonveg_icon.png',
-                        width: 15,
-                        height: 15,
+
+                      return Container(
+                        width: 3, // strip thickness
+                        decoration: BoxDecoration(
+                          color: isVeg ? Colors.green : Colors.red,
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(10),
+                            bottomLeft: Radius.circular(10),
+                          ),
+                        ),
                       );
                     },
                   ),
                 ),
 
+
                 // 🔹 Variant icon just below veg/non-veg icon (right corner)
                 if (item.isVariantProduct)
                   Positioned(
-                    top: 70, // below the veg/non-veg icon
-                    right: 2,
+                    top: 42, // below the veg/non-veg icon
+                    right: 8,
                     child: Image.asset(
                       'assets/variant_icon.png',
-                      width: 16,
-                      height: 16,
+                      width: 10,
+                      height: 10,
                       fit: BoxFit.contain,
                     ),
                   ),

@@ -1241,7 +1241,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       restaurantId: widget.restaurantId,
                       restaurantName: widget.restaurantName,
                       userPermissions: widget.userPermissions,
-                      // orders: [],
+                      orders: [],
                     ),
                   ),
                 ),

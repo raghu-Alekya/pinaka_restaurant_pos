@@ -617,7 +617,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                                         width: MediaQuery.of(context).size.width * 0.38,
                                         decoration: BoxDecoration(
                                           color: isPaymentDisabled
-                                              ? Colors.grey.shade200   // 👈 disabled look
+                                              ? Colors.grey.shade200   //disabled look
                                               : const Color(0xFFFFFDFD),
                                           borderRadius: BorderRadius.circular(5),
                                           border: Border.all(
@@ -722,7 +722,9 @@ class _paymentsummaryState extends State<paymentsummary> {
                               ],
                             ),
                           ),
-                          SizedBox(width: 25),
+                          SizedBox(width: 15),
+                          SizedBox(height: 5),
+
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -733,8 +735,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                                 netPayable: netPayable,
 
                               ),
-
-                              const SizedBox(height: 25),
+                              const SizedBox(height: 5),
                               Text(
                                 "Action:",
                                 style: TextStyle(
@@ -746,7 +747,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                                 ),
                                 textAlign: TextAlign.start,
                               ),
-                              const SizedBox(height: 15),
+                              const SizedBox(height: 5),
 
                               _buildPaymentDiscountItem(
                                 context,
@@ -896,12 +897,6 @@ Widget buildPayment(
       required double netPayable,
     })
  {
-  // final double grossTotal = context.select(
-  //       (PaymentBloc bloc) =>
-  //   bloc.state is PaymentSummaryLoaded
-  //       ? (bloc.state as PaymentSummaryLoaded).summary.grossTotal
-  //       : 0.0,
-  // );
 
   final double tenderAmount =
   amount.isNotEmpty ? double.tryParse(amount) ?? 0.0 : 0.0;
@@ -943,7 +938,7 @@ Widget buildPayment(
           fontSize: 14,
           fontFamily: 'Inter',
           fontWeight: FontWeight.bold,
-          height: 1.10,
+          height: 1.00,
           decoration: TextDecoration.none,
         ),
       ),
@@ -1208,7 +1203,7 @@ Widget _buildPaymentDiscountItem(
   final screenHeight = MediaQuery.of(context).size.height;
 
   return Container(
-    height: screenHeight * 0.40,
+    height: screenHeight * 0.44,
     width: screenWidth * 0.20,
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
@@ -1223,7 +1218,7 @@ Widget _buildPaymentDiscountItem(
         /// 🔻 DISCOUNT
         const Text('Discount :',
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
         Row(
           children: [
             Expanded(
@@ -1294,7 +1289,7 @@ Widget _buildPaymentDiscountItem(
 
 
 
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
 
         /// 🔻 COUPON
         const Text('Coupon :',
@@ -1334,12 +1329,12 @@ Widget _buildPaymentDiscountItem(
           ],
         ),
 
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
 
         /// 🔻 TIP
         const Text('Tip :',
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
         Row(
           children: [
             Expanded(
@@ -1368,13 +1363,13 @@ Widget _buildPaymentDiscountItem(
                 ),
               ),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 4),
             if (isTipApplied)
               _deleteButton(onTipDelete),
           ],
         ),
 
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
 
         /// 🔻 SPLIT PAY
         const Text('Split pay :',
@@ -1408,7 +1403,7 @@ Widget _buildPaymentDiscountItem(
                 ),
               ),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 4),
             if (isSplitApplied)
               _deleteButton(onSplitDelete),
           ],

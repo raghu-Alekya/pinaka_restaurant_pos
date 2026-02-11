@@ -118,12 +118,12 @@ class _DashboardState extends State<Dashboard> {
       ),
 
       bottomNavigationBar: BottomNavBar(
-        selectedIndex: 8,
+        selectedIndex: 5,
         userPermissions: _userPermissions,
         onItemTapped: (int index) {
           NavigationHelper.handleNavigation(
             context,
-            8,
+            5,
             index,
             widget.pin,
             widget.token,

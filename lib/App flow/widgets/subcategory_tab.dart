@@ -70,7 +70,7 @@ class _SubCategoryTabWidgetState extends State<SubCategoryTabWidget> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.subCategories.isEmpty) return const SizedBox(height: 70);
+    if (widget.subCategories.isEmpty) return const SizedBox(height: 50);
 
     return Container(
       margin: const EdgeInsets.all(1),
@@ -80,8 +80,11 @@ class _SubCategoryTabWidgetState extends State<SubCategoryTabWidget> {
         border: Border.all(color: Color(0xFFFFFFFF), width: 1),
         borderRadius: BorderRadius.circular(12),
         // boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 0, offset: Offset(1, 2))],
+        boxShadow: const [
+          BoxShadow(color: Colors.white, blurRadius: 3, offset: Offset(0, 0)),
+        ],
       ),
-      height: 120,
+      height: 114,
       child: Stack(
         children: [
           Padding(
@@ -103,7 +106,8 @@ class _SubCategoryTabWidgetState extends State<SubCategoryTabWidget> {
                   child: Container(
                     margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
                     padding: const EdgeInsets.all(6),
-                    width: 80,
+                    width: 75,
+                    height: 100,
                     decoration: BoxDecoration(
                       color: isSelected ? const Color(0xFFFCDFDC) : const Color(0xFFF2F2F7),
                       borderRadius: BorderRadius.circular(10),
@@ -125,8 +129,8 @@ class _SubCategoryTabWidgetState extends State<SubCategoryTabWidget> {
                           errorBuilder: (context, error, stackTrace) =>
                           const Icon(Icons.image_not_supported, size: 30),
                         )
-                            : const Icon(Icons.image, size: 30),
-                        const SizedBox(height: 4),
+                            : const Icon(Icons.image, size: 28),
+                        const SizedBox(height: 2),
                         Flexible(
                           child: Text(
                             category.name,
