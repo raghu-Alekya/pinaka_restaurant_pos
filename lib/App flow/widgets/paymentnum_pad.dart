@@ -1289,7 +1289,7 @@ Widget _buildPaymentDiscountItem(
 
 
 
-        const SizedBox(height: 10),
+        const SizedBox(height: 4),
 
         /// 🔻 COUPON
         const Text('Coupon :',
@@ -1329,7 +1329,7 @@ Widget _buildPaymentDiscountItem(
           ],
         ),
 
-        const SizedBox(height: 10),
+        const SizedBox(height: 4),
 
         /// 🔻 TIP
         const Text('Tip :',
@@ -1369,7 +1369,7 @@ Widget _buildPaymentDiscountItem(
           ],
         ),
 
-        const SizedBox(height: 10),
+        const SizedBox(height: 4),
 
         /// 🔻 SPLIT PAY
         const Text('Split pay :',
