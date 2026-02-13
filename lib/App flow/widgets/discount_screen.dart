@@ -189,6 +189,17 @@ class _DiscountPopupState extends State<DiscountPopup> {
       SnackBar(content: Text(msg)),
     );
   }
+  void _exitNCMode() {
+    setState(() {
+      isNCSelected = false;
+
+      // Clear discount input
+      discountController.clear();
+
+      // Restore payable
+      newPayableAmount = payableAmount;
+    });
+  }
 
 
 
@@ -437,6 +448,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
         GestureDetector(
           onTap: () {
             setState(() {
+              _exitNCMode();
               selectedType = DiscountType.percent;
               isNCSelected = false;
               // discountController.clear();
@@ -452,9 +464,10 @@ class _DiscountPopupState extends State<DiscountPopup> {
         GestureDetector(
           onTap: () {
             setState(() {
+              _exitNCMode();
               selectedType = DiscountType.amount;
-              isNCSelected = false;
-              discountController.clear();
+              // isNCSelected = false;
+              // discountController.clear();
             });
           },
           child: _radioButton(

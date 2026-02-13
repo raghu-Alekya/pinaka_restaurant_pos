@@ -404,15 +404,19 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                                 ),
 
                               ),
-                              Text(
-                                'Units',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
+                              SizedBox(
+                                width: 40, // column width
+                                child: Text(
+                                  'Units',
+                                  textAlign: TextAlign.right,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
-                              SizedBox(width: 98),
+                              SizedBox(width: 58),
                               Text(
                                 'Price',
                                 style: TextStyle(
@@ -437,48 +441,49 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                                   Padding(
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 12, vertical: 6),
-                                    child: Row(
+                                    child:Row(
                                       children: [
                                         Expanded(
                                           child: Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
-                                              Text(
-                                                item.name,
-                                                style: const TextStyle(fontSize: 12),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-
+                                              Text(item.name, overflow: TextOverflow.ellipsis),
                                               if (item.modifiers.isNotEmpty)
-                                                Padding(
-                                                  padding: const EdgeInsets.only(top: 2),
-                                                  child: Text(
-                                                    "${item.modifiers.join(", ")}  (+₹${item.modifierAmount.toStringAsFixed(0)})",
-                                                    style: const TextStyle(
-                                                      fontSize: 10,
-                                                      color: Colors.red, // ✅ RED
-                                                      fontWeight: FontWeight.w600,
-                                                    ),
-                                                    overflow: TextOverflow.ellipsis,
+                                                Text(
+                                                  "${item.modifiers.join(", ")}  (+₹${item.modifierAmount.toStringAsFixed(0)})",
+                                                  style: const TextStyle(
+                                                    fontSize: 10,
+                                                    color: Colors.red,
+                                                    fontWeight: FontWeight.w600,
                                                   ),
+                                                  overflow: TextOverflow.ellipsis,
                                                 ),
                                             ],
                                           ),
                                         ),
 
-                                        Text(
-                                          '${item.qty} × ${((item.qty > 0 ? ((item.total - item.modifierAmount) / item.qty) : 0)).toStringAsFixed(0)}',
-                                          style: const TextStyle(fontSize: 12),
+                                        // Qty × Rate
+                                        SizedBox(
+                                          width: 80,
+                                          child: Text(
+                                            '${item.qty} × ${((item.qty > 0 ? ((item.total - item.modifierAmount) / item.qty) : 0)).toStringAsFixed(0)}',
+                                            textAlign: TextAlign.right,
+                                            style: const TextStyle(fontSize: 12),
+                                          ),
                                         ),
 
-
-                                        const SizedBox(width: 80),
-                                        Text(
-                                          item.total.toStringAsFixed(2),
-                                          style: const TextStyle(fontSize: 12),
+                                        // Total
+                                        SizedBox(
+                                          width: 80,
+                                          child: Text(
+                                            item.total.toStringAsFixed(2),
+                                            textAlign: TextAlign.right,
+                                            style: const TextStyle(fontSize: 12),
+                                          ),
                                         ),
                                       ],
                                     ),
+
                                   ),
                                   const Divider(
                                     color: Color(0xFFE6E7E8),

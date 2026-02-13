@@ -43,6 +43,8 @@ class _CustomBoxState extends State<CustomBox> {
   bool _barcodeLocked = false;
   bool _isFromBarcode = false;
   int _searchSession = 0;
+  String? _lastScannedBarcode;
+
 
   // sort
   String _getApiFilter(String sort) {
@@ -337,7 +339,15 @@ class _CustomBoxState extends State<CustomBox> {
           searchOrSku != null &&
           _searchController.text.trim().isNotEmpty) {
         _popupShown = true;
+        if (_isFromBarcode) {
+          _searchController.removeListener(_onSearchChanged);
+          _searchController.clear();
+          _searchController.addListener(_onSearchChanged);
+
+          showCustomCard = false;
+        }
         _showCustomItemAlert(searchOrSku);
+        _isFromBarcode = false;
       }
     } catch (e) {
       debugPrint('❌ Fetch error: $e');
@@ -354,6 +364,8 @@ class _CustomBoxState extends State<CustomBox> {
     if (_barcodeLocked || barcode.isEmpty) return;
 
     _barcodeLocked = true;
+    _lastScannedBarcode = barcode;
+    _isFromBarcode = true;
 
     debugPrint('📸 BARCODE SCANNED: $barcode');
 
@@ -524,11 +536,13 @@ class _CustomBoxState extends State<CustomBox> {
       context: context,
       builder: (context) => AddItemDialog(
         token: widget.token,
+        scannedBarcode: _lastScannedBarcode,
         onItemAdded: (Products product) async {
           Navigator.pop(context);
 
           if (product.sku != null && product.sku!.isNotEmpty) {
             _searchController.text = product.sku!;
+            _lastScannedBarcode = null;
           }
         },
       ),

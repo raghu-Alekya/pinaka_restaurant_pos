@@ -363,6 +363,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                               subCategories: const [],
                             ),
                           );
+                          _searchController.clear();
 
                         } catch (e) {
                           Navigator.pop(context);
@@ -399,6 +400,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                           subCategories: const [],
                         ),
                       );
+                      _searchController.clear();
 
                       _removeSearchOverlay();
                       context.read<SearchProductBloc>().add(SearchClearProducts());

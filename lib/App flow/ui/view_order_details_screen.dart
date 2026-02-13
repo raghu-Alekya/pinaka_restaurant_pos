@@ -9,6 +9,7 @@ import '../../models/order_list/edit_order_list_model.dart';
 import '../../models/order_list/order_list_model.dart';
 import '../../repositories/cancel_order_list_repository.dart';
 import '../../repositories/order_list_repository.dart';
+import '../../utils/SessionManager.dart';
 import '../widgets/navigationhelper.dart';
 import '../widgets/top_bar.dart';
 import '../widgets/bottom_nav_bar.dart';
@@ -57,15 +58,22 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
   int? selectedKotOrderId;
 
 
+  void _onKotSelected(int kotId) {
+    setState(() {
+      selectedKotId = kotId;
+      isVoidedLoading = true;
+      voidedItemsResponse = null;
+    });
 
-
+    loadVoidedItems(kotId);
+  }
 
   @override
   void initState() {
     super.initState();
     _userPermissions = widget.userPermissions;
     _ordersFuture = _orderRepo.fetchOrders(widget.token);
-
+    _loadPermissions();
   }
 
   void _onItemTapped(int index) {
@@ -85,6 +93,15 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
     });
   }
 
+  Future<void> _loadPermissions() async {
+    final savedPermissions = await SessionManager.loadPermissions();
+    if (savedPermissions != null) {
+      setState(() {
+        _userPermissions = savedPermissions;
+      });
+    }
+  }
+
   Color _statusColor(String? status) {
     switch ((status ?? '').toLowerCase()) {
       case "completed":
@@ -101,6 +118,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
   void _handlePermissions(UserPermissions permissions) {
     setState(() {
       _permissions = permissions; // store locally if needed
+      // _userPermissions = permissions;
     });
     widget.onPermissionsReceived?.call(
       permissions,
@@ -166,6 +184,20 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
   //
   //   print("🎉 FULL ORDER CANCELLED SUCCESSFULLY");
   // }
+  void _reloadAfterEdit() {
+    setState(() {
+      _ordersFuture = _orderRepo.fetchOrders(widget.token);
+      isVoidedLoading = true;
+      voidedItemsResponse = null;
+    });
+
+    if (selectedKotId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        loadVoidedItems(selectedKotId!);
+      });
+    }
+  }
+
   Future<void> _cancelCompletedOrder(OrderlistModel orderModel) async {
     if (orderModel.orderId == null) return;
 
@@ -482,7 +514,8 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                           }
 
                                           // 1 TOP-BAR ROLE CHECK (blocks captains)
-                                          if ((widget.userPermissions?.role ?? '').toLowerCase() != 'manager') {
+                                          if ((_userPermissions?.role ?? '').toLowerCase() != 'manager')
+                                          {
                                             ScaffoldMessenger.of(context).showSnackBar(
                                               const SnackBar(content: Text('Only managers can edit orders')),
                                             );
@@ -490,7 +523,8 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                           }
 
                                           final String originalLoggedInUserId =
-                                              widget.userPermissions!.userId;
+                                              _userPermissions!.userId;
+
 
                                           // 2️ PIN VERIFICATION
                                           final bool? isCheckedIn = await showDialog<bool>(
@@ -561,17 +595,17 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                 pin: widget.pin,
                                                 restaurantId: widget.restaurantId,
                                                 restaurantName: widget.restaurantName,
-                                                userPermissions: _permissions, // verified manager
+                                                userPermissions: _permissions,
                                                 orderId: orderModel.orderId!,
+
                                               ),
                                             ),
                                           );
 
                                           if (updated == true) {
-                                            setState(() {
-                                              _ordersFuture = _orderRepo.fetchOrders(widget.token);
-                                            });
+                                            _reloadAfterEdit();
                                           }
+
                                         },
 
                                         style: ElevatedButton.styleFrom(
@@ -605,176 +639,90 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                     const SizedBox(width: 12),
 
                                     // Cancel Order Button
-                                    if ((orderModel.status ?? '')
-                                        .toLowerCase() ==
-                                        'completed')
-                                      GestureDetector(
-                                        onTap: () {
+                                    // Cancel Order Button
+                                    if ((orderModel.status ?? '').toLowerCase() == 'completed')
+                                      ElevatedButton(
+                                        onPressed: () {
                                           showDialog(
                                             context: context,
                                             barrierDismissible: false,
-                                            builder:
-                                                (context) => Dialog(
+                                            builder: (context) => Dialog(
                                               backgroundColor: Colors.white,
                                               shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                BorderRadius.circular(
-                                                  16,
-                                                ),
+                                                borderRadius: BorderRadius.circular(16),
                                               ),
                                               child: SizedBox(
                                                 width: 400,
                                                 child: Padding(
-                                                  padding:
-                                                  const EdgeInsets.all(
-                                                    20,
-                                                  ),
+                                                  padding: const EdgeInsets.all(20),
                                                   child: Column(
-                                                    mainAxisSize:
-                                                    MainAxisSize.min,
+                                                    mainAxisSize: MainAxisSize.min,
                                                     children: [
-                                                      /// 🔼 Top Image (You can replace asset path)
                                                       Image.asset(
                                                         'assets/cancelorder.png',
                                                         height: 90,
                                                       ),
+                                                      const SizedBox(height: 16),
 
-                                                      const SizedBox(
-                                                        height: 16,
-                                                      ),
-
-                                                      /// Title
                                                       const Text(
                                                         'Cancel Order?',
-                                                        textAlign:
-                                                        TextAlign
-                                                            .center,
+                                                        textAlign: TextAlign.center,
                                                         style: TextStyle(
                                                           fontSize: 22,
-                                                          fontWeight:
-                                                          FontWeight
-                                                              .w600,
+                                                          fontWeight: FontWeight.w600,
                                                         ),
                                                       ),
 
-                                                      const SizedBox(
-                                                        height: 10,
-                                                      ),
+                                                      const SizedBox(height: 10),
 
-                                                      /// Message
                                                       const Text(
                                                         'Are you sure do you want cancel the order?',
-                                                        textAlign:
-                                                        TextAlign
-                                                            .center,
+                                                        textAlign: TextAlign.center,
                                                         style: TextStyle(
                                                           fontSize: 16,
-                                                          color:
-                                                          Colors
-                                                              .black54,
+                                                          color: Colors.black54,
                                                         ),
                                                       ),
 
-                                                      const SizedBox(
-                                                        height: 24,
-                                                      ),
+                                                      const SizedBox(height: 24),
 
-                                                      /// Buttons Row
                                                       Row(
-                                                        mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .center,
+                                                        mainAxisAlignment: MainAxisAlignment.center,
                                                         children: [
-                                                          /// Back Button
                                                           SizedBox(
                                                             width: 110,
                                                             child: OutlinedButton(
+                                                              onPressed: () => Navigator.pop(context),
                                                               style: OutlinedButton.styleFrom(
-                                                                minimumSize:
-                                                                const Size(
-                                                                  110,
-                                                                  40,
-                                                                ),
-                                                                padding:
-                                                                const EdgeInsets.symmetric(
-                                                                  vertical:
-                                                                  8,
-                                                                ),
-                                                                side: const BorderSide(
-                                                                  color:
-                                                                  Colors
-                                                                      .grey,
-                                                                ),
+                                                                minimumSize: const Size(110, 40),
+                                                                side: const BorderSide(color: Colors.grey),
                                                                 shape: RoundedRectangleBorder(
-                                                                  borderRadius:
-                                                                  BorderRadius.circular(
-                                                                    8,
-                                                                  ),
+                                                                  borderRadius: BorderRadius.circular(8),
                                                                 ),
                                                               ),
-                                                              onPressed: () {
-                                                                Navigator.pop(
-                                                                  context,
-                                                                );
-                                                              },
-                                                              child: const Text(
-                                                                'Back',
-                                                                style: TextStyle(
-                                                                  fontSize:
-                                                                  15,
-                                                                ),
-                                                              ),
+                                                              child: const Text('Back'),
                                                             ),
                                                           ),
 
-                                                          const SizedBox(
-                                                            width: 14,
-                                                          ),
+                                                          const SizedBox(width: 14),
 
-                                                          /// Yes Done Button
                                                           SizedBox(
                                                             width: 130,
                                                             child: ElevatedButton(
+                                                              onPressed: () {
+                                                                Navigator.pop(context);
+                                                                _cancelCompletedOrder(orderModel);
+                                                              },
                                                               style: ElevatedButton.styleFrom(
-                                                                backgroundColor:
-                                                                const Color(
-                                                                  0xFFFE6464,
-                                                                ),
-                                                                minimumSize:
-                                                                const Size(
-                                                                  130,
-                                                                  40,
-                                                                ),
-                                                                padding:
-                                                                const EdgeInsets.symmetric(
-                                                                  vertical:
-                                                                  8,
-                                                                ),
+                                                                backgroundColor: const Color(0xFFFE6464),
+                                                                minimumSize: const Size(130, 40),
                                                                 shape: RoundedRectangleBorder(
-                                                                  borderRadius:
-                                                                  BorderRadius.circular(
-                                                                    8,
-                                                                  ),
+                                                                  borderRadius: BorderRadius.circular(8),
                                                                 ),
                                                               ),
-                                                              onPressed: () {
-                                                                Navigator.pop(
-                                                                  context,
-                                                                ); // close confirmation dialog
-                                                                _cancelCompletedOrder(
-                                                                  orderModel,
-                                                                ); // <-- make sure this is OrderlistModel
-                                                              },
-
                                                               child: const Text(
                                                                 'Yes, Done',
-                                                                style: TextStyle(
-                                                                  fontSize:
-                                                                  15,
-                                                                  color:
-                                                                  Colors
-                                                                      .white,
-                                                                ),
+                                                                style: TextStyle(color: Colors.white),
                                                               ),
                                                             ),
                                                           ),
@@ -787,45 +735,44 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                             ),
                                           );
                                         },
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 8,
-                                          ),
-                                          decoration: ShapeDecoration(
-                                            color: Colors.white,
-                                            shape: RoundedRectangleBorder(
-                                              side: const BorderSide(
-                                                width: 0.8,
-                                                color: Color(0xFFFE6464),
-                                              ),
-                                              borderRadius:
-                                              BorderRadius.circular(8),
+
+                                        // 🎨 Button UI
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.white,
+                                          elevation: 2,
+                                          shadowColor: const Color(0x554C5F7D),
+                                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                            side: const BorderSide(
+                                              width: 0.9,
+                                              color: Color(0xFFFE6464),
                                             ),
                                           ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: const [
-                                              Icon(
-                                                Icons.close,
-                                                size: 20,
+                                        ),
+
+                                        child: const Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.close,
+                                              size: 20,
+                                              color: Color(0xFFFE6464),
+                                            ),
+                                            SizedBox(width: 6),
+                                            Text(
+                                              'Cancel Order',
+                                              style: TextStyle(
                                                 color: Color(0xFFFE6464),
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w400,
+                                                height: 0.75,
                                               ),
-                                              SizedBox(width: 6),
-                                              Text(
-                                                'Cancel Order',
-                                                style: TextStyle(
-                                                  color: Color(0xFFFE6464),
-                                                  fontSize: 14,
-                                                  fontFamily: 'Kumbh Sans',
-                                                  fontWeight: FontWeight.w400,
-                                                  height: 0.75,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
+                                            ),
+                                          ],
                                         ),
                                       ),
+
                                   ],
                                 ),
                               ],
@@ -860,39 +807,87 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                     .spaceBetween,
                                                 children: [
                                                   Text(
-                                                    "#${orderModel.orderId ?? '-'}",
-                                                    style: const TextStyle(
-                                                      fontWeight:
-                                                      FontWeight.bold,
-                                                      fontSize: 16,
+                                                    "Order Details",
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight.bold,
                                                     ),
                                                   ),
+
+                                                  // Text(
+                                                  //   "#${orderModel.orderId ?? '-'}",
+                                                  //   style: const TextStyle(
+                                                  //     fontWeight:
+                                                  //     FontWeight.bold,
+                                                  //     fontSize: 16,
+                                                  //   ),
+                                                  // ),
                                                   Text(
                                                     orderModel.date ?? "-",
                                                     style: const TextStyle(
                                                       fontWeight:
-                                                      FontWeight.bold,
-                                                      fontSize: 14,
+                                                      FontWeight.w700,
+                                                      fontSize: 13,
+                                                      color: const Color(0xFF555555),
                                                     ),
                                                   ),
                                                 ],
                                               ),
-                                              const SizedBox(height: 8),
-                                              const Text(
-                                                "Order Details",
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
+                                              const SizedBox(height: 6),
+                                              // const Text(
+                                              //   "Order Details",
+                                              //   style: TextStyle(
+                                              //     fontWeight: FontWeight.bold,
+                                              //   ),
+                                              // ),
+                                              RichText(
+                                                text: TextSpan(
+                                                  children: [
+                                                    const TextSpan(
+                                                      text: "Order ID : ",
+                                                      style: TextStyle(
+                                                        fontWeight: FontWeight.w400,
+                                                        fontSize: 14,
+                                                        color: Colors.grey,// label color
+                                                      ),
+                                                    ),
+                                                    TextSpan(
+                                                      text: "#${orderModel.orderId ?? '-'}",
+                                                      style: const TextStyle(
+                                                        fontWeight: FontWeight.bold,
+                                                        fontSize: 14,
+                                                        color: Color(0xFF4C5F7D), // ID number color
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              const SizedBox(height: 6),
+
+                                              // Order Details (Order Type + Table)
+                                              RichText(
+                                                text: TextSpan(
+                                                  style: const TextStyle(
+                                                    fontSize: 14,
+                                                    color: Colors.grey, // default for label
+                                                  ),
+                                                  children: [
+                                                    const TextSpan(
+                                                      text: "Order Type : ",
+                                                    ),
+                                                    TextSpan(
+                                                      text:
+                                                      "${orderModel.orderType ?? '-'}"
+                                                          "${orderModel.tableName != null ? ', ${orderModel.tableName}' : ''}",
+                                                      style: const TextStyle(
+                                                        color: Colors.black,
+                                                        fontWeight: FontWeight.w400,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ),
 
-                                              // Order Details (Order Type + Table)
-                                              Text(
-                                                "Order Type : ${orderModel.orderType ?? '-'}${orderModel.tableName != null ? ', ${orderModel.tableName}' : ''}",
-                                                style: const TextStyle(
-                                                  color: Colors.grey,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 4),
+                                              const SizedBox(height: 6),
 
                                               // Additional Info: first KOT items names (like your screenshot)
                                               // if (orderModel.kotOrders != null && orderModel.kotOrders!.isNotEmpty)
@@ -904,12 +899,27 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                               // const SizedBox(height: 8),
 
                                               // Payment Type
-                                              Text(
-                                                "Payment Type :  ${orderModel.paymentType ?? '-'}",
-                                                style: const TextStyle(
-                                                  color: Colors.grey,
+                                              RichText(
+                                                text: TextSpan(
+                                                  style: const TextStyle(
+                                                    fontSize: 14,
+                                                    color: Colors.grey, // label color
+                                                  ),
+                                                  children: [
+                                                    const TextSpan(
+                                                      text: "Payment Type : ",
+                                                    ),
+                                                    TextSpan(
+                                                      text: orderModel.paymentType ?? '-',
+                                                      style: const TextStyle(
+                                                        color: Colors.black,
+                                                        fontWeight: FontWeight.w400,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ),
+
                                             ],
                                           ),
                                         ),
@@ -921,7 +931,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                       Expanded(
                                         child: Container(
                                           height: 120,
-                                          padding: const EdgeInsets.all(8),
+                                          padding: const EdgeInsets.all(12),
                                           decoration: BoxDecoration(
                                             color: Colors.white,
                                             borderRadius: BorderRadius.circular(
@@ -932,49 +942,49 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                             crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                             children: [
-                                              // Status badge
-                                              Align(
-                                                alignment: Alignment.topRight,
-                                                child: Container(
-                                                  padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 8,
-                                                    vertical: 4,
-                                                  ),
-                                                  decoration: BoxDecoration(
-                                                    color: _statusColor(
-                                                      orderModel.status,
-                                                    ),
-                                                    borderRadius:
-                                                    BorderRadius.circular(
-                                                      5,
+                                              Row(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  // LEFT → Customer Details
+                                                  const Text(
+                                                    "Customer Details",
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight.bold,
                                                     ),
                                                   ),
-                                                  child: Text(
-                                                    orderModel.status ?? '-',
-                                                    style: const TextStyle(
-                                                      color: Colors.white,
-                                                      fontWeight:
-                                                      FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(height: 8),
 
-                                              const Text(
-                                                "Customer Details",
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                ),
+                                                  const Spacer(),
+
+                                                  // RIGHT → Status badge
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 4,
+                                                    ),
+                                                    decoration: BoxDecoration(
+                                                      color: _statusColor(orderModel.status),
+                                                      borderRadius: BorderRadius.circular(5),
+                                                    ),
+                                                    child: Text(
+                                                      orderModel.status ?? '-',
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontWeight: FontWeight.bold,
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
+                                              // const SizedBox(height: 8),
+
                                               const SizedBox(height: 4),
 
                                               // Customer Name
                                               Row(
-                                                mainAxisAlignment:
-                                                MainAxisAlignment
-                                                    .spaceBetween,
+                                                // mainAxisAlignment:
+                                                // MainAxisAlignment
+                                                //     .spaceBetween,
                                                 children: [
                                                   const Text(
                                                     "Customer Name :",
@@ -982,6 +992,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                       color: Colors.grey,
                                                     ),
                                                   ),
+                                                  const SizedBox(width: 8),
                                                   Text(
                                                     orderModel.customerName !=
                                                         null &&
@@ -991,10 +1002,10 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                             .isNotEmpty
                                                         ? orderModel
                                                         .customerName!
-                                                        : "-", // fallback if empty
+                                                        : "Guest", // fallback if empty
                                                     style: const TextStyle(
                                                       fontWeight:
-                                                      FontWeight.bold,
+                                                      FontWeight.w700,
                                                     ),
                                                   ),
                                                 ],
@@ -1004,9 +1015,9 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
                                               // Customer Phone
                                               Row(
-                                                mainAxisAlignment:
-                                                MainAxisAlignment
-                                                    .spaceBetween,
+                                                // mainAxisAlignment:
+                                                // MainAxisAlignment
+                                                //     .spaceBetween,
                                                 children: [
                                                   const Text(
                                                     "Contact Number :",
@@ -1014,6 +1025,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                       color: Colors.grey,
                                                     ),
                                                   ),
+                                                  const SizedBox(width: 8),
                                                   Text(
                                                     orderModel.customerPhone !=
                                                         null &&
@@ -1026,7 +1038,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                         : "-", // fallback if empty
                                                     style: const TextStyle(
                                                       fontWeight:
-                                                      FontWeight.bold,
+                                                      FontWeight.w700,
                                                     ),
                                                   ),
                                                 ],
@@ -1045,206 +1057,289 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                     child: Container(
                                       width: double.infinity,
                                       margin: const EdgeInsets.fromLTRB(4, 2, 4, 0),
-                                      padding: const EdgeInsets.fromLTRB(4, 2, 4, 0),
-
+                                      padding: const EdgeInsets.fromLTRB(10, 6, 10, 0),
                                       decoration: BoxDecoration(
                                         color: Colors.white,
                                         borderRadius: BorderRadius.circular(10),
                                       ),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              const Text(
-                                                "Payment Details",
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
+                                      // child: ShaderMask(
+                                      //   shaderCallback: (Rect bounds) {
+                                      //     return const LinearGradient(
+                                      //       begin: Alignment.topCenter,
+                                      //       end: Alignment.bottomCenter,
+                                      //       colors: [
+                                      //         Colors.transparent,
+                                      //         Colors.black,
+                                      //         Colors.black,
+                                      //         Colors.transparent,
+                                      //       ],
+                                      //       stops: [0.0, 0.06, 0.94, 1.0],
+                                      //     ).createShader(bounds);
+                                      //   },
+                                      //   blendMode: BlendMode.dstIn,
+                                      child: SingleChildScrollView(
+                                        physics: const ClampingScrollPhysics(),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            // ================= HEADER =================
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                const Text(
+                                                  "Payment Details",
+                                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                                ),
+                                                if (orderModel.isUpdated?.toLowerCase() == 'yes')
+                                                  Row(
+                                                    children: [
+                                                      Image.asset(
+                                                        'assets/refreshicon.png',
+                                                        width: 12,
+                                                        height: 12,
+                                                        color: Colors.orange,
+                                                      ),
+                                                      const SizedBox(width: 4),
+                                                      const Text(
+                                                        "Updated",
+                                                        style: TextStyle(
+                                                          color: Colors.orange,
+                                                          fontWeight: FontWeight.bold,
+                                                          fontSize: 12,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                              ],
+                                            ),
+
+                                            paymentRow(
+                                              "Gross Total",
+                                              "₹${(orderModel.grossTotal ?? 0).toDouble().toStringAsFixed(2)}",
+                                              fontWeight: FontWeight.w500,
+                                            ),
+
+                                            paymentRow(
+                                              "Coupon / Discounts",
+                                              "-₹${(orderModel.discount ?? 0).toDouble().toStringAsFixed(2)}",
+                                              color: Colors.green,
+                                            ),
+
+                                            ShaderMask(
+                                              shaderCallback: (Rect bounds) {
+                                                return LinearGradient(
+                                                  begin: Alignment.centerLeft,
+                                                  end: Alignment.centerRight,
+                                                  colors: [
+                                                    Colors.black.withOpacity(0.1),
+                                                    Colors.black.withOpacity(0.7),
+                                                    Colors.black.withOpacity(0.1),
+                                                  ],
+                                                  stops: const [0.0, 0.5, 1.0],
+                                                ).createShader(bounds);
+                                              },
+                                              blendMode: BlendMode.srcIn,
+                                              child: const DottedLine(
+                                                dashLength: 6,
+                                                dashGapLength: 4,
+                                                lineThickness: 1,
+                                                direction: Axis.horizontal,
+                                                dashColor: Colors.black,
+                                              ),
+                                            ),
+
+
+                                            paymentRow(
+                                              "Sub Total",
+                                              "₹${(orderModel.subTotal ?? 0).toDouble().toStringAsFixed(2)}",
+                                            ),
+
+                                            paymentRow(
+                                              "Tax @5% Food",
+                                              "",
+                                              color: Colors.grey,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+
+                                            Padding(
+                                              padding: const EdgeInsets.only(left: 36),
+                                              child: paymentRow(
+                                                "CGST 2.5%",
+                                                "₹${((orderModel.totalTax ?? 0) / 2).toStringAsFixed(2)}",
+                                                fontSize: 10,
+                                                color: Colors.grey,
+                                              ),
+                                            ),
+
+                                            Padding(
+                                              padding: const EdgeInsets.only(left: 36),
+                                              child: paymentRow(
+                                                "SGST 2.5%",
+                                                "₹${((orderModel.totalTax ?? 0) / 2).toStringAsFixed(2)}",
+                                                fontSize: 10,
+                                                color: Colors.grey,
+                                              ),
+                                            ),
+
+
+                                            paymentRow(
+                                              "Tax @Alcohol Nil (Price inclusive of Excise Duty)",
+                                              "₹0.00",
+                                              fontSize: 12,
+                                              color: Colors.grey,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+
+                                            Align(
+                                              alignment: Alignment.centerRight,
+                                              child: FractionallySizedBox(
+                                                widthFactor: 0.5,
+                                                child: ShaderMask(
+                                                  shaderCallback: (Rect bounds) {
+                                                    return LinearGradient(
+                                                      begin: Alignment.centerLeft,
+                                                      end: Alignment.centerRight,
+                                                      colors: [
+                                                        Colors.black.withOpacity(0.1),
+                                                        Colors.black.withOpacity(0.7),
+                                                        Colors.black.withOpacity(0.1),
+                                                      ],
+                                                      stops: const [0.0, 0.5, 1.0],
+                                                    ).createShader(bounds);
+                                                  },
+                                                  blendMode: BlendMode.srcIn,
+                                                  child: const DottedLine(
+                                                    dashLength: 6,
+                                                    dashGapLength: 4,
+                                                    lineThickness: 1,
+                                                    direction: Axis.horizontal,
+                                                    dashColor: Colors.black,
+                                                  ),
                                                 ),
                                               ),
+                                            ),
 
-                                              // Show "Updated" if either the backend says yes OR _justUpdated is true
-                                              if (orderModel.isUpdated?.toLowerCase() == 'yes')
-                                                Row(
-                                                  children: [
-                                                    Image.asset(
-                                                      'assets/refreshicon.png',
-                                                      width: 12,
-                                                      height: 12,
-                                                      color: Colors.orange,
-                                                    ),
-                                                    const SizedBox(width: 4),
-                                                    const Text(
-                                                      "Updated",
-                                                      style: TextStyle(
-                                                        color: Colors.orange,
-                                                        fontWeight:
-                                                        FontWeight.bold,
-                                                        fontSize: 12,
-                                                      ),
-                                                    ),
+                                            paymentRow(
+                                              "Total Tax",
+                                              "₹${(orderModel.totalTax ?? 0).toDouble().toStringAsFixed(2)}",
+                                            ),
+
+                                            ShaderMask(
+                                              shaderCallback: (Rect bounds) {
+                                                return LinearGradient(
+                                                  begin: Alignment.centerLeft,
+                                                  end: Alignment.centerRight,
+                                                  colors: [
+                                                    Colors.black.withOpacity(0.1),
+                                                    Colors.black.withOpacity(0.7),
+                                                    Colors.black.withOpacity(0.1),
                                                   ],
-                                                ),
-                                            ],
-                                          ),
-
-                                          paymentRow(
-                                            "Gross Total",
-                                            "₹${orderModel.grossTotal ?? 0}",
-                                            color: Colors.black,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-
-                                          paymentRow(
-                                            "Coupon / Discounts",
-                                            "-₹${orderModel.discount ?? 0}",
-                                            color: Colors.green,
-                                          ),
-                                          ShaderMask(
-                                            shaderCallback: (Rect bounds) {
-                                              return LinearGradient(
-                                                begin: Alignment.centerLeft,
-                                                end: Alignment.centerRight,
-                                                colors: [
-                                                  Colors.black.withOpacity(0.1),
-                                                  Colors.black.withOpacity(0.7),
-                                                  Colors.black.withOpacity(0.1),
-                                                ],
-                                                stops: const [0.0, 0.5, 1.0],
-                                              ).createShader(bounds);
-                                            },
-                                            blendMode: BlendMode.srcIn,
-                                            child: const DottedLine(
-                                              dashLength: 6,
-                                              dashGapLength: 4,
-                                              lineThickness: 1,
-                                              direction: Axis.horizontal,
-                                              dashColor: Colors.black,
+                                                  stops: const [0.0, 0.5, 1.0],
+                                                ).createShader(bounds);
+                                              },
+                                              blendMode: BlendMode.srcIn,
+                                              child: const DottedLine(
+                                                dashLength: 6,
+                                                dashGapLength: 4,
+                                                lineThickness: 1,
+                                                direction: Axis.horizontal,
+                                                dashColor: Colors.black,
+                                              ),
                                             ),
-                                          ),
 
-                                          paymentRow(
-                                            "Sub Total",
-                                            "₹${orderModel.subTotal ?? 0}",
-                                            color: Colors.black,
-                                          ),
 
-                                          paymentRow(
-                                            "Tax @5% Food",
-                                            "",
-                                            color: Colors.grey,
-                                            fontSize: 12,
-                                          ),
-
-                                          paymentRow(
-                                            "CGST 2.5%",
-                                            "₹${((orderModel.totalTax ?? 0) / 2).toStringAsFixed(2)}",
-                                            color: Colors.grey,
-                                            fontSize: 12,
-                                          ),
-
-                                          paymentRow(
-                                            "SGST 2.5%",
-                                            "₹${((orderModel.totalTax ?? 0) / 2).toStringAsFixed(2)}",
-                                            color: Colors.grey,
-                                            fontSize: 12,
-                                          ),
-
-                                          paymentRow(
-                                            "Tax Alcohol @ Nil",
-                                            "₹0",
-                                            color: Colors.grey,
-                                            fontSize: 12,
-                                          ),
-
-                                          ShaderMask(
-                                            shaderCallback: (Rect bounds) {
-                                              return LinearGradient(
-                                                begin: Alignment.centerLeft,
-                                                end: Alignment.centerRight,
-                                                colors: [
-                                                  Colors.black.withOpacity(0.1),
-                                                  Colors.black.withOpacity(0.7),
-                                                  Colors.black.withOpacity(0.1),
-                                                ],
-                                                stops: const [0.0, 0.5, 1.0],
-                                              ).createShader(bounds);
-                                            },
-                                            blendMode: BlendMode.srcIn,
-                                            child: const DottedLine(
-                                              dashLength: 6,
-                                              dashGapLength: 4,
-                                              lineThickness: 1,
-                                              direction: Axis.horizontal,
-                                              dashColor: Colors.black,
+                                            paymentRow(
+                                              "Net Total",
+                                              "₹${orderModel.netTotal ?? 0}",
+                                              fontWeight: FontWeight.bold,
                                             ),
-                                          ),
 
-                                          paymentRow(
-                                            "Total Tax",
-                                            "₹${orderModel.totalTax ?? 0}",
-                                            color: Colors.black,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-
-                                          paymentRow(
-                                            "Net Total",
-                                            "₹${orderModel.netTotal ?? 0}",
-                                            color: Colors.black,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-
-                                          paymentRow(
-                                            "Merchant Discount",
-                                            "-₹${orderModel.merchantDiscount ?? 0}",
-                                            color: Colors.blue,
-                                          ),
-                                          paymentRow(
-                                            "Round Off",
-                                            "${(orderModel.roundOff ?? 0) >= 0 ? '+' : '-'}₹${(orderModel.roundOff ?? 0).abs().toStringAsFixed(2)}",
-                                            color: Colors.grey,
-                                          ),
-
-                                          ShaderMask(
-                                            shaderCallback: (Rect bounds) {
-                                              return LinearGradient(
-                                                begin: Alignment.centerLeft,
-                                                end: Alignment.centerRight,
-                                                colors: [
-                                                  Colors.black.withOpacity(0.1),
-                                                  Colors.black.withOpacity(0.7),
-                                                  Colors.black.withOpacity(0.1),
-                                                ],
-                                                stops: const [0.0, 0.5, 1.0],
-                                              ).createShader(bounds);
-                                            },
-                                            blendMode: BlendMode.srcIn,
-                                            child: const DottedLine(
-                                              dashLength: 6,
-                                              dashGapLength: 4,
-                                              lineThickness: 1,
-                                              direction: Axis.horizontal,
-                                              dashColor: Colors.black,
+                                            paymentRow(
+                                              "Merchant Discount",
+                                              "-₹${(orderModel.merchantDiscount ?? 0).toDouble().toStringAsFixed(2)}",
+                                              color: Colors.blue,
                                             ),
-                                          ),
 
-                                          paymentRow(
-                                            "Net Payable",
-                                            "₹${orderModel.netPayable ?? 0}",
-                                            color: Colors.black,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ],
+                                            paymentRow(
+                                              "Round Off",
+                                              "${(orderModel.roundOff ?? 0) >= 0 ? '+' : '-'}₹${(orderModel.roundOff ?? 0).abs().toStringAsFixed(2)}",
+                                              color: Colors.grey,
+                                            ),
+
+                                            ShaderMask(
+                                              shaderCallback: (Rect bounds) {
+                                                return LinearGradient(
+                                                  begin: Alignment.centerLeft,
+                                                  end: Alignment.centerRight,
+                                                  colors: [
+                                                    Colors.black.withOpacity(0.1),
+                                                    Colors.black.withOpacity(0.7),
+                                                    Colors.black.withOpacity(0.1),
+                                                  ],
+                                                  stops: const [0.0, 0.5, 1.0],
+                                                ).createShader(bounds);
+                                              },
+                                              blendMode: BlendMode.srcIn,
+                                              child: const DottedLine(
+                                                dashLength: 6,
+                                                dashGapLength: 4,
+                                                lineThickness: 1,
+                                                direction: Axis.horizontal,
+                                                dashColor: Colors.black,
+                                              ),
+                                            ),
+
+
+                                            paymentRow(
+                                              "Net Payable",
+                                              "₹${(orderModel.netPayable ?? 0).toDouble().toStringAsFixed(2)}",
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 15,
+                                            ),
+
+                                            // const SizedBox(height: 10),
+                                          ],
+                                        ),
                                       ),
+                                      // ),
                                     ),
                                   ),
+
                                 ],
                               ),
                             ),
                           ),
+                          // const SizedBox(height: 4),
+
+                          // Container(
+                          //   margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                          //
+                          //   child: SizedBox(
+                          //     width: double.infinity,
+                          //     height: 36,
+                          //     child: ElevatedButton(
+                          //       style: ElevatedButton.styleFrom(
+                          //         backgroundColor: const  Color(0xFFF7C127),
+                          //         shape: RoundedRectangleBorder(
+                          //           borderRadius: BorderRadius.circular(10),
+                          //         ),
+                          //       ),
+                          //       onPressed: () {
+                          //
+                          //       },
+                          //       child: const Text(
+                          //         "Print Bill",
+                          //         style: TextStyle(
+                          //           fontSize: 16,
+                          //           fontWeight: FontWeight.bold,
+                          //           color: Colors.white,
+                          //         ),
+                          //       ),
+                          //     ),
+                          //   ),
+                          // ),
+
                         ],
                       ),
                     ),
@@ -1284,69 +1379,154 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
-                                    "Old payment Details",
-                                    style: TextStyle(fontSize: 12),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  IntrinsicHeight(
-                                    child: Row(
-                                      children: [
-                                        // Net Payable
-                                        Expanded(
-                                          child: Row(
-                                            children: [
-                                              const Text(
-                                                "Net Payable Amount- ",
-                                                style: TextStyle(fontSize: 14),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Expanded(
+                                        child: Row(
+                                          children: [
+                                            const Text(
+                                              " Original Net Payable-    ",
+                                              style: TextStyle(fontSize: 14),
+                                            ),
+                                            Text(
+                                              "₹${orderModel.orderPrevTotal?.toStringAsFixed(2) ?? '0.00'}",
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
                                               ),
-                                              Text(
-                                                "₹${orderModel.orderPrevTotal?.toStringAsFixed(2) ?? '0.00'}",
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      // Container(
+                                      //   width: 1,
+                                      //   color: Colors.grey[300],
+                                      //   margin: const EdgeInsets.symmetric(horizontal: 8),
+                                      // ),
+
+                                      // Reason
+                                      Expanded(
+                                        child: Row(
+                                          children: [
+                                            const Text(
+                                              "Reason for edit-   ",
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Color(0xFF7A7A7A),
+                                              ),
+                                            ),
+                                            Expanded(
+                                              child: Text(
+                                                orderModel.updated_remarks?.isNotEmpty == true
+                                                    ? orderModel.updated_remarks!
+                                                    : '-',
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
                                                 style: const TextStyle(
                                                   fontSize: 14,
                                                   fontWeight: FontWeight.w500,
                                                 ),
                                               ),
-                                            ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      // const Text(
+                                      //   "Old payment Details",
+                                      //   style: TextStyle(fontSize: 12),
+                                      // ),
+
+                                      // UPDATED PILL
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        decoration: ShapeDecoration(
+                                          color: const Color(0xFFFFF1C2),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(15),
                                           ),
                                         ),
-
-                                        Container(
-                                          width: 1,
-                                          color: Colors.grey[300],
-                                          margin: const EdgeInsets.symmetric(horizontal: 8),
-                                        ),
-
-                                        // Reason
-                                        Expanded(
-                                          child: Row(
-                                            children: [
-                                              const Text(
-                                                "Reason for edit- ",
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: Color(0xFF7A7A7A),
-                                                ),
+                                        child: Row(
+                                          children: const [
+                                            // Icon(
+                                            //   Icons.refresh,
+                                            //   size: 12,
+                                            //   color: Colors.orange,
+                                            // ),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              "Updated",
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: Color(0xFFA78307),
                                               ),
-                                              Expanded(
-                                                child: Text(
-                                                  orderModel.updated_remarks?.isNotEmpty == true
-                                                      ? orderModel.updated_remarks!
-                                                      : '-',
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                  style: const TextStyle(
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
+                                            ),
+                                          ],
                                         ),
-                                      ],
-                                    ),
+                                      ),
+                                    ],
                                   ),
+
+                                  // const SizedBox(height: 8),
+                                  // IntrinsicHeight(
+                                  //   child: Row(
+                                  //     children: [
+                                  //       // Net Payable
+                                  //       Expanded(
+                                  //         child: Row(
+                                  //           children: [
+                                  //             const Text(
+                                  //               "Net Payable Amount-    ",
+                                  //               style: TextStyle(fontSize: 14),
+                                  //             ),
+                                  //             Text(
+                                  //               "₹${orderModel.orderPrevTotal?.toStringAsFixed(2) ?? '0.00'}",
+                                  //               style: const TextStyle(
+                                  //                 fontSize: 14,
+                                  //                 fontWeight: FontWeight.w500,
+                                  //               ),
+                                  //             ),
+                                  //           ],
+                                  //         ),
+                                  //       ),
+                                  //
+                                  //       Container(
+                                  //         width: 1,
+                                  //         color: Colors.grey[300],
+                                  //         margin: const EdgeInsets.symmetric(horizontal: 8),
+                                  //       ),
+                                  //
+                                  //       // Reason
+                                  //       Expanded(
+                                  //         child: Row(
+                                  //           children: [
+                                  //             const Text(
+                                  //               "Reason for edit-   ",
+                                  //               style: TextStyle(
+                                  //                 fontSize: 12,
+                                  //                 color: Color(0xFF7A7A7A),
+                                  //               ),
+                                  //             ),
+                                  //             Expanded(
+                                  //               child: Text(
+                                  //                 orderModel.updated_remarks?.isNotEmpty == true
+                                  //                     ? orderModel.updated_remarks!
+                                  //                     : '-',
+                                  //                 maxLines: 1,
+                                  //                 overflow: TextOverflow.ellipsis,
+                                  //                 style: const TextStyle(
+                                  //                   fontSize: 14,
+                                  //                   fontWeight: FontWeight.w500,
+                                  //                 ),
+                                  //               ),
+                                  //             ),
+                                  //           ],
+                                  //         ),
+                                  //       ),
+                                  //     ],
+                                  //   ),
+                                  // ),
                                 ],
                               ),
                             ),
@@ -1354,6 +1534,46 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
                           //  KOT TABLE
                           Expanded(child: buildSelectedKotCard(order,orderModel)),
+                          const SizedBox(height: 10,),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: SizedBox(
+                              width: 180,
+                              height: 36,
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFF7C127),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                ),
+                                onPressed: () {},
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.print,
+                                      color: Colors.white,
+                                      size: 18,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      "Print Bill",
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+
+
+
                         ],
                       ),
                     ),
@@ -1367,9 +1587,20 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
       /// 🔹 BOTTOM NAV BAR
       bottomNavigationBar: BottomNavBar(
-        selectedIndex: _selectedIndex,
+        selectedIndex: 4,
         userPermissions: _userPermissions,
-        onItemTapped: _onItemTapped,
+        onItemTapped: (int index) {
+          NavigationHelper.handleNavigation(
+            context,
+            4,
+            index,
+            widget.pin,
+            widget.token,
+            widget.restaurantId,
+            widget.restaurantName,
+            _userPermissions,
+          );
+        },
       ),
     );
   }
@@ -1444,7 +1675,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               Container(
-                height: 40,
+                height: 36,
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
                   color: const Color(0xFF125BCE), // blue background

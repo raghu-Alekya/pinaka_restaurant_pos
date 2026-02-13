@@ -9,6 +9,7 @@ import '../../models/order_list/order_list_model.dart';
 // import '../../repositories/edit_orderlist_repository.dart';
 import '../../repositories/edit_order_repository.dart';
 import '../../repositories/order_list_repository.dart';
+import '../../utils/SessionManager.dart';
 import '../widgets/navigationhelper.dart';
 import '../widgets/top_bar.dart';
 import '../widgets/bottom_nav_bar.dart';
@@ -20,6 +21,7 @@ class EditOrdersListScreen extends StatefulWidget {
   final String restaurantName;
   final int orderId;
   final UserPermissions? userPermissions;
+
 
   const EditOrdersListScreen({
     super.key,
@@ -66,8 +68,10 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
   KotOrder? _selectedKot;
   double _dynamicNetPayable = 0.0;
   bool _netPayableInitialized = false;
+  bool _isUpdatingKot = false;
   String? _updateMessage; // null when no message
   bool _kotUpdated = false;
+
   VoidedItemsResponse? _voidedItemsResponse;
   late final OrderstatusRepository _orderStatusRepo;
 // Step 1: Just fetch net payable (no calculation)
@@ -95,6 +99,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
     _userPermissions = widget.userPermissions;
     _ordersFuture = _orderRepo.fetchOrders(widget.token);
     _orderStatusRepo = OrderstatusRepository();
+    _loadPermissions();
 
   }
   Future<void> _loadVoidedItemsForKot(KotOrder kot) async {
@@ -126,7 +131,14 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       });
     }
   }
-
+  Future<void> _loadPermissions() async {
+    final savedPermissions = await SessionManager.loadPermissions();
+    if (savedPermissions != null) {
+      setState(() {
+        _userPermissions = savedPermissions;
+      });
+    }
+  }
   void _showVoidedItemsDialog(List<VoidedItem> items) {
     showDialog(
       context: context,
@@ -278,7 +290,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
     return [];
   }
-  void _refreshOrders() async {
+  Future<void> _refreshOrders() async {
     final orders = await _orderRepo.fetchOrders(widget.token);
 
     final updatedLeftPanelItems = <LineItem>[];
@@ -292,6 +304,8 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       }
     }
 
+    if (!mounted) return;
+
     setState(() {
       _leftPanelItems = updatedLeftPanelItems;
       _ordersFuture = Future.value(orders);
@@ -299,8 +313,8 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
   }
 
 
-  Future<void> _updateKot() async {
 
+  Future<void> _updateKot() async {
     if (_selectedKot == null) return;
 
     if (selectedReason == null || selectedReason!.isEmpty) {
@@ -309,23 +323,19 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       );
       return;
     }
-
+    setState(() {
+      _isUpdatingKot = true;   // 🔹 START LOADER
+      _updateMessage = null;  // clear old success
+    });
     final repo = EditOrderlistRepository(
       baseUrl: AppConstants.baseApiPath,
       token: widget.token,
     );
 
-    // final kotId = _selectedKot!.kotOrderId;
     final int kotId = _selectedKot!.kotOrderId!;
 
-    print("🔵 Preparing to update KOT");
-    print("📌 Order ID: ${widget.orderId}");
-    print("📌 Selected KOT ID: $kotId");
-    print("📌 Selected Reason: $selectedReason");
-    print("📌 Remarks: ${_remarksController.text.trim()}");
-
     try {
-      // 1️⃣ Fetch order (validation only)
+      // 1️⃣ Validate order & KOT
       final order = await repo.fetchOrder(widget.orderId);
 
       order.kotOrders?.firstWhere(
@@ -333,9 +343,8 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         orElse: () => throw Exception("Selected KOT not found"),
       );
 
-      // 2️ ONLY edited KOT items
+      // 2️⃣ Edited items
       final items = _editedKotItems[_selectedKotId];
-
       if (items == null || items.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("⚠️ No items to update")),
@@ -343,21 +352,18 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         return;
       }
 
-      // 3️ Build payload
+      // 3️⃣ Build payload
       final List<Map<String, dynamic>> lineItemsPayload = [];
 
       for (final item in items) {
         final qty = item.quantity ?? 0;
 
-        // EXISTING ITEM
         if (item.lineItemId != null) {
           lineItemsPayload.add({
             "id": item.lineItemId,
             "quantity": qty, // qty = 0 → remove
           });
-        }
-        // NEW ITEM
-        else if (item.itemId != null && qty > 0) {
+        } else if (item.itemId != null && qty > 0) {
           lineItemsPayload.add({
             "product_id": item.itemId,
             "quantity": qty,
@@ -372,25 +378,22 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         return;
       }
 
-      // 4️ Meta data
-      final metaDataPayload = [
-        if (_remarksController.text.trim().isNotEmpty)
-          {
-            "key": "kot_remarks",
-            "value": _remarksController.text.trim(),
-          },
-        {
-          "key": "kot_remarks",
-          "value": selectedReason,
-        },
-      ];
-
       final payload = {
         "line_items": lineItemsPayload,
-        "meta_data": metaDataPayload,
+        "meta_data": [
+          if (_remarksController.text.trim().isNotEmpty)
+            {
+              "key": "kot_remarks",
+              "value": _remarksController.text.trim(),
+            },
+          {
+            "key": "kot_remarks",
+            "value": selectedReason,
+          },
+        ],
       };
 
-      // 5️ Handle completed KOT
+      // 4️⃣ Handle completed KOT
       final originalStatus = _selectedKot?.status ?? "processing";
       if (originalStatus == "completed") {
         await repo.updateOrderRaw(
@@ -400,7 +403,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         );
       }
 
-      // 6️ Update KOT
+      // 5️⃣ Update KOT
       final success = await repo.updateOrderRaw(
         orderId: widget.orderId,
         kotOrderId: kotId,
@@ -408,9 +411,18 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       );
 
       if (!success) throw Exception("Update failed");
-      await _fetchVoidedItemsAfterUpdate(kotId);
 
-      // 7️ Restore status
+      // 🔥 IMPORTANT: clear stale IDs for qty = 0
+      final editedItems = _editedKotItems[_selectedKotId];
+      if (editedItems != null) {
+        for (final item in editedItems) {
+          if ((item.quantity ?? 0) == 0) {
+            item.lineItemId = null;
+          }
+        }
+      }
+
+      // 6️⃣ Restore status
       if (originalStatus == "completed") {
         await repo.updateOrderRaw(
           orderId: widget.orderId,
@@ -419,19 +431,21 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         );
       }
 
-      _refreshOrders();
+      // 7️⃣ REFRESH FIRST
+      await _refreshOrders();
+
+      // 8️⃣ FETCH VOIDED AFTER REFRESH
+      await _fetchVoidedItemsAfterUpdate(kotId);
 
       setState(() {
+        _isUpdatingKot = false;
         _updateMessage = "KOT updated Successfully. Final Net payable updated.";
       });
 
       Future.delayed(const Duration(seconds: 1), () {
         if (!mounted) return;
-        setState(() {
-          _updateMessage = null;
-        });
+        setState(() => _updateMessage = null);
       });
-
 
     } catch (e) {
       print("❌ KOT Update Failed => $e");
@@ -439,8 +453,8 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         SnackBar(content: Text("❌ Update failed: $e")),
       );
     }
-    // _refreshOrders();
   }
+
 
 
   Future<void> _fetchVoidedItemsAfterUpdate(int kotId) async {
@@ -642,6 +656,30 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                                   ),
                                 ],
                               ),
+                            ),
+                          ),
+
+                          const SizedBox(width: 16),
+
+                          // 🧾 Order ID label
+                          const Text(
+                            "Order ID :",
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF7A7A7A),
+                            ),
+                          ),
+
+                          const SizedBox(width: 6),
+
+                          //  Order ID value
+                          Text(
+                            "#${widget.orderId}",
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF4C5F7D),
                             ),
                           ),
 
@@ -925,22 +963,37 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                           if (_updateMessage == null) const Spacer(),
 
                           // Success message (Flexible)
-                          if (_updateMessage != null) ...[
-                            const SizedBox(width: 12), // small space before message
+
+                          if (_isUpdatingKot || _updateMessage != null) ...[
+                            const SizedBox(width: 12),
+
                             Flexible(
                               child: Row(
                                 children: [
-                                  Image.asset(
-                                    "assets/success_tick.png",
-                                    width: 20,
-                                    height: 20,
-                                  ),
+                                  // 🔄 Loader while updating
+                                  if (_isUpdatingKot)
+                                    const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )
+                                  // ✅ Success tick
+                                  else
+                                    Image.asset(
+                                      "assets/success_tick.png",
+                                      width: 20,
+                                      height: 20,
+                                    ),
+
                                   const SizedBox(width: 6),
+
                                   Flexible(
                                     child: Text(
-                                      _updateMessage!,
-                                      style: const TextStyle(
-                                        color: Colors.green,
+                                      _isUpdatingKot
+                                          ? "Updating KOT, please wait..."
+                                          : _updateMessage!,
+                                      style: TextStyle(
+                                        color: _isUpdatingKot ? Colors.orange : Colors.green,
                                         fontWeight: FontWeight.w600,
                                       ),
                                       overflow: TextOverflow.ellipsis,
@@ -949,33 +1002,44 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                                 ],
                               ),
                             ),
+
                             const SizedBox(width: 12),
                           ],
+
 
                           //  Update KOT button
 
                           ElevatedButton(
-                            onPressed: _updateKot,
+                            onPressed: _isUpdatingKot ? null : _updateKot,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF4C5F7D),
+                              backgroundColor: const Color(0xFF4C5F7D), // ✅ SAME color
                               padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 18),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
                             ),
-                            child: const Text(
+                            child: _isUpdatingKot
+                                ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                                : const Text(
                               "Update KOT",
                               style: TextStyle(
-                                fontSize: 14,
+                                fontSize: 14,               //  SAME font size
                                 fontWeight: FontWeight.w600,
                                 color: Colors.white,
                               ),
                             ),
                           ),
+
                           const SizedBox(width:  10),
                         ],
                       )
-
 
 
                     ],
@@ -991,9 +1055,20 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
       // BOTTOM NAV
       bottomNavigationBar: BottomNavBar(
-        selectedIndex: _selectedIndex,
+        selectedIndex: 4,
         userPermissions: _userPermissions,
-        onItemTapped: _onItemTapped,
+        onItemTapped: (int index) {
+          NavigationHelper.handleNavigation(
+            context,
+            4,
+            index,
+            widget.pin,
+            widget.token,
+            widget.restaurantId,
+            widget.restaurantName,
+            _userPermissions,
+          );
+        },
       ),
     );
   }

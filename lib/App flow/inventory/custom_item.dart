@@ -16,8 +16,9 @@ import 'dashboard.dart';
 class AddItemDialog extends StatefulWidget {
   final String token;
   final Function(Products product) onItemAdded;
+  final String? scannedBarcode;
 
-  const AddItemDialog({super.key, required this.onItemAdded,   required this.token,});
+  const AddItemDialog({super.key, required this.onItemAdded,   required this.token, this.scannedBarcode,});
 
   @override
   State<AddItemDialog> createState() => _AddItemDialogState();
@@ -74,6 +75,11 @@ class _AddItemDialogState extends State<AddItemDialog> {
     super.initState();
     fetchCategories();
     fetchTaxes();
+    // autofill sku if barcode exists
+    if (widget.scannedBarcode != null &&
+        widget.scannedBarcode!.isNotEmpty) {
+      _skuController.text = widget.scannedBarcode!;
+    }
   }
 
   Future<void> _pickImage() async {
@@ -255,7 +261,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
       ),
       content: SizedBox(
         width: 500,
-        height:300,
+        height: 310,
         child:
         isLoading
             ? const Center(child: CircularProgressIndicator())
@@ -320,11 +326,11 @@ class _AddItemDialogState extends State<AddItemDialog> {
                                       )
                                           : Image.file(
                                         _pickedImage!,
-                                        fit: BoxFit.cover, // ✅ fills & clips perfectly
+                                        fit: BoxFit.cover, //  fills & clips perfectly
                                       ),
                                     ),
 
-                                    /// DELETE OVERLAY
+                                    // DELETE OVERLAY
                                     if (_pickedImage != null)
                                       Positioned(
                                         left: 0,
@@ -433,7 +439,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
                         const SizedBox(height: 4),
 
                         SizedBox(
-                          height: 40, // ✅ exact height
+                          height: 40, //  exact height
                           child: DropdownButtonFormField<CategorySublistResponse>(
                             isExpanded: true,
                             value: selectedParentCategory,
@@ -471,7 +477,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
                             decoration: InputDecoration(
                               isDense: true,
                               contentPadding:
-                              const EdgeInsets.symmetric(horizontal: 14, vertical: 11), // 🔥 perfect center
+                              const EdgeInsets.symmetric(horizontal: 14, vertical: 11), // perfect center
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
@@ -664,36 +670,41 @@ class _AddItemDialogState extends State<AddItemDialog> {
                       controller: _skuController,
                       hint: "Enter SKU code",
                       suffix: Padding(
-                        padding: const EdgeInsets.all(6), // space from field edge
+                        padding: const EdgeInsets.all(6),
                         child: GestureDetector(
-                          onTap: () {
+                          onTap: widget.scannedBarcode != null
+                              ? null // ❌ don't overwrite scanned barcode
+                              : () {
                             _skuController.text =
                             "SKU-${DateTime.now().millisecondsSinceEpoch}";
                           },
-                          child: Container(
-                            width: 100,
-                            height: 35, // fixed height
-                            decoration: ShapeDecoration(
-                              color: const Color(0xFFFE6464),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
+                          child: Opacity(
+                            opacity: widget.scannedBarcode != null ? 0.4 : 1,
+                            child: Container(
+                              width: 100,
+                              height: 35,
+                              decoration: ShapeDecoration(
+                                color: const Color(0xFFFE6464),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
                               ),
-                            ),
-                            alignment: Alignment.center,
-                            child: const Text(
-                              "Generate",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
+                              alignment: Alignment.center,
+                              child: const Text(
+                                "Generate",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
                     ),
-
                   ),
+
 
                   const SizedBox(width: 12),
                   Expanded(
