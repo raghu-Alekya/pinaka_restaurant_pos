@@ -425,6 +425,14 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         _updateMessage = "KOT updated Successfully. Final Net payable updated.";
       });
 
+      Future.delayed(const Duration(seconds: 1), () {
+        if (!mounted) return;
+        setState(() {
+          _updateMessage = null;
+        });
+      });
+
+
     } catch (e) {
       print("❌ KOT Update Failed => $e");
       ScaffoldMessenger.of(context).showSnackBar(

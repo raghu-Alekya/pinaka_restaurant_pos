@@ -75,7 +75,10 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends State<DashboardScreen>
+    with RouteAware {
+
+
   int _bottomNavIndex = 1;
 
   List<MiniSubCategory> currentSubCategories = [];
@@ -97,6 +100,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   OverlayEntry? _searchOverlay;
   bool _isSearchActive = false;
   final FocusNode _searchFocusNode = FocusNode();
+  final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
+  bool _searchEditable = false;
+  final TextEditingController _searchController = TextEditingController();
+
 
 
 
@@ -117,19 +124,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
     // 🔥 Force keyboard to close when screen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      setState(() {
+        _searchEditable = false;
+      });
       _searchFocusNode.unfocus();
-      FocusManager.instance.primaryFocus?.unfocus();
     });
+
 
 
     _loadCategories();
     _loadPermissions();
   }
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    routeObserver.subscribe(this as RouteAware, ModalRoute.of(context)! as PageRoute);
+  }
+
+
+
+  @override
   void dispose() {
+    _searchController.dispose();
+    routeObserver.unsubscribe(this as RouteAware);
     _searchFocusNode.dispose();
     super.dispose();
   }
+  @override
+  void didPopNext() {
+    debugPrint("🔥 Returned to Dashboard — closing keyboard");
+    // Called when returning to this screen
+    _searchFocusNode.unfocus();
+    FocusManager.instance.primaryFocus?.unfocus();
+    _removeSearchOverlay();
+  }
+
 
 
   void _loadCategories() {
@@ -280,7 +309,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
 
                     onTap: () async {
-                      FocusScope.of(context).unfocus();
+                      setState(() {
+                        _searchEditable = false;
+                      });
+
+                      FocusScope.of(context).requestFocus(_searchFocusNode);
 
                       final orderBloc = context.read<OrderBloc>();
 
@@ -384,13 +417,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _removeSearchOverlay() {
-    // ✅ CLOSE KEYBOARD
-    FocusScope.of(context).unfocus();
+    setState(() {
+      _searchEditable = false; // 🔒 lock input
+    });
 
-    // ✅ REMOVE OVERLAY IF EXISTS
+    _searchFocusNode.unfocus();
+    FocusManager.instance.primaryFocus?.unfocus();
+
     _searchOverlay?.remove();
     _searchOverlay = null;
   }
+  void _clearSearchField() {
+    // 1️⃣ Clear text
+    _searchController.clear();
+
+    // 2️⃣ Reset flags
+    _isSearchActive = false;
+    _searchEditable = false;
+
+    // 3️⃣ Remove overlay
+    _removeSearchOverlay();
+
+    // 4️⃣ Clear search bloc results
+    context.read<SearchProductBloc>().add(SearchClearProducts());
+
+    // 5️⃣ Remove keyboard focus
+    FocusScope.of(context).unfocus();
+  }
+
 
 
 
@@ -503,61 +557,78 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
           // RIGHT: Search Bar (Fixed Position)
           Align(
-            alignment: Alignment.centerRight,
-            child: CompositedTransformTarget(
-              link: _searchLink,
-              child: Container(
-                width: 230,
-                height: 35,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child:TextField(
-                  focusNode: _searchFocusNode,
-                  autofocus: false, // 🚫 VERY IMPORTANT
-                  decoration: const InputDecoration(
-                    hintText: "Search item",
-                    prefixIcon: Icon(Icons.search, size: 18),
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(vertical: 10),
-                  ),
-                  onTap: () {
-                    // ✅ Keyboard opens ONLY here
-                    _searchFocusNode.requestFocus();
-                  },
-                  onChanged: (value) {
-                    final query = value.trim();
-                    _isSearchActive = query.isNotEmpty;
+          alignment: Alignment.centerRight,
+          child: CompositedTransformTarget(
+          link: _searchLink,
+          child: Container(
+          width: 230,
+          height: 35,
+          decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+          BoxShadow(
+          color: Colors.black.withOpacity(0.05),
+          blurRadius: 6,
+          offset: const Offset(0, 2),
+          ),
+          ],
+          ),
+          child: TextField(
+          controller: _searchController,
+          focusNode: _searchFocusNode,
 
-                    if (query.isEmpty) {
-                      _removeSearchOverlay();
-                      context.read<SearchProductBloc>().add(SearchClearProducts());
-                      return;
-                    }
+    autofocus: false,
 
-                    if (query.length >= 2) {
-                      context.read<SearchProductBloc>()
-                          .add(SearchFetchProducts(search: query));
-                    }
-                  },
-                ),
+    // 🔐 KEY LINE
+    readOnly: !_searchEditable,
+
+    decoration: const InputDecoration(
+    hintText: "Search item",
+    prefixIcon: Icon(Icons.search, size: 18),
+    border: InputBorder.none,
+    contentPadding: EdgeInsets.symmetric(vertical: 10),
+    ),
+
+    onTap: () {
+    if (!_searchEditable) {
+    setState(() {
+    _searchEditable = true; // 🔓 unlock typing
+    });
+
+    // delay ensures Flutter updates readOnly before focus
+    Future.microtask(() {
+    FocusScope.of(context).requestFocus(_searchFocusNode);
+    });
+    }
+    },
+
+    onChanged: (value) {
+    final query = value.trim();
+    _isSearchActive = query.isNotEmpty;
+
+    if (query.isEmpty) {
+    _removeSearchOverlay();
+    context.read<SearchProductBloc>().add(SearchClearProducts());
+    return;
+    }
+
+    if (query.length >= 2) {
+    context
+        .read<SearchProductBloc>()
+        .add(SearchFetchProducts(search: query));
+    }
+    },
+    ),
+    ),
+    ),
+    ),
 
 
-              ),
-            ),
-          )
 
 
 
-        ],
+    ],
       ),
     );
   }
@@ -579,6 +650,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _onNavItemTapped(int index) async {
+    setState(() {
+      _searchEditable = false;
+    });
+    _searchController.clear();
+
     _searchFocusNode.unfocus();
     FocusManager.instance.primaryFocus?.unfocus();
     final permissions =

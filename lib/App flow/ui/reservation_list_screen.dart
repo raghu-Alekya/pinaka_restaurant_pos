@@ -586,7 +586,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                         ),
                       ),
 
-                      const SizedBox(height: 15),
+                      const SizedBox(height: 4),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [

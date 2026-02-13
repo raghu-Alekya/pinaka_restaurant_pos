@@ -113,6 +113,12 @@ class _TablesScreenState extends State<TablesScreen> {
   bool _isDeletingTable = false;
   bool _showModeChangeDialog = false;
   bool _hasLoadedOnce = false;
+  // double _scale = 1.0;
+  bool _showTable = true;
+  Offset _canvasOffset = Offset.zero;
+  bool _resetCanvasView = false;
+
+
 
   void _onNavItemTapped(int index) {
     NavigationHelper.handleNavigation(
@@ -342,13 +348,42 @@ class _TablesScreenState extends State<TablesScreen> {
   }
 
   /// Increases the zoom scale by 0.1, max limited elsewhere.
-  void _zoomIn() => setState(() => _scale += 0.1);
+  // void _zoomIn() => setState(() => _scale += 0.1);
 
+  void _zoomIn() {
+    setState(() {
+      _scale = (_scale + 0.1).clamp(0.5, 3.0);
+      _showTable = true;
+    });
+  }
   /// Decreases the zoom scale by 0.1 but clamps between 0.5 and 3.0.
-  void _zoomOut() => setState(() => _scale = (_scale - 0.1).clamp(0.5, 3.0));
+  // void _zoomOut() => setState(() => _scale = (_scale - 0.1).clamp(0.5, 3.0));
+  void _zoomOut() {
+    setState(() {
+      _scale = (_scale - 0.1).clamp(0.5, 3.0);
+      _showTable = true;
+    });
+  }
+
+
 
   /// Resets the zoom scale back to default 1.0.
-  void _scaleToFit() => setState(() => _scale = 1.0);
+  // void _scaleToFit() => setState(() => _scale = 1.0);
+  void _scaleToFit() {
+    setState(() {
+      _scale = 1.0;
+      _canvasOffset = Offset.zero;
+      _showPopup = false;
+      _resetCanvasView = true; // 🔥 trigger reset
+    });
+
+    // turn flag off next frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      setState(() => _resetCanvasView = false);
+    });
+  }
+
+
 
   /// Toggles the visibility of the add table/area popup.
   void _togglePopup() {
@@ -1991,6 +2026,8 @@ class _TablesScreenState extends State<TablesScreen> {
                     TablePlacementWidget(
                       placedTables: placedTables,
                       scale: _scale,
+                      offset: _canvasOffset,
+                      resetView: _resetCanvasView,
                       showPopup: _showPopup,
                       addTable: (data, position) {
                         context.read<TableBloc>().add(
@@ -2126,8 +2163,8 @@ class _TablesScreenState extends State<TablesScreen> {
                         gridDelegate: _currentViewMode == ViewMode.gridShapeBased
                             ? const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 10,
-                          crossAxisSpacing: 20,
-                          mainAxisSpacing: 20,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 10,
                           childAspectRatio: 0.9,
                         )
                             : const SliverGridDelegateWithFixedCrossAxisCount(
@@ -2338,8 +2375,17 @@ class _TablesScreenState extends State<TablesScreen> {
                           onTap: () {
                             if (hasPermission) {
                               if (_currentViewMode != ViewMode.normal) {
-                                setState(() => _showModeChangeDialog = true);
-                              } else {
+                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                  if (gridScrollController.hasClients) {
+                                    gridScrollController.animateTo(
+                                      0,
+                                      duration: const Duration(milliseconds: 300),
+                                      curve: Curves.easeOut,
+                                    );
+                                  }
+                                });
+                              }
+                              else {
                                 _togglePopup();
                               }
                             } else {

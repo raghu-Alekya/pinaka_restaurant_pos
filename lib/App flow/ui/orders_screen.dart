@@ -619,40 +619,49 @@ class OrderPanel extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  BlocListener<OrderBloc, OrderState>(
-                    listenWhen: (prev, curr) => prev.error != curr.error,
-                    listener: (context, state) {
-                      if (state.error != null && state.error!.isNotEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(state.error!)),
-                        );
-                      }
+                  Builder(
+                    builder: (scaffoldContext) {
+                      return BlocListener<OrderBloc, OrderState>(
+                        listenWhen: (prev, curr) => prev.error != curr.error,
+                        listener: (context, state) {
+                          if (state.error != null && state.error!.isNotEmpty) {
+                            ScaffoldMessenger.of(scaffoldContext)
+                              ..hideCurrentSnackBar()
+                              ..showSnackBar(
+                                SnackBar(content: Text(state.error!)),
+                              );
+
+                            // clear error after showing
+                            // context.read<OrderBloc>().add(ClearOrderError());
+                          }
+                        },
+                        child: orderButton(
+                          'Repeat order',
+                          const Color(0xFFF7C127),
+                          onPressed: () {
+                            final bloc = context.read<OrderBloc>();
+
+                            if (bloc.state.isLoading) return;
+
+                            if (bloc.state.orderId == 0) {
+                              ScaffoldMessenger.of(scaffoldContext).showSnackBar(
+                                const SnackBar(content: Text("Order not found")),
+                              );
+                              return;
+                            }
+
+                            bloc.add(
+                              RepeatKotOrder(
+                                orderId: bloc.state.orderId,
+                                restaurantId: int.parse(bloc.state.restaurantId),
+                                zoneId: bloc.state.zoneId,
+                                token: token,
+                              ),
+                            );
+                          },
+                        ),
+                      );
                     },
-                    child: orderButton(
-                      'Repeat order',
-                      const Color(0xFFF7C127),
-                      onPressed: () {
-                        final bloc = context.read<OrderBloc>();
-
-                        if (bloc.state.isLoading) return;
-
-                        if (bloc.state.orderId == 0) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("Order not found")),
-                          );
-                          return;
-                        }
-
-                        bloc.add(
-                          RepeatKotOrder(
-                            orderId: bloc.state.orderId,
-                            restaurantId: int.parse(bloc.state.restaurantId),
-                            zoneId: bloc.state.zoneId,
-                            token: token,
-                          ),
-                        );
-                      },
-                    ),
                   ),
 
                   orderButton(

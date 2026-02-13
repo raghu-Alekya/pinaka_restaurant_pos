@@ -424,6 +424,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
             const SizedBox(height: 6),
             if (selectedFolder != null && folderItems.isNotEmpty)
               _buildItemsGrid(folderItems),
+
           ],
           if (folders.isEmpty && directItems.isNotEmpty)
             _buildItemsGrid(directItems.expand<Product>((e) => e.products).toList()),
@@ -484,157 +485,184 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
   Widget _buildItemsGrid(List<Product> items) {
     const double stripWidth = 0;
     const double stripGap = 1;
+
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: items.length,
-      padding: const EdgeInsets.fromLTRB(1, 6, 2, 2),
+      padding: const EdgeInsets.fromLTRB(1, 6, 2, 0),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 4,
-        mainAxisSpacing: 8,
+        mainAxisSpacing: 0, // 🔼 space between rows
         crossAxisSpacing: 8,
-        childAspectRatio: 1.8,
+        childAspectRatio: 1.4, // 🔼 taller to fit "View more"
       ),
       itemBuilder: (context, index) {
         final item = items[index];
-        // 🔍 Debug print
-        print("Product: ${item.name} | isVariantProduct: ${item.isVariantProduct}");
         final backgroundColor = tileColors[index % tileColors.length];
 
-        return GestureDetector(
-          onTap: () => _onItemTap(context, item),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(
-              stripWidth + stripGap, // ⬅ space after strip
-              0,
-              0,
-              0,
-            ),
-            decoration: BoxDecoration(
-              color: backgroundColor,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.grey.shade300, width: 2),
-              boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2)],
-            ),
-            child: Stack(
-              children: [
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
 
-                Row(
-                  children: [
-                    const SizedBox(width: 8),
-                    if (item.image.isNotEmpty)
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8), // ⬅ rounded corners
-                        child: Image.network(
-                          item.image,
-                          width: 50,
-                          height: 48,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                          const Icon(Icons.fastfood, size: 40),
-                        ),
-                      )
-                    else
-                      const Icon(Icons.fastfood, size: 40, color: Colors.black),
-
-                    const SizedBox(width: 8),
-
-                    Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item.name,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '₹${item.price.toStringAsFixed(0)}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+            // 🔹 PRODUCT CARD
+            GestureDetector(
+              onTap: () => _onItemTap(context, item),
+              child: Container(
+                height: 72, // fixed card height
+                padding: const EdgeInsets.fromLTRB(
+                  stripWidth + stripGap,
+                  0,
+                  0,
+                  0,
+                ),
+                decoration: BoxDecoration(
+                  color: backgroundColor,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.grey.shade300, width: 2),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black12, blurRadius: 2),
                   ],
                 ),
+                child: Stack(
+                  children: [
 
+                    // CONTENT
+                    Row(
+                      children: [
+                        const SizedBox(width: 8),
+                        if (item.image.isNotEmpty)
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              item.image,
+                              width: 50,
+                              height: 48,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) =>
+                              const Icon(Icons.fastfood, size: 40),
+                            ),
+                          )
+                        else
+                          const Icon(Icons.fastfood, size: 40),
 
-                // Veg/Non-Veg icon at top-right
-                // 🌱 Veg / Non-Veg LEFT STRIP (uses same logic)
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  child: Builder(
-                    builder: (_) {
-                      final bool? isVeg = item.isVeg;
-                      if (isVeg == null) return const SizedBox.shrink();
+                        const SizedBox(width: 8),
 
-                      return Container(
-                        width: 3, // strip thickness
+                        Expanded(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item.name,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '₹${item.price.toStringAsFixed(0)}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // 🌱 VEG / NON-VEG STRIP
+                    Positioned(
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      child: item.isVeg == null
+                          ? const SizedBox.shrink()
+                          : Container(
+                        width: 3,
                         decoration: BoxDecoration(
-                          color: isVeg ? Colors.green : Colors.red,
+                          color: item.isVeg! ? Colors.green : Colors.red,
                           borderRadius: const BorderRadius.only(
                             topLeft: Radius.circular(10),
                             bottomLeft: Radius.circular(10),
                           ),
                         ),
-                      );
-                    },
-                  ),
-                ),
-
-
-                // 🔹 Variant icon just below veg/non-veg icon (right corner)
-                if (item.isVariantProduct)
-                  Positioned(
-                    top: 42, // below the veg/non-veg icon
-                    right: 8,
-                    child: Image.asset(
-                      'assets/variant_icon.png',
-                      width: 10,
-                      height: 10,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                // 🔥 VIEW MORE (combo only)
-                if (isComboItem(item))
-                  Positioned(
-                    bottom: 0.5,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: InkWell(
-                        onTap: () => _openComboDetails(context, item),
-                        child: const Text(
-                          "View more",
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Color(0xFF191919),
-                            fontWeight: FontWeight.w600,
-                            decoration: TextDecoration.underline,
-                          ),
-                        ),
                       ),
                     ),
-                  ),
 
-              ],
+                    // 🔹 VARIANT ICON
+                    if (item.isVariantProduct)
+                      Positioned(
+                        top: 45,
+                        right: 6,
+                        child: Image.asset(
+                          'assets/variant_icon.png',
+                          width: 10,
+                          height: 10,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ),
 
-          ),
+            // 🔥 VIEW MORE (ONLY FOR COMBO)
+            if (isComboItem(item))
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: InkWell(
+                  onTap: () => _openComboDetails(context, item),
+                  child: const Text(
+                    "View more",
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      decoration: TextDecoration.underline,
+                      color: Color(0xFF191919),
+                    ),
+                  ),
+                ),
+              ),
+          ],
         );
       },
     );
   }
+
+  // Widget _buildItemsSection(List<Product> items) {
+  //   final bool hasComboItems = items.any(isComboItem);
+  //
+  //   return Column(
+  //     crossAxisAlignment: CrossAxisAlignment.stretch,
+  //     children: [
+  //       _buildItemsGrid(items),
+  //
+  //       if (hasComboItems)
+  //         Padding(
+  //           padding: const EdgeInsets.only(top: 6),
+  //           child: Center(
+  //             child: InkWell(
+  //               onTap: () => _openComboDetails(context, items.firstWhere(isComboItem)),
+  //               child: const Text(
+  //                 "View more",
+  //                 style: TextStyle(
+  //                   fontSize: 12,
+  //                   fontWeight: FontWeight.w600,
+  //                   decoration: TextDecoration.underline,
+  //                   color: Color(0xFF191919),
+  //                 ),
+  //               ),
+  //             ),
+  //           ),
+  //         ),
+  //     ],
+  //   );
+  // }
+
 
 
 

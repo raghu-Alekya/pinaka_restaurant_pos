@@ -255,6 +255,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
       ),
       content: SizedBox(
         width: 500,
+        height:300,
         child:
         isLoading
             ? const Center(child: CircularProgressIndicator())

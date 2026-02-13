@@ -109,14 +109,31 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
   String get onlyTime =>
       TimeOfDay.fromDateTime(widget.dateTime).format(context);
 
+  // List<String> get tables {
+  //   final allTables = widget.zoneTables[selectedZone] ?? [];
+  //
+  //   return allTables.where((tableName) {
+  //     final tableId = widget.tableIds[tableName];
+  //     return tableId != widget.fromTableId; // ❌ hide same table
+  //   }).toList();
+  // }
+
+
+  //  hiding available tables
   List<String> get tables {
     final allTables = widget.zoneTables[selectedZone] ?? [];
 
     return allTables.where((tableName) {
       final tableId = widget.tableIds[tableName];
-      return tableId != widget.fromTableId; // ❌ hide same table
+      final rawStatus = widget.tableStatus[tableName] ?? "";
+
+      return tableId != widget.fromTableId &&
+          rawStatus.trim().toLowerCase() == "dine in";
     }).toList();
   }
+
+
+
 
 
   // ================= HEADER =================

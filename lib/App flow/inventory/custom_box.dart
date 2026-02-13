@@ -70,6 +70,10 @@ class _CustomBoxState extends State<CustomBox> {
     _searchFocusNode.requestFocus();
     // Initialize repository with token
     _repository = ProductRepository(token: widget.token);
+    // Ensure keyboard never opens automatically
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _searchFocusNode.unfocus();
+    });
   }
 
   void _showSortPopup() {
@@ -668,41 +672,53 @@ class _CustomBoxState extends State<CustomBox> {
                           SizedBox(
                             width: 300,
                             height: 40,
-                            child: TextField(
-                              controller: _searchController,
-                              focusNode: _searchFocusNode,
-                              autofocus: false,
-                              showCursor: _searchFocusNode.hasFocus,
-                              onSubmitted: (value) async {
-                                if (value.trim().isEmpty) return;
-
-                                setState(() {
-                                  showCustomCard = true;
-                                });
-
-                                await _fetchProducts(searchOrSku: value.trim(),  session: _searchSession,);
+                            child: GestureDetector(
+                              onTap: () {
+                                FocusScope.of(context).requestFocus(_searchFocusNode);
                               },
-                              style: const TextStyle(fontSize: 14),
-                              decoration: InputDecoration(
-                                isDense: true,
-                                prefixIcon: Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Image.asset(
-                                    'assets/search.png',
-                                    width: 20,
-                                    height: 20,
+                              child: AbsorbPointer(
+                                absorbing: !_searchFocusNode.hasFocus,
+                                child: TextField(
+                                  controller: _searchController,
+                                  focusNode: _searchFocusNode,
+                                  autofocus: false,
+                                  showCursor: _searchFocusNode.hasFocus,
+                                  onSubmitted: (value) async {
+                                    if (value.trim().isEmpty) return;
+
+                                    setState(() {
+                                      showCustomCard = true;
+                                    });
+
+                                    await _fetchProducts(
+                                      searchOrSku: value.trim(),
+                                      session: _searchSession,
+                                    );
+                                  },
+                                  style: const TextStyle(fontSize: 14),
+                                  decoration: InputDecoration(
+                                    isDense: true,
+                                    prefixIcon: Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Image.asset(
+                                        'assets/search.png',
+                                        width: 20,
+                                        height: 20,
+                                      ),
+                                    ),
+                                    hintText: "Search by Product Name/SKU",
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide.none,
+                                    ),
                                   ),
-                                ),
-                                hintText: "Search by Product Name/SKU",
-                                filled: true,
-                                fillColor: Colors.white,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide.none,
                                 ),
                               ),
                             ),
                           ),
+
 
                           const SizedBox(width: 16),
 

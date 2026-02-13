@@ -33,6 +33,7 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
     tableName: '',
     zoneName: '',
     restaurantId: '',
+    lastRepeatedKotIndex: -1,
   )) {
     {
       // ✅ REGISTER EVENT HERE
@@ -62,8 +63,8 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
         // ❌ Don’t clear KOTs
         kotList: state.kotList,
         // ✅ IMPORTANT: reset repeat order lock for new order/table
-        isKotRepeated: false,
-        repeatedOrderId: 0,
+        // isKotRepeated: false,
+        // repeatedOrderId: 0,
       ));
     });
 
@@ -90,8 +91,8 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
         kotList: state.kotList,
 
         // ✅ IMPORTANT: reset repeat flag when table changes
-        isKotRepeated: false,
-        repeatedOrderId: 0,
+        // isKotRepeated: false,
+        // repeatedOrderId: 0,
       ));
 
       try {
@@ -124,8 +125,8 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
             guestDetails: guestDetails,
 
             // ✅ also reset here (safe)
-            isKotRepeated: false,
-            repeatedOrderId: 0, //
+            // isKotRepeated: false,
+            // repeatedOrderId: 0, //
           ));
 
           AppLogger.info(
@@ -216,6 +217,8 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
         tableName: '',
         zoneName: '',
         restaurantId: '',
+        // ✅ IMPORTANT
+        lastRepeatedKotIndex: -1,
       ));
     });
 
@@ -289,9 +292,19 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
         if (kot != null) {
           final updatedKOTs = List<KotModel>.from(state.kotList)
             ..add(kot);
-          emit(state.copyWith(kotList: updatedKOTs));
+
+          emit(state.copyWith(
+            kotList: updatedKOTs,
+
+            // 🔓 UNLOCK repeat after new KOT
+            // isKotRepeated: false,
+            // repeatedOrderId: 0,
+            lastRepeatedKotIndex: -1,
+          ));
+
           AppLogger.info("✅ KOT created successfully: ${kot.kotId}");
         }
+
       } catch (e) {
         AppLogger.error("❌ Failed to create KOT: $e");
       }
@@ -327,25 +340,27 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
       RepeatKotOrder event,
       Emitter<OrderState> emit,
       ) async {
-    try {
-      // ✅ Block if already loading
-      if (state.isLoading) return;
+    // ⛔ block multiple clicks
+    if (state.isLoading) return;
 
-      // ✅ Block if already repeated for same order
-      if (state.repeatedOrderId == event.orderId) {
-        emit(state.copyWith(
-          isLoading: false,
-          error: "Already repeated this order",
-        ));
-        return;
-      }
+    // ⛔ block repeat for SAME KOT
+    if (state.lastRepeatedKotIndex == state.kotList.length) {
+      AppLogger.debug("🚨 Repeat blocked → emitting error");
 
-      // ✅ lock immediately
       emit(state.copyWith(
-        isLoading: true,
-        error: null,
+        error: "Repeat order can be applied only once for this KOT",
       ));
+      return;
+    }
 
+
+    // 🔒 LOCK immediately
+    emit(state.copyWith(
+      isLoading: true,
+      lastRepeatedKotIndex: state.kotList.length,
+    ));
+
+    try {
       final result = await repeatRepository.repeatKotOrder(
         orderId: event.orderId,
         restaurantId: event.restaurantId,
@@ -355,26 +370,23 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
 
       final kot = result.toKotModel();
 
-      final updatedOrderItems = [
-        ...state.orderItems,
-        ...kot.items,
-      ];
-
       emit(state.copyWith(
         isLoading: false,
-        orderItems: updatedOrderItems,
-        kotList: [...state.kotList, kot],
 
-        // ✅ IMPORTANT: now it will block next click
-        repeatedOrderId: event.orderId,
-        isKotRepeated: true,
+        // ✅ ONLY add items
+        orderItems: [...state.orderItems, ...kot.items],
       ));
 
-      AppLogger.info("✅ Repeat order applied to UI");
+      AppLogger.info("✅ Repeat applied once for this KOT");
     } catch (e) {
-      emit(state.copyWith(isLoading: false));
+      // 🔓 unlock if API fails
+      emit(state.copyWith(
+        isLoading: false,
+        lastRepeatedKotIndex: -1,
+      ));
     }
   }
+
 
 
 

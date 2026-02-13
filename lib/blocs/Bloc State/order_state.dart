@@ -27,6 +27,7 @@ class OrderState {
   final int repeatedOrderId;
 
 // ✅ add this
+  final int lastRepeatedKotIndex;
 
 
 
@@ -48,6 +49,8 @@ class OrderState {
     this.error,
     this.isKotRepeated = false,
     this.repeatedOrderId = 0,
+    // 🔽 ADD HERE
+    required this.lastRepeatedKotIndex,
   });
 
   OrderState copyWith({
@@ -67,6 +70,7 @@ class OrderState {
     String? error,
     bool? isKotRepeated,
     int? repeatedOrderId,
+    int? lastRepeatedKotIndex,
 
   }) {
     return OrderState(
@@ -88,6 +92,9 @@ class OrderState {
       isKotRepeated: isKotRepeated ?? this.isKotRepeated,
       // ✅ ADD THIS
       repeatedOrderId: repeatedOrderId ?? this.repeatedOrderId,
+      // 🔽 ADD
+      lastRepeatedKotIndex:
+      lastRepeatedKotIndex ?? this.lastRepeatedKotIndex,
     );
   }
   /// ✅ Subtotal (price × quantity)

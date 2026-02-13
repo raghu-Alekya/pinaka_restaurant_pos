@@ -11,13 +11,18 @@ class TablePlacementWidget extends StatefulWidget {
   final String? selectedArea;
   final VoidCallback onTapOutside;
   final bool isLoading;
+  final Offset offset;
+  final bool resetView;
+
 
   const TablePlacementWidget({
     Key? key,
     required this.placedTables,
     required this.scale,
+    required this.offset,
     required this.showPopup,
     required this.addTable,
+    required this.resetView,
     required this.updateTablePosition,
     required this.buildAddContentPrompt,
     required this.buildPlacedTable,
@@ -36,6 +41,24 @@ class _TablePlacementWidgetState extends State<TablePlacementWidget> {
   final GlobalKey _canvasKey = GlobalKey();
 
   @override
+  @override
+  void didUpdateWidget(covariant TablePlacementWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (widget.resetView && !oldWidget.resetView) {
+      _resetScrollAndView();
+    }
+  }
+  void _resetScrollAndView() {
+    if (verticalScrollController.hasClients) {
+      verticalScrollController.jumpTo(0);
+    }
+    if (horizontalScrollController.hasClients) {
+      horizontalScrollController.jumpTo(0);
+    }
+  }
+
+
   Widget build(BuildContext context) {
     final visibleTables = widget.selectedArea == null
         ? widget.placedTables
@@ -78,54 +101,58 @@ class _TablePlacementWidgetState extends State<TablePlacementWidget> {
                         child: SingleChildScrollView(
                           controller: verticalScrollController,
                           scrollDirection: Axis.vertical,
-                          child: Transform.scale(
-                            scale: widget.scale,
-                            alignment: Alignment.topLeft,
-                            child: Container(
-                              key: _canvasKey,
-                              width: 90000 / widget.scale,
-                              height: 60000 / widget.scale,
-                              alignment: Alignment.topLeft,
-                              child: GestureDetector(
-                                behavior: HitTestBehavior.translucent,
-                                onTap: widget.onTapOutside,
-                                child: Stack(
-                                  children: [
-                                    if (visibleTables.isEmpty &&
-                                        !widget.showPopup &&
-                                        !widget.isLoading)
-                                      widget.buildAddContentPrompt(),
-                                    ...visibleTables.asMap().entries.map(
-                                          (entry) => widget.buildPlacedTable(
-                                        widget.placedTables
-                                            .indexOf(entry.value),
-                                        entry.value,
-                                      ),
+                            child: Transform.translate(
+                              offset: widget.offset, // 👈 THIS brings table back into view
+                              child: Transform.scale(
+                                scale: widget.scale,
+                                alignment: Alignment.topLeft,
+                                child: Container(
+                                  key: _canvasKey,
+                                  width: 90000 / widget.scale,
+                                  height: 60000 / widget.scale,
+                                  alignment: Alignment.topLeft,
+                                  child: GestureDetector(
+                                    behavior: HitTestBehavior.translucent,
+                                    onTap: widget.onTapOutside,
+                                    child: Stack(
+                                      children: [
+                                        if (visibleTables.isEmpty &&
+                                            !widget.showPopup &&
+                                            !widget.isLoading)
+                                          widget.buildAddContentPrompt(),
+
+                                        ...visibleTables.asMap().entries.map(
+                                              (entry) => widget.buildPlacedTable(
+                                            widget.placedTables.indexOf(entry.value),
+                                            entry.value,
+                                          ),
+                                        ),
+
+                                        Positioned.fill(
+                                          child: DragTarget<int>(
+                                            onAcceptWithDetails: (details) {
+                                              final index = details.data;
+                                              final dropOffset = details.offset;
+                                              final RenderBox canvasBox =
+                                              _canvasKey.currentContext!
+                                                  .findRenderObject() as RenderBox;
+                                              final localPos =
+                                              canvasBox.globalToLocal(dropOffset);
+                                              widget.updateTablePosition(
+                                                index,
+                                                localPos / widget.scale,
+                                              );
+                                            },
+                                            builder: (context, _, __) => Container(),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    Positioned.fill(
-                                      child: DragTarget<int>(
-                                        onAcceptWithDetails: (details) {
-                                          final index = details.data;
-                                          final dropOffset = details.offset;
-                                          final RenderBox canvasBox =
-                                          _canvasKey.currentContext!
-                                              .findRenderObject() as RenderBox;
-                                          final localPos = canvasBox
-                                              .globalToLocal(dropOffset);
-                                          widget.updateTablePosition(
-                                            index,
-                                            localPos / widget.scale,
-                                          );
-                                        },
-                                        builder: (context, _, __) =>
-                                            Container(),
-                                      ),
-                                    ),
-                                  ],
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
+
                         ),
                       ),
                     ),

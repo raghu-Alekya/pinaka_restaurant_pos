@@ -454,7 +454,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
             setState(() {
               selectedType = DiscountType.amount;
               isNCSelected = false;
-              // discountController.clear();
+              discountController.clear();
             });
           },
           child: _radioButton(

@@ -412,8 +412,8 @@ class _TopBarState extends State<TopBar> {
       onTap: onPressed,
       child: Container(
         width: 65, // ⬅ slightly wider like image
-        height: 55,
-        margin: const EdgeInsets.only(right: 14),
+        height: 51,
+        margin: const EdgeInsets.only(right: 14,bottom: 5),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
