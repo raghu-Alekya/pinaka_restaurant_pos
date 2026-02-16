@@ -53,25 +53,21 @@ class TableRepository {
 
     if (response.statusCode == 200) {
       final decoded = jsonDecode(response.body);
-
-      // 🔍 PRINT DECODED JSON
-      debugPrint("🧪 getAllTables decoded = $decoded");
-
       final tableList = decoded['table_details'];
-
-      // 🔍 PRINT TABLE DETAILS
-      debugPrint("🧪 table_details = $tableList");
 
       if (tableList != null && tableList is List) {
         return List<Map<String, dynamic>>.from(tableList);
       } else {
         throw Exception("No table data found.");
       }
+    } else if (response.statusCode == 401) {
+      throw Exception("Unauthorized: Please login again.");
     } else {
-      throw Exception("Failed to fetch tables: ${response.body}");
+      throw Exception(
+        "Failed to fetch tables (Status ${response.statusCode}): ${response.body}",
+      );
     }
   }
-
 
   Future<List<Map<String, dynamic>>> getTablesByTime({
     required String token,
@@ -84,9 +80,7 @@ class TableRepository {
 
     final response = await http.get(
       uri,
-      headers: {
-        'Authorization': 'Bearer $token',
-      },
+      headers: {'Authorization': 'Bearer $token'},
     );
 
     if (response.statusCode == 200) {
@@ -152,11 +146,8 @@ class TableRepository {
     }
 
     // Get zone details
-    final zoneDetails = await ZoneRepository().getZoneDetailsFromServerByAreaName(
-      areaName,
-      token,
-      pin,
-    );
+    final zoneDetails = await ZoneRepository()
+        .getZoneDetailsFromServerByAreaName(areaName, token, pin);
 
     if (zoneDetails['success'] != true) {
       AppLogger.warning('Zone not found: $areaName');
@@ -248,19 +239,25 @@ class TableRepository {
     AppLogger.info('Delete Table API Response Body: ${response.body}');
 
     if (response.statusCode == 200) {
-      AppLogger.info('Table deleted successfully from server (table_id: $tableId)');
+      AppLogger.info(
+        'Table deleted successfully from server (table_id: $tableId)',
+      );
       return true;
     } else {
-      AppLogger.error('Failed to delete table from server. Status: ${response.statusCode}');
+      AppLogger.error(
+        'Failed to delete table from server. Status: ${response.statusCode}',
+      );
       AppLogger.error('Response body: ${response.body}');
       return false;
     }
   }
-  Future<Map<String, dynamic>> getAllSlots(String token, DateTime reservationDate) async {
+
+  Future<Map<String, dynamic>> getAllSlots(
+    String token,
+    DateTime reservationDate,
+  ) async {
     final formattedDate = DateFormat('yyyy-MM-dd').format(reservationDate);
-    final url = Uri.parse(
-      AppConstants.getAllSlotsByDate(formattedDate),
-    );
+    final url = Uri.parse(AppConstants.getAllSlotsByDate(formattedDate));
 
     final response = await http.get(
       url,

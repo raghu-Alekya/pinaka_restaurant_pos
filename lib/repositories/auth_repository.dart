@@ -29,8 +29,9 @@ class AuthRepository {
       final String token = data['token'];
       final String restaurantId = data['restaurant_id'].toString();
       final String restaurantName = data['restaurant_name'].toString();
-      final Map<String, dynamic> permissions =
-      Map<String, dynamic>.from(data['permissions'] ?? {});
+      final Map<String, dynamic> permissions = Map<String, dynamic>.from(
+        data['permissions'] ?? {},
+      );
 
       // 🔥🔥🔥 THIS IS MANDATORY 🔥🔥🔥
       await SessionManager.saveToken(token);
@@ -64,26 +65,27 @@ class AuthRepository {
         headers: {'Authorization': 'Bearer $token'},
       );
 
-      if (response.statusCode == 200) {
-        await loginDao.clearLogin();
-
-        final prefs = await SharedPreferences.getInstance();
-
-        // ✅ REMOVE ONLY WHAT YOU NEED
-        await prefs.remove('auth_token');
-        await prefs.remove('user_permissions');
-        await prefs.remove('user_id');
-        await prefs.remove('shift_id');
-
-        AppLogger.info('Logout successful. Session cleared safely.');
-        return true;
-      } else {
-        return false;
-      }
+      AppLogger.info('Logout API response status: ${response.statusCode}');
     } catch (e) {
-      AppLogger.error("Logout exception: $e");
-      return false;
+      AppLogger.error("Logout API request failed: $e");
+    } finally {
+      // ALWAYS clear local session even if server call fails
+      await loginDao.clearLogin();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(
+        'token',
+      ); // Use 'token' as used in SplashScreen and Login
+      await prefs.remove('auth_token');
+      await prefs.remove('user_permissions');
+      await prefs.remove('user_id');
+      await prefs.remove('shift_id');
+      await prefs.remove('pin');
+      await prefs.remove('restaurantId');
+      await prefs.remove('restaurantName');
+
+      AppLogger.info('Local session cleared.');
     }
+    return true;
   }
 
   Future<Map<String, dynamic>?> getSavedLogin() async {

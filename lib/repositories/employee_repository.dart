@@ -18,9 +18,13 @@ class EmployeeRepository {
     if (response.statusCode == 200) {
       final List data = jsonDecode(response.body);
       return data.cast<Map<String, dynamic>>();
+    } else if (response.statusCode == 401) {
+      throw Exception('Unauthorized: Please login again.');
     } else {
       AppLogger.error('Failed to load employees: ${response.body}');
-      throw Exception('Failed to load employees: ${response.body}');
+      throw Exception(
+        'Failed to load employees (Status ${response.statusCode}): ${response.body}',
+      );
     }
   }
 
@@ -64,12 +68,9 @@ class EmployeeRepository {
 
       return shiftId;
     } else {
-      throw Exception(
-        "Failed to create shift. Status: ${response.statusCode}",
-      );
+      throw Exception("Failed to create shift. Status: ${response.statusCode}");
     }
   }
-
 
   Future<List<String>> getAllShifts(String token) async {
     final response = await http.get(
@@ -120,13 +121,14 @@ class EmployeeRepository {
       }),
     );
 
-    AppLogger.info('Update Shift Response (${response.statusCode}): ${response.body}');
+    AppLogger.info(
+      'Update Shift Response (${response.statusCode}): ${response.body}',
+    );
 
     if (response.statusCode != 200) {
       throw Exception('Failed to update shift. Response: ${response.body}');
     }
   }
-
 
   Future<Map<String, dynamic>?> getCurrentShift(String token) async {
     final url = Uri.parse(AppConstants.currentShiftEndpoint);
@@ -178,7 +180,9 @@ class EmployeeRepository {
       }),
     );
 
-    AppLogger.info('Close Shift Response (${response.statusCode}): ${response.body}');
+    AppLogger.info(
+      'Close Shift Response (${response.statusCode}): ${response.body}',
+    );
 
     if (response.statusCode != 200) {
       throw Exception('Failed to close shift. Response: ${response.body}');
