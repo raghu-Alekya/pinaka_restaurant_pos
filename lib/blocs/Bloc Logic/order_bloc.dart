@@ -180,7 +180,7 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
 
       emit(state.copyWith(
         orderItems: updatedItems,
-        showKOTDropdown: false,
+        // showKOTDropdown: false,
       ));
     });
 
@@ -223,7 +223,7 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
     });
 
     /// Toggle KOT dropdown
-    on<ToggleKOTDropdown>((event, emit) {
+    on<ToggleOrderKOTDropdown>((event, emit) {
       emit(state.copyWith(showKOTDropdown: !state.showKOTDropdown));
     });
 
@@ -295,6 +295,7 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
 
           emit(state.copyWith(
             kotList: updatedKOTs,
+            showKOTDropdown: true,
 
             // 🔓 UNLOCK repeat after new KOT
             // isKotRepeated: false,
@@ -313,6 +314,8 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
     /// Load existing order (used when table already has active order)
     on<LoadExistingOrder>((event, emit) {
       final isDifferentOrder = event.orderId != state.orderId;
+      // ✅ DEFINE IT FIRST
+      final bool hasKots = event.kotList.isNotEmpty;
       AppLogger.info(
           "Loading existing order ID=${event.orderId}, Table=${event
               .tableName}, Zone=${event.zoneName}");
@@ -327,6 +330,8 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
         kotList: event.kotList,
         guestDetails: event.guestDetails,
         orderItems: isDifferentOrder ? [] : event.orderItems,
+        // ✅ THIS FIX
+        showKOTDropdown: hasKots,
       ));
     });
 

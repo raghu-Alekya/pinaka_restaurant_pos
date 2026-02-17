@@ -36,6 +36,7 @@ class OrderlistModel {
   bool? isParent;
 
   List<KotOrder>? kotOrders;
+  List<LineItem>? initialKotItems;
 
   OrderlistModel({
     this.completedByUserId,
@@ -68,6 +69,7 @@ class OrderlistModel {
     this.status,
     this.isParent,
     this.kotOrders,
+    this.initialKotItems,
   });
 
   factory OrderlistModel.fromJson(Map<String, dynamic> json) {
@@ -107,6 +109,9 @@ class OrderlistModel {
 
       status: json['status'],
       isParent: json['is_parent'],
+      initialKotItems: (json['initial_kot_items'] as List?)
+          ?.map((v) => LineItem.fromJson(v))
+          .toList(),
 
       kotOrders: (json['kot_orders'] as List?)
           ?.map((v) => KotOrder.fromJson(v))
@@ -125,7 +130,7 @@ class KotOrder {
   bool? isParent;
   List<LineItem>? lineItems;
   List<Map<String, dynamic>>? metaData;
-
+  List<Voideditems>? voidedItems;
   KotOrder({
     this.kotOrderId,
     this.status,
@@ -134,6 +139,7 @@ class KotOrder {
     this.isParent,
     this.lineItems,
     this.metaData,
+    this.voidedItems,
   });
 
   factory KotOrder.fromJson(Map<String, dynamic> json) {
@@ -149,6 +155,9 @@ class KotOrder {
           .toList(),
       metaData: (json['meta_data'] as List?)
           ?.map((e) => Map<String, dynamic>.from(e))
+          .toList(),
+      voidedItems: (json['voided_items'] as List?)
+          ?.map((v) => Voideditems.fromJson(v))
           .toList(),
     );
   }
@@ -171,6 +180,8 @@ class LineItem {
   double? unitPrice;
   num? totalWoTax;
 
+  int? kotOrderId;
+
   LineItem({
     this.lineItemId,
     this.itemId,
@@ -185,6 +196,7 @@ class LineItem {
     this.originalAmount,
     this.unitPrice,
     this.totalWoTax,
+    this.kotOrderId,
   });
 
   factory LineItem.fromJson(Map<String, dynamic> json) {
@@ -225,6 +237,7 @@ class LineItem {
       itemPrice: num.tryParse(json['item_price']?.toString() ?? "0") ?? 0,
       modifiers: parsedModifiers,
       totalWoTax: num.tryParse(json['total_wo_tax']?.toString() ?? "0") ?? 0,
+      kotOrderId: json['kot_order_id'],
     );
   }
 
@@ -265,6 +278,7 @@ extension KotOrderMapping on KotOrder {
 extension LineItemMapping on LineItem {
   Map<String, dynamic> toMapForView() {
     return {
+      "product_id": itemId,
       "name": name,
       "qty": quantity,
       "amount": amount,
@@ -327,5 +341,49 @@ extension LineItemUpdateMapping on LineItem {
       //     .toList() ??
       //     [],
     };
+  }
+}
+class Voideditems {
+  int? itemId;
+  String? product;
+  num? newQty;
+  String? remarks;
+  String? voidedAt;
+
+  Voideditems({
+    this.itemId,
+    this.product,
+    this.newQty,
+    this.remarks,
+    this.voidedAt,
+  });
+
+  factory Voideditems.fromJson(Map<String, dynamic> json) {
+    return Voideditems(
+      itemId: json['item_id'],
+      product: json['product'],
+      newQty: num.tryParse(json['new_qty']?.toString() ?? "0") ?? 0,
+      remarks: json['remarks'],
+      voidedAt: json['voided_at'],
+    );
+  }
+}
+class ComboItem {
+  int? id;
+  String? name;
+  num? quantity;
+
+  ComboItem({
+    this.id,
+    this.name,
+    this.quantity,
+  });
+
+  factory ComboItem.fromJson(Map<String, dynamic> json) {
+    return ComboItem(
+      id: json['id'],
+      name: json['name'],
+      quantity: num.tryParse(json['quantity']?.toString() ?? "0") ?? 0,
+    );
   }
 }

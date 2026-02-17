@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../blocs/Bloc Logic/kot_bloc.dart';
+import '../../blocs/Bloc Logic/void_item_bloc.dart';
 import '../../models/UserPermissions.dart';
+import '../../models/order/void_kot_items.dart';
 import '../../repositories/kitchen_repository.dart';
 import '../../repositories/zone_repository.dart';
 import '../../utils/SessionManager.dart';
@@ -7,6 +11,7 @@ import '../widgets/NavigationHelper.dart';
 import '../widgets/area_movement_notifier.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/top_bar.dart';
+import '../widgets/void_items.dart';
 
 class KitchenStatusScreen extends StatefulWidget {
   final String pin;
@@ -47,6 +52,8 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   List<String> _orderTypes = [];
   late KitchenRepository kitchenRepo;
   bool isResetEnabled = false;
+  // String? _selectedKot;
+
 
 
   @override
@@ -180,6 +187,22 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       });
     }
   }
+  List<KotItem> _buildKotItemsFromMap(
+      List<Map<String, dynamic>> lineItems,
+      ) {
+    return lineItems.map((item) {
+      return KotItem(
+        id: item['id'],
+        productId: item['product_id'],
+        productName: item['item_name'] ?? '',
+        quantity: item['quantity'] ?? 0,
+        price: (item['price'] ?? 0).toDouble(),
+        amount: ((item['price'] ?? 0) * (item['quantity'] ?? 0)).toDouble(),
+        modifiers: List<String>.from(item['modifiers'] ?? []), attributes: [],
+      );
+    }).toList();
+  }
+
 
   String _normalizeOrderType(String type) {
     return type.toLowerCase().replaceAll(" ", "");
@@ -259,6 +282,76 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     // 🔁 Reload orders with default filters
     _fetchOrders();
   }
+  void _openVoidItemsDialog(BuildContext context) {
+    if (_selectedKot == null || _selectedTable == null) return;
+
+    final List<Map<String, dynamic>> kotOrders =
+    List<Map<String, dynamic>>.from(
+      _selectedTable!['kotOrders'] ?? [],
+    );
+
+    final Map<String, dynamic> selectedKotOrder = kotOrders.firstWhere(
+          (k) => k['kot_number']?.toString() == _selectedKot,
+      orElse: () => <String, dynamic>{},
+    );
+
+    if (selectedKotOrder.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("KOT data not found")),
+      );
+      return;
+    }
+
+    // 🔒 SAFE INT PARSING (THIS FIXES THE CRASH)
+    final int kotId = selectedKotOrder['id'] is int
+        ? selectedKotOrder['id']
+        : int.tryParse(selectedKotOrder['id']?.toString() ?? '') ?? -1;
+
+    final int zoneId = selectedKotOrder['zone_id'] is int
+        ? selectedKotOrder['zone_id']
+        : int.tryParse(selectedKotOrder['zone_id']?.toString() ?? '') ?? 0;
+
+    final int parentOrderId = _selectedTable!['order_id'] is int
+        ? _selectedTable!['order_id']
+        : int.tryParse(_selectedTable!['order_id']?.toString() ?? '') ?? -1;
+
+    if (kotId <= 0 || parentOrderId <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Invalid KOT data. Please refresh order.")),
+      );
+      return;
+    }
+
+    final List<KotItem> kotItems = _buildKotItemsFromMap(
+      List<Map<String, dynamic>>.from(
+        selectedKotOrder['line_items'] ?? [],
+      ),
+    );
+
+    // ✅ NO MultiBlocProvider needed (already in main.dart)
+    showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) {
+        return VoidItemsDialog(
+          token: widget.token,
+          items: kotItems,
+          tableNo: _selectedTable!['table_name'] ?? '',
+          kotNo: _selectedKot!,
+          kotId: kotId,
+          restaurantId: int.parse(widget.restaurantId),
+          parentOrderId: parentOrderId,
+          zoneId: zoneId,
+          item: selectedKotOrder,
+          onRemark: (remark) {
+            debugPrint("Void remark: $remark");
+          },
+        );
+      },
+    );
+  }
+
+
 
 
 
@@ -690,18 +783,18 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
               await _fetchParentKotOrders(_selectedTable!);
             }
           },
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: const Color(0xFFD4EBFF), // ✅ #D4EBFF
-                  width: 1.2,
-                ),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: const Color(0xFFD4EBFF), // ✅ #D4EBFF
+                width: 1.2,
               ),
-          child: normalizeOrderType(selectedOrderType) == "dinein"
-              ? _buildDineInCard(table, kotCount, isSelected)
-              : _buildTakeawayCard(table, kotCount, isSelected),
-        ),
+            ),
+            child: normalizeOrderType(selectedOrderType) == "dinein"
+                ? _buildDineInCard(table, kotCount, isSelected)
+                : _buildTakeawayCard(table, kotCount, isSelected),
+          ),
         );
       },
     );
@@ -991,10 +1084,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
                       elevation: 0,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 6,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                       minimumSize: const Size(32, 32),
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       shape: RoundedRectangleBorder(
@@ -1002,14 +1092,12 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                       ),
                     ).copyWith(
                       backgroundColor: WidgetStateProperty.resolveWith<Color>(
-                            (states) =>
-                        states.contains(WidgetState.disabled)
+                            (states) => states.contains(WidgetState.disabled)
                             ? const Color(0xFFCBD9F0)
                             : Colors.blue,
                       ),
                       foregroundColor: WidgetStateProperty.resolveWith<Color>(
-                            (states) =>
-                        states.contains(WidgetState.disabled)
+                            (states) => states.contains(WidgetState.disabled)
                             ? Colors.white70
                             : Colors.white,
                       ),
@@ -1019,8 +1107,13 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                       'Void Items',
                       style: TextStyle(fontSize: 11),
                     ),
-                    onPressed: _selectedKot != null ? () {} : null,
+                    onPressed: _selectedKot != null
+                        ? () {
+                      _openVoidItemsDialog(context);
+                    }
+                        : null,
                   ),
+
 
                   const SizedBox(width: 6),
 

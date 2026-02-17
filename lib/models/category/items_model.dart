@@ -10,6 +10,8 @@ class Product {
   // final List<ComboItem> subItems;
   // ✅ ADD THIS
   final bool isCombo;
+  final bool? isInStock;
+
 
 
   // ✅ New fields
@@ -25,10 +27,13 @@ class Product {
     required this.name,
     required this.price,
     List<String>? images,
-     this.isVeg,
+    this.isVeg,
     required this.isCombo,
     // ✅ default false (VERY IMPORTANT)
     // this.subItems = const [],
+    // 🔥 NEW
+    this.isInStock,
+
     required this.variants,
     List<String>? modifiers,
     List<String>? addOns,
@@ -55,6 +60,8 @@ class Product {
     List<String>? addOns,
     bool? hasOptions,
     bool? isVariantProduct,
+    // 🔥 NEW
+    bool? isInStock,
   }) {
     return Product(
       id: id ?? this.id,
@@ -64,6 +71,8 @@ class Product {
       image: image ?? (images != null && images.isNotEmpty ? images.first : this.image),
       isVeg: isVeg ?? this.isVeg,
       isCombo: isCombo ?? this.isCombo,
+      // 🔥 NEW
+      isInStock: isInStock ?? this.isInStock,
 
       variants: variants ?? this.variants,
       modifiers: modifiers ?? this.modifiers,
@@ -87,6 +96,11 @@ class Product {
             ?.map((e) => ComboProduct.fromJson(e))
             .toList() ??
             [];
+    final rawStock = json['in_stock']?.toString().toLowerCase().trim();
+    // final rawStock = json['in_stock']?.toString().toLowerCase().trim();
+    final bool parsedIsInStock =
+        rawStock == 'yes' || rawStock == 'true' || rawStock == '1';
+
 
 
     // Parse modifiers and addOns safely
@@ -139,6 +153,8 @@ class Product {
       images: images,
       // subItems: parsedSubItems,
       isVeg: parsedIsVeg,
+      // 🔥 HERE
+      isInStock: parsedIsInStock,
       isCombo: json['is_combo']?.toString().toLowerCase() == 'yes',
       variants: parsedVariants,
       image: json['image'] ??
@@ -146,7 +162,7 @@ class Product {
       modifiers: modifiers,
       addOns: addOns,
       hasOptions: hasOptionsParsed,
-        isVariantProduct: parsedIsVariant,
+      isVariantProduct: parsedIsVariant,
     );
   }
 

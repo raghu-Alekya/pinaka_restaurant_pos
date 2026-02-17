@@ -84,4 +84,4 @@ class SetExistingKots extends KotEvent {
 class CollapseKOT extends KotEvent {}
 
 /// 🔹 Toggle KOT dropdown manually
-class ToggleKOTDropdown extends KotEvent {}
+// class ToggleKOTDropdown extends KotEvent {}

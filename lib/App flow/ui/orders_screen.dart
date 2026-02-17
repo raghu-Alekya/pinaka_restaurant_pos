@@ -122,7 +122,7 @@ class OrderPanel extends StatelessWidget {
                 children: [
                   // LEFT: header badges
                   // Expanded(
-                     headerBadgeRow(state),
+                  headerBadgeRow(state),
                   // ),
 
 
@@ -464,7 +464,7 @@ class OrderPanel extends StatelessWidget {
 
                               const SizedBox(width: 40),
                               SizedBox(
-                              child: headerText('Modifiers'),
+                                child: headerText('Modifiers'),
                               ),// modifier icon space
 
                               SizedBox(
@@ -574,6 +574,8 @@ class OrderPanel extends StatelessWidget {
                               zoneId: orderState.zoneId,
                               token: token,
                               tableNo: orderState.tableName,
+                              isExpanded: orderState.showKOTDropdown,
+
                             ),
                           ),
                         );
@@ -724,6 +726,8 @@ class OrderPanel extends StatelessWidget {
                         if (kot != null) {
                           orderBloc.add(AddKOT(kot));
                           kotBloc.add(AddKotToList(kot));
+                          // ✅ OPEN KOT DROPDOWN AFTER PRINT
+                          orderBloc.add(ToggleOrderKOTDropdown());
                           orderBloc.add(ClearOrder());
 
                           ScaffoldMessenger.of(context).showSnackBar(

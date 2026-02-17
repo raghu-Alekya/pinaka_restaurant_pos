@@ -1218,49 +1218,49 @@ class _DashboardScreenState extends State<DashboardScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           /// 🔹 Title + View All
-        Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Text(
-            "Recent Transactions",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          InkWell(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => BlocProvider(
-                    create: (_) => OrderstatusBloc(
-                      OrderstatusRepository(),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                "Recent Transactions",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => BlocProvider(
+                        create: (_) => OrderstatusBloc(
+                          OrderstatusRepository(),
+                        ),
+                        child:OrdersListTable(
+                          // orders: state.orders,
+                          pin: widget.pin,
+                          token: widget.token,
+                          restaurantId: widget.restaurantId,
+                          restaurantName: widget.restaurantName,
+                          userPermissions: widget.userPermissions,
+                          orders: [],
+                        ),
+                      ),
                     ),
-                    child:OrdersListTable(
-                      // orders: state.orders,
-                      pin: widget.pin,
-                      token: widget.token,
-                      restaurantId: widget.restaurantId,
-                      restaurantName: widget.restaurantName,
-                      userPermissions: widget.userPermissions,
-                      orders: [],
-                    ),
+                  );
+                },
+                child: const Text(
+                  "View All →",
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.blue,
                   ),
                 ),
-              );
-            },
-            child: const Text(
-              "View All →",
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.blue,
               ),
-            ),
+            ],
           ),
-        ],
-      ),
 
 
-        const SizedBox(height: 15),
+          const SizedBox(height: 15),
 
           Expanded(
             child: Column(
@@ -1684,33 +1684,91 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(height: 4),
 
                 /// Inventory rows
+                // ...inventoryAlerts.map(
+                //       (item) => Padding(
+                //     padding: const EdgeInsets.symmetric(vertical: 4),
+                //     child: Row(
+                //       children: [
+                //         Expanded(
+                //           child: Text(
+                //             item['name'] ?? item['in_name'] ?? '',
+                //             textAlign: TextAlign.center,
+                //             maxLines: 1,
+                //             overflow: TextOverflow.ellipsis,
+                //           ),
+                //         ),
+                //         // Expanded(
+                //         //   child: Text(
+                //         //     item['status'] ?? '',
+                //         //     textAlign: TextAlign.start,
+                //         //     style: TextStyle(
+                //         //       fontWeight: FontWeight.bold,
+                //         //       color: (item['status'] == "Out of Stock")
+                //         //           ? const Color(0xFFAA3028) // red
+                //         //           : Colors.orange, // low stock
+                //         //     ),
+                //         //   ),
+                //         // ),
+                //         // Expanded(
+                //         //   child: Text(
+                //         //     "Reorder",
+                //         //     textAlign: TextAlign.center,
+                //         //     style: const TextStyle(
+                //         //       color: Color(0xFFAA3028),
+                //         //       fontWeight: FontWeight.bold,
+                //         //     ),
+                //         //   ),
+                //         // ),
+                //
+                //       ],
+                //     ),
+                //   ),
+                // ),
                 ...inventoryAlerts.map(
-                      (item) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            item['name'] ?? item['in_name'] ?? '',
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Expanded(
-                          child: Text(
-                            "Reorder",
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Color(0xFFAA3028),
-                              fontWeight: FontWeight.bold,
+                      (item) {
+                    final name = item['name'] ?? '';
+                    final status = item['status'] ?? '';
+
+                    Color getStatusColor(String status) {
+                      final s = status.toLowerCase();
+                      if (s.contains("out")) return const Color(0xFFAA3028);
+                      if (s.contains("low")) return Colors.orange;
+                      if (s.contains("critical")) return Colors.red.shade700;
+                      return Colors.grey;
+                    }
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          /// NAME
+                          Expanded(
+                            child: Text(
+                              name,
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
+
+                          /// STATUS
+                          Expanded(
+                            child: Text(
+                              status,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: getStatusColor(status),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
+
+
               ],
             ),
           ),

@@ -90,7 +90,8 @@ class CancelOrder extends OrderEvent {
 }
 
 /// 6️⃣ Toggle KOT dropdown visibility
-class ToggleKOTDropdown extends OrderEvent {}
+/// Toggle KOT dropdown visibility (ORDER UI)
+class ToggleOrderKOTDropdown extends OrderEvent {}
 
 /// 7️⃣ Update quantity of an order item
 class UpdateOrderItemQuantity extends OrderEvent {

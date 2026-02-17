@@ -37,7 +37,8 @@ class ViewAllKOTDropdown extends StatefulWidget {
   final int zoneId;
   final String token;
   final String tableNo;
-  final List<KotModel> kots; // ✅ ADD THIS
+  final List<KotModel> kots;
+  final bool isExpanded; // ✅ ADD THIS
 
   const ViewAllKOTDropdown({
     super.key,
@@ -46,7 +47,8 @@ class ViewAllKOTDropdown extends StatefulWidget {
     required this.zoneId,
     required this.tableNo,
     required this.token,
-    required this.kots, // ✅ FIXED
+    required this.kots,
+    required this.isExpanded, // ✅ FIXED
   });
 
   @override
@@ -83,6 +85,8 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
       _expanded = false;
     }
   }
+
+
   Map<String, String> extractZoneNames(dynamic zoneResponse) {
     // ✅ CASE 1: API already returns List<Map>
     if (zoneResponse is List) {
@@ -149,13 +153,14 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
         // Listen to OrderBloc to close dropdown when new item added
         BlocListener<OrderBloc, OrderState>(
           listener: (context, state) {
-            final currentItemCount = state.orderItems.length;
-            if (currentItemCount > _previousOrderItemCount && _expanded) {
-              setState(() => _expanded = false);
+            if (_expanded != state.showKOTDropdown) {
+              setState(() {
+                _expanded = state.showKOTDropdown;
+              });
             }
-            _previousOrderItemCount = currentItemCount;
           },
         ),
+
         // ✅ NEW: Refresh KOT list when KOT created
         BlocListener<OrderBloc, OrderState>(
           listener: (context, state) {
@@ -180,7 +185,11 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
             children: [
               // Dropdown header
               GestureDetector(
-                onTap: () => setState(() => _expanded = !_expanded),
+                onTap: () {
+                  context.read<OrderBloc>().add(ToggleOrderKOTDropdown());
+                },
+
+
                 child: Container(
                   height: 30,
                   width: double.infinity,
@@ -201,7 +210,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                         ),
                       ),
                       Transform.rotate(
-                        angle: _expanded ? 3.14 : 0,
+                        angle:  widget.isExpanded ? 3.14 : 0,
                         child: const Icon(
                           Icons.keyboard_arrow_down,
                           color: Colors.white,
@@ -216,163 +225,164 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
 
               // Expanded KOT content
               // if (_expanded)
-                if (_expanded)
-                  Container(
-                    width: double.infinity,
-                    height: 420,
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: kCardBg,
-                      borderRadius: BorderRadius.circular(10),
-                      // ✅ Border
-                      border: Border.all(
-                        color: Colors.black.withOpacity(0.08),
-                        width: 1,
-                      ),
+              if (widget.isExpanded)
 
-                      // ✅ Shadow
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.10),
-                          blurRadius: 12,
-                          spreadRadius: 2,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+                Container(
+                  width: double.infinity,
+                  height: 420,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: kCardBg,
+                    borderRadius: BorderRadius.circular(10),
+                    // ✅ Border
+                    border: Border.all(
+                      color: Colors.black.withOpacity(0.08),
+                      width: 1,
                     ),
-                    child: kotList.isEmpty
-                        ? const Center(
-                      child: Text(
-                        "No KOTs Available",
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    )
-                        : SingleChildScrollView(
-                      child: Column(
-                        children: kotList.map((kot) {
-                          final kotKey = kot.kotId.toString();
-                          final isOpen = _kotExpanded[kotKey] ?? false;
 
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.transparent,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Column(
-                              children: [
-                                // ─────────── KOT HEADER (Top Row) ───────────
-                                GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _kotExpanded[kotKey] = !isOpen;
-                                    });
-                                  },
-                                  child: Container(
-                                    height: 44,
-                                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(10),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.05),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 2),
+                    // ✅ Shadow
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.10),
+                        blurRadius: 12,
+                        spreadRadius: 2,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: kotList.isEmpty
+                      ? const Center(
+                    child: Text(
+                      "No KOTs Available",
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  )
+                      : SingleChildScrollView(
+                    child: Column(
+                      children: kotList.map((kot) {
+                        final kotKey = kot.kotId.toString();
+                        final isOpen = _kotExpanded[kotKey] ?? false;
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.transparent,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            children: [
+                              // ─────────── KOT HEADER (Top Row) ───────────
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _kotExpanded[kotKey] = !isOpen;
+                                  });
+                                },
+                                child: Container(
+                                  height: 44,
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(10),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.05),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 10, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: kKotHeaderBg,
+                                          borderRadius: BorderRadius.circular(8),
                                         ),
-                                      ],
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 10, vertical: 6),
-                                          decoration: BoxDecoration(
-                                            color: kKotHeaderBg,
-                                            borderRadius: BorderRadius.circular(8),
+                                        child: Text(
+                                          (kot.kotNumber?.isNotEmpty ?? false)
+                                              ? kot.kotNumber!
+                                              : "KOT#${kot.kotId}",
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.black,
                                           ),
-                                          child: Text(
-                                            (kot.kotNumber?.isNotEmpty ?? false)
-                                                ? kot.kotNumber!
-                                                : "KOT#${kot.kotId}",
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w700,
-                                              color: Colors.black,
-                                            ),
-                                          ),
                                         ),
-                                        const Spacer(),
-                                        Icon(
-                                          isOpen
-                                              ? Icons.keyboard_arrow_up
-                                              : Icons.keyboard_arrow_down,
-                                          size: 18,
-                                          color: Colors.black,
-                                        ),
-                                      ],
-                                    ),
+                                      ),
+                                      const Spacer(),
+                                      Icon(
+                                        isOpen
+                                            ? Icons.keyboard_arrow_up
+                                            : Icons.keyboard_arrow_down,
+                                        size: 18,
+                                        color: Colors.black,
+                                      ),
+                                    ],
                                   ),
                                 ),
+                              ),
 
-                                // ─────────── KOT BODY ───────────
-                                if (isOpen)
-                                  Container(
-                                    margin: const EdgeInsets.only(top: 8),
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: kKotHeaderBg,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        // Time + Buttons Row
-                                        MultiBlocListener(
+                              // ─────────── KOT BODY ───────────
+                              if (isOpen)
+                                Container(
+                                  margin: const EdgeInsets.only(top: 8),
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: kKotHeaderBg,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      // Time + Buttons Row
+                                      MultiBlocListener(
                                         listeners: [
-                                        // ✅ 1) Load KOT Line Items → open dialog
-                                        BlocListener<KotLineItemsBloc, KotLineItemsState>(
-                                    listener: (context, state) async {
-                                      if (state is KotLineItemsLoaded) {
-                                        final response = state.response;
+                                          // ✅ 1) Load KOT Line Items → open dialog
+                                          BlocListener<KotLineItemsBloc, KotLineItemsState>(
+                                            listener: (context, state) async {
+                                              if (state is KotLineItemsLoaded) {
+                                                final response = state.response;
 
-                                        await showDialog(
-                                          context: context,
-                                          barrierDismissible: true,
-                                          builder: (dialogContext) {
-                                            return BlocProvider.value(
-                                              value: context.read<UpdatekotBloc>(), // ✅ pass existing bloc
-                                              child: VoidItemsDialog(
-                                                items: response.items,
-                                                tableNo: widget.tableNo,
-                                                kotNo: response.kotNumber,
-                                                kotId: response.kotId,
-                                                restaurantId: response.restaurantId,
-                                                zoneId: response.zoneId,
-                                                token: widget.token,
-                                                parentOrderId: context.read<KotBloc>().currentParentOrderId,
-                                                item: kot,
-                                                onRemark: (value) {
-                                                  debugPrint("Remark: $value");
-                                                },
-                                              ),
-                                            );
-                                          },
-                                        );
+                                                await showDialog(
+                                                  context: context,
+                                                  barrierDismissible: true,
+                                                  builder: (dialogContext) {
+                                                    return BlocProvider.value(
+                                                      value: context.read<UpdatekotBloc>(), // ✅ pass existing bloc
+                                                      child: VoidItemsDialog(
+                                                        items: response.items,
+                                                        tableNo: widget.tableNo,
+                                                        kotNo: response.kotNumber,
+                                                        kotId: response.kotId,
+                                                        restaurantId: response.restaurantId,
+                                                        zoneId: response.zoneId,
+                                                        token: widget.token,
+                                                        parentOrderId: context.read<KotBloc>().currentParentOrderId,
+                                                        item: kot,
+                                                        onRemark: (value) {
+                                                          debugPrint("Remark: $value");
+                                                        },
+                                                      ),
+                                                    );
+                                                  },
+                                                );
 
-                                      }
+                                              }
 
-                                      if (state is KotLineItemsError) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text(state.message)),
-                                        );
-                                      }
-                                    },
-                                    ),
+                                              if (state is KotLineItemsError) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(content: Text(state.message)),
+                                                );
+                                              }
+                                            },
+                                          ),
 
-                                        // ✅ 2) After Update/Void success → Refresh KOT list automatically
+                                          // ✅ 2) After Update/Void success → Refresh KOT list automatically
                                           BlocListener<UpdatekotBloc, UpdatekotState>(
                                             listener: (context, state) {
                                               if (state is UpdatekotSuccess) {
@@ -401,406 +411,406 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                             },
                                           ),
 
-                                          ],
-                                    child: Row(
-                                    children: [
-                                    Text(
-                                        TimeOfDay.fromDateTime(kot.time).format(context),
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                const Spacer(),
+                                        ],
+                                        child: Row(
+                                          children: [
+                                            Text(
+                                              TimeOfDay.fromDateTime(kot.time).format(context),
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w700,
+                                                color: Colors.black,
+                                              ),
+                                            ),
+                                            const Spacer(),
 
-                                // ✅ Void Items Button
-                                SizedBox(
-                                  height: 32,
-                                  child: ElevatedButton.icon(
-                                    onPressed: () {
-                                      if (kot.kotId == null) {
-                                        debugPrint("❌ kotId is null");
-                                        return;
-                                      }
+                                            // ✅ Void Items Button
+                                            SizedBox(
+                                              height: 32,
+                                              child: ElevatedButton.icon(
+                                                onPressed: () {
+                                                  if (kot.kotId == null) {
+                                                    debugPrint("❌ kotId is null");
+                                                    return;
+                                                  }
 
-                                      context.read<KotLineItemsBloc>().add(
-                                        FetchKotLineItems(
-                                          kotId: kot.kotId!,
-                                          restaurantId: widget.restaurantId,
-                                          zoneId: widget.zoneId,
-                                          token: widget.token,
-                                        ),
-                                      );
-                                    },
-                                    icon: Image.asset(
-                                      "assets/icon/Void.png",
-                                      height: 16,
-                                      width: 16,
-                                      color: Colors.white,
-                                    ),
-                                    label: const Text(
-                                      "Void Items",
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF1E63FF),
-                                      elevation: 0,
-                                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                    ),
-                                  ),
-                                ),
+                                                  context.read<KotLineItemsBloc>().add(
+                                                    FetchKotLineItems(
+                                                      kotId: kot.kotId!,
+                                                      restaurantId: widget.restaurantId,
+                                                      zoneId: widget.zoneId,
+                                                      token: widget.token,
+                                                    ),
+                                                  );
+                                                },
+                                                icon: Image.asset(
+                                                  "assets/icon/Void.png",
+                                                  height: 16,
+                                                  width: 16,
+                                                  color: Colors.white,
+                                                ),
+                                                label: const Text(
+                                                  "Void Items",
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: const Color(0xFF1E63FF),
+                                                  elevation: 0,
+                                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius: BorderRadius.circular(8),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
 
-                                const SizedBox(width: 10),
+                                            const SizedBox(width: 10),
 
-                                // ✅ Transfer KOT Button
-                          SizedBox(
-                          height: 32,
-                          child: ElevatedButton.icon(
-                          onPressed: () async {
-                          debugPrint("🔥 STEP 0: Transfer KOT button tapped");
+                                            // ✅ Transfer KOT Button
+                                            SizedBox(
+                                              height: 32,
+                                              child: ElevatedButton.icon(
+                                                onPressed: () async {
+                                                  debugPrint("🔥 STEP 0: Transfer KOT button tapped");
 
-                          try {
-                          // ✅ STEP 1: TOKEN
-                          final token = await SessionManager.getToken();
-                          if (token == null || token.isEmpty) return;
+                                                  try {
+                                                    // ✅ STEP 1: TOKEN
+                                                    final token = await SessionManager.getToken();
+                                                    if (token == null || token.isEmpty) return;
 
-                          // ✅ STEP 2: ITEMS
-                          final transferItems = kot.items.map((e) {
-                          return TransferKotItem(
-                          name: e.itemName ?? "",
-                          note: e.note.isNotEmpty
-                          ? e.note
-                              : (e.modifiers.isNotEmpty
-                          ? e.modifiers.join(", ")
-                              : ""),
-                          qty: e.quantity ?? 1,
-                          amount: e.totalWithAddons,
-                          );
-                          }).toList();
+                                                    // ✅ STEP 2: ITEMS
+                                                    final transferItems = kot.items.map((e) {
+                                                      return TransferKotItem(
+                                                        name: e.itemName ?? "",
+                                                        note: e.note.isNotEmpty
+                                                            ? e.note
+                                                            : (e.modifiers.isNotEmpty
+                                                            ? e.modifiers.join(", ")
+                                                            : ""),
+                                                        qty: e.quantity ?? 1,
+                                                        amount: e.totalWithAddons,
+                                                      );
+                                                    }).toList();
 
-                          final zoneRepository = ZoneRepository();
-                          final zoneResponse = await zoneRepository.getAllZones(token);
-                          // 🔍 DEBUG HERE (IMPORTANT)
-                          debugPrint("🧪 zoneResponse runtimeType = ${zoneResponse.runtimeType}");
-                          debugPrint("🧪 zoneResponse value = $zoneResponse");
+                                                    final zoneRepository = ZoneRepository();
+                                                    final zoneResponse = await zoneRepository.getAllZones(token);
+                                                    // 🔍 DEBUG HERE (IMPORTANT)
+                                                    debugPrint("🧪 zoneResponse runtimeType = ${zoneResponse.runtimeType}");
+                                                    debugPrint("🧪 zoneResponse value = $zoneResponse");
 
 // ✅ FIXED
 //                             final zoneResponse = await zoneRepository.getAllZones(token);
 
-                            final Map<String, String> zoneNames =
-                            extractZoneNames(zoneResponse);
+                                                    final Map<String, String> zoneNames =
+                                                    extractZoneNames(zoneResponse);
 
-                            // ✅ STEP 3: FETCH TABLES
-                          final tableRepository = TableRepository();
-                          final tableResponse = await tableRepository.getAllTables(token);
+                                                    // ✅ STEP 3: FETCH TABLES
+                                                    final tableRepository = TableRepository();
+                                                    final tableResponse = await tableRepository.getAllTables(token);
 
-                          debugPrint("🧪 TABLE RESPONSE FIRST ITEM = ${tableResponse.isNotEmpty ? tableResponse.first : 'EMPTY'}");
-
-
-
-                          // ✅ STEP 4: BUILD ZONE → TABLE MAP (String keys)
-                          final Map<String, List<String>> zoneTables = {};
-                          final Map<String, int> tableIds = {};
-                          final Map<String, int> zoneIds = {};
-                          final Map<String, String> tableStatus = {};
-                          // final Map<String, String> zoneNames =
-                          // buildZoneNameMap(tableResponse);
-                          //   final zoneNames = buildZoneNameMapFromZones(zoneDetails);
+                                                    debugPrint("🧪 TABLE RESPONSE FIRST ITEM = ${tableResponse.isNotEmpty ? tableResponse.first : 'EMPTY'}");
 
 
 
-                            for (final table in tableResponse) {
-                          final zoneId = table['zone_id'];
-                          final tableName = table['table_name'];
-                          final tableId = table['table_id'];
-                          final status = table['status'];
-
-                          if (zoneId != null && tableName != null) {
-                          final key = zoneId.toString();
-                          zoneTables.putIfAbsent(key, () => []);
-                          zoneTables[key]!.add(tableName);
-                          }
-
-                          if (tableName != null && tableId != null) {
-                          tableIds[tableName] = tableId;
-                          }
-
-                          if (zoneId != null) {
-                          zoneIds[zoneId.toString()] = zoneId;
-                          }
-                          if (tableName != null && status != null) {
-                            tableStatus[tableName] = status; // ✅ STORE STATUS
-                          }
-                          }
-
-                          debugPrint("🟢 ZONE TABLES = $zoneTables");
-                          debugPrint("🟢 TABLE IDS = $tableIds");
-                          debugPrint("🟢 ZONE IDS = $zoneIds");
-                          debugPrint("🧪 widget.tableNo = '${widget.tableNo}'");
-                          debugPrint("🧪 tableIds keys = ${tableIds.keys.toList()}");
-                          debugPrint("🟢 TABLE STATUS = $tableStatus");
-
-
-                          // ✅ STEP 4.9: HARD GUARDS
-                          if (!context.mounted) return;
-
-                          if (widget.parentOrderId == null ||
-                          widget.restaurantId == null ||
-                          kot.kotId == null ||
-                          !tableIds.containsKey(widget.tableNo)) {
-                          debugPrint("❌ Missing required IDs");
-                          return;
-                          }
-                          String getZoneFromTable(
-                              String tableName,
-                              Map<String, List<String>> zoneTables,
-                              ) {
-                            for (final entry in zoneTables.entries) {
-                              if (entry.value.contains(tableName)) {
-                                return entry.key;
-                              }
-                            }
-                            return '';
-                          }
-                          final kotZone = getZoneFromTable(
-                            widget.tableNo,
-                            zoneTables,
-                          );
-
-
-                          // ✅ STEP 5: OPEN DIALOG
-                          final result = await showDialog(
-                            context: context,
-                            barrierDismissible: false,
-                            builder: (dialogContext) {
-                              return BlocProvider(
-                                create: (_) => TransferKotBloc(
-                                  repository: KotTransferRepository(),
-                                ),
-                              //     final kotZone = findZoneForTable(
-                              // widget.tableNo,
-                              // zoneTables,
-                              // );
-
-                              child: TransferKOTDialog(
-                                tableName: widget.tableNo,
-                                kotNo: (kot.kotNumber?.isNotEmpty ?? false)
-                                    ? kot.kotNumber!
-                                    : "KOT#${kot.kotId}",
-                                dateTime: kot.time ?? DateTime.now(),
-                                items: transferItems,
-                                zoneTables: zoneTables,
-
-                                orderId: widget.parentOrderId!,
-                                kotId: kot.kotId!,
-                                fromTableId: tableIds[widget.tableNo]!,
-                                restaurantId: widget.restaurantId!,
-                                authToken: widget.token,
-
-                                zoneIds: zoneIds,
-                                tableIds: tableIds,
-                                tableStatus: tableStatus,
-
-                                kotZone: kotZone,
-                                zoneNames: zoneNames,
-                              ),
-
-                              );
-                            },
-                          );
-                          if (result != null && result is Map) {
-                            // final newParentId = result["newParentId"];
-
-                            debugPrint("🔁 Transfer done → refreshing KOT list");
-
-                            context.read<KotBloc>().add(
-                              FetchKots(
-                                parentOrderId: widget.parentOrderId, // ✅ SAME ID
-                                restaurantId: widget.restaurantId!,
-                                zoneId: widget.zoneId,
-                                token: widget.token,
-                                // forceRefresh: true,
-                              ),
-                            );
-
-                          }
+                                                    // ✅ STEP 4: BUILD ZONE → TABLE MAP (String keys)
+                                                    final Map<String, List<String>> zoneTables = {};
+                                                    final Map<String, int> tableIds = {};
+                                                    final Map<String, int> zoneIds = {};
+                                                    final Map<String, String> tableStatus = {};
+                                                    // final Map<String, String> zoneNames =
+                                                    // buildZoneNameMap(tableResponse);
+                                                    //   final zoneNames = buildZoneNameMapFromZones(zoneDetails);
 
 
 
-                          } catch (e, s) {
-                          debugPrint("❌ Transfer KOT failed: $e");
-                          debugPrintStack(stackTrace: s);
-                          }
-                          },
-                          icon: Image.asset(
-                          "assets/icon/Void.png",
-                          height: 16,
-                          width: 16,
-                          color: Colors.black,
-                          ),
-                          label: const Text(
-                          "Transfer KOT",
-                          style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black,
-                          ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFFC107),
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          ),
-                          ),
-                          ),
-                          ),
+                                                    for (final table in tableResponse) {
+                                                      final zoneId = table['zone_id'];
+                                                      final tableName = table['table_name'];
+                                                      final tableId = table['table_id'];
+                                                      final status = table['status'];
+
+                                                      if (zoneId != null && tableName != null) {
+                                                        final key = zoneId.toString();
+                                                        zoneTables.putIfAbsent(key, () => []);
+                                                        zoneTables[key]!.add(tableName);
+                                                      }
+
+                                                      if (tableName != null && tableId != null) {
+                                                        tableIds[tableName] = tableId;
+                                                      }
+
+                                                      if (zoneId != null) {
+                                                        zoneIds[zoneId.toString()] = zoneId;
+                                                      }
+                                                      if (tableName != null && status != null) {
+                                                        tableStatus[tableName] = status; // ✅ STORE STATUS
+                                                      }
+                                                    }
+
+                                                    debugPrint("🟢 ZONE TABLES = $zoneTables");
+                                                    debugPrint("🟢 TABLE IDS = $tableIds");
+                                                    debugPrint("🟢 ZONE IDS = $zoneIds");
+                                                    debugPrint("🧪 widget.tableNo = '${widget.tableNo}'");
+                                                    debugPrint("🧪 tableIds keys = ${tableIds.keys.toList()}");
+                                                    debugPrint("🟢 TABLE STATUS = $tableStatus");
 
 
-                          ],
-                            ),
-                          ),
+                                                    // ✅ STEP 4.9: HARD GUARDS
+                                                    if (!context.mounted) return;
+
+                                                    if (widget.parentOrderId == null ||
+                                                        widget.restaurantId == null ||
+                                                        kot.kotId == null ||
+                                                        !tableIds.containsKey(widget.tableNo)) {
+                                                      debugPrint("❌ Missing required IDs");
+                                                      return;
+                                                    }
+                                                    String getZoneFromTable(
+                                                        String tableName,
+                                                        Map<String, List<String>> zoneTables,
+                                                        ) {
+                                                      for (final entry in zoneTables.entries) {
+                                                        if (entry.value.contains(tableName)) {
+                                                          return entry.key;
+                                                        }
+                                                      }
+                                                      return '';
+                                                    }
+                                                    final kotZone = getZoneFromTable(
+                                                      widget.tableNo,
+                                                      zoneTables,
+                                                    );
 
 
-                          const SizedBox(height: 10),
+                                                    // ✅ STEP 5: OPEN DIALOG
+                                                    final result = await showDialog(
+                                                      context: context,
+                                                      barrierDismissible: false,
+                                                      builder: (dialogContext) {
+                                                        return BlocProvider(
+                                                          create: (_) => TransferKotBloc(
+                                                            repository: KotTransferRepository(),
+                                                          ),
+                                                          //     final kotZone = findZoneForTable(
+                                                          // widget.tableNo,
+                                                          // zoneTables,
+                                                          // );
 
-                                        // Items Table Container
-                                        Container(
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
-                                          child: Column(
-                                            children: [
-                                              ...kot.items.asMap().entries.map((entry) {
-                                                final index = entry.key;
-                                                final item = entry.value;
+                                                          child: TransferKOTDialog(
+                                                            tableName: widget.tableNo,
+                                                            kotNo: (kot.kotNumber?.isNotEmpty ?? false)
+                                                                ? kot.kotNumber!
+                                                                : "KOT#${kot.kotId}",
+                                                            dateTime: kot.time ?? DateTime.now(),
+                                                            items: transferItems,
+                                                            zoneTables: zoneTables,
 
-                                                return Column(
-                                                  children: [
-                                                    Padding(
-                                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                                      child: Row(
-                                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                                        children: [
-                                                          SizedBox(
-                                                            width: 20,
+                                                            orderId: widget.parentOrderId!,
+                                                            kotId: kot.kotId!,
+                                                            fromTableId: tableIds[widget.tableNo]!,
+                                                            restaurantId: widget.restaurantId!,
+                                                            authToken: widget.token,
+
+                                                            zoneIds: zoneIds,
+                                                            tableIds: tableIds,
+                                                            tableStatus: tableStatus,
+
+                                                            kotZone: kotZone,
+                                                            zoneNames: zoneNames,
+                                                          ),
+
+                                                        );
+                                                      },
+                                                    );
+                                                    if (result != null && result is Map) {
+                                                      // final newParentId = result["newParentId"];
+
+                                                      debugPrint("🔁 Transfer done → refreshing KOT list");
+
+                                                      context.read<KotBloc>().add(
+                                                        FetchKots(
+                                                          parentOrderId: widget.parentOrderId, // ✅ SAME ID
+                                                          restaurantId: widget.restaurantId!,
+                                                          zoneId: widget.zoneId,
+                                                          token: widget.token,
+                                                          // forceRefresh: true,
+                                                        ),
+                                                      );
+
+                                                    }
+
+
+
+                                                  } catch (e, s) {
+                                                    debugPrint("❌ Transfer KOT failed: $e");
+                                                    debugPrintStack(stackTrace: s);
+                                                  }
+                                                },
+                                                icon: Image.asset(
+                                                  "assets/icon/Void.png",
+                                                  height: 16,
+                                                  width: 16,
+                                                  color: Colors.black,
+                                                ),
+                                                label: const Text(
+                                                  "Transfer KOT",
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.black,
+                                                  ),
+                                                ),
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: const Color(0xFFFFC107),
+                                                  elevation: 0,
+                                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius: BorderRadius.circular(8),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+
+
+                                          ],
+                                        ),
+                                      ),
+
+
+                                      const SizedBox(height: 10),
+
+                                      // Items Table Container
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Column(
+                                          children: [
+                                            ...kot.items.asMap().entries.map((entry) {
+                                              final index = entry.key;
+                                              final item = entry.value;
+
+                                              return Column(
+                                                children: [
+                                                  Padding(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                                    child: Row(
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      children: [
+                                                        SizedBox(
+                                                          width: 20,
+                                                          child: Text(
+                                                            "${index + 1}",
+                                                            style: const TextStyle(fontSize: 12),
+                                                          ),
+                                                        ),
+
+                                                        // ✅ Name + modifier + addons
+                                                        Expanded(
+                                                          child: Column(
+                                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                                            children: [
+                                                              Text(
+                                                                item.name,
+                                                                style: const TextStyle(
+                                                                  fontSize: 13,
+                                                                  fontWeight: FontWeight.w500,
+                                                                ),
+                                                                overflow: TextOverflow.ellipsis,
+                                                              ),
+
+                                                              if (item.modifiers.isNotEmpty)
+                                                                Padding(
+                                                                  padding: const EdgeInsets.only(top: 2),
+                                                                  child: Text(
+                                                                    item.modifiers.join(", "),
+                                                                    style: const TextStyle(
+                                                                      fontSize: 10,
+                                                                      color: Colors.red,
+                                                                      fontWeight: FontWeight.w600,
+                                                                    ),
+                                                                  ),
+                                                                ),
+
+                                                              if (item.addOns.isNotEmpty)
+                                                                Padding(
+                                                                  padding: const EdgeInsets.only(top: 2),
+                                                                  child: Text(
+                                                                    item.addOns.entries.map((e) {
+                                                                      final qty = e.value['quantity'] ?? 0;
+                                                                      return "${e.key} x$qty";
+                                                                    }).join(", "),
+                                                                    style: const TextStyle(
+                                                                      fontSize: 10,
+                                                                      color: Colors.blue,
+                                                                      fontWeight: FontWeight.w600,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                            ],
+                                                          ),
+                                                        ),
+
+                                                        SizedBox(
+                                                          width: 40,
+                                                          child: Center(
                                                             child: Text(
-                                                              "${index + 1}",
+                                                              "${item.quantity}",
                                                               style: const TextStyle(fontSize: 12),
                                                             ),
                                                           ),
+                                                        ),
 
-                                                          // ✅ Name + modifier + addons
-                                                          Expanded(
-                                                            child: Column(
-                                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                                              children: [
-                                                                Text(
-                                                                  item.name,
-                                                                  style: const TextStyle(
-                                                                    fontSize: 13,
-                                                                    fontWeight: FontWeight.w500,
-                                                                  ),
-                                                                  overflow: TextOverflow.ellipsis,
+                                                        SizedBox(
+                                                          width: 70,
+                                                          child: Column(
+                                                            crossAxisAlignment: CrossAxisAlignment.end,
+                                                            children: [
+                                                              Text(
+                                                                item.amount.toStringAsFixed(2),
+                                                                style: const TextStyle(
+                                                                  fontSize: 13,
+                                                                  fontWeight: FontWeight.w700,
                                                                 ),
-
-                                                                if (item.modifiers.isNotEmpty)
-                                                                  Padding(
-                                                                    padding: const EdgeInsets.only(top: 2),
-                                                                    child: Text(
-                                                                      item.modifiers.join(", "),
-                                                                      style: const TextStyle(
-                                                                        fontSize: 10,
-                                                                        color: Colors.red,
-                                                                        fontWeight: FontWeight.w600,
-                                                                      ),
-                                                                    ),
-                                                                  ),
-
-                                                                if (item.addOns.isNotEmpty)
-                                                                  Padding(
-                                                                    padding: const EdgeInsets.only(top: 2),
-                                                                    child: Text(
-                                                                      item.addOns.entries.map((e) {
-                                                                        final qty = e.value['quantity'] ?? 0;
-                                                                        return "${e.key} x$qty";
-                                                                      }).join(", "),
-                                                                      style: const TextStyle(
-                                                                        fontSize: 10,
-                                                                        color: Colors.blue,
-                                                                        fontWeight: FontWeight.w600,
-                                                                      ),
-                                                                    ),
-                                                                  ),
-                                                              ],
-                                                            ),
-                                                          ),
-
-                                                          SizedBox(
-                                                            width: 40,
-                                                            child: Center(
-                                                              child: Text(
-                                                                "${item.quantity}",
-                                                                style: const TextStyle(fontSize: 12),
                                                               ),
-                                                            ),
+                                                              const SizedBox(height: 2),
+                                                              // Text(
+                                                              //   item.amount.toStringAsFixed(2),
+                                                              //   style: const TextStyle(
+                                                              //     fontSize: 11,
+                                                              //     color: Colors.grey,
+                                                              //     fontWeight: FontWeight.w500,
+                                                              //   ),
+                                                              // ),
+                                                            ],
                                                           ),
-
-                                                          SizedBox(
-                                                            width: 70,
-                                                            child: Column(
-                                                              crossAxisAlignment: CrossAxisAlignment.end,
-                                                              children: [
-                                                                Text(
-                                                                  item.amount.toStringAsFixed(2),
-                                                                  style: const TextStyle(
-                                                                    fontSize: 13,
-                                                                    fontWeight: FontWeight.w700,
-                                                                  ),
-                                                                ),
-                                                                const SizedBox(height: 2),
-                                                                // Text(
-                                                                //   item.amount.toStringAsFixed(2),
-                                                                //   style: const TextStyle(
-                                                                //     fontSize: 11,
-                                                                //     color: Colors.grey,
-                                                                //     fontWeight: FontWeight.w500,
-                                                                //   ),
-                                                                // ),
-                                                              ],
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
+                                                        ),
+                                                      ],
                                                     ),
-                                                    const Divider(height: 1, thickness: 1, color: kDivider),
-                                                  ],
-                                                );
-                                              }).toList(),
-                                            ],
-                                          ),
+                                                  ),
+                                                  const Divider(height: 1, thickness: 1, color: kDivider),
+                                                ],
+                                              );
+                                            }).toList(),
+                                          ],
                                         ),
+                                      ),
 
-                                      ],
-                                    ),
+                                    ],
                                   ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                      ),
+                                ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
                     ),
                   ),
+                ),
 
             ],
           );

@@ -19,6 +19,7 @@ class AppConstants {
   static const String getRevenueByFiltersEndpoint = '$baseApiPath/merchant-dashboard/get-revenue-by-filters';
   static const String topProductsSoldEndpoint = '$baseApiPath/merchant-dashboard/top-products-sold';
   static const String topCategoriesSoldEndpoint = '$baseApiPath/merchant-dashboard/top-categories-sold';
+  static const String inventoryAlertsEndpoint = '$baseApiPath/merchant-dashboard/get-inventory-alerts';
 
   // Table Management
   static const String createTableEndpoint = '$baseApiPath/tables/create-table';
@@ -42,7 +43,7 @@ class AppConstants {
   // Employee Attendance
   static const String currentShiftEmployeesEndpoint = '$baseApiPath/employee-attendance/current-shift';
   static const String employeeAttendanceEndpoint = '$baseApiPath/employee-attendance';
-  static const String inventoryAlertsEndpoint = '$baseApiPath/employee-attendance/get-inventory-alerts';
+  // static const String inventoryAlertsEndpoint = '$baseApiPath/employee-attendance/get-inventory-alerts';
   static const String completedOrdersEndpoint = '$baseApiPath/employee-attendance/get-all-completed-orders';
 
   // Shift Management

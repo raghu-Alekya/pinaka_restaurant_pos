@@ -10,6 +10,7 @@ import '../../models/order_list/order_list_model.dart';
 import '../../repositories/edit_order_repository.dart';
 import '../../repositories/order_list_repository.dart';
 import '../../utils/SessionManager.dart';
+import '../../utils/logger.dart';
 import '../widgets/navigationhelper.dart';
 import '../widgets/top_bar.dart';
 import '../widgets/bottom_nav_bar.dart';
@@ -63,6 +64,9 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
   bool _isUpdateEnabled = false; // initially disabled
 
   Future<List<OrderlistModel>>? _ordersFuture;
+  // State variable to store voided items per KOT
+  Map<int, List<VoidedItem>> _voidedItemsMap = {};
+
 
   int? _selectedKotId;
   KotOrder? _selectedKot;
@@ -87,7 +91,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
   bool _isVoidedLoading = false;
   int? _lastFetchedKotId;
   final Map<int, List<VoidedItem>> _voidedCache = {};
-
+  final OrderstatusRepository repo = OrderstatusRepository();
 
 
 
@@ -242,21 +246,35 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         }).toList(),
       );
     });
+    _fetchVoidedItems(kotId);
   }
 
+
+  Future<void> _fetchVoidedItems(int kotId) async {
+    try {
+      final response = await repo.fetchVoidedItems(
+        kotOrderId: kotId,
+        token:  widget.token, // your auth token
+      );
+      //   await _fetchVoidedItemsAfterUpdate(kotId);
+      setState(() {
+        _voidedItemsMap[kotId] = response.items;
+      });
+    } catch (e) {
+      AppLogger.error("Error fetching voided items for KOT $kotId: $e");
+    }
+  }
   VoidedItem? _getVoidedItemByItemId(int? itemId) {
     if (itemId == null) return null;
 
+    final voidedItems = _voidedItemsMap[_selectedKotId] ?? [];
+
     try {
-      return _voidedItems.firstWhere(
-            (v) => v.itemId == itemId,
-      );
+      return voidedItems.firstWhere((v) => v.itemId == itemId);
     } catch (_) {
       return null;
     }
   }
-
-
 
 
   List<String> parseModifiers(dynamic raw) {
@@ -521,12 +539,20 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       backgroundColor: const Color(0xFFF1F1F3),
 
 
-      appBar: TopBar(
-        token: widget.token,
-        pin: widget.pin,
-        userPermissions: _userPermissions,
-        onPermissionsReceived: (p) => setState(() => _userPermissions = p),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: IgnorePointer(
+          ignoring: true, //  disables all touch interaction
+          child: TopBar(
+            token: widget.token,
+            pin: widget.pin,
+            userPermissions: _userPermissions,
+            onPermissionsReceived: (p) =>
+                setState(() => _userPermissions = p),
+          ),
+        ),
       ),
+
 
 
       body: FutureBuilder<List<OrderlistModel>>(
@@ -1085,17 +1111,21 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       });
     }
 
-//  DEFINE LISTS HERE (IMPORTANT)
-    final allItems = kot?.lineItems ?? [];
+    // ==========================
+    // 1️⃣ Filter initial items for the selected KOT
+    // ==========================
+    final initialItems = order.initialKotItems ?? [];
+    final kotInitialItems = initialItems
+        .where((item) => item.kotOrderId == kot?.kotOrderId)
+        .toList();
 
-// normal (not deleted)
+    // normal (not deleted)
+    final allItems = kot?.lineItems ?? [];
     final normalItems = allItems.where((item) {
       return _getVoidedItemByItemId(item.itemId) == null;
     }).toList();
 
-// deleted (from API)
     final voidedItems = _currentVoidedItems;
-
 
     return Container(
       margin: const EdgeInsets.all(8),
@@ -1120,6 +1150,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // header row
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -1145,7 +1176,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
             ),
             const SizedBox(height: 4),
 
-            // Table Header
+            // table header
             Container(
               decoration: BoxDecoration(
                 color: const Color(0xFF999393),
@@ -1154,7 +1185,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                   topRight: Radius.circular(8),
                 ),
               ),
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
               child: const Row(
                 children: [
                   Expanded(flex: 1, child: Text("#", style: TextStyle(fontWeight:FontWeight.w400,color: Color(0xFFF5F5F5)))),
@@ -1165,17 +1196,16 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
               ),
             ),
 
-            // Items List (STATIC)
+            // Items List
             Expanded(
               child: ListView.builder(
                 padding: EdgeInsets.zero,
-                itemCount: normalItems.length + voidedItems.length,
+                itemCount: kotInitialItems.length, // use filtered list
                 itemBuilder: (context, index) {
-                  final bool isNormal = index < normalItems.length;
-                  final bool isLast =
-                      index == (normalItems.length + voidedItems.length - 1);
+                  final item = kotInitialItems[index];
+                  final bool isNormal = normalItems.contains(item);
+                  final bool isLast = index == kotInitialItems.length - 1;
 
-                  // Loading state for voided items
                   if (_isVoidedLoading && !isNormal) {
                     return const Padding(
                       padding: EdgeInsets.all(12),
@@ -1188,9 +1218,9 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                   return Container(
                     padding: isNormal
                         ? const EdgeInsets.symmetric(vertical: 8, horizontal: 16)
-                        : const EdgeInsets.symmetric(vertical: 2, horizontal: 16),
+                        : const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                     decoration: BoxDecoration(
-                      color: isNormal ? const Color(0xFFFBFBFC) : const Color(0xFFF2F2F2),
+                      color: isNormal ? const Color(0xFFFBFBFC) : const Color(0xFFFBFBFC),
                       border: Border(
                         bottom: BorderSide(color: Colors.grey.shade300),
                       ),
@@ -1201,93 +1231,135 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                       )
                           : BorderRadius.zero,
                     ),
-                    child: isNormal
-                        ? _buildNormalRowUI(
-                      normalItems[index],
-                      index,
-                    )
-                        : _buildVoidedRowUI(
-                      voidedItems[index - normalItems.length],
-                      index,
-                    ),
+                    child: _buildRowFromInitial(item, index),
                   );
                 },
               ),
             ),
-
-
-            // const SizedBox(height: 12),
-            //
-            // // Summary Row: Updated Net Payable
-            // Row(
-            //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            //   children: [
-            //     _summaryRow(
-            //       "KOT #${_selectedKot?.kotOrderId ?? '-'} - Amount",
-            //       "₹${_leftPanelItems.fold<double>(0.0, (sum, i) => sum + (i.amount ?? 0)).toStringAsFixed(2)}",
-            //       bold: true,
-            //     ),
-            //
-            //
-            //     // Update KOT Button
-            //     // ElevatedButton(
-            //     //   onPressed: _updateKot, // uses updated _leftPanelItems
-            //     //   style: ElevatedButton.styleFrom(
-            //     //     backgroundColor: const Color(0xFF125BCE),
-            //     //     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            //     //     shape: RoundedRectangleBorder(
-            //     //       borderRadius: BorderRadius.circular(8),
-            //     //     ),
-            //     //   ),
-            //     //   child: const Text(
-            //     //     "Update KOT",
-            //     //     style: TextStyle(
-            //     //       fontSize: 14,
-            //     //       fontWeight: FontWeight.w600,
-            //     //       color: Colors.white,
-            //     //     ),
-            //     //   ),
-            //     // ),
-            //   ],
-            // ),
           ],
         ),
       ),
     );
   }
-  Widget _buildNormalRowUI(LineItem item, int index) {
-    final modifiers = parseModifiers(item.modifiers);
+  Widget _buildRowFromInitial(LineItem initialItem, int index) {
+    final qty = initialItem.quantity ?? 0;
+    final amount = (initialItem.totalWoTax ?? 0).toDouble();
+
+    // Function to chunk the list into sublists of n elements
+    List<List<String>> chunkList(List<String> list, int chunkSize) {
+      List<List<String>> chunks = [];
+      for (var i = 0; i < list.length; i += chunkSize) {
+        chunks.add(list.sublist(
+          i,
+          i + chunkSize > list.length ? list.length : i + chunkSize,
+        ));
+      }
+      return chunks;
+    }
+
+    final modifiers = initialItem.modifiers ?? [];
+    final modifierChunks = chunkList(modifiers, 2); // 3 per row
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              flex: 1,
+              child: Text("${index + 1}"),
+            ),
+            Expanded(
+              flex: 3,
+              child: Text(
+                initialItem.name ?? "-",
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+            Expanded(
+              flex: 2,
+              child: Text("$qty"),
+            ),
+            Expanded(
+              flex: 1,
+              child: Text(
+                "₹${amount.toStringAsFixed(2)}",
+              ),
+            ),
+          ],
+        ),
+
+        // Modifiers in rows of 2-3
+        if (modifierChunks.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(left: 70.0, top: 2, bottom: 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: modifierChunks.map((chunk) {
+                return Text(
+                  chunk.join(', '), // join modifiers with comma
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                    // fontStyle: FontStyle.italic,
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildNormalRowUI(
+      LineItem item,
+      int index,
+      OrderlistModel order,
+      ) {
+
+    //  Find matching initial item using itemId
+    final initialItem = order.initialKotItems
+        ?.firstWhere(
+          (i) => i.itemId == item.itemId,
+      orElse: () => item,
+    );
+
+    // USE INITIAL DATA FOR DISPLAY
+    final displayQty =
+        initialItem?.quantity ?? item.quantity ?? 0;
+
+    final displayAmount =
+        initialItem?.totalWoTax ?? item.totalWoTax ?? 0;
 
     return Row(
       children: [
         Expanded(flex: 1, child: Text("${index + 1}")),
+
         Expanded(
           flex: 3,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                item.name ?? "-",
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-              if (modifiers.isNotEmpty)
-                Text(
-                  modifiers.join(", "),
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-            ],
+          child: Text(
+            item.name ?? "-",
+            style: const TextStyle(fontWeight: FontWeight.w600),
           ),
         ),
-        Expanded(flex: 2, child: Text("${item.quantity ?? 0}")),
+
+        // Quantity from initialKotItems
+        Expanded(
+          flex: 2,
+          child: Text("$displayQty"),
+        ),
+
+        // Amount from initialKotItems
         Expanded(
           flex: 1,
           child: Text(
-            "₹${(item.totalWoTax ?? 0).toStringAsFixed(2)}",
+            "₹${displayAmount.toStringAsFixed(2)}",
           ),
         ),
       ],
     );
   }
+
   Widget _buildVoidedRowUI(VoidedItem item, int index) {
     return Row(
       children: [
@@ -1391,8 +1463,10 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
   // =========================================================
   // RIGHT PANEL (Editable KOT)
   Widget buildSelectedKotCard(KotOrder kot) {
-    // Use the editable copy
+    // Editable items
     final items = _editedKotItems[_selectedKotId] ?? [];
+    // Voided items for this KOT
+    final voidedItems = _voidedItemsMap[_selectedKotId] ?? [];
 
     return StatefulBuilder(
       builder: (context, setInnerState) {
@@ -1441,124 +1515,147 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                 ),
               ),
 
-              // Items List
+              const SizedBox(height: 4),
+
+              // Items + Voided items List
               Expanded(
-                child: ListView.builder(
-                  itemCount: items.length,
-                  itemBuilder: (context, index) {
-                    final item = items[index];
-                    final modifiers = parseModifiers(item.modifiers);
+                child: ListView(
+                  children: [
+                    // Editable Items
+                    ...items.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final item = entry.value;
+                      final modifiers = parseModifiers(item.modifiers);
+                      final voidedItem = _getVoidedItemByItemId(item.itemId);
+                      final isVoided = voidedItem != null;
 
-                    // Check if this item is voided
-                    final voidedItem = _getVoidedItemByItemId(item.itemId);
-                    final isVoided = voidedItem != null;
-
-                    return Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: isVoided ? const Color(0xFFFFEEEE) : const Color(0xFFFBFBFC),
-                        border: Border(
-                          bottom: BorderSide(color: isVoided ? Colors.red.shade200 : Colors.grey[300]!),
+                      return Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: isVoided ? const Color(0xFFFFEEEE) : const Color(0xFFFBFBFC),
+                          border: Border(
+                            bottom: BorderSide(color: isVoided ? Colors.red.shade200 : Colors.grey[300]!),
+                          ),
                         ),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(flex: 1, child: Text("${index + 1}")),
-
-                          Expanded(
-                            flex: 3,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  item.name ?? "-",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    color: isVoided ? Colors.red : Colors.black,
-                                    decoration: isVoided ? TextDecoration.lineThrough : null,
-                                  ),
-                                ),
-
-                                if (modifiers.isNotEmpty)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 2),
-                                    child: Text(
-                                      modifiers.join(", "),
-                                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        child: Row(
+                          children: [
+                            Expanded(flex: 1, child: Text("${index + 1}")),
+                            Expanded(
+                              flex: 3,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item.name ?? "-",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: isVoided ? Colors.red : Colors.black,
+                                      decoration: isVoided ? TextDecoration.lineThrough : null,
                                     ),
                                   ),
-
-                                if (isVoided)
-                                  const Padding(
-                                    padding: EdgeInsets.only(top: 2),
-                                    child: Text(
-                                      "Item Deleted",
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.red,
-                                        fontWeight: FontWeight.w600,
+                                  if (modifiers.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 2),
+                                      child: Text(
+                                        modifiers.join(", "),
+                                        style: const TextStyle(fontSize: 12, color: Colors.grey),
                                       ),
                                     ),
+                                  if (isVoided && voidedItem != null)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 2),
+                                      child: Text(
+                                        "Item Deleted (Orig: ${voidedItem.origQty}) ${voidedItem.remarks}",
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.red,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Row(
+                                children: [
+                                  _qtyButton(
+                                    Icons.remove,
+                                    onTap: !isVoided && (item.quantity ?? 0) > 0
+                                        ? () {
+                                      setInnerState(() {
+                                        item.quantity = (item.quantity ?? 0) - 1;
+                                        item.totalWoTax = item.unitPrice! * item.quantity!;
+                                      });
+                                      setState(() {
+                                        _dynamicNetPayable -= item.unitPrice!;
+                                      });
+                                    }
+                                        : null,
                                   ),
-                              ],
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                                    child: Text("${isVoided ? 0 : item.quantity ?? 0}"),
+                                  ),
+                                  _qtyButton(
+                                    Icons.add,
+                                    onTap: !isVoided && (item.quantity ?? 0) < (item.maxQty ?? 0)
+                                        ? () {
+                                      setInnerState(() {
+                                        item.quantity = (item.quantity ?? 0) + 1;
+                                        item.totalWoTax = item.unitPrice! * item.quantity!;
+                                      });
+                                      setState(() {
+                                        _dynamicNetPayable += item.unitPrice!;
+                                      });
+                                    }
+                                        : null,
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-
-                          Expanded(
-                            flex: 2,
-                            child: Row(
-                              children: [
-                                // Decrement button (disabled for voided items)
-                                _qtyButton(
-                                  Icons.remove,
-                                  onTap: !isVoided && (item.quantity ?? 0) > 0
-                                      ? () {
-                                    setInnerState(() {
-                                      item.quantity = (item.quantity ?? 0) - 1;
-                                      item.totalWoTax = item.unitPrice! * item.quantity!;
-                                    });
-                                    setState(() {
-                                      _dynamicNetPayable -= item.unitPrice!;
-                                    });
-                                  }
-                                      : null,
-                                ),
-
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                                  child: Text("${isVoided ? 0 : item.quantity ?? 0}"),
-                                ),
-
-                                // Increment button (disabled for voided items)
-                                _qtyButton(
-                                  Icons.add,
-                                  onTap: !isVoided && (item.quantity ?? 0) < (item.maxQty ?? 0)
-                                      ? () {
-                                    setInnerState(() {
-                                      item.quantity = (item.quantity ?? 0) + 1;
-                                      item.totalWoTax = item.unitPrice! * item.quantity!;
-                                    });
-                                    setState(() {
-                                      _dynamicNetPayable += item.unitPrice!;
-                                    });
-                                  }
-                                      : null,
-                                ),
-                              ],
+                            Expanded(
+                              flex: 1,
+                              child: Text(
+                                isVoided ? "₹0.00" : "₹${(item.totalWoTax ?? 0).toStringAsFixed(2)}",
+                                style: TextStyle(color: isVoided ? Colors.red : Colors.black),
+                              ),
                             ),
-                          ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
 
-                          Expanded(
-                            flex: 1,
-                            child: Text(
-                              isVoided ? "₹0.00" : "₹${(item.totalWoTax ?? 0).toStringAsFixed(2)}",
-                              style: TextStyle(color: isVoided ? Colors.red : Colors.black),
+                    // const SizedBox(height: 12),
+
+                    // Voided Items Section (if any)
+                    // Example for voided items
+                    if (voidedItems.isNotEmpty) ...[
+                      ...voidedItems.asMap().entries.map((entry) {
+                        final item = entry.value;
+                        final index = entry.key;
+
+                        // You can decide the row color based on normal/voided
+                        final rowColor = false // voided, always light red or grey
+                            ? const Color(0xFFFBFBFC)
+                            : const Color(0xFFFFEEEE); // light red for voided
+
+                        return Container(
+                          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: rowColor,
+                            border: Border(
+                              bottom: BorderSide(color: rowColor.computeLuminance() > 0.5 ? Colors.grey[300]! : Colors.red.shade200),
                             ),
+                            borderRadius: BorderRadius.circular(4),
                           ),
-                        ],
-                      ),
-                    );
-                  },
+                          child: _buildVoided(item, index),
+                        );
+                      }).toList(),
+                    ],
+
+                  ],
                 ),
               ),
             ],
@@ -1568,7 +1665,66 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
     );
   }
 
-
+  Widget _buildVoided(VoidedItem item, int index) {
+    return Row(
+      children: [
+        Expanded(
+          flex: 1,
+          child: Text(
+            "${index + 1}",
+            style: const TextStyle(color: Color(0xFFB9B9B9)),
+          ),
+        ),
+        Expanded(
+          flex: 3,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                item.product,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFFB9B9B9),
+                ),
+              ),
+              const Text(
+                "Item Deleted",
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.red,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Expanded(
+        //   flex: 2,
+        //   child: Text(
+        //     "${item.origQty} → 0",
+        //     style: const TextStyle(color: Color(0xFFB9B9B9)),
+        //   ),
+        // ),
+        Expanded(
+          flex: 2,
+          child: Text(
+            "${ '  '}     0",
+            style: const TextStyle(color: Color(0xFFB9B9B9)),
+          ),
+        ),
+        Expanded(
+          flex: 1,
+          child: Text(
+            "₹${item.itemTotal.toStringAsFixed(2)}",
+            style: const TextStyle(
+              color: Color(0xFFB9B9B9),
+              // decoration: TextDecoration.lineThrough,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
 
 

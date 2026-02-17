@@ -30,12 +30,12 @@ class KotBloc extends Bloc<KotEvent, KotState> {
     });
 
     // Toggle KOT dropdown manually
-    on<ToggleKOTDropdown>((event, emit) {
-      if (state is KotLoaded) {
-        final current = state as KotLoaded;
-        emit(current.copyWith(isExpanded: !current.isExpanded));
-      }
-    });
+    // on<ToggleKOTDropdown>((event, emit) {
+    //   if (state is KotLoaded) {
+    //     final current = state as KotLoaded;
+    //     emit(current.copyWith(isExpanded: !current.isExpanded));
+    //   }
+    // });
   }
 
   Future<void> _onFetchKots(FetchKots event, Emitter<KotState> emit) async {

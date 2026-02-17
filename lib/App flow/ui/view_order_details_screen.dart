@@ -496,7 +496,9 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                 Row(
                                   children: [
                                     // Edit Order Button
-                                    if ((orderModel.status ?? '').toLowerCase() == 'completed')
+                                    if ((orderModel.status ?? '').toLowerCase() == 'completed' &&
+                                        (_userPermissions?.role ?? '').toLowerCase() == 'manager')
+
                                       ElevatedButton(
                                         onPressed: () async {
                                           // order with merchant discount
@@ -1181,14 +1183,44 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                 color: Colors.grey,
                                               ),
                                             ),
+                                            // paymentRow( "Tax @Alcohol Nil (Price inclusive of Excise Duty)", "₹0.00", fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w700, ),
 
-
-                                            paymentRow(
-                                              "Tax @Alcohol Nil (Price inclusive of Excise Duty)",
-                                              "₹0.00",
-                                              fontSize: 12,
-                                              color: Colors.grey,
-                                              fontWeight: FontWeight.w700,
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Expanded(
+                                                  child: Text.rich(
+                                                    TextSpan(
+                                                      children: [
+                                                        TextSpan(
+                                                          text: "Tax @Alcohol Nil ",
+                                                          style: TextStyle(
+                                                            fontSize: 12,
+                                                            fontWeight: FontWeight.w700,
+                                                            color: Colors.grey,
+                                                          ),
+                                                        ),
+                                                        TextSpan(
+                                                          text: "(Price inclusive of Excise Duty)",
+                                                          style: TextStyle(
+                                                            fontSize: 10,
+                                                            color: Colors.grey,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                                Text(
+                                                  "₹0.00",
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Colors.grey,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
 
                                             Align(
@@ -1688,10 +1720,12 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                         "Select KOT",
                         style: TextStyle(color: Colors.white),
                       ),
-                      icon: const Icon(
+                      icon: kots.length > 1
+                          ? const Icon(
                         Icons.keyboard_arrow_down,
                         color: Colors.white,
-                      ), // white icon
+                      )
+                          : const SizedBox.shrink(),// white icon
                       dropdownColor: const Color(
                         0xFF125BCE,
                       ), // dropdown menu blue
@@ -1743,10 +1777,18 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                     style: TextStyle(fontWeight: FontWeight.w400,color: Color(0xFFF5F5F5)),
                   ),
                 ),
+
                 Expanded(
                   flex: 3,
                   child: Text(
                     "Item Name",
+                    style: TextStyle(fontWeight: FontWeight.w400,color: Color(0xFFF5F5F5)),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    "Unit Price",
                     style: TextStyle(fontWeight: FontWeight.w400,color: Color(0xFFF5F5F5)),
                   ),
                 ),
@@ -1804,7 +1846,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                         : BorderRadius.zero,
                   ),
                   child: isNormal
-                      ? _buildNormalRow(normalItems[index], index)
+                      ? _buildNormalRow(normalItems[index], index,  orderModel.initialKotItems,)
                       : _buildVoidedRow(
                     voidedItems[index - normalItems.length],
                     index,
@@ -1892,19 +1934,47 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
       ),
     );
   }
-  Widget _buildNormalRow(Map<String, dynamic> item, int index) {
+  Widget _buildNormalRow(
+      Map<String, dynamic> item,
+      int index,
+      List<LineItem>? initialItems,
+      ) {
     final modifierNames = extractModifierNames(item);
+    final productId = item['product_id'];
+
+    final initialItem = initialItems?.firstWhere(
+          (e) => e.itemId == productId,
+      orElse: () => LineItem(quantity: 0),
+    );
+
+    final initialQty = initialItem?.quantity ?? 0;
 
     return Row(
       children: [
-        Expanded(flex: 1, child: Text("${index + 1}")),
+        /// Product ID
+        Expanded(
+          flex: 1,
+          child: Text(productId?.toString() ?? "-"),
+        ),
+        // Expanded(
+        //   flex: 2,
+        //   child: Text(
+        //     " ${item['item_price']}",
+        //     style: const TextStyle(
+        //       fontWeight: FontWeight.w500,
+        //     ),
+        //   ),
+        // ),
+        /// Name + Modifiers
         Expanded(
           flex: 3,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(item['name'] ?? "-",
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text(
+                item['name'] ?? "-",
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
               if (modifierNames.isNotEmpty)
                 Text(
                   modifierNames.join(", "),
@@ -1913,24 +1983,77 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
             ],
           ),
         ),
-        Expanded(flex: 2, child: Text("${item['qty']} x ${item['item_price']}")),
+        Expanded(
+          flex: 2,
+          child: Text(
+            " ${item['item_price']}",
+            style: const TextStyle(
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        /// Initial → Current Qty x Price
+        Expanded(
+          flex: 2,
+          child: Text(
+            initialQty != item['qty']
+                ? "$initialQty → ${item['qty']}"
+                : "${item['qty']}",
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              color: initialQty != item['qty']
+                  ? Colors.orange   // highlight changed qty
+                  : Colors.black,
+            ),
+          ),
+        ),
+
+        // "$initialQty → ${item['qty']} x ${item['item_price']}",
+        // /// NEW COLUMN → Initial Qty
+        // Expanded(
+        //   flex: 1,
+        //   child: Text(
+        //     initialQty.toString(),
+        //     style: const TextStyle(color: Colors.grey),
+        //   ),
+        // ),
+        //
+        // /// Current Qty x Price
+        // Expanded(
+        //   flex: 2,
+        //   child: Text("${item['qty']} x ${item['item_price']}"),
+        // ),
+
+        /// Total
         Expanded(
           flex: 1,
-          child: Text(item['total_wo_tax']?.toStringAsFixed(2) ?? "-"),
+          child: Text(
+            item['total_wo_tax']?.toStringAsFixed(2) ?? "-",
+          ),
         ),
       ],
     );
   }
+
   Widget _buildVoidedRow(VoidedItem item, int index) {
     return Row(
       children: [
+        // Expanded(
+        //   flex: 1,
+        //   child: Text(
+        //     "${index + 1}",
+        //     style: const TextStyle(
+        //       color: Color(0xFFB9B9B9),
+        //       // decoration: TextDecoration.lineThrough,
+        //     ),
+        //   ),
+        // ),
         Expanded(
           flex: 1,
           child: Text(
-            "${index + 1}",
+            item.itemId.toString(),
             style: const TextStyle(
               color: Color(0xFFB9B9B9),
-              // decoration: TextDecoration.lineThrough,
             ),
           ),
         ),
@@ -1941,6 +2064,16 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
             style: const TextStyle(
               fontWeight: FontWeight.w600,
               color:  Color(0xFFB9B9B9),
+              // decoration: TextDecoration.lineThrough,
+            ),
+          ),
+        ),
+        Expanded(
+          flex: 2,
+          child: Text(
+            "${item.itemTotal.toStringAsFixed(2)}",
+            style: const TextStyle(
+              color: Color(0xFFB9B9B9),
               // decoration: TextDecoration.lineThrough,
             ),
           ),

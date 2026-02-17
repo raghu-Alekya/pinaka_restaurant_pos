@@ -318,11 +318,31 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
   Future<void> _onItemTap(BuildContext context, Product item) async {
     final orderBloc = context.read<OrderBloc>();
 
-    // Fetch modifiers for this product
-    final modifiers = await widget.modifierRepository?.fetchModifiersByProductId(item.id) ?? [];
+    // 🔒 HARD STOP — OUT OF STOCK
+    // false → block
+    // true / null → allow
+    if (item.isInStock == false) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${item.name} is out of stock'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return; // ❌ DO NOT ADD TO CART
+    }
+    // ✅ CLOSE KOT DROPDOWN IF OPEN
+    if (orderBloc.state.showKOTDropdown) {
+      orderBloc.add(CollapseKOT());
+    }
+
+    // Fetch modifiers
+    final modifiers =
+        await widget.modifierRepository?.fetchModifiersByProductId(item.id) ?? [];
 
     // Determine if product has options
-    final hasOptions = (modifiers.isNotEmpty || (item.addOns?.isNotEmpty ?? false));
+    final hasOptions =
+        modifiers.isNotEmpty || (item.addOns?.isNotEmpty ?? false);
 
     // Create OrderItem
     final orderItem = OrderItems(
@@ -335,26 +355,27 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       productId: item.id,
       hasOptions: hasOptions,
       variationId: null,
-      // ✅ base amount (only item price now)
-      amount: item.price * 1,
-      // variantId: null, // 🔹 now accurate
+      amount: item.price, // base amount
     );
 
     try {
       // Check for variants
-      final variants = await widget.variantRepository.fetchVariantsByProduct(item.id);
+      final variants =
+      await widget.variantRepository.fetchVariantsByProduct(item.id);
+
       if (variants.isNotEmpty) {
         final updatedProduct = item.copyWith(variants: variants);
         _showVariantPopup(context, updatedProduct, orderBloc, widget.section);
       } else {
         orderBloc.add(AddOrderItem(orderItem));
-        print("[Dashboard] Added to order: ${orderItem.name} with hasOptions=$hasOptions");
+        print("[Dashboard] Added to order: ${orderItem.name}");
       }
     } catch (e) {
       print("[Dashboard] Error fetching variants: $e");
       orderBloc.add(AddOrderItem(orderItem));
     }
   }
+
 
   void _showVariantPopup(
       BuildContext context,
@@ -633,35 +654,35 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
     );
   }
 
-  // Widget _buildItemsSection(List<Product> items) {
-  //   final bool hasComboItems = items.any(isComboItem);
-  //
-  //   return Column(
-  //     crossAxisAlignment: CrossAxisAlignment.stretch,
-  //     children: [
-  //       _buildItemsGrid(items),
-  //
-  //       if (hasComboItems)
-  //         Padding(
-  //           padding: const EdgeInsets.only(top: 6),
-  //           child: Center(
-  //             child: InkWell(
-  //               onTap: () => _openComboDetails(context, items.firstWhere(isComboItem)),
-  //               child: const Text(
-  //                 "View more",
-  //                 style: TextStyle(
-  //                   fontSize: 12,
-  //                   fontWeight: FontWeight.w600,
-  //                   decoration: TextDecoration.underline,
-  //                   color: Color(0xFF191919),
-  //                 ),
-  //               ),
-  //             ),
-  //           ),
-  //         ),
-  //     ],
-  //   );
-  // }
+// Widget _buildItemsSection(List<Product> items) {
+//   final bool hasComboItems = items.any(isComboItem);
+//
+//   return Column(
+//     crossAxisAlignment: CrossAxisAlignment.stretch,
+//     children: [
+//       _buildItemsGrid(items),
+//
+//       if (hasComboItems)
+//         Padding(
+//           padding: const EdgeInsets.only(top: 6),
+//           child: Center(
+//             child: InkWell(
+//               onTap: () => _openComboDetails(context, items.firstWhere(isComboItem)),
+//               child: const Text(
+//                 "View more",
+//                 style: TextStyle(
+//                   fontSize: 12,
+//                   fontWeight: FontWeight.w600,
+//                   decoration: TextDecoration.underline,
+//                   color: Color(0xFF191919),
+//                 ),
+//               ),
+//             ),
+//           ),
+//         ),
+//     ],
+//   );
+// }
 
 
 

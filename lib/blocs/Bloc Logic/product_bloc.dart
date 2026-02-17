@@ -66,16 +66,10 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
             return variant;
           }).toList();
 
-          return Product(
-            id: product.id,
-            name: product.name,
-            price: product.price,
-            image: product.image,
-            isVeg: product.isVeg,
+          return product.copyWith(
             variants: updatedVariants,
-            isCombo: product.isCombo,
-
           );
+
         }
         return product;
       }).toList();

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:path/path.dart';
 import 'package:pinaka_restaurant_pos/repositories/category_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/checkin_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/create_payment_repository.dart';
@@ -14,6 +15,7 @@ import 'package:pinaka_restaurant_pos/repositories/repeat_kot_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/search_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/subcategory_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/variant_repository.dart';
+import 'package:pinaka_restaurant_pos/repositories/void_item_repository.dart';
 import 'package:pinaka_restaurant_pos/utils/GlobalReservationMonitor.dart';
 import 'package:pinaka_restaurant_pos/utils/ShiftMonitor.dart';
 import 'package:pinaka_restaurant_pos/utils/global_navigator.dart';
@@ -39,6 +41,7 @@ import 'blocs/Bloc Logic/product_bloc.dart';
 import 'blocs/Bloc Logic/search_product_bloc.dart';
 import 'blocs/Bloc Logic/subcategory_bloc.dart';
 import 'blocs/Bloc Logic/table_bloc.dart';
+import 'blocs/Bloc Logic/void_item_bloc.dart';
 import 'blocs/Bloc Logic/zone_bloc.dart';
 import 'blocs/Bloc Logic/attendance_bloc.dart';
 import 'blocs/Bloc Logic/checkin_bloc.dart';
@@ -55,13 +58,14 @@ void main() async {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
   }
-  // final dbPath = await getDatabasesPath();
-  // await deleteDatabase(join(dbPath, 'tables.db'));
+  final dbPath = await getDatabasesPath();
+  await deleteDatabase(join(dbPath, 'tables.db'));
   final prefs = await SharedPreferences.getInstance();
   final token = prefs.getString('token') ?? '';
 
   final orderRepo = OrderRepository(
     baseUrl: "https://merchantrestaurant.alektasolutions.com",
+
   );
 
   if (token != null && token.isNotEmpty) {
@@ -74,7 +78,10 @@ void main() async {
     GlobalReservationMonitor().start(token);
   }
 
-  runApp(MyApp(orderRepo: orderRepo, token: token));
+  runApp(MyApp(
+    orderRepo: orderRepo,
+    token: token,
+  ));
 }
 
 class MyApp extends StatelessWidget {
@@ -82,6 +89,7 @@ class MyApp extends StatelessWidget {
   final String token;
 
   const MyApp({super.key, required this.orderRepo, required this.token});
+
 
   @override
   Widget build(BuildContext context) {
@@ -104,132 +112,124 @@ class MyApp extends StatelessWidget {
         providers: [
           // 1️⃣ MiniSubCategoryBloc first
           BlocProvider<MiniSubCategoryBloc>(
-            create:
-                (_) => MiniSubCategoryBloc(
-                  repository: MiniSubCategoryRepository(
-                    baseUrl: "https://merchantrestaurant.alektasolutions.com",
-                    // token: token, // use your actual token
-                  ),
-                ),
+            create: (_) => MiniSubCategoryBloc(
+              repository: MiniSubCategoryRepository(
+                baseUrl: "https://merchantrestaurant.alektasolutions.com",
+                // token: token, // use your actual token
+              ),
+            ),
           ),
           BlocProvider<SearchProductBloc>(
-            create: (_) => SearchProductBloc(Search_ProductRepository()),
+            create: (_) => SearchProductBloc(
+              Search_ProductRepository(),
+            ),
           ),
 
           // 2️⃣ SubCategoryBloc depends on MiniSubCategoryBloc
           BlocProvider<SubCategoryBloc>(
-            create:
-                (context) => SubCategoryBloc(
-                  subCategoryRepository: SubCategoryRepository(
-                    baseUrl: "https://merchantrestaurant.alektasolutions.com",
-                  ),
-                  miniSubCategoryBloc:
-                      context.read<MiniSubCategoryBloc>(), // ✅ works now
-                ),
+            create: (context) => SubCategoryBloc(
+              subCategoryRepository: SubCategoryRepository(
+                baseUrl: "https://merchantrestaurant.alektasolutions.com",
+              ),
+              miniSubCategoryBloc: context.read<MiniSubCategoryBloc>(), // ✅ works now
+            ),
           ),
 
           // 3️⃣ Other blocs
           BlocProvider<CategoryBloc>(
-            create:
-                (_) => CategoryBloc(
-                  repository: CategoryRepository(
-                    baseUrl: "https://merchantrestaurant.alektasolutions.com",
-                  ),
-                ),
+            create: (_) => CategoryBloc(
+              repository: CategoryRepository(
+                baseUrl: "https://merchantrestaurant.alektasolutions.com",
+              ),
+            ),
           ),
           // BlocProvider<ProductBloc>(
           //   create: (_) => ProductBloc(ProductRepository as ProductRepository),
           // ),
           BlocProvider<ProductBloc>(
-            create:
-                (_) => ProductBloc(
-                  ProductRepository(
-                    baseUrl: "https://merchantrestaurant.alektasolutions.com",
-                    // token: token,
-                  ),
-                ),
+            create: (_) => ProductBloc(
+              ProductRepository(
+                baseUrl: "https://merchantrestaurant.alektasolutions.com",
+                // token: token,
+              ),
+            ),
           ),
           RepositoryProvider<VariantRepository>(
-            create:
-                (context) => VariantRepository(
-                  baseUrl: "https://merchantrestaurant.alektasolutions.com",
-                  token: token,
-                ),
+            create: (context) => VariantRepository(
+              baseUrl: "https://merchantrestaurant.alektasolutions.com",
+              token: token,
+            ),
           ),
 
           BlocProvider<OrderBloc>(
-            create:
-                (context) => OrderBloc(
-                  OrderRepository(baseUrl: ''),
-                  RepeatOrderRepository(
-                    baseUrl: "https://merchantrestaurant.alektasolutions.com",
-                  ),
-                  token,
-                ),
+            create: (context) => OrderBloc(
+              OrderRepository(baseUrl: ''),
+              RepeatOrderRepository(baseUrl: "https://merchantrestaurant.alektasolutions.com"),
+              token,
+            ),
           ),
 
           BlocProvider<KotBloc>(
-            create:
-                (_) => KotBloc(
-                  KotRepository(
-                    baseUrl: 'https://merchantrestaurant.alektasolutions.com',
-                  ),
-                ),
+            create: (_) => KotBloc(
+                KotRepository(baseUrl: 'https://merchantrestaurant.alektasolutions.com')),
           ),
+          BlocProvider<UpdatekotBloc>(
+            create: (_) => UpdatekotBloc(
+              repository: UpdatekotRepository(
+                baseUrl: "https://merchantrestaurant.alektasolutions.com",
+              ),
+            ),
+          ),
+
+
           BlocProvider<CreatePaymentBloc>(
-            create: (_) => CreatePaymentBloc(CreatePaymentRepository()),
+            create: (_) => CreatePaymentBloc(
+              CreatePaymentRepository(),
+            ),
           ),
           BlocProvider<PaymentBloc>(
-            create:
-                (_) => PaymentBloc(
-                  PaymentRepository(
-                    baseUrl: "https://merchantrestaurant.alektasolutions.com",
-                    // token: token, // ✅ use real token
-                  ),
-                ),
+            create: (_) => PaymentBloc(
+              PaymentRepository(
+                baseUrl: "https://merchantrestaurant.alektasolutions.com",
+                // token: token, // ✅ use real token
+              ),
+            ),
           ),
           // / ✅ ADD THIS
           BlocProvider<DiscountBloc>(
-            create: (_) => DiscountBloc(AddDiscountRepository()),
+            create: (_) => DiscountBloc(
+              AddDiscountRepository(),
+            ),
           ),
           BlocProvider(
-            create:
-                (_) => RemoveDiscountBloc(
-                  RemoveDiscountRepository(
-                    // baseUrl: "https://merchantrestaurant.alektasolutions.com",
-                  ),
-                ),
+            create: (_) => RemoveDiscountBloc(
+              RemoveDiscountRepository(
+                // baseUrl: "https://merchantrestaurant.alektasolutions.com",
+              ),
+            ),
           ),
 
+
           BlocProvider<AuthBloc>(
-            create:
-                (context) =>
-                    AuthBloc(RepositoryProvider.of<AuthRepository>(context)),
+            create: (context) => AuthBloc(
+              RepositoryProvider.of<AuthRepository>(context),
+            ),
           ),
           BlocProvider<ZoneBloc>(
-            create:
-                (context) => ZoneBloc(
-                  zoneRepository: RepositoryProvider.of<ZoneRepository>(
-                    context,
-                  ),
-                ),
+            create: (context) => ZoneBloc(
+              zoneRepository: RepositoryProvider.of<ZoneRepository>(context),
+            ),
           ),
           BlocProvider<TableBloc>(
-            create:
-                (context) => TableBloc(
-                  zoneRepository: RepositoryProvider.of<ZoneRepository>(
-                    context,
-                  ),
-                  tableRepository: RepositoryProvider.of<TableRepository>(
-                    context,
-                  ),
-                ),
+            create: (context) => TableBloc(
+              zoneRepository: RepositoryProvider.of<ZoneRepository>(context),
+              tableRepository: RepositoryProvider.of<TableRepository>(context),
+            ),
           ),
           BlocProvider<AttendanceBloc>(
-            create:
-                (context) => AttendanceBloc(
-                  RepositoryProvider.of<EmployeeRepository>(context),
-                ),
+            create: (context) => AttendanceBloc(
+              RepositoryProvider.of<EmployeeRepository>(context),
+            ),
           ),
           BlocProvider<CheckInBloc>(
             create: (context) => CheckInBloc(CheckInRepository()),
@@ -242,7 +242,8 @@ class MyApp extends StatelessWidget {
           theme: ThemeData(primarySwatch: Colors.blue),
           home: const SplashScreen(),
         ),
-      ),
+      )
+      ,
     );
   }
 }
