@@ -19,6 +19,7 @@ class AppConstants {
   static const String getRevenueByFiltersEndpoint = '$baseApiPath/merchant-dashboard/get-revenue-by-filters';
   static const String topProductsSoldEndpoint = '$baseApiPath/merchant-dashboard/top-products-sold';
   static const String topCategoriesSoldEndpoint = '$baseApiPath/merchant-dashboard/top-categories-sold';
+  static const String inventoryAlertsEndpoint = '$baseApiPath/merchant-dashboard/get-inventory-alerts';
 
   // Table Management
   static const String createTableEndpoint = '$baseApiPath/tables/create-table';
@@ -29,7 +30,12 @@ class AppConstants {
   static const String createMergeTablesWithStatusEndpoint = '$baseApiPath/tables/create-merge-tables-with-table-status';
   static const String updateMergeTablesWithStatusEndpoint = '$baseApiPath/tables/update-merge-tables-with-table-status';
   static const String deleteMergeTablesWithStatusEndpoint = '$baseApiPath/tables/delete-merge-tables-with-table-status';
-  static String getAllTablesByTime(String reservationTime, String reservationDate) => '$baseApiPath/tables/get-all-tables-by-time?reservation_time=${Uri.encodeComponent(reservationTime)}&reservation_date=${Uri.encodeComponent(reservationDate)}';
+
+  static String getAllTablesByTime(String reservationTime,
+      String reservationDate) =>
+      '$baseApiPath/tables/get-all-tables-by-time?reservation_time=${Uri
+          .encodeComponent(reservationTime)}&reservation_date=${Uri
+          .encodeComponent(reservationDate)}';
 
   // Employee Management
   static const String getAllEmployeesEndpoint = '$baseApiPath/users/get-all-employees';
@@ -37,7 +43,7 @@ class AppConstants {
   // Employee Attendance
   static const String currentShiftEmployeesEndpoint = '$baseApiPath/employee-attendance/current-shift';
   static const String employeeAttendanceEndpoint = '$baseApiPath/employee-attendance';
-  static const String inventoryAlertsEndpoint = '$baseApiPath/employee-attendance/get-inventory-alerts';
+  // static const String inventoryAlertsEndpoint = '$baseApiPath/employee-attendance/get-inventory-alerts';
   static const String completedOrdersEndpoint = '$baseApiPath/employee-attendance/get-all-completed-orders';
 
   // Shift Management
@@ -61,6 +67,18 @@ class AppConstants {
   static const String getAllOrdersEndpoint = '$baseApiPath/kot/order-filters-api';
   static const String getParentKotOrdersEndpoint = '$baseApiPath/kot/get-parent-kot-orders';
 
+  // Settings
+  static const String getGeneralSettingsEndpoint = '$baseApiPath/settings/get-general-settings';
+
   // Slots
-  static String getAllSlotsByDate(String formattedDate) => '$baseApiPath/slots/get-all-slots?reservation_date=$formattedDate';
+  static String getAllSlotsByDate(String formattedDate) =>
+      '$baseApiPath/slots/get-all-slots?reservation_date=$formattedDate';
+
+  //  orders list
+  static const String getAllOrdersList = '$baseApiPath/kot/get-all-orders';
+
+  // Cancel an order
+  static String cancelOrder(int orderId) {
+    return '$baseApiPath/orders/$orderId';
+  }
 }

@@ -908,7 +908,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
             "Booking Details",
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 10),
 
           _buildLabeledField(
             "No. of People * :",
@@ -916,10 +916,10 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           ),
-          const SizedBox(height: 15),
+          const SizedBox(height: 10),
 
           _buildLabeledField("Name *:", _nameController),
-          const SizedBox(height: 15),
+          const SizedBox(height: 10),
 
           _buildLabeledField(
             "Mobile Number *:",
@@ -927,7 +927,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           ),
-          const SizedBox(height: 15),
+          const SizedBox(height: 10),
 
           _buildLabeledField(
             "Priority/Category:",
@@ -1169,9 +1169,9 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                 gridDelegate:
                 const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 4,
-                  crossAxisSpacing: 10,
+                  crossAxisSpacing: 12,
                   mainAxisSpacing: 10,
-                  childAspectRatio: 1.6,
+                  childAspectRatio: 1.5,
                 ),
                 itemBuilder: (context, index) {
                   final table = tablesToShow[index];

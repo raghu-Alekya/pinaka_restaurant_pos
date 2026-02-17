@@ -8,8 +8,12 @@ import 'package:intl/intl.dart';
 import '../../blocs/Bloc Event/TableEvent.dart';
 import '../../blocs/Bloc Event/ZoneEvent.dart';
 import '../../blocs/Bloc Event/attendance_event.dart';
+import '../../blocs/Bloc Event/kot_event.dart';
+import '../../blocs/Bloc Event/order_event.dart';
 import '../../blocs/Bloc Logic/attendance_bloc.dart';
 import '../../blocs/Bloc Logic/checkin_bloc.dart';
+import '../../blocs/Bloc Logic/kot_bloc.dart';
+import '../../blocs/Bloc Logic/order_bloc.dart';
 import '../../blocs/Bloc Logic/table_bloc.dart';
 import '../../blocs/Bloc Logic/zone_bloc.dart';
 import '../../blocs/Bloc State/ZoneState.dart';
@@ -19,9 +23,14 @@ import '../../local database/area_dao.dart';
 import '../../local database/login_dao.dart';
 import '../../local database/table_dao.dart';
 import '../../models/UserPermissions.dart';
+import '../../models/order/KOT_model.dart';
+import '../../models/order/guest_details.dart';
+import '../../models/order/order_items.dart';
+import '../../models/order/order_model.dart';
 import '../../models/view_mode.dart';
 import '../../repositories/checkin_repository.dart';
 import '../../repositories/employee_repository.dart';
+import '../../repositories/order_repository.dart';
 import '../../repositories/table_merge_repository.dart';
 import '../../repositories/table_repository.dart';
 import '../../repositories/zone_repository.dart';
@@ -47,7 +56,10 @@ import '../widgets/bottom_nav_bar.dart';
 import '../widgets/table_helpers.dart';
 import 'CheckinPopup.dart';
 import 'DailyAttendanceScreen.dart';
+import 'dashboard screen.dart';
 import 'guest_details_popup.dart';
+import '../../repositories/auth_repository.dart';
+import 'employee_login_page.dart';
 
 /// Screen widget that manages the floor plan of tables in a restaurant POS system.
 ///
@@ -65,6 +77,8 @@ class TablesScreen extends StatefulWidget {
   final String token;
   final String restaurantId;
   final String restaurantName;
+  final int? zoneId;
+  final UserPermissions? userPermissions; // ✅ ADD THIS
 
   const TablesScreen({
     Key? key,
@@ -73,6 +87,8 @@ class TablesScreen extends StatefulWidget {
     required this.token,
     required this.restaurantId,
     required this.restaurantName,
+    this.zoneId,
+    this.userPermissions, // ✅ STORE IT
   }) : super(key: key);
 
   @override
@@ -82,6 +98,11 @@ class TablesScreen extends StatefulWidget {
 ViewMode _currentViewMode = ViewMode.gridCommonImage;
 
 class _TablesScreenState extends State<TablesScreen> {
+  final OrderRepository orderRepository = OrderRepository(
+    baseUrl:
+        "https://merchantrestaurant.alektasolutions.com", // Replace with your backend URL
+  );
+
   /// Current zoom scale applied to the floor plan canvas.
   double _scale = 1.0;
 
@@ -93,6 +114,10 @@ class _TablesScreenState extends State<TablesScreen> {
   bool _isDeletingTable = false;
   bool _showModeChangeDialog = false;
   bool _hasLoadedOnce = false;
+  // double _scale = 1.0;
+  bool _showTable = true;
+  Offset _canvasOffset = Offset.zero;
+  bool _resetCanvasView = false;
 
   void _onNavItemTapped(int index) {
     NavigationHelper.handleNavigation(
@@ -103,7 +128,8 @@ class _TablesScreenState extends State<TablesScreen> {
       widget.token,
       widget.restaurantId,
       widget.restaurantName,
-      _userPermissions,
+      _userPermissions as UserPermissions?,
+      // widget.zoneId as UserPermissions?
     );
     setState(() {
       _selectedIndex = index;
@@ -321,13 +347,39 @@ class _TablesScreenState extends State<TablesScreen> {
   }
 
   /// Increases the zoom scale by 0.1, max limited elsewhere.
-  void _zoomIn() => setState(() => _scale += 0.1);
+  // void _zoomIn() => setState(() => _scale += 0.1);
+
+  void _zoomIn() {
+    setState(() {
+      _scale = (_scale + 0.1).clamp(0.5, 3.0);
+      _showTable = true;
+    });
+  }
 
   /// Decreases the zoom scale by 0.1 but clamps between 0.5 and 3.0.
-  void _zoomOut() => setState(() => _scale = (_scale - 0.1).clamp(0.5, 3.0));
+  // void _zoomOut() => setState(() => _scale = (_scale - 0.1).clamp(0.5, 3.0));
+  void _zoomOut() {
+    setState(() {
+      _scale = (_scale - 0.1).clamp(0.5, 3.0);
+      _showTable = true;
+    });
+  }
 
   /// Resets the zoom scale back to default 1.0.
-  void _scaleToFit() => setState(() => _scale = 1.0);
+  // void _scaleToFit() => setState(() => _scale = 1.0);
+  void _scaleToFit() {
+    setState(() {
+      _scale = 1.0;
+      _canvasOffset = Offset.zero;
+      _showPopup = false;
+      _resetCanvasView = true; // 🔥 trigger reset
+    });
+
+    // turn flag off next frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      setState(() => _resetCanvasView = false);
+    });
+  }
 
   /// Toggles the visibility of the add table/area popup.
   void _togglePopup() {
@@ -568,12 +620,13 @@ class _TablesScreenState extends State<TablesScreen> {
   }
 
   Future<void> _showTableActionPopup(
-      BuildContext context,
-      int index,
-      Map<String, dynamic> tableData,
-      ) async {
+    BuildContext context,
+    int index,
+    Map<String, dynamic> tableData,
+  ) async {
     final bool isMerged = tableData['is_merged'] ?? false;
-    final String mergedTables = tableData['merged_tables'] ?? tableData['tableName'] ?? '';
+    final String mergedTables =
+        tableData['merged_tables'] ?? tableData['tableName'] ?? '';
 
     await showDialog(
       context: context,
@@ -584,7 +637,10 @@ class _TablesScreenState extends State<TablesScreen> {
             borderRadius: BorderRadius.circular(20),
           ),
           backgroundColor: const Color(0xFFF9F6F6),
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 24,
+          ),
           contentPadding: const EdgeInsets.all(25),
           content: IntrinsicHeight(
             child: SizedBox(
@@ -631,67 +687,72 @@ class _TablesScreenState extends State<TablesScreen> {
                   const SizedBox(height: 12),
                   Text.rich(
                     TextSpan(
-                      children: isMerged
-                          ? [
-                        const TextSpan(
-                          text: "This table is already merged with the following tables in ",
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w400,
-                            color: Colors.black54,
-                          ),
-                        ),
-                        TextSpan(
-                          text: "${tableData['areaName']}",
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                        const TextSpan(
-                          text: ". Modify this merge or unmerge to restore individual tables.\n\n",
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w400,
-                            color: Colors.black54,
-                          ),
-                        ),
-                        TextSpan(
-                          text: mergedTables,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ]
-                          : [
-                        const TextSpan(
-                          text: "Select the tables you want to merge in this ",
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w400,
-                            color: Colors.black54,
-                          ),
-                        ),
-                        TextSpan(
-                          text: "${tableData['areaName']}",
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                        const TextSpan(
-                          text: ". Merging will combine them into a single reservation under the same guest.",
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w400,
-                            color: Colors.black54,
-                          ),
-                        ),
-                      ],
+                      children:
+                          isMerged
+                              ? [
+                                const TextSpan(
+                                  text:
+                                      "This table is already merged with the following tables in ",
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w400,
+                                    color: Colors.black54,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: "${tableData['areaName']}",
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                                const TextSpan(
+                                  text:
+                                      ". Modify this merge or unmerge to restore individual tables.\n\n",
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w400,
+                                    color: Colors.black54,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: mergedTables,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ]
+                              : [
+                                const TextSpan(
+                                  text:
+                                      "Select the tables you want to merge in this ",
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w400,
+                                    color: Colors.black54,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: "${tableData['areaName']}",
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                                const TextSpan(
+                                  text:
+                                      ". Merging will combine them into a single reservation under the same guest.",
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w400,
+                                    color: Colors.black54,
+                                  ),
+                                ),
+                              ],
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -708,48 +769,51 @@ class _TablesScreenState extends State<TablesScreen> {
                         height: 150,
                         child: TextButton(
                           style: TextButton.styleFrom(
-                            backgroundColor: isMerged
-                                ? const Color(0xFFFFE6E6)
-                                : Colors.black12,
+                            backgroundColor:
+                                isMerged
+                                    ? const Color(0xFFFFE6E6)
+                                    : Colors.black12,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          onPressed: isMerged
-                              ? () {
-                            Navigator.of(ctx).pop();
-                            showDialog(
-                              context: context,
-                              builder: (_) => UnmergeTablePopup(
-                                index: index,
-                                tableData: tableData,
-                                token: widget.token,
-                                repository: TableMergeRepository(),
-                                onUnmerge: (i, data) async {
-                                  setState(() {
-                                    placedTables[i]['is_merged'] = false;
-                                  });
+                          onPressed:
+                              isMerged
+                                  ? () {
+                                    Navigator.of(ctx).pop();
+                                    showDialog(
+                                      context: context,
+                                      builder:
+                                          (_) => UnmergeTablePopup(
+                                            index: index,
+                                            tableData: tableData,
+                                            token: widget.token,
+                                            repository: TableMergeRepository(),
+                                            onUnmerge: (i, data) async {
+                                              setState(() {
+                                                placedTables[i]['is_merged'] =
+                                                    false;
+                                              });
 
-                                  AreaMovementNotifier.showPopup(
-                                    context: context,
-                                    fromArea: data['areaName'] ?? '',
-                                    toArea: '',
-                                    tableName: data['tableName'] ?? '',
-                                    customMessage: 'Table unmerged successfully',
-                                  );
+                                              AreaMovementNotifier.showPopup(
+                                                context: context,
+                                                fromArea:
+                                                    data['areaName'] ?? '',
+                                                toArea: '',
+                                                tableName:
+                                                    data['tableName'] ?? '',
+                                                customMessage:
+                                                    'Table unmerged successfully',
+                                              );
 
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Table ${data['tableName']} unmerged'),
-                                    ),
-                                  );
-
-                                  context.read<TableBloc>().add(LoadTablesEvent(widget.token));
-                                },
-                              ),
-                            );
-                          }
-                              : null,
+                                              context.read<TableBloc>().add(
+                                                LoadTablesEvent(widget.token),
+                                              );
+                                            },
+                                          ),
+                                    );
+                                  }
+                                  : null,
                           child: Text(
                             "Unmerge Table",
                             style: TextStyle(
@@ -778,26 +842,20 @@ class _TablesScreenState extends State<TablesScreen> {
                             Navigator.of(ctx).pop();
                             showDialog(
                               context: context,
-                              builder: (_) => MergeEditTablePopup(
-                                index: index,
-                                tableData: tableData,
-                                token: widget.token,
-                                onMergeEdit: (i, data) async {
-                                  setState(() {
-                                    placedTables[i]['is_merged'] = true;
-                                  });
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                          'Table ${data['table_name']} merged/edited'),
-                                    ),
-                                  );
-
-                                  context
-                                      .read<TableBloc>()
-                                      .add(LoadTablesEvent(widget.token));
-                                },
-                              ),
+                              builder:
+                                  (_) => MergeEditTablePopup(
+                                    index: index,
+                                    tableData: tableData,
+                                    token: widget.token,
+                                    onMergeEdit: (i, data) async {
+                                      setState(() {
+                                        placedTables[i]['is_merged'] = true;
+                                      });
+                                      context.read<TableBloc>().add(
+                                        LoadTablesEvent(widget.token),
+                                      );
+                                    },
+                                  ),
                             );
                           },
                           child: const Text(
@@ -831,19 +889,21 @@ class _TablesScreenState extends State<TablesScreen> {
   /// Parameters:
   /// - [index]: The index of the table in the placedTables list.
   /// - [tableData]: The table data map including name, area, shape, position, etc.
-
   Widget _buildPlacedTable(int index, Map<String, dynamic> tableData) {
-    final capacity = int.tryParse(tableData['capacity']?.toString() ?? '0') ?? 0;
-    final mergedTables = tableData['merged_tables'] ?? tableData['tableName'] ?? '';
+    final capacity =
+        int.tryParse(tableData['capacity']?.toString() ?? '0') ?? 0;
+    final mergedTables =
+        tableData['merged_tables'] ?? tableData['tableName'] ?? '';
     final area = tableData['areaName'];
     final shape = tableData['shape'];
     final Offset position = tableData['position'];
-    final double rotation = double.tryParse(tableData['rotation']?.toString() ?? '0') ?? 0.0;
+    final double rotation =
+        double.tryParse(tableData['rotation']?.toString() ?? '0') ?? 0.0;
     final bool isMerged = tableData['is_merged'] ?? false;
 
     final size = TableHelpers.getPlacedTableSize(capacity, shape);
-
     final String status = tableData['status'] ?? 'Available';
+
     Widget tableContent = PlacedTableBuilder.buildPlacedTableWidget(
       name: mergedTables,
       capacity: capacity,
@@ -864,9 +924,10 @@ class _TablesScreenState extends State<TablesScreen> {
       clipBehavior: Clip.none,
       children: [
         DottedBorder(
-          color: _selectedTableIndex == index && _showActionMenu
-              ? Colors.red
-              : Colors.transparent,
+          color:
+              _selectedTableIndex == index && _showActionMenu
+                  ? Colors.red
+                  : Colors.transparent,
           strokeWidth: 2,
           dashPattern: [4, 3],
           borderType: BorderType.RRect,
@@ -880,22 +941,21 @@ class _TablesScreenState extends State<TablesScreen> {
 
     Widget gestureTable = GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () {
+      onTap: () async {
         final statusLower = status.toLowerCase();
         final reservationDateStr = tableData['reservationDate'];
         final reservationTimeStr = tableData['reservationTime'];
-
         if (capacity == 0) {
           AreaMovementNotifier.showPopup(
             context: context,
             fromArea: area ?? '',
             toArea: '',
             tableName: mergedTables,
-            customMessage: 'Unable to order: This is a child table. Please order from parent table',
+            customMessage:
+                'Unable to order: This is a child table. Please order from parent table',
           );
           return;
         }
-
         if (statusLower == 'reserve' &&
             reservationDateStr != null &&
             reservationTimeStr != null &&
@@ -903,47 +963,132 @@ class _TablesScreenState extends State<TablesScreen> {
           showDialog(
             context: context,
             barrierDismissible: true,
-            builder: (_) => ReservationInfoDialog(
-              reservationDate: reservationDateStr,
-              reservationTime: reservationTimeStr,
-              onOk: () {
-                Navigator.of(context).pop();
-                if (!_showPopup) {
-                  _showGuestDetailsPopup(context, index, tableData);
-                }
-              },
-            ),
+            builder:
+                (_) => ReservationInfoDialog(
+                  reservationDate: reservationDateStr,
+                  reservationTime: reservationTimeStr,
+                  onOk: () {
+                    Navigator.of(context).pop();
+                    if (!_showPopup) {
+                      _showGuestDetailsPopup(
+                        context,
+                        index,
+                        tableData,
+                        widget.token,
+                      );
+                    }
+                  },
+                ),
           );
           return;
         }
-
-        if (!_showPopup) {
-          _showGuestDetailsPopup(context, index, tableData);
-        }
-      },
-      onDoubleTap: (_userPermissions == null ||
-          !_userPermissions!.canDoubleTap ||
-          status.toLowerCase() != 'available')
-          ? null
-          : () {
-        if (!_showPopup) {
-          if (isMerged) {
-            AreaMovementNotifier.showPopup(
-              context: context,
-              fromArea: area ?? '',
-              toArea: '',
-              tableName: mergedTables,
-              customMessage:
-              'You are unable to edit or delete this table because it is merged. Please unmerge the table first.',
-            );
-            return;
+        if (statusLower == 'available') {
+          if (!_showPopup) {
+            _showGuestDetailsPopup(context, index, tableData, widget.token);
           }
-          setState(() {
-            _selectedTableIndex = index;
-            _showActionMenu = true;
-          });
+          return;
+        }
+        if (statusLower == 'dine' || statusLower == 'dine in') {
+          final orderRepository = OrderRepository(
+            baseUrl: 'https://merchantrestaurant.alektasolutions.com',
+          );
+
+          OrderModel? existingOrder;
+          try {
+            existingOrder = await orderRepository.getOrderByTable(
+              tableId: tableData['table_id'] ?? 0,
+              token: widget.token,
+              restaurantId: int.parse(widget.restaurantId),
+              zoneId: tableData['zone_id'] ?? 0,
+            );
+          } catch (e) {
+            AppLogger.error("Failed to fetch existing order: $e");
+          }
+
+          final List<KotModel> existingKots = existingOrder?.kotOrders ?? [];
+          final List<OrderItems> existingOrderItems =
+              existingOrder?.kotOrders?.expand((kot) => kot.items).toList() ??
+              [];
+
+          final kotBloc = context.read<KotBloc>();
+          kotBloc.add(SetExistingKots(kots: existingKots));
+          final guestDetails = [
+            Guestcount(guestCount: existingOrder?.guestCount ?? 0),
+          ];
+
+          final orderBloc = context.read<OrderBloc>();
+          orderBloc.add(
+            LoadExistingOrder(
+              orderId: existingOrder?.orderId ?? 0,
+              tableId: existingOrder?.tableId ?? tableData['table_id'] ?? 0,
+              zoneId: existingOrder?.zoneId ?? tableData['zone_id'] ?? 0,
+              tableName:
+                  existingOrder?.tableName ?? tableData['tableName'] ?? '',
+              zoneName: existingOrder?.zoneName ?? tableData['areaName'] ?? '',
+              restaurantId: widget.restaurantId,
+              kotList: existingKots,
+              // guests: guestDetails,
+              guestDetails: Guestcount(
+                guestCount: existingOrder?.guestCount ?? 0, // default 0 if null
+              ),
+            ),
+          );
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder:
+                  (_) => MultiBlocProvider(
+                    providers: [
+                      BlocProvider.value(value: orderBloc),
+                      BlocProvider.value(value: kotBloc),
+                      BlocProvider.value(value: context.read<CheckInBloc>()),
+                    ],
+                    child: DashboardScreen(
+                      token: widget.token,
+                      restaurantId: orderBloc.state.restaurantId.toString(),
+                      tableData: tableData,
+                      pin: widget.pin,
+                      orderId: orderBloc.state.orderId,
+                      tableId: orderBloc.state.tableId,
+                      zoneId: orderBloc.state.zoneId,
+                      zoneName: orderBloc.state.zoneName,
+                      tableName: orderBloc.state.tableName,
+                      kotList: orderBloc.state.kotList,
+                      restaurantName: widget.restaurantName,
+                      loadedTables: widget.loadedTables,
+                      userPermissions: widget.userPermissions,
+                      guestDetails: orderBloc.state.guestDetails,
+                    ),
+                  ),
+            ),
+          );
         }
       },
+      onDoubleTap:
+          (_userPermissions == null ||
+                  !_userPermissions!.canDoubleTap ||
+                  status.toLowerCase() != 'available')
+              ? null
+              : () {
+                if (!_showPopup) {
+                  if (isMerged) {
+                    AreaMovementNotifier.showPopup(
+                      context: context,
+                      fromArea: area ?? '',
+                      toArea: '',
+                      tableName: mergedTables,
+                      customMessage:
+                          'You are unable to edit or delete this table because it is merged. Please unmerge the table first.',
+                    );
+                    return;
+                  }
+                  setState(() {
+                    _selectedTableIndex = index;
+                    _showActionMenu = true;
+                  });
+                }
+              },
       onLongPress: () {
         if (capacity == 0) {
           AreaMovementNotifier.showPopup(
@@ -951,55 +1096,64 @@ class _TablesScreenState extends State<TablesScreen> {
             fromArea: tableData['areaName'] ?? '',
             toArea: '',
             tableName: tableData['tableName'] ?? '',
-            customMessage: 'Unable to Edit Merge: This is a child table. Please Edit from parent table',
+            customMessage:
+                'Unable to Edit Merge: This is a child table. Please Edit from parent table',
           );
           return;
         }
-        final statusLower = status.toLowerCase();
-        if (statusLower == 'available' || statusLower == 'dine in') {
-          _showTableActionPopup(context, index, tableData);
+        if (status.toLowerCase() == 'reserve') {
+          AreaMovementNotifier.showPopup(
+            context: context,
+            fromArea: area ?? '',
+            toArea: '',
+            tableName: mergedTables,
+            customMessage: 'You cannot merge a reserved table',
+          );
+          return;
         }
+        _showTableActionPopup(context, index, tableData);
       },
       child: RotatedBox(quarterTurns: quarterTurns, child: borderedTable),
     );
 
     Widget actionButtons =
-    (_showPopup || (_selectedTableIndex == index && _showActionMenu))
-        ? Positioned(
-      top: 0,
-      right: 0,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 8.0,
-          vertical: 4.0,
-        ),
-        child: Column(
-          children: [
-            if (!_showPopup)
-              _buildActionButton("edit", () {
-                setState(() {
-                  _editingTableIndex = index;
-                  _editingTableData =
-                  Map<String, dynamic>.from(tableData);
-                  _showEditPopup = true;
-                  _showActionMenu = false;
-                });
-              }),
-            if (status.toLowerCase() == 'available')
-              _buildActionButton("delete", () {
-                _showDeleteConfirmationDialog(index);
-              }),
-            if (!_showPopup) const SizedBox(height: 6),
-            if (shape == 'rectangle' &&
-                status.toLowerCase() == 'available')
-              _buildActionButton("rotate", () {
-                _rotateTable(index);
-              }),
-          ],
-        ),
-      ),
-    )
-        : const SizedBox.shrink();
+        (_showPopup || (_selectedTableIndex == index && _showActionMenu))
+            ? Positioned(
+              top: 0,
+              right: 0,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8.0,
+                  vertical: 4.0,
+                ),
+                child: Column(
+                  children: [
+                    if (!_showPopup)
+                      _buildActionButton("edit", () {
+                        setState(() {
+                          _editingTableIndex = index;
+                          _editingTableData = Map<String, dynamic>.from(
+                            tableData,
+                          );
+                          _showEditPopup = true;
+                          _showActionMenu = false;
+                        });
+                      }),
+                    if (status.toLowerCase() == 'available')
+                      _buildActionButton("delete", () {
+                        _showDeleteConfirmationDialog(index);
+                      }),
+                    if (!_showPopup) const SizedBox(height: 6),
+                    if (shape == 'rectangle' &&
+                        status.toLowerCase() == 'available')
+                      _buildActionButton("rotate", () {
+                        _rotateTable(index);
+                      }),
+                  ],
+                ),
+              ),
+            )
+            : const SizedBox.shrink();
 
     return Positioned(
       left: position.dx,
@@ -1009,53 +1163,54 @@ class _TablesScreenState extends State<TablesScreen> {
         children: [
           _showPopup || (_selectedTableIndex == index && _showActionMenu)
               ? Draggable<int>(
-            data: index,
-            feedback: Material(
-              color: Colors.transparent,
-              child: Opacity(opacity: 0.7, child: gestureTable),
-            ),
-            childWhenDragging: Opacity(opacity: 0.3, child: gestureTable),
-            onDragEnd: (details) {
-              if (_canvasKey.currentContext == null) return;
-              final RenderBox box =
-              _canvasKey.currentContext!.findRenderObject() as RenderBox;
-              final Offset localOffset =
-              box.globalToLocal(details.offset);
-              _updateTablePosition(index, localOffset);
-            },
-            child: gestureTable,
-          )
+                data: index,
+                feedback: Material(
+                  color: Colors.transparent,
+                  child: Opacity(opacity: 0.7, child: gestureTable),
+                ),
+                childWhenDragging: Opacity(opacity: 0.3, child: gestureTable),
+                onDragEnd: (details) {
+                  if (_canvasKey.currentContext == null) return;
+                  final RenderBox box =
+                      _canvasKey.currentContext!.findRenderObject()
+                          as RenderBox;
+                  final Offset localOffset = box.globalToLocal(details.offset);
+                  _updateTablePosition(index, localOffset);
+                },
+                child: gestureTable,
+              )
               : gestureTable,
           actionButtons,
         ],
       ),
     );
   }
+
   Widget _buildShapeBasedGridItem(
     Map<String, dynamic> tableData,
     int filteredIndex,
   ) {
     final actualIndex = placedTables.indexOf(tableData);
-    final int capacity = int.tryParse(tableData['capacity']?.toString() ?? '0') ?? 0;
+    final int capacity =
+        int.tryParse(tableData['capacity']?.toString() ?? '0') ?? 0;
 
     return ShapeBasedGridItem(
       tableData: tableData,
-      onTap: () {
+      onTap: () async {
         final status = tableData['status']?.toLowerCase() ?? 'available';
         final reservationDateStr = tableData['reservationDate'];
         final reservationTimeStr = tableData['reservationTime'];
-
         if (capacity == 0) {
           AreaMovementNotifier.showPopup(
             context: context,
             fromArea: tableData['areaName'] ?? '',
             toArea: '',
             tableName: tableData['tableName'] ?? '',
-            customMessage: 'Unable to order: This is a child table. Please order from parent table',
+            customMessage:
+                'Unable to order: This is a child table. Please order from parent table',
           );
           return;
         }
-
         if (status == 'reserve' &&
             reservationDateStr != null &&
             reservationTimeStr != null &&
@@ -1063,39 +1218,140 @@ class _TablesScreenState extends State<TablesScreen> {
           showDialog(
             context: context,
             barrierDismissible: true,
-            builder: (_) => ReservationInfoDialog(
-              reservationDate: reservationDateStr,
-              reservationTime: reservationTimeStr,
-              onOk: () {
-                Navigator.of(context).pop();
-                if (!_showPopup) {
-                  _showGuestDetailsPopup(context, actualIndex, tableData);
-                }
-              },
-            ),
+            builder:
+                (_) => ReservationInfoDialog(
+                  reservationDate: reservationDateStr,
+                  reservationTime: reservationTimeStr,
+                  onOk: () {
+                    Navigator.of(context).pop();
+                    if (!_showPopup) {
+                      _showGuestDetailsPopup(
+                        context,
+                        actualIndex,
+                        tableData,
+                        widget.token,
+                      );
+                    }
+                  },
+                ),
           );
           return;
         }
+        if (status == 'available') {
+          if (!_showPopup) {
+            _showGuestDetailsPopup(
+              context,
+              actualIndex,
+              tableData,
+              widget.token,
+            );
+          }
+          return;
+        }
+        if (status == 'dine' || status == 'dine in') {
+          final orderRepository = OrderRepository(
+            baseUrl: 'https://merchantrestaurant.alektasolutions.com',
+          );
 
-        if (!_showPopup) {
-          _showGuestDetailsPopup(context, actualIndex, tableData);
+          OrderModel? existingOrder;
+          try {
+            existingOrder = await orderRepository.getOrderByTable(
+              tableId: tableData['table_id'] ?? 0,
+              token: widget.token,
+              restaurantId: int.parse(widget.restaurantId),
+              zoneId:
+                  tableData['zone_id'] != null
+                      ? int.parse(tableData['zone_id'].toString())
+                      : null,
+            );
+          } catch (e) {
+            AppLogger.error("Failed to fetch existing order: $e");
+          }
+
+          final List<KotModel> existingKots = existingOrder?.kotOrders ?? [];
+          final List<OrderItems> existingOrderItems =
+              existingOrder?.kotOrders?.expand((kot) => kot.items).toList() ??
+              [];
+          final guestDetails = Guestcount(
+            guestCount: 0,
+          ); // replace if real data available
+
+          final orderBloc = context.read<OrderBloc>();
+          orderBloc.add(
+            LoadExistingOrder(
+              orderId: existingOrder?.orderId ?? 0,
+              tableId: existingOrder?.tableId ?? tableData['table_id'] ?? 0,
+              zoneId: existingOrder?.zoneId ?? tableData['zone_id'] ?? 0,
+              tableName:
+                  existingOrder?.tableName ?? tableData['tableName'] ?? '',
+              zoneName: existingOrder?.zoneName ?? tableData['zoneName'] ?? '',
+              restaurantId: widget.restaurantId,
+              kotList: existingKots,
+              // orderItems: existingOrderItems,
+              // guests: [guestDetails],
+              guestDetails: Guestcount(
+                guestCount: existingOrder?.guestCount ?? 0, // default 0 if null
+              ),
+            ),
+          );
+
+          // Navigate to DashboardScreen
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder:
+                  (_) => MultiBlocProvider(
+                    providers: [
+                      BlocProvider.value(value: context.read<OrderBloc>()),
+                      BlocProvider.value(value: context.read<KotBloc>()),
+                      BlocProvider.value(value: context.read<CheckInBloc>()),
+                    ],
+                    child: DashboardScreen(
+                      token: widget.token,
+                      restaurantId: widget.restaurantId,
+                      tableData: tableData,
+                      pin: widget.pin,
+                      orderId: orderBloc.state.orderId,
+                      tableId: orderBloc.state.tableId,
+                      zoneId: orderBloc.state.zoneId,
+                      zoneName: orderBloc.state.zoneName,
+                      tableName: orderBloc.state.tableName,
+                      kotList: orderBloc.state.kotList,
+                      restaurantName: widget.restaurantName,
+                      userPermissions: widget.userPermissions,
+                      guestDetails: tableData['guestDetails'] ?? guestDetails,
+                      loadedTables: widget.loadedTables,
+                    ),
+                  ),
+            ),
+          );
         }
       },
+
       onLongPress: () {
-        final status = tableData['status']?.toLowerCase() ?? 'available';
         if (capacity == 0) {
           AreaMovementNotifier.showPopup(
             context: context,
             fromArea: tableData['areaName'] ?? '',
             toArea: '',
             tableName: tableData['tableName'] ?? '',
-            customMessage: 'Unable to Edit Merge: This is a child table. Please Edit from parent table',
+            customMessage:
+                'Unable to Edit Merge: This is a child table. Please Edit from parent table',
           );
           return;
         }
-        if (status == 'available' || status == 'dine in') {
-          _showTableActionPopup(context, actualIndex, tableData);
+        final status = tableData['status']?.toLowerCase() ?? 'available';
+        if (status == 'reserve') {
+          AreaMovementNotifier.showPopup(
+            context: context,
+            fromArea: tableData['areaName'] ?? '',
+            toArea: '',
+            tableName: tableData['tableName'] ?? '',
+            customMessage: 'You cannot merge a reserved table',
+          );
+          return;
         }
+        _showTableActionPopup(context, actualIndex, tableData);
       },
     );
   }
@@ -1105,26 +1361,26 @@ class _TablesScreenState extends State<TablesScreen> {
     int filteredIndex,
   ) {
     final actualIndex = placedTables.indexOf(tableData);
-    final int capacity = int.tryParse(tableData['capacity']?.toString() ?? '0') ?? 0;
+    final int capacity =
+        int.tryParse(tableData['capacity']?.toString() ?? '0') ?? 0;
 
     return CommonGridItem(
       tableData: tableData,
-      onTap: () {
+      onTap: () async {
         final status = tableData['status']?.toLowerCase() ?? 'available';
         final reservationDateStr = tableData['reservationDate'];
         final reservationTimeStr = tableData['reservationTime'];
-
         if (capacity == 0) {
           AreaMovementNotifier.showPopup(
             context: context,
             fromArea: tableData['areaName'] ?? '',
             toArea: '',
             tableName: tableData['tableName'] ?? '',
-            customMessage: 'Unable to order: This is a child table. Please order from parent table',
+            customMessage:
+                'Unable to order: This is a child table. Please order from parent table',
           );
           return;
         }
-
         if (status == 'reserve' &&
             reservationDateStr != null &&
             reservationTimeStr != null &&
@@ -1132,39 +1388,139 @@ class _TablesScreenState extends State<TablesScreen> {
           showDialog(
             context: context,
             barrierDismissible: true,
-            builder: (_) => ReservationInfoDialog(
-              reservationDate: reservationDateStr,
-              reservationTime: reservationTimeStr,
-              onOk: () {
-                Navigator.of(context).pop();
-                if (!_showPopup) {
-                  _showGuestDetailsPopup(context, actualIndex, tableData);
-                }
-              },
-            ),
+            builder:
+                (_) => ReservationInfoDialog(
+                  reservationDate: reservationDateStr,
+                  reservationTime: reservationTimeStr,
+                  onOk: () {
+                    Navigator.of(context).pop();
+                    if (!_showPopup) {
+                      _showGuestDetailsPopup(
+                        context,
+                        actualIndex,
+                        tableData,
+                        widget.token,
+                      );
+                    }
+                  },
+                ),
           );
           return;
         }
+        if (status == 'available') {
+          if (!_showPopup) {
+            _showGuestDetailsPopup(
+              context,
+              actualIndex,
+              tableData,
+              widget.token,
+            );
+          }
+          return;
+        }
+        if (status == 'dine' || status == 'dine in') {
+          final orderRepository = OrderRepository(
+            baseUrl: 'https://merchantrestaurant.alektasolutions.com',
+          );
 
-        if (!_showPopup) {
-          _showGuestDetailsPopup(context, actualIndex, tableData);
+          OrderModel? existingOrder;
+          try {
+            existingOrder = await orderRepository.getOrderByTable(
+              tableId: tableData['table_id'] ?? 0,
+              token: widget.token,
+              restaurantId: int.parse(widget.restaurantId),
+              zoneId:
+                  tableData['zone_id'] != null
+                      ? int.parse(tableData['zone_id'].toString())
+                      : null,
+            );
+          } catch (e) {
+            AppLogger.error("Failed to fetch existing order: $e");
+          }
+
+          final List<KotModel> existingKots = existingOrder?.kotOrders ?? [];
+          final List<OrderItems> existingOrderItems =
+              existingOrder?.kotOrders?.expand((kot) => kot.items).toList() ??
+              [];
+          final guestDetails = Guestcount(
+            guestCount: 0,
+          ); // Replace with real data if available
+
+          final orderBloc = context.read<OrderBloc>();
+          orderBloc.add(
+            LoadExistingOrder(
+              orderId: existingOrder?.orderId ?? 0,
+              tableId: existingOrder?.tableId ?? tableData['table_id'] ?? 0,
+              zoneId: existingOrder?.zoneId ?? tableData['zone_id'] ?? 0,
+              tableName:
+                  existingOrder?.tableName ?? tableData['tableName'] ?? '',
+              zoneName: existingOrder?.zoneName ?? tableData['zoneName'] ?? '',
+              restaurantId: widget.restaurantId,
+              kotList: existingKots,
+              guestDetails: Guestcount(
+                guestCount: existingOrder?.guestCount ?? 0, // default 0 if null
+              ),
+              // orderItems: existingOrderItems,
+              // guests: [guestDetails],
+            ),
+          );
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder:
+                  (_) => MultiBlocProvider(
+                    providers: [
+                      BlocProvider.value(value: context.read<OrderBloc>()),
+                      BlocProvider.value(value: context.read<KotBloc>()),
+                      BlocProvider.value(value: context.read<CheckInBloc>()),
+                    ],
+                    child: DashboardScreen(
+                      token: widget.token,
+                      restaurantId: widget.restaurantId,
+                      tableData: tableData,
+                      pin: widget.pin,
+                      orderId: orderBloc.state.orderId,
+                      tableId: orderBloc.state.tableId,
+                      zoneId: orderBloc.state.zoneId,
+                      zoneName: orderBloc.state.zoneName,
+                      tableName: orderBloc.state.tableName,
+                      kotList: orderBloc.state.kotList,
+                      restaurantName: widget.restaurantName,
+                      loadedTables: widget.loadedTables,
+                      userPermissions: widget.userPermissions,
+                      guestDetails: tableData['guestDetails'] ?? guestDetails,
+                    ),
+                  ),
+            ),
+          );
         }
       },
+
       onLongPress: () {
-        final status = tableData['status']?.toLowerCase() ?? 'available';
         if (capacity == 0) {
           AreaMovementNotifier.showPopup(
             context: context,
             fromArea: tableData['areaName'] ?? '',
             toArea: '',
             tableName: tableData['tableName'] ?? '',
-            customMessage: 'Unable to Edit Merge: This is a child table. Please Edit from parent table',
+            customMessage:
+                'Unable to Edit Merge: This is a child table. Please Edit from parent table',
           );
           return;
         }
-        if (status == 'available' || status == 'dine in') {
-          _showTableActionPopup(context, actualIndex, tableData);
+        final status = tableData['status']?.toLowerCase() ?? 'available';
+        if (status == 'reserve') {
+          AreaMovementNotifier.showPopup(
+            context: context,
+            fromArea: tableData['areaName'] ?? '',
+            toArea: '',
+            tableName: tableData['tableName'] ?? '',
+            customMessage: 'You cannot merge a reserved table',
+          );
+          return;
         }
+        _showTableActionPopup(context, actualIndex, tableData);
       },
     );
   }
@@ -1343,7 +1699,19 @@ class _TablesScreenState extends State<TablesScreen> {
     BuildContext context,
     int index,
     Map<String, dynamic> tableData,
-  ) {
+    String token, // ✅ Added token parameter
+  ) async {
+    final tableStatus =
+        (tableData['status'] ?? '').toString().toLowerCase().trim();
+    final tableId = tableData['id'] ?? 0;
+    final zoneId = tableData['zone_id'] ?? 0;
+    final tableName = tableData['name'] ?? 'Table';
+    final zoneName = tableData['zone_name'] ?? 'Main Zone';
+
+    final orderRepo = OrderRepository(
+      baseUrl: 'https://merchantrestaurant.alektasolutions.com',
+    );
+
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -1355,7 +1723,67 @@ class _TablesScreenState extends State<TablesScreen> {
           child: GuestDetailsPopup(
             index: index,
             tableData: tableData,
+            loadedTables: widget.loadedTables,
             placedTables: placedTables,
+            token: token, // ✅ Pass actual token
+            restaurantId: '1',
+            pin: widget.pin,
+            onGuestSaved: (guestDetails) async {
+              try {
+                AppLogger.info(
+                  "🪪 Creating order using token: $token",
+                ); // ✅ Log token
+
+                final orderModel = await orderRepo.createOrder(
+                  restaurantId: '1',
+                  tableId: tableId,
+                  zoneId: zoneId,
+                  guests: [guestDetails],
+                  guestCount: guestDetails.guestCount,
+                  token: token, // ✅ Use login token here
+                  zoneName: zoneName,
+                  restaurantName: widget.restaurantName ?? 'My Restaurant',
+                  tableName: tableName,
+                );
+
+                context.read<OrderBloc>().add(
+                  CreateOrderSuccess(orderId: orderModel.orderId),
+                );
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder:
+                        (_) => BlocProvider.value(
+                          value: context.read<OrderBloc>(),
+                          child: DashboardScreen(
+                            guestDetails: guestDetails,
+                            token: token, // ✅ Pass token to dashboard
+                            restaurantId: '1',
+                            orderId: orderModel.orderId,
+                            tableId: tableId,
+                            zoneId: zoneId,
+                            zoneName: zoneName,
+                            tableName: tableName,
+                            kotList: [],
+                            pin: widget.pin,
+                            restaurantName: widget.restaurantName,
+                            userPermissions: widget.userPermissions,
+                            tableData: {},
+                            loadedTables: widget.loadedTables,
+                          ),
+                        ),
+                  ),
+                );
+              } catch (e) {
+                AppLogger.error("❌ Failed to create order: $e");
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Failed to create order, please try again."),
+                  ),
+                );
+              }
+            },
           ),
         );
       },
@@ -1493,11 +1921,25 @@ class _TablesScreenState extends State<TablesScreen> {
                 _isLoadingTables = false;
                 _hasLoadedOnce = true;
               });
+              final errorMsg = state.error.toString();
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Failed to load tables: ${state.error}'),
-                ),
+                SnackBar(content: Text('Failed to load tables: $errorMsg')),
               );
+
+              if (errorMsg.contains('Unauthorized')) {
+                // Force logout
+                AuthRepository().logout(widget.token).then((_) {
+                  if (mounted) {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const EmployeeLoginPage(),
+                      ),
+                      (route) => false,
+                    );
+                  }
+                });
+              }
             } else if (state is TableAddingState) {
               setState(() => _isAddingTable = true);
             } else if (state is TableAddedState) {
@@ -1621,6 +2063,22 @@ class _TablesScreenState extends State<TablesScreen> {
       child: Scaffold(
         backgroundColor: const Color(0xFFF0F3FC),
         resizeToAvoidBottomInset: false,
+
+        // appBar: TopBar(
+        //   token: widget.token,
+        //   pin: widget.pin,
+        //   userPermissions: _userPermissions,
+        //   onPermissionsReceived: (permissions) {
+        //     setState(() {
+        //       _userPermissions = permissions;
+        //       if (_userPermissions!.canDefaultLayout == 'gridCommonImage') {
+        //         _currentViewMode = ViewMode.gridCommonImage;
+        //       } else {
+        //         _currentViewMode = ViewMode.normal;
+        //       }
+        //     });
+        //   }, restaurantId: 'widget.restaurantId',
+        // ),
         appBar: TopBar(
           token: widget.token,
           pin: widget.pin,
@@ -1658,6 +2116,8 @@ class _TablesScreenState extends State<TablesScreen> {
                             TablePlacementWidget(
                               placedTables: placedTables,
                               scale: _scale,
+                              offset: _canvasOffset,
+                              resetView: _resetCanvasView,
                               showPopup: _showPopup,
                               addTable: (data, position) {
                                 context.read<TableBloc>().add(
@@ -1790,22 +2250,24 @@ class _TablesScreenState extends State<TablesScreen> {
                                 controller: gridScrollController,
                                 itemCount: _sortedFilteredTables.length,
                                 padding: const EdgeInsets.all(10),
-                                gridDelegate: _currentViewMode == ViewMode.gridShapeBased
-                                    ? const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 10,
-                                  crossAxisSpacing: 20,
-                                  mainAxisSpacing: 20,
-                                  childAspectRatio: 0.9,
-                                )
-                                    : const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 11,
-                                  crossAxisSpacing: 18,
-                                  mainAxisSpacing: 18,
-                                  childAspectRatio: 1.0,
-                                ),
+                                gridDelegate:
+                                    _currentViewMode == ViewMode.gridShapeBased
+                                        ? const SliverGridDelegateWithFixedCrossAxisCount(
+                                          crossAxisCount: 10,
+                                          crossAxisSpacing: 12,
+                                          mainAxisSpacing: 10,
+                                          childAspectRatio: 0.9,
+                                        )
+                                        : const SliverGridDelegateWithFixedCrossAxisCount(
+                                          crossAxisCount: 11,
+                                          crossAxisSpacing: 18,
+                                          mainAxisSpacing: 18,
+                                          childAspectRatio: 1.0,
+                                        ),
                                 itemBuilder: (context, index) {
                                   final table = _sortedFilteredTables[index];
-                                  return _currentViewMode == ViewMode.gridShapeBased
+                                  return _currentViewMode ==
+                                          ViewMode.gridShapeBased
                                       ? _buildShapeBasedGridItem(table, index)
                                       : _buildCommonGridItem(table, index);
                                 },
@@ -2005,7 +2467,19 @@ class _TablesScreenState extends State<TablesScreen> {
                           onTap: () {
                             if (hasPermission) {
                               if (_currentViewMode != ViewMode.normal) {
-                                setState(() => _showModeChangeDialog = true);
+                                WidgetsBinding.instance.addPostFrameCallback((
+                                  _,
+                                ) {
+                                  if (gridScrollController.hasClients) {
+                                    gridScrollController.animateTo(
+                                      0,
+                                      duration: const Duration(
+                                        milliseconds: 300,
+                                      ),
+                                      curve: Curves.easeOut,
+                                    );
+                                  }
+                                });
                               } else {
                                 _togglePopup();
                               }

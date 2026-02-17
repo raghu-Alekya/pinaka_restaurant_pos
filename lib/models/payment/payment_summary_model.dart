@@ -1,0 +1,139 @@
+class PaymentSummary {
+  final int restaurantId;
+  final int orderId;
+  final double grossTotal;
+  final double tax;
+  final double fees;
+  final double coupons;
+  final double discount;
+  final double netTotal;
+  final List<LineItem> lineItems;
+  final int tableId;
+  final int zoneId;
+  final bool modifiersTaxable;
+  final bool isNoCharge;
+
+
+
+  PaymentSummary({
+    required this.restaurantId,
+    required this.orderId,
+    required this.grossTotal,
+    required this.tax,
+    required this.fees,
+    required this.discount,
+    required this.coupons,
+    required this.netTotal,
+    required this.lineItems,
+    required this.tableId,
+    required this.zoneId,
+    required this.modifiersTaxable,
+    required this.isNoCharge,
+  });
+
+  factory PaymentSummary.fromJson(Map<String, dynamic> json) {
+    return PaymentSummary(
+      restaurantId: (json['restaurant_id'] ?? 0).toInt(),
+      orderId: (json['order_id'] ?? 0).toInt(),
+
+      grossTotal: (json['gross_total'] ?? 0).toDouble(),
+      tax: (json['tax'] ?? 0).toDouble(),
+
+      // 🔥 backend uses "Fees" (capital F)
+      fees: (json['Fees'] ?? 0).toDouble(),
+
+      // ✅ FIXED: read merchant_discount
+      discount: double.tryParse(
+        (json['merchant_discount'] ?? json['discount'] ?? 0).toString(),
+      ) ?? 0.0,
+
+      coupons: (json['coupons'] ?? 0).toDouble(),
+      netTotal: (json['net_total'] ?? 0).toDouble(),
+
+      lineItems: (json['line_items'] as List? ?? [])
+          .map((e) => LineItem.fromJson(e))
+          .toList(),
+
+      tableId: (json['table_id'] ?? 0).toInt(),
+      zoneId: (json['zone_id'] ?? 0).toInt(),
+      // ✅ ADD THIS
+      modifiersTaxable:
+      (json['modifiers_taxable'] ?? 'no').toString().toLowerCase() == 'yes',
+      // 👇 new: NC comes from backend, not UI
+      // ✅ CORRECT mapping of NC flag
+      isNoCharge:
+      (json['is_nc'] ?? 'no')
+          .toString()
+          .toLowerCase() == 'yes',
+    );
+  }
+}
+
+
+
+class LineItem {
+  final int productId;
+  final int variationId;
+  final String name;
+  final int qty;
+
+  /// Backend totals (SOURCE OF TRUTH)
+  final double total;
+  final double tax;
+  final String taxClass;
+
+  /// Modifiers
+  final List<String> modifiers;
+  final double modifierAmount;
+
+  /// 👇 Derived (NOT from API)
+  late final double basePrice;
+
+  LineItem({
+    required this.productId,
+    required this.variationId,
+    required this.name,
+    required this.qty,
+    required this.total,
+    required this.tax,
+    required this.taxClass,
+    required this.modifiers,
+    required this.modifierAmount,
+  }) {
+    // base price = total - tax - modifier amount
+    basePrice = (total - tax - modifierAmount).clamp(0, double.infinity);
+  }
+
+  /// 🔢 Tax %
+  double get taxPercent {
+    if (basePrice == 0) return 0;
+    return (tax / basePrice) * 100;
+  }
+
+  /// 💰 Taxable amount based on modifier rule
+  double taxableAmount({required bool modifiersTaxable}) {
+    return modifiersTaxable
+        ? basePrice + modifierAmount
+        : basePrice;
+  }
+
+  /// 🧮 Calculated tax (UI / validation ONLY)
+  double calculatedTax({required bool modifiersTaxable}) {
+    final taxable = taxableAmount(modifiersTaxable: modifiersTaxable);
+    return (taxable * taxPercent) / 100;
+  }
+
+  factory LineItem.fromJson(Map<String, dynamic> json) {
+    return LineItem(
+      productId: (json['product_id'] ?? 0).toInt(),
+      variationId: (json['variation_id'] ?? 0).toInt(),
+      name: json['name'] ?? '',
+      qty: (json['qty'] ?? 0).toInt(),
+      total: (json['total'] ?? 0).toDouble(),
+      tax: (json['tax'] ?? 0).toDouble(),
+      taxClass: (json['tax_class'] ?? 'food').toString().toLowerCase(),
+      modifiers: List<String>.from(json['modifiers'] ?? []),
+      modifierAmount: (json['modifier_amount'] ?? 0).toDouble(),
+    );
+  }
+}

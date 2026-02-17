@@ -48,12 +48,20 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _checkLoginStatus() async {
     final prefs = await SharedPreferences.getInstance();
+
+    // Check for token in both possible keys due to inconsistency in codebase
+    final token = prefs.getString('token') ?? prefs.getString('auth_token');
     final pin = prefs.getString('pin');
-    final token = prefs.getString('token');
     final restaurantId = prefs.getString('restaurantId');
     final restaurantName = prefs.getString('restaurantName');
 
-    if (pin != null && token != null && restaurantId != null && restaurantName != null) {
+    if (pin != null &&
+        token != null &&
+        restaurantId != null &&
+        restaurantName != null) {
+      // Small delay to ensure DB is ready if needed
+      await Future.delayed(const Duration(milliseconds: 500));
+
       final tableDao = TableDao();
       final tables = await tableDao.getTablesByManagerPin(pin);
 
@@ -61,13 +69,14 @@ class _SplashScreenState extends State<SplashScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => TablesScreen(
-            pin: pin,
-            token: token,
-            restaurantId: restaurantId,
-            restaurantName: restaurantName,
-            loadedTables: tables,
-          ),
+          builder:
+              (_) => TablesScreen(
+                pin: pin,
+                token: token,
+                restaurantId: restaurantId,
+                restaurantName: restaurantName,
+                loadedTables: tables,
+              ),
         ),
       );
     } else {

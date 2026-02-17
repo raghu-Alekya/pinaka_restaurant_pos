@@ -1,18 +1,23 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/ui/tables_screen.dart';
+import '../../blocs/Bloc Logic/order_list_bloc.dart';
 import '../../local database/table_dao.dart';
 import '../../models/UserPermissions.dart';
 import '../../repositories/dashboard_repository.dart';
+import '../../repositories/order_list_repository.dart';
 import '../../utils/logger.dart';
 import '../widgets/NavigationHelper.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/top_bar.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'EmployeeListScreen.dart';
+// import 'order_list_screen.dart';
+import 'orderstatus_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final String pin;
@@ -298,12 +303,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         MaterialPageRoute(
           builder:
               (_) => TablesScreen(
-                loadedTables: tables,
-                pin: widget.pin,
-                token: widget.token,
-                restaurantId: widget.restaurantId,
-                restaurantName: widget.restaurantName,
-              ),
+            loadedTables: tables,
+            pin: widget.pin,
+            token: widget.token,
+            restaurantId: widget.restaurantId,
+            restaurantName: widget.restaurantName,
+          ),
         ),
       );
     }
@@ -331,12 +336,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 MaterialPageRoute(
                   builder:
                       (_) => TablesScreen(
-                        loadedTables: tables,
-                        pin: widget.pin,
-                        token: widget.token,
-                        restaurantId: widget.restaurantId,
-                        restaurantName: widget.restaurantName,
-                      ),
+                    loadedTables: tables,
+                    pin: widget.pin,
+                    token: widget.token,
+                    restaurantId: widget.restaurantId,
+                    restaurantName: widget.restaurantName,
+                  ),
                 ),
               );
             }
@@ -344,219 +349,219 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
       ),
       body:
-          isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(25, 15, 0, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+      isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(25, 15, 0, 0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            /// Greeting + Date + Time + Filters
+            Row(
+              children: [
+                Text(
+                  "Good Morning ${widget.userPermissions?.displayName ?? "User Name"} !",
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+
+                /// Date
+                Row(
                   children: [
-                    /// Greeting + Date + Time + Filters
-                    Row(
-                      children: [
-                        Text(
-                          "Good Morning ${widget.userPermissions?.displayName ?? "User Name"} !",
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const Spacer(),
-
-                        /// Date
-                        Row(
-                          children: [
-                            const Icon(Icons.calendar_today, size: 16),
-                            const SizedBox(width: 6),
-                            Text(currentDate),
-                          ],
-                        ),
-                        const SizedBox(width: 10),
-
-                        /// Time
-                        Row(
-                          children: [
-                            const Icon(Icons.access_time, size: 16),
-                            const SizedBox(width: 6),
-                            Text(currentTime),
-                          ],
-                        ),
-                        const SizedBox(width: 20),
-                        if (periods.isNotEmpty)
-                          DropdownButtonHideUnderline(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: Colors.grey.shade300),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.05),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: DropdownButton<String>(
-                                value: _selectedPeriod,
-                                items:
-                                    periods.map((p) {
-                                      return DropdownMenuItem(
-                                        value: p,
-                                        child: Text(
-                                          p,
-                                          style: const TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      );
-                                    }).toList(),
-                                onChanged: (val) {
-                                  setState(() => _selectedPeriod = val!);
-                                  fetchDashboard();
-                                  fetchRevenueChart();
-                                  fetchPaymentModesRevenue();
-                                },
-                              ),
-                            ),
-                          ),
-                        const SizedBox(width: 8),
-
-                        /// Zone Filter
-                        if (zones.isNotEmpty)
-                          DropdownButtonHideUnderline(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: Colors.grey.shade300),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.05),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: DropdownButton<Map<String, dynamic>>(
-                                value: _selectedZone,
-                                items:
-                                    zones.map((z) {
-                                      return DropdownMenuItem(
-                                        value: z,
-                                        child: Text(
-                                          z['name'] ?? '',
-                                          style: const TextStyle(fontSize: 15),
-                                        ),
-                                      );
-                                    }).toList(),
-                                onChanged: (val) {
-                                  setState(() => _selectedZone = val);
-                                  fetchDashboard();
-                                  fetchRevenueChart();
-                                  fetchPaymentModesRevenue();
-                                },
-                              ),
-                            ),
-                          ),
-                        const SizedBox(width: 25),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-
-                    /// Metric Cards
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          _metricCard(
-                            icon: Icons.currency_rupee,
-                            iconBg: Colors.green,
-                            title: "Total Revenue",
-                            value: totalRevenue,
-                            cardColor: Colors.green.shade50,
-                            trend: revenueTrend,
-                          ),
-                          const SizedBox(width: 20),
-                          _metricCard(
-                            icon: Icons.shopping_bag,
-                            iconBg: Colors.orange,
-                            title: "Total Orders",
-                            value: totalOrders,
-                            cardColor: Colors.orange.shade50,
-                            trend: ordersTrend,
-                          ),
-                          const SizedBox(width: 20),
-                          _metricCard(
-                            icon: Icons.pending_actions,
-                            iconBg: Colors.pink,
-                            title: "Active Orders",
-                            value: activeOrders,
-                            cardColor: Colors.pink.shade50,
-                          ),
-                          const SizedBox(width: 20),
-                          _metricCard(
-                            icon: Icons.table_bar,
-                            iconBg: Colors.purple,
-                            title: "Running Tables",
-                            value: runningTables,
-                            cardColor: Colors.purple.shade50,
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 30),
-
-                    /// Other Cards (horizontal scroll)
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          topProductsCard(),
-                          const SizedBox(width: 25),
-                          topCategoriesCard(),
-                          const SizedBox(width: 25),
-                          StocksCard(),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 30),
-
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          revenueBreakdownCard(revenueChartData, revenueYAxisValues,revenueSummary),
-                          const SizedBox(width: 25),
-                          paymentModesCard(),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 25),
-
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          recentTransactionsCard(),
-                          const SizedBox(width: 25),
-                          employeeListCard(),
-                        ],
-                      ),
-                    ),
+                    const Icon(Icons.calendar_today, size: 16),
+                    const SizedBox(width: 6),
+                    Text(currentDate),
                   ],
                 ),
+                const SizedBox(width: 10),
+
+                /// Time
+                Row(
+                  children: [
+                    const Icon(Icons.access_time, size: 16),
+                    const SizedBox(width: 6),
+                    Text(currentTime),
+                  ],
+                ),
+                const SizedBox(width: 20),
+                if (periods.isNotEmpty)
+                  DropdownButtonHideUnderline(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: Colors.grey.shade300),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: DropdownButton<String>(
+                        value: _selectedPeriod,
+                        items:
+                        periods.map((p) {
+                          return DropdownMenuItem(
+                            value: p,
+                            child: Text(
+                              p,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          setState(() => _selectedPeriod = val!);
+                          fetchDashboard();
+                          fetchRevenueChart();
+                          fetchPaymentModesRevenue();
+                        },
+                      ),
+                    ),
+                  ),
+                const SizedBox(width: 8),
+
+                /// Zone Filter
+                if (zones.isNotEmpty)
+                  DropdownButtonHideUnderline(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: Colors.grey.shade300),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: DropdownButton<Map<String, dynamic>>(
+                        value: _selectedZone,
+                        items:
+                        zones.map((z) {
+                          return DropdownMenuItem(
+                            value: z,
+                            child: Text(
+                              z['name'] ?? '',
+                              style: const TextStyle(fontSize: 15),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          setState(() => _selectedZone = val);
+                          fetchDashboard();
+                          fetchRevenueChart();
+                          fetchPaymentModesRevenue();
+                        },
+                      ),
+                    ),
+                  ),
+                const SizedBox(width: 25),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            /// Metric Cards
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _metricCard(
+                    icon: Icons.currency_rupee,
+                    iconBg: Colors.green,
+                    title: "Total Revenue",
+                    value: totalRevenue,
+                    cardColor: Colors.green.shade50,
+                    trend: revenueTrend,
+                  ),
+                  const SizedBox(width: 20),
+                  _metricCard(
+                    icon: Icons.shopping_bag,
+                    iconBg: Colors.orange,
+                    title: "Total Orders",
+                    value: totalOrders,
+                    cardColor: Colors.orange.shade50,
+                    trend: ordersTrend,
+                  ),
+                  const SizedBox(width: 20),
+                  _metricCard(
+                    icon: Icons.pending_actions,
+                    iconBg: Colors.pink,
+                    title: "Active Orders",
+                    value: activeOrders,
+                    cardColor: Colors.pink.shade50,
+                  ),
+                  const SizedBox(width: 20),
+                  _metricCard(
+                    icon: Icons.table_bar,
+                    iconBg: Colors.purple,
+                    title: "Running Tables",
+                    value: runningTables,
+                    cardColor: Colors.purple.shade50,
+                  ),
+                ],
               ),
+            ),
+
+            const SizedBox(height: 30),
+
+            /// Other Cards (horizontal scroll)
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  topProductsCard(),
+                  const SizedBox(width: 25),
+                  topCategoriesCard(),
+                  const SizedBox(width: 25),
+                  StocksCard(),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 30),
+
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  revenueBreakdownCard(revenueChartData, revenueYAxisValues,revenueSummary),
+                  const SizedBox(width: 25),
+                  paymentModesCard(),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 25),
+
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  recentTransactionsCard(),
+                  const SizedBox(width: 25),
+                  employeeListCard(),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
       bottomNavigationBar: BottomNavBar(
         selectedIndex: 0,
         onItemTapped: (index) {
@@ -1215,21 +1220,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
           /// 🔹 Title + View All
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Text(
+            children: [
+              const Text(
                 "Recent Transactions",
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
-              Text(
-                "View All →",
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.blue,
+              InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => BlocProvider(
+                        create: (_) => OrderstatusBloc(
+                          OrderstatusRepository(),
+                        ),
+                        child:OrdersListTable(
+                          // orders: state.orders,
+                          pin: widget.pin,
+                          token: widget.token,
+                          restaurantId: widget.restaurantId,
+                          restaurantName: widget.restaurantName,
+                          userPermissions: widget.userPermissions,
+                          orders: [],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+                child: const Text(
+                  "View All →",
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.blue,
+                  ),
                 ),
               ),
             ],
           ),
+
 
           const SizedBox(height: 15),
 
@@ -1306,44 +1335,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 isCompletedOrdersLoading
                     ? const Center(child: CircularProgressIndicator())
                     : Expanded(
-                      child: ListView.builder(
-                        itemCount: completedOrders.length,
-                        itemBuilder: (context, index) {
-                          final tx = completedOrders[index];
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    tx["order_id"].toString(),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Text(
-                                    tx["order_type"].toString(),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Text(
-                                    tx["payment_type"].toString(),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Text(
-                                    "₹${tx["total"]}",
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ],
+                  child: ListView.builder(
+                    itemCount: completedOrders.length,
+                    itemBuilder: (context, index) {
+                      final tx = completedOrders[index];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                tx["order_id"].toString(),
+                                textAlign: TextAlign.center,
+                              ),
                             ),
-                          );
-                        },
-                      ),
-                    ),
+                            Expanded(
+                              child: Text(
+                                tx["order_type"].toString(),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                tx["payment_type"].toString(),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                "₹${tx["total"]}",
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
               ],
             ),
           ),
@@ -1391,12 +1420,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     MaterialPageRoute(
                       builder:
                           (_) => EmployeeListScreen(
-                            pin: widget.pin,
-                            token: widget.token,
-                            restaurantId: widget.restaurantId,
-                            restaurantName: widget.restaurantName,
-                            userPermissions: widget.userPermissions,
-                          ),
+                        pin: widget.pin,
+                        token: widget.token,
+                        restaurantId: widget.restaurantId,
+                        restaurantName: widget.restaurantName,
+                        userPermissions: widget.userPermissions,
+                      ),
                     ),
                   );
                 },
@@ -1486,89 +1515,89 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 /// 🔹 Employee Rows
                 Expanded(
                   child:
-                      isEmployeeLoading
-                          ? const Center(child: CircularProgressIndicator())
-                          : ListView.builder(
-                            itemCount: employees.length,
-                            itemBuilder: (context, index) {
-                              final emp = employees[index];
+                  isEmployeeLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : ListView.builder(
+                    itemCount: employees.length,
+                    itemBuilder: (context, index) {
+                      final emp = employees[index];
 
-                              String userId =
-                                  (emp["user_id"]?.toString().trim().isEmpty ??
-                                          true)
-                                      ? "-"
-                                      : emp["user_id"].toString();
+                      String userId =
+                      (emp["user_id"]?.toString().trim().isEmpty ??
+                          true)
+                          ? "-"
+                          : emp["user_id"].toString();
 
-                              String name =
-                                  (emp["name"]?.toString().trim().isEmpty ??
-                                          true)
-                                      ? "-"
-                                      : emp["name"].toString();
+                      String name =
+                      (emp["name"]?.toString().trim().isEmpty ??
+                          true)
+                          ? "-"
+                          : emp["name"].toString();
 
-                              String designation =
-                                  (emp["designation"]
-                                              ?.toString()
-                                              .trim()
-                                              .isEmpty ??
-                                          true)
-                                      ? "-"
-                                      : emp["designation"].toString();
+                      String designation =
+                      (emp["designation"]
+                          ?.toString()
+                          .trim()
+                          .isEmpty ??
+                          true)
+                          ? "-"
+                          : emp["designation"].toString();
 
-                              String status =
-                                  (emp["attendance_status"]
-                                              ?.toString()
-                                              .trim()
-                                              .isEmpty ??
-                                          true)
-                                      ? "-"
-                                      : emp["attendance_status"].toString();
+                      String status =
+                      (emp["attendance_status"]
+                          ?.toString()
+                          .trim()
+                          .isEmpty ??
+                          true)
+                          ? "-"
+                          : emp["attendance_status"].toString();
 
-                              final isPresent = status == "Present";
+                      final isPresent = status == "Present";
 
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 4,
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 4,
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                userId,
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                name,
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                designation,
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                status,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color:
+                                  status == "-"
+                                      ? Colors.grey
+                                      : (isPresent
+                                      ? Colors.green.shade800
+                                      : Colors.red.shade800),
                                 ),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        userId,
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: Text(
-                                        name,
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: Text(
-                                        designation,
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: Text(
-                                        status,
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          color:
-                                              status == "-"
-                                                  ? Colors.grey
-                                                  : (isPresent
-                                                      ? Colors.green.shade800
-                                                      : Colors.red.shade800),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ],
             ),
@@ -1609,81 +1638,139 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 14),
           Expanded(
             child:
-                isInventoryLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : inventoryAlerts.isEmpty
-                    ? const Center(child: Text("No low stock items"))
-                    : Column(
-                      children: [
-                        /// Curved header row
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade300,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Row(
-                            children: const [
-                              Expanded(
-                                child: Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 8),
-                                  child: Text(
-                                    "Name",
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                child: Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 8),
-                                  child: Text(
-                                    "Alerts",
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-
-                        /// Inventory rows
-                        ...inventoryAlerts.map(
-                          (item) => Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    item['name'] ?? item['in_name'] ?? '',
-                                    textAlign: TextAlign.center,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Text(
-                                    "Reorder",
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      color: Color(0xFFAA3028),
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
+            isInventoryLoading
+                ? const Center(child: CircularProgressIndicator())
+                : inventoryAlerts.isEmpty
+                ? const Center(child: Text("No low stock items"))
+                : Column(
+              children: [
+                /// Curved header row
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Row(
+                    children: const [
+                      Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          child: Text(
+                            "Name",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
                             ),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          child: Text(
+                            "Alerts",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 4),
+
+                /// Inventory rows
+                // ...inventoryAlerts.map(
+                //       (item) => Padding(
+                //     padding: const EdgeInsets.symmetric(vertical: 4),
+                //     child: Row(
+                //       children: [
+                //         Expanded(
+                //           child: Text(
+                //             item['name'] ?? item['in_name'] ?? '',
+                //             textAlign: TextAlign.center,
+                //             maxLines: 1,
+                //             overflow: TextOverflow.ellipsis,
+                //           ),
+                //         ),
+                //         // Expanded(
+                //         //   child: Text(
+                //         //     item['status'] ?? '',
+                //         //     textAlign: TextAlign.start,
+                //         //     style: TextStyle(
+                //         //       fontWeight: FontWeight.bold,
+                //         //       color: (item['status'] == "Out of Stock")
+                //         //           ? const Color(0xFFAA3028) // red
+                //         //           : Colors.orange, // low stock
+                //         //     ),
+                //         //   ),
+                //         // ),
+                //         // Expanded(
+                //         //   child: Text(
+                //         //     "Reorder",
+                //         //     textAlign: TextAlign.center,
+                //         //     style: const TextStyle(
+                //         //       color: Color(0xFFAA3028),
+                //         //       fontWeight: FontWeight.bold,
+                //         //     ),
+                //         //   ),
+                //         // ),
+                //
+                //       ],
+                //     ),
+                //   ),
+                // ),
+                ...inventoryAlerts.map(
+                      (item) {
+                    final name = item['name'] ?? '';
+                    final status = item['status'] ?? '';
+
+                    Color getStatusColor(String status) {
+                      final s = status.toLowerCase();
+                      if (s.contains("out")) return const Color(0xFFAA3028);
+                      if (s.contains("low")) return Colors.orange;
+                      if (s.contains("critical")) return Colors.red.shade700;
+                      return Colors.grey;
+                    }
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          /// NAME
+                          Expanded(
+                            child: Text(
+                              name,
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+
+                          /// STATUS
+                          Expanded(
+                            child: Text(
+                              status,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: getStatusColor(status),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+
+
+              ],
+            ),
           ),
         ],
       ),
@@ -1745,9 +1832,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Expanded(
               child: Column(
                 mainAxisAlignment:
-                    trend != null
-                        ? MainAxisAlignment.start
-                        : MainAxisAlignment.center,
+                trend != null
+                    ? MainAxisAlignment.start
+                    : MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (trend != null) const SizedBox(height: 45),

@@ -24,6 +24,7 @@ class UserPermissions {
   final bool canViewOrderTypes;
   final String displayName;
   final String role;
+  final String? avatar;
 
   UserPermissions({
     required this.userId,
@@ -51,6 +52,7 @@ class UserPermissions {
     required this.canViewOrderTypes,
     required this.displayName,
     required this.role,
+    this.avatar,
   });
 
   factory UserPermissions.fromJson(Map<String, dynamic> json) {
@@ -80,6 +82,7 @@ class UserPermissions {
       canViewOrderTypes: json['canViewOrderTypes'] ?? false,
       displayName: json['displayName'] ?? '',
       role: json['role'] ?? '',
+      avatar: json['avatar'],
     );
   }
 
@@ -110,6 +113,7 @@ class UserPermissions {
       'canViewOrderTypes': canViewOrderTypes,
       'displayName': displayName,
       'role': role,
+      'avatar':avatar,
     };
   }
 }
