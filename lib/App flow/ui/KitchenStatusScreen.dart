@@ -1,5 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pinaka_restaurant_pos/App%20flow/widgets/transer_kot.dart';
+import 'package:pinaka_restaurant_pos/App%20flow/widgets/void_items.dart';
+import 'package:pinaka_restaurant_pos/blocs/Bloc%20Logic/kot_bloc.dart';
+import 'package:pinaka_restaurant_pos/blocs/Bloc%20Logic/transfer_kot_bloc.dart';
+import 'package:pinaka_restaurant_pos/blocs/Bloc%20Logic/void_item_bloc.dart';
+import 'package:pinaka_restaurant_pos/repositories/kot_repository.dart';
+import 'package:pinaka_restaurant_pos/repositories/table_repository.dart';
+import 'package:pinaka_restaurant_pos/repositories/void_item_repository.dart';
 import '../../models/UserPermissions.dart';
+import '../../models/order/void_kot_items.dart';
 import '../../repositories/kitchen_repository.dart';
 import '../../repositories/zone_repository.dart';
 import '../../utils/SessionManager.dart';
@@ -47,6 +57,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   List<String> _orderTypes = [];
   late KitchenRepository kitchenRepo;
   bool isResetEnabled = false;
+  static const String _apiBaseUrl = "https://merchantrestaurant.alektasolutions.com";
 
 
   @override
@@ -258,6 +269,242 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
 
     // 🔁 Reload orders with default filters
     _fetchOrders();
+  }
+
+  int _asInt(dynamic value) {
+    if (value is int) return value;
+    return int.tryParse(value?.toString() ?? "") ?? 0;
+  }
+
+  int _pickInt(Map<String, dynamic>? source, List<String> keys) {
+    if (source == null) return 0;
+    for (final key in keys) {
+      final value = _asInt(source[key]);
+      if (value != 0) return value;
+    }
+    return 0;
+  }
+
+  Map<String, dynamic>? _selectedKotOrder() {
+    if (_selectedTable == null || _selectedKot == null) return null;
+    final allKotOrders =
+        (_selectedTable!['kotOrders'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+            <Map<String, dynamic>>[];
+    for (final kotOrder in allKotOrders) {
+      if (kotOrder['kot_number']?.toString() == _selectedKot) {
+        return kotOrder;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _openVoidItemsDialog() async {
+    final kotOrder = _selectedKotOrder();
+    if (kotOrder == null) return;
+
+    final kotId = _pickInt(kotOrder, ['kot_id', 'id']);
+    final restaurantId = _asInt(widget.restaurantId);
+    final zoneId = _pickInt(_selectedTable, ['zone_id', 'zoneId']) != 0
+        ? _pickInt(_selectedTable, ['zone_id', 'zoneId'])
+        : _pickInt(kotOrder, ['zone_id', 'zoneId']);
+    final parentOrderId = _pickInt(
+      _selectedTable,
+      ['order_id', 'id', 'parent_order_id', 'parentOrderId'],
+    );
+
+    if (kotId == 0 || restaurantId == 0 || zoneId == 0 || parentOrderId == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Unable to open Void Items for selected KOT")),
+      );
+      return;
+    }
+
+    try {
+      final response = await VoidItemRepository(baseUrl: _apiBaseUrl).getKotLineItems(
+        kotId: kotId,
+        restaurantId: restaurantId,
+        zoneId: zoneId,
+        token: widget.token,
+      );
+
+      if (!mounted) return;
+      await showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (_) {
+          return MultiBlocProvider(
+            providers: [
+              BlocProvider<UpdatekotBloc>(
+                create: (_) => UpdatekotBloc(
+                  repository: UpdatekotRepository(baseUrl: _apiBaseUrl),
+                ),
+              ),
+              BlocProvider<KotBloc>(
+                create: (_) => KotBloc(
+                  KotRepository(baseUrl: _apiBaseUrl),
+                ),
+              ),
+              BlocProvider<KotLineItemsBloc>(
+                create: (_) => KotLineItemsBloc(
+                  repository: VoidItemRepository(baseUrl: _apiBaseUrl),
+                ),
+              ),
+            ],
+            child: VoidItemsDialog(
+              items: response.items,
+              tableNo: (_selectedTable?['table_name'] ?? '').toString(),
+              kotNo: response.kotNumber,
+              kotId: response.kotId,
+              restaurantId: response.restaurantId,
+              zoneId: response.zoneId,
+              token: widget.token,
+              parentOrderId: parentOrderId,
+              item: kotOrder,
+              onRemark: (_) {},
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to load KOT items: $e")),
+      );
+    }
+  }
+
+  Future<void> _openTransferKotDialog() async {
+    final kotOrder = _selectedKotOrder();
+    if (kotOrder == null) return;
+
+    final token = await SessionManager.getToken();
+    if (token == null || token.isEmpty) return;
+
+    final kotId = _pickInt(kotOrder, ['kot_id', 'id']);
+    final orderId = _pickInt(
+      _selectedTable,
+      ['order_id', 'id', 'parent_order_id', 'parentOrderId'],
+    ) !=
+            0
+        ? _pickInt(
+            _selectedTable,
+            ['order_id', 'id', 'parent_order_id', 'parentOrderId'],
+          )
+        : _pickInt(kotOrder, ['parent_order_id', 'parentOrderId', 'order_id']);
+    final fromTableId = _pickInt(_selectedTable, ['table_id', 'tableId']);
+    final restaurantId = _asInt(widget.restaurantId);
+    final tableName = ((_selectedTable?['table_name'] ??
+                _selectedTable?['tableName'] ??
+                _selectedTable?['table_no']) ??
+            '')
+        .toString();
+    if (kotId == 0 || orderId == 0 || restaurantId == 0 || tableName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Unable to transfer selected KOT")),
+      );
+      return;
+    }
+
+    try {
+      final rawItems = (kotOrder['line_items'] as List<dynamic>?) ?? const [];
+      final transferItems = rawItems.map((item) {
+        final data = Map<String, dynamic>.from(item as Map);
+        final modifiers = (data['modifiers'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? <String>[];
+        return TransferKotItem(
+          name: (data['product_name'] ?? data['item_name'] ?? '').toString(),
+          note: modifiers.isNotEmpty ? modifiers.join(", ") : null,
+          qty: _asInt(data['quantity']) == 0 ? 1 : _asInt(data['quantity']),
+          amount: (data['amount'] as num?)?.toDouble() ?? 0.0,
+        );
+      }).toList();
+
+      final zoneResponse = await ZoneRepository().getAllZones(token);
+      final tableResponse = await TableRepository().getAllTables(token);
+
+      final Map<String, String> zoneNames = {};
+      for (final zone in zoneResponse) {
+        final id = zone['zone_id']?.toString();
+        final name = zone['zone_name']?.toString();
+        if (id != null && name != null) zoneNames[id] = name;
+      }
+
+      final Map<String, List<String>> zoneTables = {};
+      final Map<String, int> tableIds = {};
+      final Map<String, int> zoneIds = {};
+      final Map<String, String> tableStatus = {};
+      for (final row in tableResponse) {
+        final table = Map<String, dynamic>.from(row);
+        final zoneId = table['zone_id']?.toString();
+        final tableNameVal = table['table_name']?.toString();
+        final tableIdVal = _asInt(table['table_id']);
+        final statusVal = table['status']?.toString();
+        if (zoneId != null && tableNameVal != null) {
+          zoneTables.putIfAbsent(zoneId, () => <String>[]);
+          zoneTables[zoneId]!.add(tableNameVal);
+        }
+        if (tableNameVal != null && tableIdVal != 0) {
+          tableIds[tableNameVal] = tableIdVal;
+        }
+        if (zoneId != null) {
+          zoneIds[zoneId] = _asInt(zoneId);
+        }
+        if (tableNameVal != null && statusVal != null) {
+          tableStatus[tableNameVal] = statusVal;
+        }
+      }
+
+      final resolvedFromTableId =
+          fromTableId != 0 ? fromTableId : (tableIds[tableName] ?? 0);
+      if (resolvedFromTableId == 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Unable to transfer selected KOT")),
+        );
+        return;
+      }
+
+      String kotZone = '';
+      for (final entry in zoneTables.entries) {
+        if (entry.value.contains(tableName)) {
+          kotZone = entry.key;
+          break;
+        }
+      }
+
+      if (!mounted) return;
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) {
+          return BlocProvider(
+            create: (_) => TransferKotBloc(
+              repository: KotTransferRepository(),
+            ),
+            child: TransferKOTDialog(
+              tableName: tableName,
+              kotNo: (_selectedKot ?? 'KOT'),
+              dateTime: DateTime.now(),
+              items: transferItems,
+              zoneTables: zoneTables,
+              orderId: orderId,
+              kotId: kotId,
+              fromTableId: resolvedFromTableId,
+              restaurantId: restaurantId,
+              authToken: widget.token,
+              zoneIds: zoneIds,
+              tableIds: tableIds,
+              tableStatus: tableStatus,
+              kotZone: kotZone,
+              zoneNames: zoneNames,
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Transfer KOT failed: $e")),
+      );
+    }
   }
 
 
@@ -1019,7 +1266,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                       'Void Items',
                       style: TextStyle(fontSize: 11),
                     ),
-                    onPressed: _selectedKot != null ? () {} : null,
+                    onPressed: _selectedKot != null ? _openVoidItemsDialog : null,
                   ),
 
                   const SizedBox(width: 6),
@@ -1056,7 +1303,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                       'Transfer KOT',
                       style: TextStyle(fontSize: 11),
                     ),
-                    onPressed: _selectedKot != null ? () {} : null,
+                    onPressed: _selectedKot != null ? _openTransferKotDialog : null,
                   ),
                 ],
               ],
