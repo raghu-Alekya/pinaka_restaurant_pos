@@ -16,6 +16,7 @@ import '../../blocs/Bloc State/create_payment_state.dart';
 import '../../blocs/Bloc State/discount_stata.dart';
 import '../../blocs/Bloc State/payment_state.dart';
 import '../../models/payment/create_payment_model.dart';
+import '../../repositories/create_payment_repository.dart';
 import '../../repositories/discount_repository.dart';
 import '../../services/app_database.dart';
 import '../../utils/SessionManager.dart';
@@ -43,7 +44,7 @@ class paymentsummary extends StatefulWidget {
     this.zoneId,
     required PaymentSummary,
     required this.orderId,
-  required this.onMerchantDiscountChanged,
+    required this.onMerchantDiscountChanged,
   }) : super(key: key);
 
 
@@ -74,6 +75,7 @@ class _paymentsummaryState extends State<paymentsummary> {
   double _lastNetPayable = 0.0;
   bool _isNcDiscount = false;
   bool _isPaying = false;
+  final CreatePaymentRepository _paymentRepository = CreatePaymentRepository();
 
 
 
@@ -414,7 +416,7 @@ class _paymentsummaryState extends State<paymentsummary> {
               setState(() {
                 _isPaying = false; // ✅ stop loading
               });
-              await showDialog(
+              final action = await showDialog<String>(
                 context: context,
                 barrierDismissible: false,
                 barrierColor: Colors.black.withOpacity(0.4),
@@ -427,6 +429,8 @@ class _paymentsummaryState extends State<paymentsummary> {
                         amount: state.response.paidAmount.toString(),
                         paymentMode: selectedPaymentMode,
                         changeAmount: state.response.change.toStringAsFixed(2),
+                        paymentId: state.response.paymentId,
+                        orderId: state.response.orderId,
                         loadedTables: widget.loadedTables,
                         pin: widget.pin,
                         token: widget.token,
@@ -440,8 +444,37 @@ class _paymentsummaryState extends State<paymentsummary> {
               );
               if (!mounted) return;
 
-              /// 🔥 Reset order completely
-              context.read<OrderBloc>().add(ClearOrder());
+              if (action == "void") {
+                try {
+                  final message = await _paymentRepository.voidPayment(
+                    token: widget.token,
+                    paymentId: state.response.paymentId,
+                    orderId: state.response.orderId,
+                  );
+
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(message)),
+                  );
+
+                  context.read<PaymentBloc>().add(
+                    LoadPaymentSummary(
+                      token: widget.token,
+                      orderId: widget.orderId,
+                      restaurantId: widget.restaurantId,
+                      orderType: "Dine In",
+                    ),
+                  );
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(e.toString())),
+                  );
+                }
+              } else {
+                /// 🔥 Reset order completely
+                context.read<OrderBloc>().add(ClearOrder());
+              }
             }
 
             if (state is CreatePaymentFailure) {
@@ -773,26 +806,26 @@ class _paymentsummaryState extends State<paymentsummary> {
 
                                 // ===== APPLY CALLBACKS =====
 
-                                  onDiscountApplied: (double amount, bool isNc) {
-                                    debugPrint("🟠 onDiscountApplied amount=$amount isNc=$isNc");
+                                onDiscountApplied: (double amount, bool isNc) {
+                                  debugPrint("🟠 onDiscountApplied amount=$amount isNc=$isNc");
 
-                                    // Only update the field visually for instant feedback
-                                    discountController.text = amount.toStringAsFixed(2);
+                                  // Only update the field visually for instant feedback
+                                  discountController.text = amount.toStringAsFixed(2);
 
-                                    // DO NOT touch _isDiscountApplied, merchantDiscount or _isNcDiscount here
+                                  // DO NOT touch _isDiscountApplied, merchantDiscount or _isNcDiscount here
 
-                                    // Always refresh from backend so real NC + discount come from API
-                                    context.read<PaymentBloc>().add(
-                                      LoadPaymentSummary(
-                                        token: widget.token,
-                                        orderId: widget.orderId,
-                                        restaurantId: widget.restaurantId,
-                                        orderType: "Dine In",
-                                      ),
-                                    );
-                                  },
+                                  // Always refresh from backend so real NC + discount come from API
+                                  context.read<PaymentBloc>().add(
+                                    LoadPaymentSummary(
+                                      token: widget.token,
+                                      orderId: widget.orderId,
+                                      restaurantId: widget.restaurantId,
+                                      orderType: "Dine In",
+                                    ),
+                                  );
+                                },
 
-                                  onCouponApplied: (coupon) {
+                                onCouponApplied: (coupon) {
                                   setState(() {
                                     _isCouponApplied = true;
                                     _appliedCoupon = coupon;
@@ -896,7 +929,7 @@ Widget buildPayment(
     String label, {
       required double netPayable,
     })
- {
+{
 
   final double tenderAmount =
   amount.isNotEmpty ? double.tryParse(amount) ?? 0.0 : 0.0;

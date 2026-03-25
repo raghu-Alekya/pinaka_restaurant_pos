@@ -51,4 +51,52 @@ class CreatePaymentRepository {
       rethrow;
     }
   }
+  Future<String> voidPayment({
+    required String token,
+    required int paymentId,
+    required int orderId,
+  }) async {
+    final url = Uri.parse('$_baseUrl/payments/void-payment');
+
+    try {
+      final body = {
+        "payment_id": paymentId,
+        "order_id": orderId,
+      };
+
+      if (kDebugMode) {
+        print("📤 VOID PAYMENT REQUEST → ${url.toString()}");
+        print("🔐 TOKEN: $token");
+        print("📦 BODY: ${jsonEncode(body)}");
+      }
+
+      final response = await http.post(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
+
+      if (kDebugMode) {
+        print("📥 VOID STATUS CODE: ${response.statusCode}");
+        print("📥 VOID RESPONSE BODY: ${response.body}");
+      }
+
+      final decoded = jsonDecode(response.body);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return (decoded["message"] ?? "Payment voided successfully").toString();
+      }
+
+      throw Exception(
+        "Void payment failed (${response.statusCode}): ${decoded["message"] ?? response.body}",
+      );
+    } catch (e, stack) {
+      debugPrint("❌ Void Payment API Error: $e");
+      debugPrint("📍 StackTrace: $stack");
+      rethrow;
+    }
+  }
 }

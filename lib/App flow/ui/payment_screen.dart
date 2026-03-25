@@ -63,7 +63,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       context.read<PaymentBloc>().add(
         LoadPaymentSummary(
           restaurantId: widget.restaurantId,
-          orderId: orderBloc.state.orderId!,
+          orderId: orderBloc.state.orderId,
           zoneId: orderBloc.state.zoneId, // can be null
           orderType: "Dine In",
           token: widget.token, // ✅ must pass token
@@ -133,6 +133,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
           final paymentSummary = state.summary;
           final orderId = context.read<OrderBloc>().state.orderId; //
           final merchantDiscount = state.merchantDiscount; // ✅ important
+          final hasCouponApplied = paymentSummary.coupons > 0;
+          final hasDiscountApplied = merchantDiscount.abs() > 0;
 
           return Scaffold(
             appBar: PreferredSize(
@@ -158,6 +160,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       selectedUser: _selectedUser,
                       merchantDiscount: merchantDiscount,
                       paymentSummary: paymentSummary,
+                      hasCouponApplied: hasCouponApplied,
+                      hasDiscountApplied: hasDiscountApplied,
                     ),
                   ),
                 ),

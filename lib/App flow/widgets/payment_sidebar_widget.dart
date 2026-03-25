@@ -14,6 +14,8 @@ import '../../models/tax_model.dart';
 class Sidebarwidgets extends StatefulWidget {
   final PaymentSummary paymentSummary;
   final double merchantDiscount;
+  final bool hasCouponApplied;
+  final bool hasDiscountApplied;
 
 
   const Sidebarwidgets({
@@ -22,6 +24,8 @@ class Sidebarwidgets extends StatefulWidget {
     required userPermissions,
     Map<String, dynamic>? selectedUser,
     required this.merchantDiscount,
+    this.hasCouponApplied = false,
+    this.hasDiscountApplied = false,
   });
 
   @override
@@ -240,574 +244,586 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
     String formattedDate = DateFormat("EEEE, dd MMM yyyy").format(now);
     String formattedTime = DateFormat("hh:mm a").format(now);
     return BlocListener<TaxBloc, TaxState>(
-        listener: (context, state) {
-          if (state is TaxLoaded) {
-            _calculateTaxAndPayable(state); // ✅ CALCULATE IMMEDIATELY
-          }
-        },
+      listener: (context, state) {
+        if (state is TaxLoaded) {
+          _calculateTaxAndPayable(state); // ✅ CALCULATE IMMEDIATELY
+        }
+      },
 
-     child:  Scaffold(
-      backgroundColor: const Color(0xFFF5F5F6),
-      body: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 12, top: 16, right: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ---------- Header Section ----------
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+      child:  Scaffold(
+        backgroundColor: const Color(0xFFF5F5F6),
+        body: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 12, top: 16, right: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ---------- Header Section ----------
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
 
-                    /// LEFT COLUMN
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+                      /// LEFT COLUMN
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
 
-                        /// 🔙 Back Button (row 1)
-                        GestureDetector(
-                          onTap: () {
-                            if (!mounted) return;
-                            Navigator.pop(context);
-                          },
-                          child: Container(
+                          /// 🔙 Back Button (row 1)
+                          GestureDetector(
+                            onTap: () {
+                              if (!mounted) return;
+                              if (widget.hasCouponApplied) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text("Remove coupon first")),
+                                );
+                                return;
+                              }
+                              if (widget.hasDiscountApplied) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text("Remove discount first")),
+                                );
+                                return;
+                              }
+                              Navigator.pop(context);
+                            },
+                            child: Container(
+                              width: 90,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFDEE8FF),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Image.asset("assets/icon/-01.png", width: 18),
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    "Back",
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF585A5C),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          /// 🧾 Order ID (row 2)
+                          Text(
+                            "Order ID #${widget.paymentSummary.orderId}",
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF111827),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      /// RIGHT COLUMN
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+
+                          /// 🖨️ Print Button (row 1)
+                          Container(
                             width: 90,
                             height: 36,
+                            alignment: Alignment.center,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFDEE8FF),
+                              color: Colors.green, // ✅ background
                               borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.green),
                             ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Image.asset("assets/icon/-01.png", width: 18),
-                                const SizedBox(width: 8),
-                                const Text(
-                                  "Back",
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF585A5C),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        /// 🧾 Order ID (row 2)
-                        Text(
-                          "Order ID #${widget.paymentSummary.orderId}",
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF111827),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    /// RIGHT COLUMN
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-
-                        /// 🖨️ Print Button (row 1)
-                        Container(
-                          width: 90,
-                          height: 36,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: Colors.green, // ✅ background
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.green),
-                          ),
-                          child: Text(
-                            "Print",
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white, // ✅ text color
-                            ),
-                          ),
-                        ),
-
-
-                        const SizedBox(height: 12),
-
-                        /// 📅 Date & Time (row 2)
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Image.asset("assets/icon/calender.png", width: 16),
-                            const SizedBox(width: 4),
-                            Text(
-                              formattedDate,
-                              style: const TextStyle(fontSize: 12, color: Color(0xFF656161)),
-                            ),
-                            const SizedBox(width: 8),
-                            Image.asset("assets/icon/clock.png", width: 16),
-                            const SizedBox(width: 4),
-                            Text(
-                              formattedTime,
-                              style: const TextStyle(fontSize: 12, color: Color(0xFF656161)),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 8),
-
-                // ---------- Items Container ----------
-
-               Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFDEE8FF),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  padding: const EdgeInsets.all(10),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFFFFF),
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                    child: Column(
-                      children: [
-
-                        // 🔴 HEADER ROW
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFFF5A5A), // Red header
-                            borderRadius: BorderRadius.only(
-                              topLeft: Radius.circular(5),
-                              topRight: Radius.circular(5),
-                            ),
-                          ),
-                          child: Row(
-                            children: const [
-                              Expanded(
-                                child: Text(
-                                  'Item Name',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-
+                            child: Text(
+                              "Print",
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white, // ✅ text color
                               ),
-                              SizedBox(
-                                width: 40, // column width
-                                child: Text(
-                                  'Units',
-                                  textAlign: TextAlign.right,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 58),
+                            ),
+                          ),
+
+
+                          const SizedBox(height: 12),
+
+                          /// 📅 Date & Time (row 2)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Image.asset("assets/icon/calender.png", width: 16),
+                              const SizedBox(width: 4),
                               Text(
-                                'Price',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                                formattedDate,
+                                style: const TextStyle(fontSize: 12, color: Color(0xFF656161)),
+                              ),
+                              const SizedBox(width: 8),
+                              Image.asset("assets/icon/clock.png", width: 16),
+                              const SizedBox(width: 4),
+                              Text(
+                                formattedTime,
+                                style: const TextStyle(fontSize: 12, color: Color(0xFF656161)),
                               ),
                             ],
                           ),
+                        ],
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  // ---------- Items Container ----------
+
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDEE8FF),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.all(10),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFFFFF),
+                          borderRadius: BorderRadius.circular(5),
                         ),
+                        child: Column(
+                          children: [
 
-                        // 📜 LIST ITEMS
-                        Expanded(
-                          child: ListView.builder(
-                            itemCount: widget.paymentSummary.lineItems.length,
-                            itemBuilder: (context, index) {
-                              final item = widget.paymentSummary.lineItems[index];
-
-                              return Column(
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 6),
-                                    child:Row(
-                                      children: [
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(item.name, overflow: TextOverflow.ellipsis),
-                                              if (item.modifiers.isNotEmpty)
-                                                Text(
-                                                  "${item.modifiers.join(", ")}  (+₹${item.modifierAmount.toStringAsFixed(0)})",
-                                                  style: const TextStyle(
-                                                    fontSize: 10,
-                                                    color: Colors.red,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                            ],
-                                          ),
-                                        ),
-
-                                        // Qty × Rate
-                                        SizedBox(
-                                          width: 80,
-                                          child: Text(
-                                            '${item.qty} × ${((item.qty > 0 ? ((item.total - item.modifierAmount) / item.qty) : 0)).toStringAsFixed(0)}',
-                                            textAlign: TextAlign.right,
-                                            style: const TextStyle(fontSize: 12),
-                                          ),
-                                        ),
-
-                                        // Total
-                                        SizedBox(
-                                          width: 80,
-                                          child: Text(
-                                            item.total.toStringAsFixed(2),
-                                            textAlign: TextAlign.right,
-                                            style: const TextStyle(fontSize: 12),
-                                          ),
-                                        ),
-                                      ],
+                            // 🔴 HEADER ROW
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFFF5A5A), // Red header
+                                borderRadius: BorderRadius.only(
+                                  topLeft: Radius.circular(5),
+                                  topRight: Radius.circular(5),
+                                ),
+                              ),
+                              child: Row(
+                                children: const [
+                                  Expanded(
+                                    child: Text(
+                                      'Item Name',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
 
                                   ),
-                                  const Divider(
-                                    color: Color(0xFFE6E7E8),
-                                    thickness: 1,
+                                  SizedBox(
+                                    width: 40, // column width
+                                    child: Text(
+                                      'Units',
+                                      textAlign: TextAlign.right,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(width: 58),
+                                  Text(
+                                    'Price',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                 ],
-                              );
-                            },
-                          ),
+                              ),
+                            ),
+
+                            // 📜 LIST ITEMS
+                            Expanded(
+                              child: ListView.builder(
+                                itemCount: widget.paymentSummary.lineItems.length,
+                                itemBuilder: (context, index) {
+                                  final item = widget.paymentSummary.lineItems[index];
+
+                                  return Column(
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 12, vertical: 6),
+                                        child:Row(
+                                          children: [
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(item.name, overflow: TextOverflow.ellipsis),
+                                                  if (item.modifiers.isNotEmpty)
+                                                    Text(
+                                                      "${item.modifiers.join(", ")}  (+₹${item.modifierAmount.toStringAsFixed(0)})",
+                                                      style: const TextStyle(
+                                                        fontSize: 10,
+                                                        color: Colors.red,
+                                                        fontWeight: FontWeight.w600,
+                                                      ),
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                ],
+                                              ),
+                                            ),
+
+                                            // Qty × Rate
+                                            SizedBox(
+                                              width: 80,
+                                              child: Text(
+                                                '${item.qty} × ${((item.qty > 0 ? ((item.total - item.modifierAmount) / item.qty) : 0)).toStringAsFixed(0)}',
+                                                textAlign: TextAlign.right,
+                                                style: const TextStyle(fontSize: 12),
+                                              ),
+                                            ),
+
+                                            // Total
+                                            SizedBox(
+                                              width: 80,
+                                              child: Text(
+                                                item.total.toStringAsFixed(2),
+                                                textAlign: TextAlign.right,
+                                                style: const TextStyle(fontSize: 12),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+
+                                      ),
+                                      const Divider(
+                                        color: Color(0xFFE6E7E8),
+                                        thickness: 1,
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
+
+                  const SizedBox(height: 60), // space for bottom toggle container
+                ],
               ),
-
-              const SizedBox(height: 60), // space for bottom toggle container
-              ],
             ),
-          ),
 
 
-          // ---------- Fixed Bottom Toggle Container ----------
-          Align(
-          alignment: Alignment.bottomCenter,
-          child: Container(
-          width: MediaQuery.of(context).size.width * 0.315,
-          margin: const EdgeInsets.only( bottom: 8),
-          decoration: BoxDecoration(
-          color: const Color(0xFFFFFFFF),
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-          BoxShadow(
-          color: Colors.black12,
-          blurRadius: 6,
-          offset: const Offset(0, -2),
-          ),
-          ],
-          ),
-          child: Column(
-     mainAxisSize: MainAxisSize.min,
-     children: [
+            // ---------- Fixed Bottom Toggle Container ----------
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.315,
+                margin: const EdgeInsets.only( bottom: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFFFF),
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 6,
+                      offset: const Offset(0, -2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
 
-    /// 🔼 EXPANDABLE PART (Animated)
-      AnimatedBuilder(
-        animation: _controller,
-        builder: (context, child) {
-          if (!_isExpanded) {
-            debugPrint('🔽 Tax panel collapsed');
+                    /// 🔼 EXPANDABLE PART (Animated)
+                    AnimatedBuilder(
+                      animation: _controller,
+                      builder: (context, child) {
+                        if (!_isExpanded) {
+                          debugPrint('🔽 Tax panel collapsed');
 
-            // return BlocBuilder<TaxBloc, TaxState>(
-            //   builder: (context, state) {
-            //     if (state is TaxLoaded) {
-            //       final grossTotal = widget.paymentSummary.grossTotal;
-            //       final couponDiscount = widget.paymentSummary.coupons;
-            //       final merchantDiscount = widget.merchantDiscount.abs();
-            //       final subTotal = grossTotal - couponDiscount;
-            //
-            //       double foodCgst = 0, foodSgst = 0, beverageCgst = 0, beverageSgst = 0;
-            //
-            //       for (final item in widget.paymentSummary.lineItems) {
-            //         final itemClass = normalizeTaxClass(item.taxClass);
-            //
-            //         final tax = state.taxes.firstWhere(
-            //               (t) => normalizeTaxClass(t.taxClass) == itemClass,
-            //           orElse: () => TaxModel(
-            //             id: 0,
-            //             rate: "0",
-            //             name: "",
-            //             taxClass: "",
-            //             compound: false,
-            //             shipping: false,
-            //           ),
-            //         );
-            //
-            //         final rate = double.tryParse(tax.rate) ?? 0;
-            //         if (rate == 0) continue;
-            //
-            //         final halfTax = (item.total * rate / 100) / 2;
-            //
-            //         if (itemClass == 'food') {
-            //           foodCgst += halfTax;
-            //           foodSgst += halfTax;
-            //         } else if (itemClass == 'beverages') {
-            //           beverageCgst += halfTax;
-            //           beverageSgst += halfTax;
-            //         }
-            //       }
-            //
-            //       final newTotalTax = foodCgst + foodSgst + beverageCgst + beverageSgst;
-            //       final netTotal = subTotal + newTotalTax;
-            //       final tempPayable = netTotal - merchantDiscount;
-            //
-            //       // WidgetsBinding.instance.addPostFrameCallback((_) {
-            //       //   if (!mounted) return;
-            //       //   if (calculatedNetPayable != tempPayable) {
-            //       //     setState(() {
-            //       //       totalTax = newTotalTax;
-            //       //       calculatedNetPayable = tempPayable;
-            //       //     });
-            //       //   }
-            //       // });
-            //     }
-            //
-            //     return const SizedBox.shrink();
-            //   },
-            // );
-            return const SizedBox.shrink();
-          }
-
-
-          debugPrint('🔼 Tax panel expanded');
-
-          return Padding(
-            padding: const EdgeInsets.all(12),
-            child: BlocBuilder<TaxBloc, TaxState>(
-              builder: (context, state) {
-
-                debugPrint('📦 BlocBuilder state = ${state.runtimeType}');
-
-                if (state is TaxLoading) {
-                  debugPrint('⏳ TaxLoading...');
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final grossTotal = widget.paymentSummary.grossTotal;
-                final couponDiscount = widget.paymentSummary.coupons;
-                // final merchantDiscount = widget.paymentSummary.discount ?? 0.0;
-                // final merchantDiscount = widget.merchantDiscount;
-                // double netPayable = widget.paymentSummary.netTotal;
-                // final double merchantDiscount = context.select((PaymentBloc bloc) {
-                //   return bloc.state is PaymentSummaryLoaded
-                //       ? (bloc.state as PaymentSummaryLoaded).merchantDiscount
-                //       : 0.0;
-                // });
-                final double merchantDiscount = widget.merchantDiscount;
+                          // return BlocBuilder<TaxBloc, TaxState>(
+                          //   builder: (context, state) {
+                          //     if (state is TaxLoaded) {
+                          //       final grossTotal = widget.paymentSummary.grossTotal;
+                          //       final couponDiscount = widget.paymentSummary.coupons;
+                          //       final merchantDiscount = widget.merchantDiscount.abs();
+                          //       final subTotal = grossTotal - couponDiscount;
+                          //
+                          //       double foodCgst = 0, foodSgst = 0, beverageCgst = 0, beverageSgst = 0;
+                          //
+                          //       for (final item in widget.paymentSummary.lineItems) {
+                          //         final itemClass = normalizeTaxClass(item.taxClass);
+                          //
+                          //         final tax = state.taxes.firstWhere(
+                          //               (t) => normalizeTaxClass(t.taxClass) == itemClass,
+                          //           orElse: () => TaxModel(
+                          //             id: 0,
+                          //             rate: "0",
+                          //             name: "",
+                          //             taxClass: "",
+                          //             compound: false,
+                          //             shipping: false,
+                          //           ),
+                          //         );
+                          //
+                          //         final rate = double.tryParse(tax.rate) ?? 0;
+                          //         if (rate == 0) continue;
+                          //
+                          //         final halfTax = (item.total * rate / 100) / 2;
+                          //
+                          //         if (itemClass == 'food') {
+                          //           foodCgst += halfTax;
+                          //           foodSgst += halfTax;
+                          //         } else if (itemClass == 'beverages') {
+                          //           beverageCgst += halfTax;
+                          //           beverageSgst += halfTax;
+                          //         }
+                          //       }
+                          //
+                          //       final newTotalTax = foodCgst + foodSgst + beverageCgst + beverageSgst;
+                          //       final netTotal = subTotal + newTotalTax;
+                          //       final tempPayable = netTotal - merchantDiscount;
+                          //
+                          //       // WidgetsBinding.instance.addPostFrameCallback((_) {
+                          //       //   if (!mounted) return;
+                          //       //   if (calculatedNetPayable != tempPayable) {
+                          //       //     setState(() {
+                          //       //       totalTax = newTotalTax;
+                          //       //       calculatedNetPayable = tempPayable;
+                          //       //     });
+                          //       //   }
+                          //       // });
+                          //     }
+                          //
+                          //     return const SizedBox.shrink();
+                          //   },
+                          // );
+                          return const SizedBox.shrink();
+                        }
 
 
-                final double backendNetPayable =
-                    widget.paymentSummary.netTotal -  widget.merchantDiscount.abs();
+                        debugPrint('🔼 Tax panel expanded');
+
+                        return Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: BlocBuilder<TaxBloc, TaxState>(
+                            builder: (context, state) {
+
+                              debugPrint('📦 BlocBuilder state = ${state.runtimeType}');
+
+                              if (state is TaxLoading) {
+                                debugPrint('⏳ TaxLoading...');
+                                return const Center(child: CircularProgressIndicator());
+                              }
+                              final grossTotal = widget.paymentSummary.grossTotal;
+                              final couponDiscount = widget.paymentSummary.coupons;
+                              // final merchantDiscount = widget.paymentSummary.discount ?? 0.0;
+                              // final merchantDiscount = widget.merchantDiscount;
+                              // double netPayable = widget.paymentSummary.netTotal;
+                              // final double merchantDiscount = context.select((PaymentBloc bloc) {
+                              //   return bloc.state is PaymentSummaryLoaded
+                              //       ? (bloc.state as PaymentSummaryLoaded).merchantDiscount
+                              //       : 0.0;
+                              // });
+                              final double merchantDiscount = widget.merchantDiscount;
+
+
+                              final double backendNetPayable =
+                                  widget.paymentSummary.netTotal -  widget.merchantDiscount.abs();
 
 
 // backend not available yet
 
-                final subTotal = grossTotal - couponDiscount;
-                // final netPayable = subTotal + totalTax - merchantDiscount;
-                // final netTotal = subTotal + totalTax;
-                final bool modifiersTaxable =
-                    widget.paymentSummary.modifiersTaxable;
+                              final subTotal = grossTotal - couponDiscount;
+                              // final netPayable = subTotal + totalTax - merchantDiscount;
+                              // final netTotal = subTotal + totalTax;
+                              final bool modifiersTaxable =
+                                  widget.paymentSummary.modifiersTaxable;
 
 
 
 
 
-                if (state is TaxLoaded) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (!mounted) return;
-                    // _calculateTaxAndPayable(state);
-                  });
+                              if (state is TaxLoaded) {
+                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                  if (!mounted) return;
+                                  // _calculateTaxAndPayable(state);
+                                });
 
-                  final grossTotal = widget.paymentSummary.grossTotal;
-                  final couponDiscount = widget.paymentSummary.coupons;
-                  final merchantDiscount = widget.merchantDiscount.abs();
-                  final subTotal = grossTotal - couponDiscount;
-                  final netTotal = subTotal + totalTax;
+                                final grossTotal = widget.paymentSummary.grossTotal;
+                                final couponDiscount = widget.paymentSummary.coupons;
+                                final merchantDiscount = widget.merchantDiscount.abs();
+                                final subTotal = grossTotal - couponDiscount;
+                                final netTotal = subTotal + totalTax;
 
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _row("Gross Total", grossTotal, isBold: true),
-                      _row("Coupon / Discounts", -couponDiscount, color: Colors.green),
-                      const DottedLine(),
-                      _row("Sub Total", subTotal, isBold: true),
+                                return Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _row("Gross Total", grossTotal, isBold: true),
+                                    _row("Coupon / Discounts", -couponDiscount, color: Colors.green),
+                                    const DottedLine(),
+                                    _row("Sub Total", subTotal, isBold: true),
 
-                      if (foodRate != null && (foodCgst > 0 || foodSgst > 0)) ...[
-                        const SizedBox(height: 6),
+                                    if (foodRate != null && (foodCgst > 0 || foodSgst > 0)) ...[
+                                      const SizedBox(height: 6),
 
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            "Tax @${foodRate!.toStringAsFixed(0)}% Food",
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
+                                      Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          "Tax @${foodRate!.toStringAsFixed(0)}% Food",
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+
+                                      Padding(
+                                        padding: const EdgeInsets.only(left: 12),
+                                        child: Column(
+                                          children: [
+                                            _row("CGST ${(foodRate! / 2).toStringAsFixed(1)}%", foodCgst),
+                                            _row("SGST ${(foodRate! / 2).toStringAsFixed(1)}%", foodSgst),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+
+                                    if (beverageRate != null && (beverageCgst > 0 || beverageSgst > 0)) ...[
+                                      const SizedBox(height: 6),
+
+                                      Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          "Tax @${beverageRate!.toStringAsFixed(0)}% Beverages",
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+
+                                      Padding(
+                                        padding: const EdgeInsets.only(left: 12),
+                                        child: Column(
+                                          children: [
+                                            _row("CGST ${(beverageRate! / 2).toStringAsFixed(1)}%", beverageCgst),
+                                            _row("SGST ${(beverageRate! / 2).toStringAsFixed(1)}%", beverageSgst),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                    _row(
+                                      "Tax Alcohol @Nil (Price inclusive of Excise Duty)",
+                                      0.00,
+                                    ),
+
+
+                                    halfDottedLine(width: 100),
+                                    _row("Total Tax", totalTax, isBold: true),
+                                    const DottedLine(),
+                                    _row("Net Total", netTotal, isBold: true),
+                                    _row("Merchant Discount", merchantDiscount, color: Colors.blue),
+                                    const DottedLine(),
+                                    _row(
+                                      "Net Payable",
+                                      calculatedNetPayable.abs().roundToDouble(),
+                                      isBold: true,
+                                      fontSize: 18,
+                                    ),
+
+
+                                  ],
+                                );
+                              }
+
+
+                              if (state is TaxError) {
+                                debugPrint('❌ TaxError → ${state.message}');
+                                return Text(
+                                  "Tax error: ${state.message}",
+                                  style: const TextStyle(color: Colors.red),
+                                );
+                              }
+
+                              debugPrint('⚠️ Unknown state');
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                        );
+                      },
+                    ),
+
+
+
+
+
+
+                    /// 🔽 FIXED BOTTOM (Never moves)
+                    GestureDetector(
+                      onTap: _toggleExpand,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFDEE8FF), // SAME COLOR AS IMAGE
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            /// TOTAL ITEMS
+                            Text(
+                              "Total Items : ${widget.paymentSummary.lineItems.length}",
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
                             ),
-                          ),
-                        ),
 
-                        Padding(
-                          padding: const EdgeInsets.only(left: 12),
-                          child: Column(
-                            children: [
-                              _row("CGST ${(foodRate! / 2).toStringAsFixed(1)}%", foodCgst),
-                              _row("SGST ${(foodRate! / 2).toStringAsFixed(1)}%", foodSgst),
-                            ],
-                          ),
-                        ),
-                      ],
+                            const Spacer(),
 
-                      if (beverageRate != null && (beverageCgst > 0 || beverageSgst > 0)) ...[
-                        const SizedBox(height: 6),
-
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            "Tax @${beverageRate!.toStringAsFixed(0)}% Beverages",
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
+                            /// NET PAYABLE
+                            /// NET PAYABLE (ROUNDED)
+                            Text(
+                              "Net Payable : ${calculatedNetPayable.abs().roundToDouble().toStringAsFixed(2)}",
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
                             ),
-                          ),
+
+
+
+                            const SizedBox(width: 6),
+
+                            /// TOGGLE ICON (ONLY HERE)
+                            Icon(
+                              _isExpanded
+                                  ? Icons.keyboard_arrow_down
+                                  : Icons.keyboard_arrow_up,
+                              size: 22,
+                            ),
+                          ],
                         ),
-
-                        Padding(
-                          padding: const EdgeInsets.only(left: 12),
-                          child: Column(
-                            children: [
-                              _row("CGST ${(beverageRate! / 2).toStringAsFixed(1)}%", beverageCgst),
-                              _row("SGST ${(beverageRate! / 2).toStringAsFixed(1)}%", beverageSgst),
-                            ],
-                          ),
-                        ),
-                      ],
-                      _row(
-                        "Tax Alcohol @Nil (Price inclusive of Excise Duty)",
-                        0.00,
                       ),
+                    ),
 
-
-                      halfDottedLine(width: 100),
-                      _row("Total Tax", totalTax, isBold: true),
-                      const DottedLine(),
-                      _row("Net Total", netTotal, isBold: true),
-                      _row("Merchant Discount", merchantDiscount, color: Colors.blue),
-                      const DottedLine(),
-                      _row(
-                        "Net Payable",
-                        calculatedNetPayable.abs().roundToDouble(),
-                        isBold: true,
-                        fontSize: 18,
-                      ),
-
-
-                    ],
-                  );
-                }
-
-
-                if (state is TaxError) {
-                  debugPrint('❌ TaxError → ${state.message}');
-                  return Text(
-                    "Tax error: ${state.message}",
-                    style: const TextStyle(color: Colors.red),
-                  );
-                }
-
-                debugPrint('⚠️ Unknown state');
-                return const SizedBox.shrink();
-              },
+                  ],
+                ),
+              ),
             ),
-          );
-        },
-      ),
 
-
-
-
-
-
-      /// 🔽 FIXED BOTTOM (Never moves)
-      GestureDetector(
-        onTap: _toggleExpand,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          decoration: BoxDecoration(
-            color: const Color(0xFFDEE8FF), // SAME COLOR AS IMAGE
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            children: [
-              /// TOTAL ITEMS
-              Text(
-                "Total Items : ${widget.paymentSummary.lineItems.length}",
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-              ),
-
-              const Spacer(),
-
-              /// NET PAYABLE
-              /// NET PAYABLE (ROUNDED)
-              Text(
-                "Net Payable : ${calculatedNetPayable.abs().roundToDouble().toStringAsFixed(2)}",
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-
-
-
-              const SizedBox(width: 6),
-
-              /// TOGGLE ICON (ONLY HERE)
-              Icon(
-                _isExpanded
-                    ? Icons.keyboard_arrow_down
-                    : Icons.keyboard_arrow_up,
-                size: 22,
-              ),
-            ],
-          ),
+          ],
         ),
       ),
-
-    ],
-    ),
-    ),
-    ),
-
-        ],
-      ),
-    ),
     );
   }
 }
