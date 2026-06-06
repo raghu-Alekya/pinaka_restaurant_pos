@@ -26,13 +26,13 @@ class KitchenStatusScreen extends StatefulWidget {
   final String restaurantName;
 
   const KitchenStatusScreen({
-    Key? key,
-    required this.pin,
-    required this.associatedManagerPin,
-    required this.token,
-    required this.restaurantId,
-    required this.restaurantName,
-  }) : super(key: key);
+              Key? key,
+              required this.pin,
+              required this.associatedManagerPin,
+              required this.token,
+              required this.restaurantId,
+              required this.restaurantName,
+            }) : super(key: key);
 
   @override
   _KitchenStatusScreenState createState() => _KitchenStatusScreenState();

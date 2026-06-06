@@ -27,7 +27,19 @@ class CheckInBloc extends Bloc<CheckInEvent, CheckInState> {
       AppLogger.debug('KOT PIN Validation Response: $data');
 
       if (data['success'] == true && data['data'] != null) {
-        final permissions = UserPermissions.fromJson(data['data']['permissions']);
+        final permissionsJson = Map<String, dynamic>.from(
+          data['data']['permissions'],
+        );
+
+// Add role and avatar from parent data
+        permissionsJson['role'] = data['data']['role'];
+        permissionsJson['avatar'] = data['data']['avatar'];
+        permissionsJson['displayName'] = data['data']['displayName'];
+        permissionsJson['user_id'] = data['data']['id'].toString();
+
+        final permissions = UserPermissions.fromJson(
+          permissionsJson,
+        );
         emit(CheckInSuccess(
           permissions: permissions,
           fullResponse: data,

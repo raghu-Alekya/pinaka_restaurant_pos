@@ -6,6 +6,7 @@ import '../../blocs/Bloc State/checkin_state.dart';
 import '../../models/UserPermissions.dart';
 import '../../utils/SessionManager.dart';
 import '../widgets/area_movement_notifier.dart';
+import 'kitchen_display_screen.dart';
 
 class Checkinpopup extends StatefulWidget {
   final VoidCallback? onCheckIn;
@@ -91,15 +92,42 @@ class _CheckinpopupState extends State<Checkinpopup> {
     setState(() => _isLoading = false);
 
     final fullData = state.fullResponse['data'];
-    final rawPermissions = Map<String, dynamic>.from(fullData['permissions'] ?? {});
+
+    final rawPermissions =
+    Map<String, dynamic>.from(fullData['permissions'] ?? {});
+
     rawPermissions['displayName'] = fullData['displayName'] ?? '';
     rawPermissions['role'] = fullData['role'] ?? '';
     rawPermissions['user_id'] = fullData['id']?.toString() ?? '';
     rawPermissions['avatar'] = fullData['avatar'];
+
     final permissions = UserPermissions.fromJson(rawPermissions);
+
     await SessionManager.savePermissions(permissions);
 
     widget.onPermissionsReceived?.call(permissions);
+
+    final role = permissions.role.toLowerCase().trim();
+
+    // Navigate directly to KDS for chef users
+    if (role == 'chef' || role == 'kitchen' || role == 'kds') {
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => KitchendisplayScreen(
+              pin: pinDigits.join(),
+              associatedManagerPin: pinDigits.join(),
+              token: widget.token,
+              restaurantId: '',
+              restaurantName: '',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+
     AreaMovementNotifier.showPopup(
       context: context,
       fromArea: '',
