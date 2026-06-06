@@ -121,6 +121,7 @@ class _CheckinpopupState extends State<Checkinpopup> {
               token: widget.token,
               restaurantId: '',
               restaurantName: '',
+              userPermissions: permissions,
             ),
           ),
         );

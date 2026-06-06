@@ -11,6 +11,8 @@ class KitchendisplayScreen extends StatefulWidget {
   final String token;
   final String restaurantId;
   final String restaurantName;
+  final UserPermissions? userPermissions; // ADD
+
   const KitchendisplayScreen({
     Key? key,
     required this.pin,
@@ -18,8 +20,8 @@ class KitchendisplayScreen extends StatefulWidget {
     required this.token,
     required this.restaurantId,
     required this.restaurantName,
+    this.userPermissions, // ADD
   }) : super(key: key);
-
 
   @override
   State<KitchendisplayScreen> createState() =>
@@ -41,6 +43,13 @@ class _KitchenDashboardScreenState
   dynamic _selectedKot;
 
   final List<dynamic> _kotItems = [];
+
+  @override
+  void initState() {
+    super.initState();
+
+    _userPermissions = widget.userPermissions;
+  }
 
 
   final List<Map<String, dynamic>> orders = [
@@ -136,10 +145,10 @@ class _KitchenDashboardScreenState
     }).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xffF4F4F4),
+      // backgroundColor: const Color(0xffF4F4F4),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(2),
           child: Column(
             children: [
 
@@ -323,280 +332,281 @@ class _KitchenDashboardScreenState
     );
   }
   Widget _buildOrderCard(Map<String, dynamic> order) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 4,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Header
-          Container(
-            height: 32,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: order["headerColor"],
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(8),
-                topRight: Radius.circular(8),
+    return Stack(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black12,
+                blurRadius: 4,
+                offset: Offset(0, 2),
               ),
-            ),
-            child: Row(
-              children: [
-                Text(
-                  order["id"],
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  order["type"],
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Icon(
-                  Icons.access_time,
-                  color: Colors.white,
-                  size: 14,
-                ),
-                const SizedBox(width: 2),
-                const Text(
-                  "10:17",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
+            ],
           ),
-
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          "Dine In - Garden-T4",
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.black54,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        "Thu, Feb 12, 2026 | 11:30 AM",
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.black45,
-                        ),
-                      ),
-                    ],
+          child: Column(
+            children: [
+              // Header
+              Container(
+                height: 32,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: order["headerColor"],
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(8),
+                    topRight: Radius.circular(8),
                   ),
-
-                  const Divider(),
-
-                  const Row(
-                    children: [
-                      Text(
-                        "Items",
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.black54,
-                        ),
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      order["id"],
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
                       ),
-                      Spacer(),
-                      Text(
-                        "KOT No: 29",
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.black54,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: order["items"].length,
-                      itemBuilder: (context, index) {
-                        final item = order["items"][index];
-
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 8,
-                          ),
-                          decoration: const BoxDecoration(
-                            border: Border(
-                              bottom: BorderSide(
-                                color: Color(0xffEEEEEE),
-                              ),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  "${item["name"]} × ${item["qty"]}",
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                              ),
-                              const Text(
-                                "• New",
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.black54,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
                     ),
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  const Text(
-                    "Ready: 0 / 4",
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
+                    const Spacer(),
+                    Text(
+                      order["type"],
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    const Icon(
+                      Icons.access_time,
+                      color: Colors.white,
+                      size: 14,
+                    ),
+                    const SizedBox(width: 2),
+                    const Text(
+                      "10:17",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
-                  const SizedBox(height: 10),
-
-                  Row(
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(
-                              color: Color(0xffFF5B4F),
-                            ),
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              order["isCancelled"] = true;
-                            });
-                          },
-                          child: const Text(
-                            "Cancel",
-                            style: TextStyle(
-                              color: Color(0xffFF5B4F),
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(width: 10),
-
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xffFF5B4F),
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              order["status"] = "Preparing";
-                            });
-
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ActiveOrdersScreen(
-                                  orders: orders
-                                      .where((o) => o["status"] == "Preparing")
-                                      .toList(),
-                                ),
+                      const Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              "Dine In - Garden-T4",
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.black54,
                               ),
-                            );
-                          },
-                          child: const Text(
-                            "Start",
-                            style: TextStyle(
-                              color: Colors.white,
                             ),
                           ),
-                        ),
+                          Text(
+                            "Thu, Feb 12, 2026 | 11:30 AM",
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.black45,
+                            ),
+                          ),
+                        ],
                       ),
-                      if (order["isCancelled"] == true)
-                        Positioned.fill(
-                          child: Container(
-                            decoration: BoxDecoration(
+
+                      const Divider(),
+
+                      const Row(
+                        children: [
+                          Text(
+                            "Items",
+                            style: TextStyle(
+                              fontSize: 12,
                               color: Colors.black54,
-                              borderRadius: BorderRadius.circular(10),
                             ),
-                            child: Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.cancel,
-                                    color: Colors.red,
-                                    size: 70,
+                          ),
+                          Spacer(),
+                          Text(
+                            "KOT No: 29",
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: order["items"].length,
+                          itemBuilder: (context, index) {
+                            final item = order["items"][index];
+
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 8,
+                              ),
+                              decoration: const BoxDecoration(
+                                border: Border(
+                                  bottom: BorderSide(
+                                    color: Color(0xffEEEEEE),
                                   ),
-                                  const SizedBox(height: 10),
-                                  const Text(
-                                    "KOT order cancelled",
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      "${item["name"]} × ${item["qty"]}",
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.black87,
+                                      ),
                                     ),
                                   ),
-                                  const SizedBox(height: 20),
-                                  ElevatedButton.icon(
-                                    onPressed: () {
-                                      setState(() {
-                                        order["isCancelled"] = false;
-                                      });
-                                    },
-                                    icon: const Icon(Icons.refresh),
-                                    label: const Text("Recall"),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.white,
-                                      foregroundColor: Colors.blue,
+                                  const Text(
+                                    "• New",
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.black54,
                                     ),
                                   ),
                                 ],
                               ),
+                            );
+                          },
+                        ),
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      const Text(
+                        "Ready: 0 / 4",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(
+                                  color: Color(0xffFF5B4F),
+                                ),
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  order["isCancelled"] = true;
+                                });
+                              },
+                              child: const Text(
+                                "Cancel",
+                                style: TextStyle(
+                                  color: Color(0xffFF5B4F),
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+
+                          const SizedBox(width: 10),
+
+                          Expanded(
+                            child:  ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xffFF5B4F),
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  order["status"] = "Preparing";
+                                });
+
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ActiveOrdersScreen(
+                                      orders: orders
+                                          .where((o) => o["status"] == "Preparing")
+                                          .toList(),
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: const Text(
+                                "Start",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
-                ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Cancel Overlay
+        if (order["isCancelled"] == true)
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      "KOT order cancelled",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+
+                    const SizedBox(height: 15),
+
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          order["isCancelled"] = false;
+                        });
+                      },
+                      icon: const Icon(Icons.refresh),
+                      label: const Text("Recall"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.blue,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
-
   Widget _filterChip(String title) {
     bool isSelected =
         selectedOrderType == title;
