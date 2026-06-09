@@ -33,31 +33,31 @@ class NavigationHelper {
     // ==========================
     // CHEF / KDS ACCESS CONTROL
     // ==========================
-    if (role == 'chef' || role == 'kitchen' || role == 'kds') {
-      // Allow only KDS screen
-      if (tappedIndex != 2) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('You have access only to Kitchen Display'),
-          ),
-        );
-        return;
-      }
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => KitchendisplayScreen(
-            pin: pin,
-            associatedManagerPin: pin,
-            token: token,
-            restaurantId: restaurantId,
-            restaurantName: restaurantName,
-          ),
-        ),
-      );
-      return;
-    }
+    // if (role == 'chef' || role == 'kitchen' || role == 'kds') {
+    //   // Allow only KDS screen
+    //   if (tappedIndex != 2) {
+    //     ScaffoldMessenger.of(context).showSnackBar(
+    //       const SnackBar(
+    //         content: Text('You have access only to Kitchen Display'),
+    //       ),
+    //     );
+    //     return;
+    //   }
+    //
+    //   Navigator.pushReplacement(
+    //     context,
+    //     MaterialPageRoute(
+    //       builder: (_) => KitchendisplayScreen(
+    //         pin: pin,
+    //         associatedManagerPin: pin,
+    //         token: token,
+    //         restaurantId: restaurantId,
+    //         restaurantName: restaurantName,
+    //       ),
+    //     ),
+    //   );
+    //   return;
+    // }
 
     // ==========================
     // NORMAL NAVIGATION

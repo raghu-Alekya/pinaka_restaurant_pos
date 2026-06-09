@@ -107,27 +107,27 @@ class _CheckinpopupState extends State<Checkinpopup> {
 
     widget.onPermissionsReceived?.call(permissions);
 
-    final role = permissions.role.toLowerCase().trim();
+    // final role = permissions.role.toLowerCase().trim();
 
     // Navigate directly to KDS for chef users
-    if (role == 'chef' || role == 'kitchen' || role == 'kds') {
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => KitchendisplayScreen(
-              pin: pinDigits.join(),
-              associatedManagerPin: pinDigits.join(),
-              token: widget.token,
-              restaurantId: '',
-              restaurantName: '',
-              userPermissions: permissions,
-            ),
-          ),
-        );
-      }
-      return;
-    }
+    // if (role == 'chef' || role == 'kitchen' || role == 'kds') {
+    //   if (mounted) {
+    //     Navigator.pushReplacement(
+    //       context,
+    //       MaterialPageRoute(
+    //         builder: (_) => KitchendisplayScreen(
+    //           pin: pinDigits.join(),
+    //           associatedManagerPin: pinDigits.join(),
+    //           token: widget.token,
+    //           restaurantId: '',
+    //           restaurantName: '',
+    //           userPermissions: permissions,
+    //         ),
+    //       ),
+    //     );
+    //   }
+    //   return;
+    // }
 
     AreaMovementNotifier.showPopup(
       context: context,

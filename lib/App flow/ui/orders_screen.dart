@@ -27,6 +27,7 @@ import '../../repositories/kot_repository.dart';
 import '../../repositories/order_repository.dart';
 import '../../repositories/payment_summary_repository.dart';
 import '../../repositories/void_item_repository.dart';
+import '../../services/kds_seivices.dart';
 import '../../utils/logger.dart';
 import '../widgets/orderlist_widget.dart';
 import '../widgets/view_all_kots.dart';
@@ -722,6 +723,15 @@ class OrderPanel extends StatelessWidget {
                         Navigator.of(context).pop(); // close loader
 
                         if (kot != null) {
+                          await KdsMqttPublisher.notifyKotCreated(
+                            restaurantId: orderBloc.state.restaurantId.toString(),
+                            parentOrderId: state.orderId,
+                            zoneId: orderBloc.state.zoneId,
+                            zoneName: orderBloc.state.zoneName,   // add
+                            orderType: 'Dine-In',
+                            kot: kot,
+                            tableName: orderBloc.state.tableName,
+                          );
                           orderBloc.add(AddKOT(kot));
                           kotBloc.add(AddKotToList(kot));
                           orderBloc.add(ClearOrder());

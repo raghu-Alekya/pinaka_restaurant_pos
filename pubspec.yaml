@@ -51,6 +51,7 @@ dependencies:
   jwt_decoder: ^2.0.1
   mobile_scanner: ^5.1.0
   flutter_barcode_listener: ^0.1.4
+  mqtt_client: ^10.8.0
 
 dev_dependencies:
   flutter_test:
