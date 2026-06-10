@@ -1,4 +1,4 @@
-package com.example.kds_app
+package com.pinaka.kitchendisplay
 
 import io.flutter.embedding.android.FlutterActivity
 
