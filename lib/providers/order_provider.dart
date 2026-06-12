@@ -1,18 +1,29 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../models/kitchen_order.dart';
+import '../services/api_services.dart';
 import '../services/kds_localstorage.dart';
 import '../services/kds_mqtt_service.dart';
-// import '../services/order_local_storage.dart';
 import '../utils/kds_logger.dart';
 
 class OrderProvider extends ChangeNotifier {
-  OrderProvider(this._mqttService) {
+
+  Timer? _servedCleanupTimer;
+
+  OrderProvider(this._mqttService, this._apiService) {
     KdsDebugLog.info('OrderProvider created');
     _init();
+
+    _servedCleanupTimer =
+        Timer.periodic(const Duration(seconds: 30), (_) {
+          _clearServedOrders();
+        });
   }
 
   final KdsMqttService _mqttService;
+  final OrderApiService _apiService;
   final OrderLocalStorage _storage = OrderLocalStorage();
   final List<KitchenOrder> _orders = [];
   bool _loaded = false;
@@ -28,7 +39,7 @@ class OrderProvider extends ChangeNotifier {
   int get mqttMessagesReceived => _mqttService.messagesReceived;
 
   List<Map<String, dynamic>> get pendingOrders => _orders
-      .where((o) => o.status == 'Pending' && !o.isCancelled)
+      .where((o) => o.status == 'Pending')
       .map((o) => o.toUiMap())
       .toList();
 
@@ -48,14 +59,12 @@ class OrderProvider extends ChangeNotifier {
       .toList();
 
   Future<void> _init() async {
-    // Load saved orders on startup
     final saved = await _storage.loadOrders();
     _orders.addAll(saved);
     _loaded = true;
     KdsDebugLog.info('Loaded ${saved.length} orders from local storage');
     notifyListeners();
 
-    // Then connect MQTT for new orders
     _mqttService.messages.listen(_handleMessage);
     _mqttService.connectionState.listen((_) => notifyListeners());
     _mqttService.connect();
@@ -94,15 +103,32 @@ class OrderProvider extends ChangeNotifier {
     return null;
   }
 
-  void _publishStatus(KitchenOrder order, String status,
+  void _notifyPos(KitchenOrder order, String status,
       {bool isCancelled = false}) {
+    final posStatus = KotApiStatus.fromLocal(status);
+
     _mqttService.sendStatusUpdate(
       kotId: order.kotId,
       parentOrderId: order.parentOrderId,
+      zoneId: order.zoneId,
+      zoneName: order.zoneName,
+      orderType: order.type,
+      tableName: order.tableName,
       kotNumber: order.id,
-      status: status,
+      status: posStatus,
       isCancelled: isCancelled,
     );
+
+    KdsDebugLog.info(
+      'POS notified: ${order.id} → $posStatus (cancelled=$isCancelled)',
+    );
+  }
+  void _clearServedOrders() {
+    _orders.removeWhere(
+          (o) => o.status.toLowerCase() == 'served',
+    );
+
+    notifyListeners();
   }
 
   void _updateAndSave(void Function() update) {
@@ -111,49 +137,126 @@ class OrderProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void startOrder(String orderId) {
+  Future<bool> startOrder(String orderId) async {
     final order = _findOrder(orderId);
-    if (order == null) return;
-    _updateAndSave(() {
-      order.status = 'Preparing';
-      order.isCancelled = false;
-      _publishStatus(order, 'Preparing');
-    });
+    if (order == null) return false;
+
+    try {
+      await _apiService.startOrder(order);
+
+      _updateAndSave(() {
+        order.status = 'Preparing';
+        order.isCancelled = false;
+        _notifyPos(order, 'Preparing');
+      });
+
+      return true;
+    } catch (e, stack) {
+      KdsDebugLog.error('startOrder failed: $e\n$stack');
+      return false;
+    }
   }
 
-  void cancelOrder(String orderId) {
+  Future<bool> cancelOrder(String orderId) async {
     final order = _findOrder(orderId);
-    if (order == null) return;
-    _updateAndSave(() {
-      order.isCancelled = true;
-      _publishStatus(order, 'Cancelled', isCancelled: true);
-    });
+    if (order == null) return false;
+
+    try {
+      await _apiService.cancelOrder(order);
+
+      _updateAndSave(() {
+        order.isCancelled = true; // only mark cancelled
+        _notifyPos(order, 'Cancelled', isCancelled: true);
+      });
+
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 
-  void recallOrder(String orderId) {
+  Future<bool> recallOrder(String orderId) async {
     final order = _findOrder(orderId);
-    if (order == null) return;
-    _updateAndSave(() {
-      order.isCancelled = false;
-      order.status = 'Pending';
-      _publishStatus(order, 'Pending');
-    });
+    if (order == null) return false;
+
+    try {
+      await _apiService.recallOrder(order);
+
+      _updateAndSave(() {
+        order.isCancelled = false;
+        order.status = 'Pending';
+        _notifyPos(order, 'yet to prepare');
+      });
+
+      return true;
+    } catch (e, stack) {
+      KdsDebugLog.error('recallOrder failed: $e\n$stack');
+      return false;
+    }
   }
 
-  void updateOrderStatus(String orderId, String status) {
+  Future<bool> updateOrderStatus(String orderId, String status) async {
     final order = _findOrder(orderId);
-    if (order == null) return;
-    _updateAndSave(() {
-      order.status = status;
-      _publishStatus(order, status);
-    });
+    if (order == null) return false;
+
+    try {
+      await _apiService.updateOrderStatus(order, status);
+
+      _updateAndSave(() {
+        order.status = status;
+        _notifyPos(order, status);
+      });
+      for (final o in _orders) {
+        print(
+          'ID=${o.id} Status=${o.status} Items=${o.items.length}',
+        );
+      }
+
+      if (status.toLowerCase() == 'served') {
+        print('Entered served block');
+
+        final currentOrderId = orderId;
+
+        Future.delayed(const Duration(seconds: 30), () {
+          print('Timer fired');
+
+          final order = _findOrder(currentOrderId);
+
+          print('Order found = ${order?.id}');
+
+          if (order != null &&
+              order.status.toLowerCase() == 'served') {
+
+            print(
+              'Before clear: ${order.id} -> ${order.items.length}',
+            );
+
+            order.items.clear();
+
+            notifyListeners();
+
+            print(
+              'After clear: ${order.id} -> ${order.items.length}',
+            );
+          }
+        });
+      }
+      return true;
+    } catch (e, stack) {
+      KdsDebugLog.error('updateOrderStatus failed: $e\n$stack');
+      return false;
+    }
   }
 
   Future<void> reconnect() => _mqttService.connect();
 
   @override
   void dispose() {
+    _servedCleanupTimer?.cancel();
+
+    _apiService.dispose();
     _mqttService.dispose();
+
     super.dispose();
   }
 }

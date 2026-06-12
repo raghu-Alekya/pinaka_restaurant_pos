@@ -207,12 +207,16 @@ class KdsMqttService {
   void sendStatusUpdate({
     required int? kotId,
     required int? parentOrderId,
+    required int? zoneId,
     required String kotNumber,
     required String status,
+    String? zoneName,
+    String? orderType,
+    String? tableName,
     bool isCancelled = false,
   }) {
     if (_state != KdsConnectionState.connected || _client == null) {
-      KdsDebugLog.warn('Cannot send status — not connected');
+      KdsDebugLog.warn('Cannot send status to POS — not connected');
       return;
     }
 
@@ -220,11 +224,18 @@ class KdsMqttService {
       'event': 'kot_status_updated',
       'restaurant_id': restaurantId,
       'parent_order_id': parentOrderId,
+      'zone_id': zoneId,
+      'zone_name': zoneName ?? '',
+      'order_type': orderType ?? '',
+      'table_name': tableName ?? '',
       'kot_id': kotId,
       'kot_number': kotNumber,
       'status': status,
       'is_cancelled': isCancelled,
     };
+    KdsDebugLog.info(
+        'MQTT STATUS PAYLOAD => ${jsonEncode(payload)}'
+    );
 
     final builder = MqttClientPayloadBuilder()..addString(jsonEncode(payload));
 

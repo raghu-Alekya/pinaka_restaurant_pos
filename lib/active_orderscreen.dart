@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:kds_app/widgets/completed_orders.dart';
 import 'package:provider/provider.dart';
 
 import 'providers/order_provider.dart';
@@ -103,20 +104,32 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xffFF5B4F),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 25,
+                        vertical: 15,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(25),
                       ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 15,
-                      ),
                     ),
-                    onPressed: () {},
+                    onPressed: () {
+                      print("Navigating to Completed Orders");
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const CompletedOrdersScreen(token: '',),
+                        ),
+                      );
+                    },
                     child: const Text(
                       "Completed Orders →",
-                      style: TextStyle(color: Colors.white),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
+                  )
                 ],
               ),
               const SizedBox(height: 20),
@@ -374,8 +387,8 @@ class _ExpandableActiveOrderCardState extends State<_ExpandableActiveOrderCard> 
                   children: [
                     Text(
                       parentOrderId.isNotEmpty
-                          ? '#$parentOrderId'
-                          : order['id']?.toString() ?? '',
+                          ? 'Order ID #$parentOrderId'
+                          : 'Order ID ${order['id']?.toString() ?? ''}',
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
@@ -492,7 +505,12 @@ class _ExpandableActiveOrderCardState extends State<_ExpandableActiveOrderCard> 
                         ],
                       ),
                     ),
-                    if (!isLast) const Divider(height: 1),
+                    if (!isLast)
+                      Divider(
+                        height: 1,
+                        thickness: 0.5,
+                        color: Colors.grey.shade200,
+                      ),
                   ],
                 );
               }),

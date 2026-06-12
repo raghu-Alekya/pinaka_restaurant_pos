@@ -3,21 +3,23 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../utils/kds_logger.dart';
 class KdsConfig {
-  static const defaultBrokerHost = '127.0.0.1';
+  static const defaultBrokerHost = '178.16.140.169';
   static const defaultBrokerPort = 1883;
   static const defaultRestaurantId = '1';
 
   /// Old POS default — no broker here; migrate to localhost.
-  static const _legacyHosts = {'192.168.1.10'};
+  static const _legacyHosts = {'178.16.140.169'};
 
   final String brokerHost;
   final int brokerPort;
   final String restaurantId;
+  final String apiToken;
 
   const KdsConfig({
     required this.brokerHost,
     required this.brokerPort,
     required this.restaurantId,
+    this.apiToken = '',
   });
 
   static String _normalizeHost(String host) {
@@ -33,6 +35,7 @@ class KdsConfig {
 
   static Future<KdsConfig> load() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
     final rawHost = prefs.getString('mqtt_broker_host') ?? defaultBrokerHost;
     final host = _normalizeHost(rawHost);
 
@@ -41,6 +44,7 @@ class KdsConfig {
       brokerPort: prefs.getInt('mqtt_broker_port') ?? defaultBrokerPort,
       restaurantId:
           prefs.getString('restaurant_id') ?? defaultRestaurantId,
+      apiToken: prefs.getString('api_token') ?? '',
     );
 
     // Persist migration if host was corrected
@@ -56,6 +60,7 @@ class KdsConfig {
     await prefs.setString('mqtt_broker_host', brokerHost);
     await prefs.setInt('mqtt_broker_port', brokerPort);
     await prefs.setString('restaurant_id', restaurantId);
+    await prefs.setString('api_token', apiToken);
   }
 
   static Future<void> clear() async {
@@ -63,6 +68,7 @@ class KdsConfig {
     await prefs.remove('mqtt_broker_host');
     await prefs.remove('mqtt_broker_port');
     await prefs.remove('restaurant_id');
+    await prefs.remove('api_token');
     KdsDebugLog.info('Config cleared');
   }
 
@@ -87,6 +93,7 @@ class _ConnectionSetupScreenState extends State<ConnectionSetupScreen> {
   late final TextEditingController _hostController;
   late final TextEditingController _portController;
   late final TextEditingController _restaurantController;
+  late final TextEditingController _tokenController;
 
   @override
   void initState() {
@@ -96,6 +103,7 @@ class _ConnectionSetupScreenState extends State<ConnectionSetupScreen> {
         TextEditingController(text: widget.config.brokerPort.toString());
     _restaurantController =
         TextEditingController(text: widget.config.restaurantId);
+    _tokenController = TextEditingController(text: widget.config.apiToken);
   }
 
   @override
@@ -103,6 +111,7 @@ class _ConnectionSetupScreenState extends State<ConnectionSetupScreen> {
     _hostController.dispose();
     _portController.dispose();
     _restaurantController.dispose();
+    _tokenController.dispose();
     super.dispose();
   }
 
@@ -119,6 +128,7 @@ class _ConnectionSetupScreenState extends State<ConnectionSetupScreen> {
       brokerHost: _hostController.text.trim(),
       brokerPort: int.tryParse(_portController.text.trim()) ?? 1883,
       restaurantId: restaurantId,
+      apiToken: _tokenController.text.trim(),
     );
 
     await config.save();
@@ -178,6 +188,15 @@ class _ConnectionSetupScreenState extends State<ConnectionSetupScreen> {
                 controller: _restaurantController,
                 decoration: const InputDecoration(
                   labelText: 'Restaurant ID',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _tokenController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'API Token (for status updates)',
                   border: OutlineInputBorder(),
                 ),
               ),

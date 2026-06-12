@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:kds_app/widgets/completed_orders.dart';
 import 'package:provider/provider.dart';
 
 import 'active_orderscreen.dart';
@@ -140,12 +141,24 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                               borderRadius: BorderRadius.circular(25),
                             ),
                           ),
-                          onPressed: () {},
+                          onPressed: () {
+                            print("Navigating to Completed Orders");
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const CompletedOrdersScreen(token: '',),
+                              ),
+                            );
+                          },
                           child: const Text(
                             "Completed Orders →",
-                            style: TextStyle(color: Colors.white),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
+                        )
                       ],
                     ),
                     const SizedBox(height: 20),
@@ -181,7 +194,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                 crossAxisCount: 4,
                                 crossAxisSpacing: 15,
                                 mainAxisSpacing: 15,
-                                childAspectRatio: 1.25,
+                                childAspectRatio: 1.0,
                               ),
                               itemBuilder: (context, index) {
                                 final order = filteredOrders[index];
@@ -282,7 +295,9 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                 child: Row(
                   children: [
                     Text(
-                      parentOrderId.isNotEmpty ? '#$parentOrderId' : '#—',
+                      parentOrderId.isNotEmpty
+                          ? 'Order ID #$parentOrderId'
+                          : 'Order ID #—',
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
@@ -365,13 +380,17 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                 child: ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   itemCount: items.length,
-                  separatorBuilder: (_, __) => const Divider(height: 16),
+                  separatorBuilder: (_, __) => Divider(
+                    height: 16,
+                    thickness: 0.5,
+                    color: Colors.grey.shade200,
+                  ),
                   itemBuilder: (_, index) {
                     final item = Map<String, dynamic>.from(items[index] as Map);
                     final name = item['name']?.toString() ?? '';
                     final qty = item['qty'] ?? 1;
                     final note = item['note']?.toString() ?? '';
-                    final status = item['status']?.toString() ?? 'New';
+                    // final status = item['status']?.toString() ?? '';
 
                     return Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -401,13 +420,13 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                             ],
                           ),
                         ),
-                        Text(
-                          '• $status',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade700,
-                          ),
-                        ),
+                        // Text(
+                        //   '• $status',
+                        //   style: TextStyle(
+                        //     fontSize: 12,
+                        //     color: Colors.grey.shade700,
+                        //   ),
+                        // ),
                       ],
                     );
                   },
@@ -454,8 +473,19 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        onPressed: () {
-                          orderProvider.startOrder(kotId);
+                        onPressed: () async {
+                          final ok = await orderProvider.startOrder(kotId);
+                          if (!context.mounted) return;
+                          if (!ok) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Failed to start order. Check API token and connection.',
+                                ),
+                              ),
+                            );
+                            return;
+                          }
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -488,8 +518,6 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.cancel, color: Colors.red, size: 70),
-                    const SizedBox(height: 10),
                     const Text(
                       'KOT order cancelled',
                       style: TextStyle(
@@ -500,13 +528,10 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                     ),
                     const SizedBox(height: 20),
                     ElevatedButton.icon(
-                      onPressed: () => orderProvider.recallOrder(kotId),
+                      onPressed: () =>
+                          orderProvider.recallOrder(order['id']),
                       icon: const Icon(Icons.refresh),
                       label: const Text('Recall'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.blue,
-                      ),
                     ),
                   ],
                 ),
