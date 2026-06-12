@@ -85,3 +85,16 @@ class CollapseKOT extends KotEvent {}
 
 /// 🔹 Toggle KOT dropdown manually
 class ToggleKOTDropdown extends KotEvent {}
+/// 🔹 Update KOT status from MQTT
+class UpdateKotStatus extends KotEvent {
+  final String kotNumber;
+  final String status;
+
+  const UpdateKotStatus({
+    required this.kotNumber,
+    required this.status,
+  });
+
+  @override
+  List<Object?> get props => [kotNumber, status];
+}

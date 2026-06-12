@@ -333,6 +333,23 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
     on<CollapseKOT>((event, emit) {
       emit(state.copyWith(showKOTDropdown: false));
     });
+
+    on<UpdateKotStatusInOrder>((event, emit) {
+      final updatedKots = state.kotList.map((kot) {
+        if (kot.kotNumber == event.kotNumber) {
+          return kot.copyWith(
+            status: event.status,
+          );
+        }
+        return kot;
+      }).toList();
+
+      emit(state.copyWith(kotList: updatedKots));
+
+      AppLogger.info(
+        'KOT ${event.kotNumber} updated to ${event.status}',
+      );
+    });
   }
 
 
@@ -386,6 +403,11 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
       ));
     }
   }
+
+
+
+
+
 
 
 

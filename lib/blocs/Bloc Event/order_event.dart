@@ -199,6 +199,15 @@ class RepeatKotOrder extends OrderEvent {
     required this.token,
   });
 }
+class UpdateKotStatusInOrder extends OrderEvent {
+  final String kotNumber;
+  final String status;
+
+   UpdateKotStatusInOrder({
+    required this.kotNumber,
+    required this.status,
+  });
+}
 /// 🔹 Update guest count (single Guestcount object)
 class UpdateGuestCount extends OrderEvent {
   final Guestcount guestDetails; // full guest object
@@ -210,6 +219,7 @@ class UpdateGuestCount extends OrderEvent {
 class MarkKotRepeated extends OrderEvent {}
 /// ✅ Reset repeat flag for next KOT / next order
 class ResetKotRepeated extends OrderEvent {}
+
 
 
 

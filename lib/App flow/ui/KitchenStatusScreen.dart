@@ -1334,6 +1334,8 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                     final bool isSelectedKot = kot == _selectedKot;
                     final kotTime = kotOrder['time'] ?? '';
                     final kotOrderBy = kotOrder['order_by'] ?? '';
+                    final String status =
+                    (kotOrder['status'] ?? 'Pending').toString();
                     String displayTime = '';
                     if (kotTime.isNotEmpty) {
                       final parts = kotTime.split(' ');
@@ -1397,9 +1399,32 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
 
                                 const Spacer(),
 
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _getStatusColor(status),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    status.toUpperCase(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+
+                                const SizedBox(width: 8),
+
                                 if (selectedOrderType != "Takeaways")
                                   Icon(
-                                    isSelectedKot ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                                    isSelectedKot
+                                        ? Icons.keyboard_arrow_up
+                                        : Icons.keyboard_arrow_down,
                                   ),
                               ],
                             ),
@@ -1422,6 +1447,27 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         ],
       ),
     );
+  }
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'preparing':
+        return Colors.orange;
+
+      case 'ready':
+        return Colors.green;
+
+      case 'served':
+        return Colors.red;
+
+      // case 'cancelled':
+      //   return Colors.red;
+      //
+      // case 'kot-processed':
+      //   return Colors.purple;
+
+      default:
+        return Colors.grey;
+    }
   }
 
   Widget _buildKotItemsOverlay() {

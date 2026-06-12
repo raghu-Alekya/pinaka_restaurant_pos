@@ -21,6 +21,8 @@ class KotBloc extends Bloc<KotEvent, KotState> {
     // Load KOTs directly
     on<LoadKots>(_onLoadKots);
 
+    on<UpdateKotStatus>(_onUpdateKotStatus);
+
     // Collapse the KOT dropdown
     on<CollapseKOT>((event, emit) {
       if (state is KotLoaded) {
@@ -73,5 +75,28 @@ class KotBloc extends Bloc<KotEvent, KotState> {
     currentParentOrderId =
     event.kots.isNotEmpty ? event.kots.first.parentOrderId : 0;
     emit(KotLoaded(event.kots));
+  }
+  void _onUpdateKotStatus(
+      UpdateKotStatus event,
+      Emitter<KotState> emit,
+      ) {
+    if (state is! KotLoaded) return;
+
+    final current = state as KotLoaded;
+
+    final updatedKots = current.kots.map((kot) {
+      if (kot.kotNumber == event.kotNumber) {
+        return kot.copyWith(
+          status: event.status,
+        );
+      }
+      return kot;
+    }).toList();
+
+    emit(current.copyWith(kots: updatedKots));
+
+    print(
+      'KOT Status Updated => ${event.kotNumber} : ${event.status}',
+    );
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -36,7 +38,7 @@ import 'guest_details_popup.dart';
 // import '../blocs/Bloc Event/kot_event.dart' as kot_evt;
 
 
-class OrderPanel extends StatelessWidget {
+class OrderPanel extends StatefulWidget {
   final Function(int) onGuestSaved;
   final Map<String, double> addonPrices;
   final String token;
@@ -70,11 +72,49 @@ class OrderPanel extends StatelessWidget {
     required this.placedTables,
     required this.pin,
     required this.restaurantName,
-    this.existingOrderItems, // ✅ optional
+    this.existingOrderItems,
     this.existingKots,
     required this.userId,
     required this.loadedTables,
   });
+
+  @override
+  State<OrderPanel> createState() => _OrderPanelState();
+}
+class _OrderPanelState extends State<OrderPanel> {
+  StreamSubscription? _mqttSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _initMqttStatusListener();
+  }
+
+  Future<void> _initMqttStatusListener() async {
+    await KdsMqttPublisher.listenForKdsStatusUpdates(
+      restaurantId: widget.restaurantId,
+    );
+
+    _mqttSubscription =
+        KdsMqttPublisher.statusUpdates.listen((data) {
+          print('MQTT Status Received => $data');
+
+          context.read<OrderBloc>().add(
+            UpdateKotStatusInOrder(
+              kotNumber: data['kot_number'].toString(),
+              status: data['status'].toString(),
+            ),
+          );
+        });
+  }
+
+  @override
+  void dispose() {
+    _mqttSubscription?.cancel();
+    super.dispose();
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -84,24 +124,24 @@ class OrderPanel extends StatelessWidget {
 
 
     // ✅ Initialize OrderBloc with existing order items if not already loaded
-    if (orderId != 0 && orderBloc.state.orderId != orderId) {
+    if (widget.orderId != 0 && orderBloc.state.orderId != widget.orderId) {
       orderBloc.add(LoadExistingOrder(
-        orderId: orderId,
-        tableId: tableId,
-        zoneId: zoneId,
-        tableName: tableName,
-        zoneName: zoneName,
-        kotList: existingKots ?? [],
+        orderId: widget.orderId,
+        tableId: widget.tableId,
+        zoneId: widget.zoneId,
+        tableName: widget.tableName,
+        zoneName: widget.zoneName,
+        kotList: widget.existingKots ?? [],
         // guests: [guestcount],
         // orderItems: existingOrderItems ?? [],
-        restaurantId:restaurantId,
-        guestDetails: guestcount,
+        restaurantId:widget.restaurantId,
+        guestDetails: widget.guestcount,
       ));
     }
 
     // ✅ Initialize KotBloc with existing KOTs if not already loaded
-    if (orderId != 0 && existingKots != null && (kotBloc.state is! KotLoaded || (kotBloc.state as KotLoaded).kots.isEmpty)) {
-      context.read<KotBloc>().add(SetExistingKots(kots: existingKots!));
+    if (widget.orderId != 0 && widget.existingKots != null && (kotBloc.state is! KotLoaded || (kotBloc.state as KotLoaded).kots.isEmpty)) {
+      context.read<KotBloc>().add(SetExistingKots(kots: widget.existingKots!));
 
     }
     return BlocBuilder<OrderBloc, OrderState>(
@@ -172,9 +212,9 @@ class OrderPanel extends StatelessWidget {
                               final responseJson =
                               await orderRepo.cancelOrder(
                                 parentOrderId: currentOrderId,
-                                token: token,
-                                restaurantId: restaurantId,
-                                zoneId: zoneId,
+                                token: widget.token,
+                                restaurantId: widget.restaurantId,
+                                zoneId: widget.zoneId,
                               );
 
                               Navigator.of(context).pop(); // close loader
@@ -187,7 +227,7 @@ class OrderPanel extends StatelessWidget {
                                 context.read<OrderBloc>().add(
                                   CancelOrder(
                                     parentOrderId: currentOrderId,
-                                    token: token,
+                                    token: widget.token,
                                   ),
                                 );
 
@@ -201,17 +241,17 @@ class OrderPanel extends StatelessWidget {
 
                                 final tableDao = TableDao();
                                 final tables =
-                                await tableDao.getTablesByManagerPin(pin);
+                                await tableDao.getTablesByManagerPin(widget.pin);
 
                                 Navigator.pushAndRemoveUntil(
                                   context,
                                   MaterialPageRoute(
                                     builder: (_) => TablesScreen(
                                       loadedTables: tables,
-                                      pin: pin,
-                                      token: token,
-                                      restaurantId: restaurantId,
-                                      restaurantName: restaurantName,
+                                      pin: widget.pin,
+                                      token: widget.token,
+                                      restaurantId: widget.restaurantId,
+                                      restaurantName: widget.restaurantName,
                                     ),
                                   ),
                                       (Route<dynamic> route) => false,
@@ -254,11 +294,11 @@ class OrderPanel extends StatelessWidget {
                               context,
                               MaterialPageRoute(
                                 builder: (_) => TablesScreen(
-                                  loadedTables: placedTables,
-                                  pin: pin,
-                                  token: token,
-                                  restaurantId: restaurantId,
-                                  restaurantName: restaurantName,
+                                  loadedTables: widget.placedTables,
+                                  pin: widget.pin,
+                                  token: widget.token,
+                                  restaurantId: widget.restaurantId,
+                                  restaurantName: widget.restaurantName,
                                 ),
                               ),
                                   (route) => false,
@@ -499,7 +539,7 @@ class OrderPanel extends StatelessWidget {
                             color: const Color(0xFFF1F1F3), // set background color
                             child: OrderPanelList(
                               orderItems: state.orderItems,
-                              addonPrices: addonPrices,
+                              addonPrices: widget.addonPrices,
                               onIncreaseQuantity: (index) {
                                 final item = state.orderItems[index];
                                 context.read<OrderBloc>().add(UpdateOrderItemQuantity(index, item.quantity + 1));
@@ -513,7 +553,7 @@ class OrderPanel extends StatelessWidget {
                               onModifiersChanged: (index, modifiers, addOns, note) {
                                 final fullAddOns = <String, Map<String, dynamic>>{};
                                 addOns.forEach((name, qty) {
-                                  fullAddOns[name] = {'quantity': qty, 'price': addonPrices[name] ?? 0.0};
+                                  fullAddOns[name] = {'quantity': qty, 'price': widget.addonPrices[name] ?? 0.0};
                                 });
                                 context.read<OrderBloc>().add(UpdateOrderItemDetails(
                                   index: index,
@@ -525,7 +565,7 @@ class OrderPanel extends StatelessWidget {
                               onRemoveItem: (index) {
                                 context.read<OrderBloc>().add(RemoveOrderItem(index));
                               },
-                              token: token,
+                              token: widget.token,
                             ),
                           ),
                         )
@@ -571,9 +611,9 @@ class OrderPanel extends StatelessWidget {
                             child: ViewAllKOTDropdown(
                               kots: kots,
                               parentOrderId: orderState.orderId,
-                              restaurantId: int.parse(restaurantId),
+                              restaurantId: int.parse(widget.restaurantId),
                               zoneId: orderState.zoneId,
-                              token: token,
+                              token: widget.token,
                               tableNo: orderState.tableName,
                             ),
                           ),
@@ -656,7 +696,7 @@ class OrderPanel extends StatelessWidget {
                                 orderId: bloc.state.orderId,
                                 restaurantId: int.parse(bloc.state.restaurantId),
                                 zoneId: bloc.state.zoneId,
-                                token: token,
+                                token: widget.token,
                               ),
                             );
                           },
@@ -690,8 +730,8 @@ class OrderPanel extends StatelessWidget {
 
                       try {
                         // ✅ Use the class member userId directly (this.userId)
-                        final captainId = int.tryParse(this.userId); // <-- notice `this.userId`
-                        if (captainId == null || token.isEmpty) {
+                        final captainId = int.tryParse(this.widget.userId); // <-- notice `this.userId`
+                        if (captainId == null || widget.token.isEmpty) {
                           throw Exception('Invalid user session. Please check in again.');
                         }
 
@@ -714,7 +754,7 @@ class OrderPanel extends StatelessWidget {
                           parentOrderId: state.orderId,
                           kotId: "",
                           items: state.orderItems,
-                          token: token,
+                          token: widget.token,
                           restaurantId: orderBloc.state.restaurantId.toString(),
                           zoneId: orderBloc.state.zoneId,
                           captainId: captainId,
@@ -926,12 +966,12 @@ class OrderPanel extends StatelessWidget {
 
                           ],
                           child: PaymentScreen(
-                            loadedTables: loadedTables,
-                            pin: pin,
-                            token: token,
-                            restaurantId: restaurantId,
-                            restaurantName: restaurantName,
-                            zoneId: zoneId,
+                            loadedTables: widget.loadedTables,
+                            pin: widget.pin,
+                            token: widget.token,
+                            restaurantId: widget.restaurantId,
+                            restaurantName: widget.restaurantName,
+                            zoneId: widget.zoneId,
                           ),
                         ),
                       ),

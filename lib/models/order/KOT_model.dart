@@ -3,13 +3,13 @@ import 'order_items.dart';
 
 class KotModel {
   final int? kotId;
-  final String ?kotNumber;
+  final String? kotNumber;
   final DateTime time;
   final String status;
   final List<OrderItems> items;
   final int parentOrderId;
   final int? captainId;
-  final int? guestCount; // ✅ Add this field
+  final int? guestCount;
 
   KotModel({
     this.kotId,
@@ -18,11 +18,11 @@ class KotModel {
     required this.status,
     required this.items,
     required this.parentOrderId,
-     this.captainId,
-    this.guestCount, required List<dynamic> kotItems, // ✅ Add to constructor
+    this.captainId,
+    this.guestCount,
+    required List<dynamic> kotItems,
   });
 
-  /// Safe JSON parsing
   factory KotModel.fromJson(Map<String, dynamic> json) {
     int parseInt(dynamic value) {
       if (value == null) return 0;
@@ -39,7 +39,6 @@ class KotModel {
     DateTime parseTime(String? value) {
       if (value == null || value.isEmpty) return DateTime.now();
       try {
-        // Parse "yyyy-MM-dd hh:mm a" format
         return DateFormat("yyyy-MM-dd hh:mm a").parse(value);
       } catch (_) {
         return DateTime.now();
@@ -48,18 +47,48 @@ class KotModel {
 
     List<OrderItems> parseItems(dynamic value) {
       if (value == null || value is! List) return [];
-      return value.map<OrderItems>((item) => OrderItems.fromJson(item)).toList();
+      return value
+          .map<OrderItems>((item) => OrderItems.fromJson(item))
+          .toList();
     }
 
     return KotModel(
       kotId: parseInt(json['id']),
-      kotNumber: parseString(json['kot_number'], 'KOT#${json['id'] ?? DateTime.now().millisecondsSinceEpoch}'),
+      kotNumber: parseString(
+        json['kot_number'],
+        'KOT#${json['id'] ?? DateTime.now().millisecondsSinceEpoch}',
+      ),
       time: parseTime(parseString(json['time'])),
       status: parseString(json['status'], 'Pending'),
       items: parseItems(json['line_items']),
       parentOrderId: parseInt(json['parent_order_id']),
       captainId: parseInt(json['captain_id']),
-      guestCount: parseInt(json['guest_count']), kotItems: [],// ✅ Correctly parsed
+      guestCount: parseInt(json['guest_count']),
+      kotItems: [],
+    );
+  }
+
+  /// ADD THIS OUTSIDE fromJson()
+  KotModel copyWith({
+    int? kotId,
+    String? kotNumber,
+    DateTime? time,
+    String? status,
+    List<OrderItems>? items,
+    int? parentOrderId,
+    int? captainId,
+    int? guestCount,
+  }) {
+    return KotModel(
+      kotId: kotId ?? this.kotId,
+      kotNumber: kotNumber ?? this.kotNumber,
+      time: time ?? this.time,
+      status: status ?? this.status,
+      items: items ?? this.items,
+      parentOrderId: parentOrderId ?? this.parentOrderId,
+      captainId: captainId ?? this.captainId,
+      guestCount: guestCount ?? this.guestCount,
+      kotItems: const [],
     );
   }
 
@@ -72,7 +101,7 @@ class KotModel {
       'line_items': items.map((item) => item.toJson()).toList(),
       'parent_order_id': parentOrderId,
       'captain_id': captainId,
-      'guest_count': guestCount, // ✅ Include in KOT body
+      'guest_count': guestCount,
     };
   }
 }

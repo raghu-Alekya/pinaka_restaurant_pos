@@ -101,6 +101,24 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
 
     return {};
   }
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'preparing':
+        return Colors.orange;
+
+      case 'ready':
+        return Colors.green;
+
+      case 'served':
+        return Colors.red;
+
+      // case 'cancelled':
+      //   return Colors.red;
+
+        default:
+        return Colors.grey;
+    }
+  }
 
   /// zoneId -> zoneName
   Map<String, String> buildZoneNameMapFromZones(
@@ -253,6 +271,9 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                         : SingleChildScrollView(
                       child: Column(
                         children: kotList.map((kot) {
+                          print(
+                            'KOT => ${kot.kotNumber} kotStatus => ${kot.status}',
+                          );
                           final kotKey = kot.kotId.toString();
                           final isOpen = _kotExpanded[kotKey] ?? false;
 
@@ -306,6 +327,30 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                           ),
                                         ),
                                         const Spacer(),
+
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: _getStatusColor(kot.status),
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child:Text(
+                                            kot.status.toLowerCase() == 'kot processed'
+                                                ? 'YET TO PREPARE'
+                                                : kot.status.toUpperCase(),
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+
+                                        const SizedBox(width: 8),
+
                                         Icon(
                                           isOpen
                                               ? Icons.keyboard_arrow_up
