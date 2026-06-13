@@ -3,7 +3,9 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../models/complete_order_model.dart';
+import '../providers/order_provider.dart';
 import '../services/completeorder_api service.dart';
+import '../top_bar.dart';
 
 
 class CompletedOrdersScreen extends StatefulWidget {
@@ -26,6 +28,10 @@ class _CompletedOrdersScreenState
   String selectedOrderType = 'All';
   String searchText = '';
   String? selectedDuration;
+  int currentPage = 1;
+  int rowsPerPage = 10;
+
+  List<CompletedOrderModel> paginatedOrders = [];
 
   List<CompletedOrderModel> orders = [];
   bool isLoading = true;
@@ -45,6 +51,15 @@ class _CompletedOrdersScreenState
     _dateController.dispose();
     super.dispose();
   }
+  void applyPagination() {
+    final start = (currentPage - 1) * rowsPerPage;
+
+    final end = start + rowsPerPage > filteredOrders.length
+        ? filteredOrders.length
+        : start + rowsPerPage;
+
+    paginatedOrders = filteredOrders.sublist(start, end);
+  }
 
   Future<void> loadOrders() async {
     try {
@@ -53,6 +68,8 @@ class _CompletedOrdersScreenState
       );
 
       filteredOrders = List.from(allOrders);
+
+      applyPagination();
     } catch (e) {
       debugPrint(e.toString());
     }
@@ -62,77 +79,83 @@ class _CompletedOrdersScreenState
     });
   }
   void applyFilters() {
-    setState(() {
-      filteredOrders = allOrders.where((order) {
-        // Search Filter
-        final matchSearch =
-            searchText.isEmpty ||
-                order.orderId.toString().contains(searchText);
+    filteredOrders = allOrders.where((order) {
+      // Search Filter
+      final matchSearch =
+          searchText.isEmpty ||
+              order.orderId.toString().contains(searchText);
 
-        // Order Type Filter
-        final matchType =
-            selectedOrderType == 'All' ||
-                order.orderType == selectedOrderType;
+      // Order Type Filter
+      final matchType =
+          selectedOrderType == 'All' ||
+              order.orderType == selectedOrderType;
 
-        // Date Filter
-        bool matchDate = true;
+      // Date Filter
+      bool matchDate = true;
 
-        if (selectedDate != null &&
-            order.finishedDateTime != null) {
-          final orderDate = order.finishedDateTime!;
+      if (selectedDate != null &&
+          order.finishedDateTime != null) {
+        final orderDate = order.finishedDateTime!;
 
-          matchDate =
-              orderDate.year == selectedDate!.year &&
-                  orderDate.month == selectedDate!.month &&
-                  orderDate.day == selectedDate!.day;
+        matchDate =
+            orderDate.year == selectedDate!.year &&
+                orderDate.month == selectedDate!.month &&
+                orderDate.day == selectedDate!.day;
+      }
+
+      // Duration Filter
+      bool matchDuration = true;
+
+      if (selectedDuration != null &&
+          order.finishedDateTime != null) {
+        final now = DateTime.now();
+        final orderDate = order.finishedDateTime!;
+
+        final diff = now.difference(orderDate);
+
+        switch (selectedDuration) {
+          case '30 Min':
+            matchDuration = diff.inMinutes <= 30;
+            break;
+
+          case '60 Min':
+            matchDuration = diff.inMinutes <= 60;
+            break;
+
+          case '5 Hours':
+            matchDuration = diff.inHours <= 5;
+            break;
+
+          case '24 Hours':
+            matchDuration = diff.inHours <= 24;
+            break;
         }
+      }
 
-        // Duration Filter
-        bool matchDuration = true;
+      return matchSearch &&
+          matchType &&
+          matchDate &&
+          matchDuration;
+    }).toList();
 
-        if (selectedDuration != null &&
-            order.finishedDateTime != null) {
-          final now = DateTime.now();
-          final orderDate = order.finishedDateTime!;
+    // Reset to first page when filter changes
+    currentPage = 1;
 
-          final diff = now.difference(orderDate);
+    // Apply pagination
+    applyPagination();
 
-          switch (selectedDuration) {
-            case '30 Min':
-              matchDuration = diff.inMinutes <= 30;
-              break;
-
-            case '60 Min':
-              matchDuration = diff.inMinutes <= 60;
-              break;
-
-            case '5 Hours':
-              matchDuration = diff.inHours <= 5;
-              break;
-
-            case '24 Hours':
-              matchDuration = diff.inHours <= 24;
-              break;
-          }
-        }
-
-        return matchSearch &&
-            matchType &&
-            matchDate &&
-            matchDuration;
-      }).toList();
-    });
+    setState(() {});
   }
+
+
   @override
   Widget build(BuildContext context) {
+    final orderProvider = context.watch<OrderProvider>();
     return Scaffold(
       backgroundColor: const Color(0xffF4F4F4),
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 24,
-              vertical: 16,
-            ),
+            padding: EdgeInsets.zero,
         child: Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -140,12 +163,15 @@ class _CompletedOrdersScreenState
           ),
           child: Column(
             children: [
+              TopBarWidget(orderProvider: orderProvider,),
+
+              const SizedBox(height: 16),
 
               Container(
                 height: 60,
                 color: const Color(0xFFE3EDFF),
                 padding:
-                const EdgeInsets.symmetric(horizontal: 20),
+                const EdgeInsets.symmetric(horizontal: 10),
                 alignment: Alignment.centerLeft,
                 child: Row(
                   children: [
@@ -329,87 +355,159 @@ class _CompletedOrdersScreenState
               Expanded(
                 child: Container(
                   width: double.infinity,
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  margin: EdgeInsets.zero,
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xffE5E5E5)),
-                  ),
-                  child: SingleChildScrollView(
-                    child: DataTable(
-                      columnSpacing: 70,
-                      headingRowHeight: 60,
-                      dataRowHeight: 65,
-                      headingRowColor: WidgetStateProperty.all(
-                        const Color(0xffF5F5FA),
-                      ),
-                      columns: const [
-                        DataColumn(label: Text("Order ID")),
-                        DataColumn(label: Text("Type")),
-                        DataColumn(label: Text("Table")),
-                        DataColumn(label: Text("Finished Time")),
-                        DataColumn(label: Text("Prep Time")),
-                        DataColumn(label: Text("Recall")),
-                      ],
-                      rows: filteredOrders.map((order) {
-                        return DataRow(
-                          cells: [
-                            DataCell(Text('#${order.orderId}')),
-
-                            DataCell(
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: order.orderType == 'Dine In'
-                                      ? Colors.indigo
-                                      : Colors.orange,
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  order.orderType,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                            DataCell(Text(order.tableName)),
-
-                            DataCell(
-                              Text(
-                                order.finishedTime.isEmpty
-                                    ? '-'
-                                    : order.finishedTime,
-                              ),
-                            ),
-
-                            DataCell(
-                              Text(
-                                order.prepTime.isEmpty
-                                    ? '-'
-                                    : order.prepTime,
-                              ),
-                            ),
-
-                            DataCell(
-                              order.canRecall
-                                  ? TextButton.icon(
-                                onPressed: () {
-                                  // Recall API
-                                },
-                                icon: const Icon(Icons.refresh),
-                                label: const Text('Recall'),
-                              )
-                                  : const Text('-'),
-                            ),
-                          ],
-                        );
-                      }).toList(),
+                    border: Border.all(
+                      color: const Color(0xffE5E7EB),
                     ),
+                  ),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minWidth: constraints.maxWidth,
+                          ),
+                          child: DataTable(
+                            headingRowHeight: 55,
+                            dataRowHeight: 70,
+                            showCheckboxColumn: false,
+                            horizontalMargin: 16,
+                            columnSpacing: 40, // Fixed spacing
+                            headingRowColor: MaterialStateProperty.all(
+                              const Color(0xffF4F5F7),
+                            ),
+                            border: TableBorder(
+                              horizontalInside: BorderSide(
+                                color: Colors.grey.shade200,
+                              ),
+                            ),
+                            columns: const [
+                              DataColumn(
+                                label: Text(
+                                  "Status",
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                              DataColumn(
+                                label: Text(
+                                  "KOT No.",
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                              DataColumn(
+                                label: Text(
+                                  "Order ID",
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                              DataColumn(
+                                label: Text(
+                                  "Type",
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                              DataColumn(
+                                label: Text(
+                                  "Table No.",
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                              DataColumn(
+                                label: Text(
+                                  "Prep Time",
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                              DataColumn(
+                                label: Text(
+                                  "Reason",
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                              DataColumn(
+                                label: Text(
+                                  "Action",
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ],
+                            rows: paginatedOrders.map((order) {
+                              return DataRow(
+                                cells: [
+                                  DataCell(buildStatusBadge(order.status)),
+
+                                  DataCell(
+                                    Text(
+                                      order.kotNumber.isEmpty
+                                          ? "-"
+                                          : order.kotNumber,
+                                    ),
+                                  ),
+
+                                  DataCell(
+                                    Text("#${order.orderId}"),
+                                  ),
+
+                                  DataCell(
+                                    buildOrderTypeBadge(order.orderType),
+                                  ),
+
+                                  DataCell(
+                                    Text(order.tableName),
+                                  ),
+
+                                  DataCell(
+                                    Text(
+                                      order.prepTime.isEmpty
+                                          ? "-"
+                                          : order.prepTime,
+                                    ),
+                                  ),
+
+                                  const DataCell(
+                                    Text("-"),
+                                  ),
+
+                                  DataCell(
+                                    order.canRecall
+                                        ? const Text(
+                                      "Recall",
+                                      style: TextStyle(
+                                        color: Color(0xff6A8DFF),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    )
+                                        : const Text("-"),
+                                  ),
+                                ],
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.zero,
+
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      paginationButton("Previous"),
+                      pageButton("1", true),
+                      pageButton("2", false),
+                      pageButton("3", false),
+                      pageButton("4", false),
+                      pageButton("5", false),
+                      paginationButton("Next"),
+                    ],
                   ),
                 ),
               )
@@ -418,5 +516,102 @@ class _CompletedOrdersScreenState
         ),
       ),
     ));
+  }
+  Widget pageButton(
+      String text,
+      bool selected,
+      ) {
+    return Container(
+      width: 32,
+      height: 32,
+      alignment: Alignment.center,
+      margin: const EdgeInsets.symmetric(horizontal: 2),
+      decoration: BoxDecoration(
+        color: selected
+            ? Colors.deepOrange
+            : Colors.white,
+        border: Border.all(
+          color: Colors.grey.shade300,
+        ),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color:
+          selected ? Colors.white : Colors.black,
+        ),
+      ),
+    );
+  }
+
+  Widget paginationButton(String text) {
+    return Container(
+      height: 32,
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+      ),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: Colors.grey.shade300,
+        ),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 12),
+      ),
+    );
+  }
+
+  Widget buildStatusBadge(String status) {
+    final isCompleted = status.toLowerCase() == "completed";
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 14,
+        vertical: 6,
+      ),
+      decoration: BoxDecoration(
+        color: isCompleted
+            ? const Color(0xFFDFF5E3)
+            : const Color(0xFFFDE2E2),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        status,
+        style: TextStyle(
+          color: isCompleted
+              ? const Color(0xFF28A745)
+              : const Color(0xFFE74C3C),
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget buildOrderTypeBadge(String type) {
+    final isDineIn = type.toLowerCase() == "dine in";
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 6,
+      ),
+      decoration: BoxDecoration(
+        color: isDineIn
+            ? const Color(0xFFF28C52)
+            : const Color(0xFF295C89),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        type,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
   }
 }

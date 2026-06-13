@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:kds_app/top_bar.dart';
+import 'package:kds_app/top_bar.dart';
 import 'package:kds_app/widgets/completed_orders.dart';
 import 'package:provider/provider.dart';
 
@@ -46,6 +48,9 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
+              TopBarWidget(orderProvider: orderProvider,),
+
+              const SizedBox(height: 16),
               Row(
                 children: [
                   Container(
@@ -140,36 +145,50 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                       child: _buildSection(
                         title: "Preparing",
                         color: Colors.orange,
-                        child: preparingOrders.isEmpty
-                            ? const Center(
-                                child: Text(
-                                  'No orders in preparing',
-                                  style: TextStyle(color: Colors.grey),
-                                ),
-                              )
-                            : ListView.builder(
-                                itemCount: preparingOrders.length,
-                                itemBuilder: (context, index) {
-                                  final order = preparingOrders[index];
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 12),
-                                    child: Draggable<Map<String, dynamic>>(
-                                      data: order,
-                                      feedback: Material(
-                                        child: SizedBox(
-                                          width: 250,
-                                          child: _buildOrderCard(order),
-                                        ),
-                                      ),
-                                      childWhenDragging: Opacity(
-                                        opacity: 0.3,
+                        child: DragTarget<Map<String, dynamic>>(
+                          onAcceptWithDetails: (details) {
+                            final orderId =
+                                details.data['id']?.toString() ?? '';
+
+                            orderProvider.updateOrderStatus(
+                              orderId,
+                              'Preparing',
+                            );
+                          },
+                          builder: (context, candidateData, rejectedData) {
+                            return preparingOrders.isEmpty
+                                ? const Center(
+                              child: Text(
+                                'No orders in preparing',
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            )
+                                : ListView.builder(
+                              itemCount: preparingOrders.length,
+                              itemBuilder: (context, index) {
+                                final order = preparingOrders[index];
+
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: Draggable<Map<String, dynamic>>(
+                                    data: order,
+                                    feedback: Material(
+                                      child: SizedBox(
+                                        width: 250,
                                         child: _buildOrderCard(order),
                                       ),
+                                    ),
+                                    childWhenDragging: Opacity(
+                                      opacity: 0.3,
                                       child: _buildOrderCard(order),
                                     ),
-                                  );
-                                },
-                              ),
+                                    child: _buildOrderCard(order),
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),

@@ -7,12 +7,20 @@ import '../models/complete_order_model.dart';
 Future<List<CompletedOrderModel>> getCompletedOrders({
   required String token,
 }) async {
+  final now = DateTime.now();
+
+  final fromDate =
+      "${now.year}-${now.month.toString().padLeft(2, '0')}-01";
+
+  final toDate =
+      "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+
   final url = Uri.parse(
     'https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1/kot/get-completed-orders'
         '?page=1'
-        '&per_page=10'
-        '&from_date=2026-06-01'
-        '&to_date=2026-06-09'
+        '&per_page=50'
+        '&from_date=$fromDate'
+        '&to_date=$toDate'
         '&restaurant_id=1',
   );
 

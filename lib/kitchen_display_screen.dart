@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:kds_app/top_bar.dart';
 import 'package:kds_app/widgets/completed_orders.dart';
 import 'package:provider/provider.dart';
 
@@ -37,45 +38,9 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
         padding: const EdgeInsets.all(12),
         child: Column(
           children: [
-            Container(
-              height: 60,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                children: [
-                  const Text(
-                    "PINAKA",
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  _connectionBadge(orderProvider),
-                  if (orderProvider.connectionState !=
-                      KdsConnectionState.connected)
-                    TextButton(
-                      onPressed: () => orderProvider.reconnect(),
-                      child: const Text('Reconnect'),
-                    ),
-                  const Spacer(),
-                  // IconButton(
-                  //   icon: const Icon(Icons.settings),
-                  //   tooltip: 'Connection settings',
-                  //   onPressed: widget.onOpenSettings,
-                  // ),
-                  const CircleAvatar(
-                    radius: 20,
-                    child: Icon(Icons.person),
-                  ),
-                  const SizedBox(width: 10),
-                  const Text("Madhuri Thota"),
-                ],
-              ),
-            ),
+            TopBarWidget(orderProvider: orderProvider,),
+
+            // const SizedBox(height: 16),
             // const DebugLogPanel(),
             const SizedBox(height: 8),
             Expanded(
