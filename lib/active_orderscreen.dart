@@ -15,20 +15,44 @@ class ActiveOrdersScreen extends StatefulWidget {
 }
 
 class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
-  String selectedFilter = "All";
+  OrderTypeFilter selectedFilter = OrderTypeFilter.all;
+  KotView selectedView = KotView.active;
+
 
   List<Map<String, dynamic>> filterOrders(
-      List<Map<String, dynamic>> orders) {
-    if (selectedFilter == "All") {
-      return orders;
-    }
+      List<Map<String, dynamic>> orders,
+      ) {
+    switch (selectedFilter) {
+      case OrderTypeFilter.all:
+        return orders;
 
-    return orders.where((order) {
-      return order['type']
-          ?.toString()
-          .toLowerCase() ==
-          selectedFilter.toLowerCase();
-    }).toList();
+      case OrderTypeFilter.dineIn:
+        return orders.where((order) {
+          return order['type']
+              ?.toString()
+              .toLowerCase()
+              .contains('dine') ??
+              false;
+        }).toList();
+
+      case OrderTypeFilter.takeaway:
+        return orders.where((order) {
+          return order['type']
+              ?.toString()
+              .toLowerCase()
+              .contains('takeaway') ??
+              false;
+        }).toList();
+
+      case OrderTypeFilter.online:
+        return orders.where((order) {
+          return order['type']
+              ?.toString()
+              .toLowerCase()
+              .contains('online') ??
+              false;
+        }).toList();
+    }
   }
   @override
   Widget build(BuildContext context) {
@@ -48,95 +72,29 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              TopBarWidget(orderProvider: orderProvider,),
+              TopBarWidget(
+                selectedFilter: selectedFilter,
+                selectedView: selectedView,
+
+                onFilterChanged: (filter) {
+                  setState(() {
+                    selectedFilter = filter;
+                  });
+                },
+
+                onViewChanged: (view) {
+                  setState(() {
+                    selectedView = view;
+
+                    if (view == KotView.pending) {
+                      Navigator.pop(context);
+                    }
+                  });
+                },
+              ),
 
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  Container(
-                    height: 45,
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: const [
-                        BoxShadow(blurRadius: 5, color: Colors.black12),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () => setState(() => selectedFilter = "All"),
-                          child: _filterChip("All", selectedFilter == "All"),
-                        ),
 
-                        GestureDetector(
-                          onTap: () => setState(() => selectedFilter = "Dine-In"),
-                          child: _filterChip("Dine-In", selectedFilter == "Dine-In"),
-                        ),
-
-                        GestureDetector(
-                          onTap: () => setState(() => selectedFilter = "Takeaway"),
-                          child: _filterChip("Takeaways", selectedFilter == "Takeaway"),
-                        ),
-
-                        GestureDetector(
-                          onTap: () => setState(() => selectedFilter = "Online"),
-                          child: _filterChip("Online Orders", selectedFilter == "Online"),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Spacer(),
-                  Container(
-                    height: 45,
-                    padding: const EdgeInsets.all(3),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: const Color(0xff5D78C8)),
-                      borderRadius: BorderRadius.circular(25),
-                    ),
-                    child: Row(
-                      children: [
-                        _statusChip("Active Orders", true),
-                        GestureDetector(
-                          onTap: () => Navigator.pop(context),
-                          child: _statusChip("Pending Orders", false),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 20),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xffFF5B4F),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 25,
-                        vertical: 15,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(25),
-                      ),
-                    ),
-                    onPressed: () {
-                      print("Navigating to Completed Orders");
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const CompletedOrdersScreen(token: '',),
-                        ),
-                      );
-                    },
-                    child: const Text(
-                      "Completed Orders →",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  )
-                ],
-              ),
               const SizedBox(height: 20),
               Expanded(
                 child: Row(
@@ -144,7 +102,7 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                     Expanded(
                       child: _buildSection(
                         title: "Preparing",
-                        color: Colors.orange,
+                        color: const Color(0xffF59E0B),
                         child: DragTarget<Map<String, dynamic>>(
                           onAcceptWithDetails: (details) {
                             final orderId =
@@ -157,11 +115,9 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                           },
                           builder: (context, candidateData, rejectedData) {
                             return preparingOrders.isEmpty
-                                ? const Center(
-                              child: Text(
-                                'No orders in preparing',
-                                style: TextStyle(color: Colors.grey),
-                              ),
+                                ? _buildEmptyState(
+                              color: Colors.orange,
+                              title: "Preparing",
                             )
                                 : ListView.builder(
                               itemCount: preparingOrders.length,
@@ -195,7 +151,7 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                     Expanded(
                       child: _buildSection(
                         title: "Ready",
-                        color: Colors.green,
+                        color: const Color(0xff2563EB),
                         child: DragTarget<Map<String, dynamic>>(
                           onAcceptWithDetails: (details) {
                             final orderId =
@@ -203,6 +159,13 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                             orderProvider.updateOrderStatus(orderId, 'Ready');
                           },
                           builder: (context, candidateData, rejectedData) {
+                            if (readyOrders.isEmpty) {
+                              return _buildEmptyState(
+                                color: const Color(0xff2563EB),
+                                title: "Ready",
+                              );
+                            }
+
                             return ListView.builder(
                               itemCount: readyOrders.length,
                               itemBuilder: (_, index) {
@@ -234,7 +197,7 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                     Expanded(
                       child: _buildSection(
                         title: "Served",
-                        color: Colors.red,
+                        color: const Color(0xff16A34A),
                         child: DragTarget<Map<String, dynamic>>(
                           onAcceptWithDetails: (details) {
                             final orderId =
@@ -242,6 +205,13 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                             orderProvider.updateOrderStatus(orderId, 'Served');
                           },
                           builder: (context, candidateData, rejectedData) {
+                            if (servedOrders.isEmpty) {
+                              return _buildEmptyState(
+                                color: const Color(0xff16A34A),
+                                title: "Served",
+                              );
+                            }
+
                             return ListView.builder(
                               itemCount: servedOrders.length,
                               itemBuilder: (_, index) {
@@ -285,13 +255,27 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
               ),
             ),
             child: Center(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.asset(
+                    'assets/chef.png',
+                    width: 16,
+                    height: 16,
+                    color: Colors.white,
+                  ),
+
+                  const SizedBox(width: 6),
+
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -359,10 +343,21 @@ class _ExpandableActiveOrderCardState extends State<_ExpandableActiveOrderCard> 
   @override
   Widget build(BuildContext context) {
     final order = widget.order;
-    final headerColor =
-        order['headerColor'] as Color? ?? const Color(0xff6C74B8);
-    final parentOrderId = order['parentOrderId']?.toString() ?? '';
     final orderType = order['type']?.toString() ?? '';
+
+    final Color headerColor;
+
+    if (orderType.toLowerCase().contains('dine')) {
+      headerColor = const Color(0xffEB5E28); // Dine-In
+    } else if (orderType.toLowerCase().contains('take')) {
+      headerColor = const Color(0xff0D3B66); // Takeaway
+    } else if (orderType.toLowerCase().contains('online')) {
+      headerColor = const Color(0xff16A34A); // Online
+    } else {
+      headerColor = const Color(0xff6C74B8);
+    }
+    final parentOrderId = order['parentOrderId']?.toString() ?? '';
+    // final orderType = order['type']?.toString() ?? '';
     final kotNo = order['kotNo']?.toString() ?? '';
     final items = order['items'] as List<dynamic>? ?? [];
 
@@ -539,4 +534,60 @@ class _ExpandableActiveOrderCardState extends State<_ExpandableActiveOrderCard> 
       ),
     );
   }
+}
+Widget _buildEmptyState({
+  required Color color,
+  required String title,
+}) {
+  return Container(
+    width: double.infinity,
+    decoration: BoxDecoration(
+      color: color.withOpacity(.03),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(
+        color: color.withOpacity(.35),
+      ),
+    ),
+    child: Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 75,
+            height: 75,
+            decoration: BoxDecoration(
+              color: color.withOpacity(.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.room_service_outlined,
+              color: color,
+              size: 42,
+            ),
+          ),
+
+          const SizedBox(height: 15),
+
+          Text(
+            "Drop here to move to",
+            style: TextStyle(
+              color: Colors.grey.shade500,
+              fontSize: 13,
+            ),
+          ),
+
+          const SizedBox(height: 4),
+
+          Text(
+            title.toUpperCase(),
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }

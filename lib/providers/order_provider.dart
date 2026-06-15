@@ -165,8 +165,16 @@ class OrderProvider extends ChangeNotifier {
       await _apiService.cancelOrder(order);
 
       _updateAndSave(() {
-        order.isCancelled = true; // only mark cancelled
-        _notifyPos(order, 'Cancelled', isCancelled: true);
+
+        pendingOrders.removeWhere(
+              (o) => o['id'].toString() == orderId,
+        );
+
+        _notifyPos(
+          order,
+          'Cancelled',
+          isCancelled: true,
+        );
       });
 
       return true;
@@ -174,7 +182,6 @@ class OrderProvider extends ChangeNotifier {
       return false;
     }
   }
-
   Future<bool> recallOrder(String orderId) async {
     final order = _findOrder(orderId);
     if (order == null) return false;

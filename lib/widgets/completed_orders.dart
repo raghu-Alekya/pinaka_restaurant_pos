@@ -24,12 +24,17 @@ class _CompletedOrdersScreenState
     extends State<CompletedOrdersScreen> {
   List<CompletedOrderModel> allOrders = [];
   List<CompletedOrderModel> filteredOrders = [];
+  OrderTypeFilter selectedFilter =
+      OrderTypeFilter.all;
+  KotView selectedView = KotView.history;
+
 
   String selectedOrderType = 'All';
   String searchText = '';
   String? selectedDuration;
   int currentPage = 1;
-  int rowsPerPage = 10;
+  int rowsPerPage = 8;
+  String selectedStatus = 'All Status';
 
   List<CompletedOrderModel> paginatedOrders = [];
 
@@ -39,6 +44,10 @@ class _CompletedOrdersScreenState
   DateTime? selectedDate;
   final TextEditingController _dateController =
   TextEditingController();
+  int get totalPages {
+    if (filteredOrders.isEmpty) return 1;
+    return (filteredOrders.length / rowsPerPage).ceil();
+  }
 
   @override
   void initState() {
@@ -52,13 +61,24 @@ class _CompletedOrdersScreenState
     super.dispose();
   }
   void applyPagination() {
+    if (filteredOrders.isEmpty) {
+      paginatedOrders = [];
+      return;
+    }
+
     final start = (currentPage - 1) * rowsPerPage;
 
-    final end = start + rowsPerPage > filteredOrders.length
-        ? filteredOrders.length
-        : start + rowsPerPage;
+    if (start >= filteredOrders.length) {
+      currentPage = 1;
+    }
 
-    paginatedOrders = filteredOrders.sublist(start, end);
+    final newStart = (currentPage - 1) * rowsPerPage;
+
+    final end = (newStart + rowsPerPage) > filteredOrders.length
+        ? filteredOrders.length
+        : (newStart + rowsPerPage);
+
+    paginatedOrders = filteredOrders.sublist(newStart, end);
   }
 
   Future<void> loadOrders() async {
@@ -163,31 +183,107 @@ class _CompletedOrdersScreenState
           ),
           child: Column(
             children: [
-              TopBarWidget(orderProvider: orderProvider,),
+              TopBarWidget(
+                selectedFilter: selectedFilter,
+                selectedView: selectedView,
 
-              const SizedBox(height: 16),
+                onFilterChanged: (filter) {
+                  setState(() {
+                    selectedFilter = filter;
+                  });
+                },
+
+                onViewChanged: (view) {
+                  setState(() {
+                    selectedView = view;
+                  });
+                },
+              ),
+
+              const SizedBox(height: 10),
 
               Container(
-                height: 60,
-                color: const Color(0xFFE3EDFF),
-                padding:
-                const EdgeInsets.symmetric(horizontal: 10),
-                alignment: Alignment.centerLeft,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
-                    ),
-                    SizedBox(width: 10),
-                    Text(
-                      "Completed Orders",
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w600,
+                    /// Left Side
+                    Expanded(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          InkWell(
+                            onTap: () => Navigator.pop(context),
+                            child: const Padding(
+                              padding: EdgeInsets.only(top: 4),
+                              child: Icon(
+                                Icons.arrow_back,
+                                size: 24,
+                                color: Color(0xff222222),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(width: 10),
+
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Text(
+                                "KOT's History",
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xff222222),
+                                ),
+                              ),
+
+                              SizedBox(height: 4),
+
+                              Text(
+                                "View Completed & Cancelled KOT's",
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xff6B7280),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
+                    ),
+
+                    /// Right Side Cards
+                    Row(
+                      children: [
+                        _summaryCard(
+                          title: "Total KOT's",
+                          value: "${allOrders.length}",
+                          color: const Color(0xff2563EB),
+                          icon: Icons.receipt_long,
+                        ),
+
+                        const SizedBox(width: 18),
+
+                        _summaryCard(
+                          title: "Completed",
+                          value: "${allOrders.where((e) => e.status.toLowerCase() == 'completed').length}",
+                          color: const Color(0xff16A34A),
+                          icon: Icons.check_circle,
+                        ),
+
+                        const SizedBox(width: 18),
+
+                        _summaryCard(
+                          title: "Cancelled",
+                          value: "${allOrders.where((e) => e.status.toLowerCase() == 'cancelled').length}",
+                          color: const Color(0xffEF4444),
+                          icon: Icons.cancel,
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -200,7 +296,7 @@ class _CompletedOrdersScreenState
 
                     // Today
                     SizedBox(
-                      height: 36,
+                      height: 40,
                       width: 150,
                       child: TextField(
                         controller: _dateController,
@@ -229,9 +325,9 @@ class _CompletedOrdersScreenState
                           suffixIcon: Icon(Icons.calendar_today, size: 18),
                           filled: true,
                           fillColor: Colors.grey.shade200,
-                          contentPadding: EdgeInsets.symmetric(horizontal: 10),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(8),
                             borderSide: BorderSide.none,
                           ),
                         ),
@@ -244,7 +340,7 @@ class _CompletedOrdersScreenState
                     // Last 60 Min
                     Container(
                       width: 150,
-                      height: 50,
+                      height: 40,
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey.shade300),
@@ -285,13 +381,54 @@ class _CompletedOrdersScreenState
                         ),
                       ),
                     ),
+                    const SizedBox(width: 15),
+
+// All Status
+                    Container(
+                      width: 170,
+                      height: 40,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.white,
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: selectedStatus,
+                          isExpanded: true,
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'All Status',
+                              child: Text('All Status'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Completed',
+                              child: Text('Completed'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Cancelled',
+                              child: Text('Cancelled'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            setState(() {
+                              selectedStatus = value!;
+                            });
+                            applyFilters();
+                          },
+                        ),
+                      ),
+                    ),
 
                     const Spacer(),
+
+                    // const Spacer(),
 
                     // Search Order ID
                     SizedBox(
                       width: 250,
-                      height: 50,
+                      height: 40,
                       child: TextField(
                         onChanged: (value) {
                           searchText = value;
@@ -313,12 +450,12 @@ class _CompletedOrdersScreenState
                       ),
                     ),
 
-                    const SizedBox(width: 15),
+                    const SizedBox(width: 10),
 
                     // Order Type
                     SizedBox(
                       width: 180,
-                      height: 50,
+                      height: 40,
                       child: DropdownButtonFormField<String>(
                         value: selectedOrderType,
                         decoration: InputDecoration(
@@ -371,8 +508,8 @@ class _CompletedOrdersScreenState
                             minWidth: constraints.maxWidth,
                           ),
                           child: DataTable(
-                            headingRowHeight: 55,
-                            dataRowHeight: 70,
+                            headingRowHeight: 50,
+                            dataRowHeight: 58,
                             showCheckboxColumn: false,
                             horizontalMargin: 16,
                             columnSpacing: 40, // Fixed spacing
@@ -387,19 +524,13 @@ class _CompletedOrdersScreenState
                             columns: const [
                               DataColumn(
                                 label: Text(
-                                  "Status",
+                                  "Order ID",
                                   style: TextStyle(fontWeight: FontWeight.w600),
                                 ),
                               ),
                               DataColumn(
                                 label: Text(
                                   "KOT No.",
-                                  style: TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                              ),
-                              DataColumn(
-                                label: Text(
-                                  "Order ID",
                                   style: TextStyle(fontWeight: FontWeight.w600),
                                 ),
                               ),
@@ -417,13 +548,19 @@ class _CompletedOrdersScreenState
                               ),
                               DataColumn(
                                 label: Text(
+                                  "Ord. received",
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                              DataColumn(
+                                label: Text(
                                   "Prep Time",
                                   style: TextStyle(fontWeight: FontWeight.w600),
                                 ),
                               ),
                               DataColumn(
                                 label: Text(
-                                  "Reason",
+                                  "Status",
                                   style: TextStyle(fontWeight: FontWeight.w600),
                                 ),
                               ),
@@ -437,28 +574,55 @@ class _CompletedOrdersScreenState
                             rows: paginatedOrders.map((order) {
                               return DataRow(
                                 cells: [
-                                  DataCell(buildStatusBadge(order.status)),
 
+                                  // Order ID
+                                  DataCell(
+                                    Text(
+                                      "#${order.orderId}",
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                        color: Color(0xff444444),
+                                      ),
+                                    ),
+                                  ),
+
+                                  // KOT No.
                                   DataCell(
                                     Text(
                                       order.kotNumber.isEmpty
                                           ? "-"
                                           : order.kotNumber,
+                                      style: const TextStyle(
+                                        color: Color(0xff3B82F6),
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
                                   ),
 
-                                  DataCell(
-                                    Text("#${order.orderId}"),
-                                  ),
-
+                                  // Type
                                   DataCell(
                                     buildOrderTypeBadge(order.orderType),
                                   ),
 
+                                  // Table No.
                                   DataCell(
-                                    Text(order.tableName),
+                                    Text(
+                                      order.tableName.isEmpty
+                                          ? "-"
+                                          : order.tableName,
+                                    ),
                                   ),
 
+                                  // Ord. Received
+                                  DataCell(
+                                    Text(
+                                      order.finishedTime.isEmpty
+                                          ? "-"
+                                          : order.finishedTime,
+                                    ),
+                                  ),
+
+                                  // Prep Time
                                   DataCell(
                                     Text(
                                       order.prepTime.isEmpty
@@ -467,20 +631,38 @@ class _CompletedOrdersScreenState
                                     ),
                                   ),
 
-                                  const DataCell(
-                                    Text("-"),
+                                  // Status
+                                  DataCell(
+                                    buildStatusBadge(order.status),
                                   ),
 
+                                  // Action
                                   DataCell(
                                     order.canRecall
-                                        ? const Text(
-                                      "Recall",
-                                      style: TextStyle(
-                                        color: Color(0xff6A8DFF),
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                        ? Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: const [
+                                        Icon(
+                                          Icons.refresh,
+                                          size: 15,
+                                          color: Color(0xff3B82F6),
+                                        ),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          "Recall/Alter",
+                                          style: TextStyle(
+                                            color: Color(0xff3B82F6),
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
                                     )
-                                        : const Text("-"),
+                                        : const Text(
+                                      "-",
+                                      style: TextStyle(
+                                        color: Colors.grey,
+                                      ),
+                                    ),
                                   ),
                                 ],
                               );
@@ -492,21 +674,69 @@ class _CompletedOrdersScreenState
                   ),
                 ),
               ),
-              Padding(
-                padding: EdgeInsets.zero,
+              const SizedBox(height: 10),
 
+              Padding(
+                padding: const EdgeInsets.only(
+                  right: 10,
+                  bottom: 10,
+                  top: 5,
+                ),
                 child: Align(
                   alignment: Alignment.centerRight,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      paginationButton("Previous"),
-                      pageButton("1", true),
-                      pageButton("2", false),
-                      pageButton("3", false),
-                      pageButton("4", false),
-                      pageButton("5", false),
-                      paginationButton("Next"),
+
+                      InkWell(
+                        onTap: currentPage > 1
+                            ? () {
+                          setState(() {
+                            currentPage--;
+                            applyPagination();
+                          });
+                        }
+                            : null,
+                        child: paginationButton(
+                          "Previous",
+                          currentPage > 1,
+                        ),
+                      ),
+
+                      ...List.generate(
+                        totalPages,
+                            (index) {
+                          final page = index + 1;
+
+                          return InkWell(
+                            onTap: () {
+                              setState(() {
+                                currentPage = page;
+                                applyPagination();
+                              });
+                            },
+                            child: pageButton(
+                              page.toString(),
+                              currentPage == page,
+                            ),
+                          );
+                        },
+                      ),
+
+                      InkWell(
+                        onTap: currentPage < totalPages
+                            ? () {
+                          setState(() {
+                            currentPage++;
+                            applyPagination();
+                          });
+                        }
+                            : null,
+                        child: paginationButton(
+                          "Next",
+                          currentPage < totalPages,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -522,47 +752,57 @@ class _CompletedOrdersScreenState
       bool selected,
       ) {
     return Container(
-      width: 32,
-      height: 32,
+      width: 24,
+      height: 28,
       alignment: Alignment.center,
-      margin: const EdgeInsets.symmetric(horizontal: 2),
       decoration: BoxDecoration(
         color: selected
-            ? Colors.deepOrange
+            ? const Color(0xffFF5722)
             : Colors.white,
         border: Border.all(
-          color: Colors.grey.shade300,
+          color: const Color(0xffD9D9D9),
         ),
       ),
       child: Text(
         text,
         style: TextStyle(
-          color:
-          selected ? Colors.white : Colors.black,
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+          color: selected
+              ? Colors.white
+              : const Color(0xff666666),
         ),
       ),
     );
   }
 
-  Widget paginationButton(String text) {
+  Widget paginationButton(
+      String text,
+      bool enabled,
+      ) {
     return Container(
-      height: 32,
+      height: 28,
       padding: const EdgeInsets.symmetric(
-        horizontal: 10,
+        horizontal: 8,
       ),
       alignment: Alignment.center,
       decoration: BoxDecoration(
+        color: Colors.white,
         border: Border.all(
-          color: Colors.grey.shade300,
+          color: const Color(0xffD9D9D9),
         ),
       ),
       child: Text(
         text,
-        style: const TextStyle(fontSize: 12),
+        style: TextStyle(
+          fontSize: 10,
+          color: enabled
+              ? const Color(0xff666666)
+              : Colors.grey.shade400,
+        ),
       ),
     );
   }
-
   Widget buildStatusBadge(String status) {
     final isCompleted = status.toLowerCase() == "completed";
 
@@ -614,4 +854,72 @@ class _CompletedOrdersScreenState
       ),
     );
   }
+}
+Widget _summaryCard({
+  required String title,
+  required String value,
+  required Color color,
+  required IconData icon,
+}) {
+  return Container(
+    width: 160,
+    height: 62,
+    padding: const EdgeInsets.symmetric(
+      horizontal: 10,
+      vertical: 8,
+    ),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(
+        color: color.withOpacity(.25),
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(.03),
+          blurRadius: 4,
+        ),
+      ],
+    ),
+    child: Row(
+      children: [
+        CircleAvatar(
+          radius: 12,
+          backgroundColor: color.withOpacity(.12),
+          child: Icon(
+            icon,
+            color: color,
+            size: 18,
+          ),
+        ),
+
+        const SizedBox(width: 8),
+
+        Expanded(
+          child: Column(
+            crossAxisAlignment:
+            CrossAxisAlignment.start,
+            mainAxisAlignment:
+            MainAxisAlignment.center,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xff6B7280),
+                ),
+              ),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }
