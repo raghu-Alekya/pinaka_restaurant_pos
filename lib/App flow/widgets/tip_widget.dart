@@ -196,9 +196,7 @@ class _TipPopupState extends State<TipPopup> {
                           const SizedBox(height: 25),
                           ElevatedButton(
                             onPressed: () {
-                              if (_tipController.text.isNotEmpty) {
-                                Navigator.pop(context, true); // return true
-                              }
+                              Navigator.of(context).pop();
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.redAccent,
@@ -210,9 +208,10 @@ class _TipPopupState extends State<TipPopup> {
                             child: const Text(
                               "Save & Continue",
                               style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600),
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
 

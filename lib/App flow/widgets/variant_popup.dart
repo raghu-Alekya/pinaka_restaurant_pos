@@ -172,18 +172,21 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
                             fit: BoxFit.cover,
                           ),
                         ),
-                        const SizedBox(height: 10),
-                        Text(widget.product.name,
-                            textAlign: TextAlign.center),
+                        const SizedBox(height: 12),
+                        // Text(widget.product.name,
+                        //     textAlign: TextAlign.center),
                         Text(
-                          variant.name,
+                          variant.name.length > 12
+                              ? '${variant.name.substring(0, 12)}...'
+                              : variant.name,
                           style: const TextStyle(fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
                         ),
                         Text(
                           'Rs.${variant.price.toStringAsFixed(0)}/-',
                           style: const TextStyle(color: Colors.grey),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 10),
 
                         quantity == 0
                             ? ElevatedButton(

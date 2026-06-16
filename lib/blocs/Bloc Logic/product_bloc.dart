@@ -11,7 +11,7 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
     // Existing events
     on<FetchProductsBySubCategory>(_onFetchProducts);
     on<UpdateVariantQuantity>(_onUpdateVariantQuantity);
-    on<FetchProductsByMiniSubCategory>(_onFetchProductsByMiniSubCategory);
+    // on<FetchProductsByMiniSubCategory>(_onFetchProductsByMiniSubCategory);
 
     // ✅ Add ClearProducts handler inside constructor
     on<ClearProducts>((event, emit) {
@@ -31,17 +31,17 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
       emit(ProductError(e.toString()));
     }
   }
-  Future<void> _onFetchProductsByMiniSubCategory(
-      FetchProductsByMiniSubCategory event, Emitter<ProductState> emit) async {
-    emit(ProductLoading());
-    try {
-      final products =
-      await repository.fetchProductsByMiniSubCategory(event.miniSubCategoryId);
-      emit(ProductLoaded(products));
-    } catch (e) {
-      emit(ProductError(e.toString()));
-    }
-  }
+  // Future<void> _onFetchProductsByMiniSubCategory(
+  //     FetchProductsByMiniSubCategory event, Emitter<ProductState> emit) async {
+  //   emit(ProductLoading());
+  //   try {
+  //     final products =
+  //     await repository.fetchProductsByMiniSubCategory(event.miniSubCategoryId);
+  //     emit(ProductLoaded(products));
+  //   } catch (e) {
+  //     emit(ProductError(e.toString()));
+  //   }
+  // }
 
 
   // Update variant quantity for a product

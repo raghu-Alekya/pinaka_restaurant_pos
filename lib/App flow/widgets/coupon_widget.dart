@@ -99,14 +99,12 @@ class _CouponscreenState extends State<Couponscreen> {
                   const SizedBox(width: 12),
                   SizedBox(
                     height: 40,
-                    child: ElevatedButton(
+                    child:ElevatedButton(
                       onPressed: () {
-                        // apply coupon
-                        widget.onCouponApplied(_couponController.text);
-                        Navigator.of(context).pop(true); // return true
+                        widget.onCouponApplied(_couponController.text.trim());
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF4C5F7D),
+                        backgroundColor: const Color(0xFF4C5F7D),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(6),
                         ),
@@ -114,9 +112,10 @@ class _CouponscreenState extends State<Couponscreen> {
                       child: const Text(
                         "Apply coupon",
                         style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold),
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),

@@ -902,7 +902,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         childAspectRatio: 1.7,
-        crossAxisSpacing: 10,
+        crossAxisSpacing: 5,
         mainAxisSpacing: 10,
       ),
       itemCount: tables.length,

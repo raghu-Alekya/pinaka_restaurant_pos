@@ -167,31 +167,55 @@ class _DashboardScreenState extends State<DashboardScreen>
       LoadCategories(token: widget.token, restaurantId: widget.restaurantId),
     );
 
-    catBloc.stream.listen((state) {
-      if (state is CategoryLoaded && state.selectedCategory != null) {
-        final category = state.selectedCategory!;
-        selectedCategoryName = category.name;
+    int? _lastFetchedSubCategoryId;
 
-        // Auto-select first subcategory
+    catBloc.stream.listen((state) {
+      if (state is CategoryLoaded &&
+          state.selectedCategory != null) {
+
+        final category = state.selectedCategory!;
+
         if (category.subCategories != null &&
             category.subCategories!.isNotEmpty) {
-          final firstSub = category.subCategories!.first;
-          selectedSubCategoryId = firstSub.id;
 
-          // Update breadcrumbs
-          setState(() {
-            breadcrumbNames = [category.name, firstSub.name];
-            breadcrumbIds = [-1, firstSub.id];
-          });
+          final firstSub =
+              category.subCategories!.first;
 
-          // Trigger subcategory selection
+          if (_lastFetchedSubCategoryId ==
+              firstSub.id) {
+            return;
+          }
+
+          _lastFetchedSubCategoryId =
+              firstSub.id;
+
+          selectedSubCategoryId =
+              firstSub.id;
+
+          if (mounted) {
+            setState(() {
+              breadcrumbNames = [
+                category.name,
+                firstSub.name,
+              ];
+
+              breadcrumbIds = [
+                -1,
+                firstSub.id,
+              ];
+            });
+          }
+
           context.read<SubCategoryBloc>().add(
-            SelectSubCategory(subCategory: firstSub),
+            SelectSubCategory(
+              subCategory: firstSub,
+            ),
           );
 
-          // Fetch mini-subcategories
           context.read<MiniSubCategoryBloc>().add(
-            FetchMiniSubCategories(subCategoryId: firstSub.id),
+            FetchMiniSubCategories(
+              subCategoryId: firstSub.id,
+            ),
           );
         }
       }
@@ -280,82 +304,119 @@ class _DashboardScreenState extends State<DashboardScreen>
     _removeSearchOverlay();
 
     _searchOverlay = OverlayEntry(
-      builder: (context) => Positioned(
-        width: 300,
-        child: CompositedTransformFollower(
-          link: _searchLink,
-          showWhenUnlinked: false,
-          offset: const Offset(0, 38),
-          child: Material(
-            elevation: 8,
-            borderRadius: BorderRadius.circular(8),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxHeight: 300, // 🔽 DECREASE HEIGHT HERE
-              ),
-            child: ListView.separated(
-              padding: EdgeInsets.zero,
-              shrinkWrap: true,
-              itemCount: products.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final product = products[index];
+        builder: (context) => Positioned(
+          width: 300,
+          child: CompositedTransformFollower(
+            link: _searchLink,
+            showWhenUnlinked: false,
+            offset: const Offset(0, 38),
+            child: Material(
+              elevation: 8,
+              borderRadius: BorderRadius.circular(8),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxHeight: 300, // 🔽 DECREASE HEIGHT HERE
+                ),
+                child: ListView.separated(
+                  padding: EdgeInsets.zero,
+                  shrinkWrap: true,
+                  itemCount: products.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final product = products[index];
 
-                return ListTile(
-                  dense: true,
-                  title: Text(
-                    product.name,
-                    style: const TextStyle(fontSize: 14),
-                  ),
+                    return ListTile(
+                        dense: true,
+                        title: Text(
+                          product.name,
+                          style: const TextStyle(fontSize: 14),
+                        ),
 
-                    onTap: () async {
-                      setState(() {
-                        _searchEditable = false;
-                      });
+                        onTap: () async {
+                          setState(() {
+                            _searchEditable = false;
+                          });
 
-                      FocusScope.of(context).requestFocus(_searchFocusNode);
+                          FocusScope.of(context).requestFocus(_searchFocusNode);
 
-                      final orderBloc = context.read<OrderBloc>();
+                          final orderBloc = context.read<OrderBloc>();
 
-                      // 🔵 VARIATION PRODUCT
-                      if (product.type == 'variation' && product.parentId != null) {
-                        // 🔄 Show loader
-                        showDialog(
-                          context: context,
-                          barrierDismissible: false,
-                          builder: (_) => const Center(child: CircularProgressIndicator()),
-                        );
-
-                        try {
-                          final variants =
-                          await variantRepository.fetchVariantsByProduct(product.parentId!);
-
-                          Navigator.pop(context); // close loader
-
-                          if (variants.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('No variants available')),
+                          // 🔵 VARIATION PRODUCT
+                          if (product.type == 'variation' && product.parentId != null) {
+                            // 🔄 Show loader
+                            showDialog(
+                              context: context,
+                              barrierDismissible: false,
+                              builder: (_) => const Center(child: CircularProgressIndicator()),
                             );
+
+                            try {
+                              final variants =
+                              await variantRepository.fetchVariantsByProduct(product.parentId!);
+
+                              Navigator.pop(context); // close loader
+
+                              if (variants.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('No variants available')),
+                                );
+                                return;
+                              }
+
+                              // ✅ Convert to Product (NOW variants exist)
+                              final productForSelection = Product(
+                                id: product.parentId!,
+                                name: product.name,
+                                price: product.price.toDouble(),
+                                variants: variants,
+                                images: const [],
+                                modifiers: const [],
+                                addOns: const [],
+                                isCombo: false,
+                                hasOptions: true,
+                                isVariantProduct: true,
+                              );
+
+                              // 🔥 Reuse SAME logic
+                              onItemSelected(
+                                productForSelection,
+                                Category(
+                                  id: '-1',
+                                  name: 'Search',
+                                  imagepath: '',
+                                  subCategories: const [],
+                                ),
+                              );
+                              _searchController.clear();
+
+                            } catch (e) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Failed to load variants')),
+                              );
+                            }
+
+                            _removeSearchOverlay();
+                            context.read<SearchProductBloc>().add(SearchClearProducts());
                             return;
                           }
 
-                          // ✅ Convert to Product (NOW variants exist)
-                          final productForSelection = Product(
-                            id: product.parentId!,
+                          // 🟢 SIMPLE PRODUCT
+                          final simpleProduct = Product(
+                            id: product.id,
                             name: product.name,
                             price: product.price.toDouble(),
-                            variants: variants,
+                            variants: const [],
                             images: const [],
                             modifiers: const [],
                             addOns: const [],
                             isCombo: false,
-                            hasOptions: true,
-                            isVariantProduct: true,
+                            hasOptions: false,
+                            isVariantProduct: false,
                           );
 
-                          // 🔥 Reuse SAME logic
                           onItemSelected(
-                            productForSelection,
+                            simpleProduct,
                             Category(
                               id: '-1',
                               name: 'Search',
@@ -365,55 +426,18 @@ class _DashboardScreenState extends State<DashboardScreen>
                           );
                           _searchController.clear();
 
-                        } catch (e) {
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Failed to load variants')),
-                          );
+                          _removeSearchOverlay();
+                          context.read<SearchProductBloc>().add(SearchClearProducts());
                         }
 
-                        _removeSearchOverlay();
-                        context.read<SearchProductBloc>().add(SearchClearProducts());
-                        return;
-                      }
-
-                      // 🟢 SIMPLE PRODUCT
-                      final simpleProduct = Product(
-                        id: product.id,
-                        name: product.name,
-                        price: product.price.toDouble(),
-                        variants: const [],
-                        images: const [],
-                        modifiers: const [],
-                        addOns: const [],
-                        isCombo: false,
-                        hasOptions: false,
-                        isVariantProduct: false,
-                      );
-
-                      onItemSelected(
-                        simpleProduct,
-                        Category(
-                          id: '-1',
-                          name: 'Search',
-                          imagepath: '',
-                          subCategories: const [],
-                        ),
-                      );
-                      _searchController.clear();
-
-                      _removeSearchOverlay();
-                      context.read<SearchProductBloc>().add(SearchClearProducts());
-                    }
 
 
-
-                );},
+                    );},
+                ),
+              ),
             ),
           ),
-        ),
-      ),
-    ));
+        ));
 
     Overlay.of(context).insert(_searchOverlay!);
   }
@@ -559,78 +583,78 @@ class _DashboardScreenState extends State<DashboardScreen>
 
           // RIGHT: Search Bar (Fixed Position)
           Align(
-          alignment: Alignment.centerRight,
-          child: CompositedTransformTarget(
-          link: _searchLink,
-          child: Container(
-          width: 230,
-          height: 35,
-          decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: [
-          BoxShadow(
-          color: Colors.black.withOpacity(0.05),
-          blurRadius: 6,
-          offset: const Offset(0, 2),
+            alignment: Alignment.centerRight,
+            child: CompositedTransformTarget(
+              link: _searchLink,
+              child: Container(
+                width: 230,
+                height: 35,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  focusNode: _searchFocusNode,
+
+                  autofocus: false,
+
+                  // 🔐 KEY LINE
+                  readOnly: !_searchEditable,
+
+                  decoration: const InputDecoration(
+                    hintText: "Search item",
+                    prefixIcon: Icon(Icons.search, size: 18),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(vertical: 10),
+                  ),
+
+                  onTap: () {
+                    if (!_searchEditable) {
+                      setState(() {
+                        _searchEditable = true; // 🔓 unlock typing
+                      });
+
+                      // delay ensures Flutter updates readOnly before focus
+                      Future.microtask(() {
+                        FocusScope.of(context).requestFocus(_searchFocusNode);
+                      });
+                    }
+                  },
+
+                  onChanged: (value) {
+                    final query = value.trim();
+                    _isSearchActive = query.isNotEmpty;
+
+                    if (query.isEmpty) {
+                      _removeSearchOverlay();
+                      context.read<SearchProductBloc>().add(SearchClearProducts());
+                      return;
+                    }
+
+                    if (query.length >= 2) {
+                      context
+                          .read<SearchProductBloc>()
+                          .add(SearchFetchProducts(search: query));
+                    }
+                  },
+                ),
+              ),
+            ),
           ),
-          ],
-          ),
-          child: TextField(
-          controller: _searchController,
-          focusNode: _searchFocusNode,
-
-    autofocus: false,
-
-    // 🔐 KEY LINE
-    readOnly: !_searchEditable,
-
-    decoration: const InputDecoration(
-    hintText: "Search item",
-    prefixIcon: Icon(Icons.search, size: 18),
-    border: InputBorder.none,
-    contentPadding: EdgeInsets.symmetric(vertical: 10),
-    ),
-
-    onTap: () {
-    if (!_searchEditable) {
-    setState(() {
-    _searchEditable = true; // 🔓 unlock typing
-    });
-
-    // delay ensures Flutter updates readOnly before focus
-    Future.microtask(() {
-    FocusScope.of(context).requestFocus(_searchFocusNode);
-    });
-    }
-    },
-
-    onChanged: (value) {
-    final query = value.trim();
-    _isSearchActive = query.isNotEmpty;
-
-    if (query.isEmpty) {
-    _removeSearchOverlay();
-    context.read<SearchProductBloc>().add(SearchClearProducts());
-    return;
-    }
-
-    if (query.length >= 2) {
-    context
-        .read<SearchProductBloc>()
-        .add(SearchFetchProducts(search: query));
-    }
-    },
-    ),
-    ),
-    ),
-    ),
 
 
 
 
 
-    ],
+        ],
       ),
     );
   }
@@ -699,211 +723,211 @@ class _DashboardScreenState extends State<DashboardScreen>
           _searchFocusNode.unfocus();
           FocusManager.instance.primaryFocus?.unfocus();
         },
-    child: Scaffold(
-      appBar: TopBar(
-        token: widget.token,
-        pin: widget.pin,
-        userPermissions: _userPermissions,
-        onPermissionsReceived: (permissions) async {
-          setState(() {
-            _userPermissions = permissions;
+        child: Scaffold(
+          appBar: TopBar(
+            token: widget.token,
+            pin: widget.pin,
+            userPermissions: _userPermissions,
+            onPermissionsReceived: (permissions) async {
+              setState(() {
+                _userPermissions = permissions;
 
-          });
-        },
-      ),
-      body: Container(
-        color: const Color(0xFFDEE8FF),
-        child: Row(
-          children: [
-            // LEFT SIDE
-            Expanded(
-              flex: 63,
-              child: Column(
-                children: [
-                  // Sidebar + SubCategory
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Expanded(
-                          flex: 8,
-                          child: SideBarWidgets(
-                            token: widget.token,
-                            restaurantId: widget.restaurantId,
-                          ),
-                        ),
-                        const SizedBox(width: 5),
-                        Expanded(
-                          flex: 55,
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(2, 8, 2, 8),
-
-                            child: BlocBuilder<CategoryBloc, CategoryState>(
-                              builder: (context, catState) {
-                                if (catState is CategoryLoading) {
-                                  return const Center(
-                                      child: CircularProgressIndicator());
-                                } else if (catState is CategoryError) {
-                                  return Center(child: Text(catState.message));
-                                } else if (catState is CategoryLoaded &&
-                                    catState.selectedCategory != null) {
-                                  final category = catState.selectedCategory!;
-
-                                  return Column(
-                                    crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                    children: [
-                                      const SizedBox(height: 8),
-                                      if (breadcrumbNames.isNotEmpty) ...[
-                                        _buildBreadcrumbs(),
-                                        const SizedBox(height: 8),
-                                      ],
-                                      SubCategoryTabWidget(
-                                        subCategories: category.subCategories ?? [],
-                                        selectedIndex: category.subCategories != null
-                                            ? category.subCategories!
-                                            .indexWhere((sub) => sub.id == selectedSubCategoryId)
-                                            : -1,
-                                        onTap: (index) {
-                                          final sub = category.subCategories![index];
-                                          setState(() {
-                                            selectedSubCategoryId = sub.id;
-                                          });
-                                          onSubCategoryTap(sub);
-                                        },
-                                      ),
-
-                                      const SizedBox(height: 6),
-                                      // if (breadcrumbNames.isNotEmpty) ...[
-                                      //   _buildBreadcrumbs(),
-                                      //   const SizedBox(height: 8),
-                                      // ],
-                                      Expanded(
-                                        child: BlocBuilder<
-                                            MiniSubCategoryBloc,
-                                            MiniSubCategoryState>(
-                                          builder: (context, miniState) {
-                                            if (miniState
-                                            is MiniSubCategoryLoading) {
-                                              return const Center(
-                                                  child:
-                                                  CircularProgressIndicator());
-                                            } else if (miniState
-                                            is MiniSubCategoryLoaded) {
-                                              currentSubCategories =
-                                                  miniState.miniSubCategories;
-
-                                              final variantRepo =
-                                              VariantRepository(
-                                                baseUrl:
-                                                'https://merchantrestaurant.alektasolutions.com',
-                                                token: widget.token,
-                                              );
-
-                                              return MiniSubCategoryWidget(
-                                                subCategories: currentSubCategories,
-                                                section: category,
-                                                onFolderSelected: onFolderSelected,
-                                                onItemSelected: (product) => onItemSelected(product, category),
-                                                fetchProducts: productRepo.fetchProductsBySubCategory, // Corrected
-                                                repository: miniSubRepo, // If required, pass the correct repo
-                                                tappedSubCategoryId: selectedSubCategoryId ?? -1,
-                                                variantRepository: variantRepo,
-                                              );
-
-                                            } else if (miniState
-                                            is MiniSubCategoryError) {
-                                              return Center(
-                                                  child:
-                                                  Text(miniState.message));
-                                            } else {
-                                              return const Center(
-                                                  child: Text(
-                                                      'No mini subcategories available'));
-                                            }
-                                          },
-                                        ),
-                                      )
-                                    ],
-                                  );
-                                }
-                                return const Center(
-                                    child: Text("Select a section from sidebar"));
-                              },
+              });
+            },
+          ),
+          body: Container(
+            color: const Color(0xFFDEE8FF),
+            child: Row(
+              children: [
+                // LEFT SIDE
+                Expanded(
+                  flex: 63,
+                  child: Column(
+                    children: [
+                      // Sidebar + SubCategory
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: 8,
+                              child: SideBarWidgets(
+                                token: widget.token,
+                                restaurantId: widget.restaurantId,
+                              ),
                             ),
-                          ),
+                            const SizedBox(width: 5),
+                            Expanded(
+                              flex: 55,
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(2, 8, 2, 8),
+
+                                child: BlocBuilder<CategoryBloc, CategoryState>(
+                                  builder: (context, catState) {
+                                    if (catState is CategoryLoading) {
+                                      return const Center(
+                                          child: CircularProgressIndicator());
+                                    } else if (catState is CategoryError) {
+                                      return Center(child: Text(catState.message));
+                                    } else if (catState is CategoryLoaded &&
+                                        catState.selectedCategory != null) {
+                                      final category = catState.selectedCategory!;
+
+                                      return Column(
+                                        crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                        children: [
+                                          const SizedBox(height: 8),
+                                          if (breadcrumbNames.isNotEmpty) ...[
+                                            _buildBreadcrumbs(),
+                                            const SizedBox(height: 8),
+                                          ],
+                                          SubCategoryTabWidget(
+                                            subCategories: category.subCategories ?? [],
+                                            selectedIndex: category.subCategories != null
+                                                ? category.subCategories!
+                                                .indexWhere((sub) => sub.id == selectedSubCategoryId)
+                                                : -1,
+                                            onTap: (index) {
+                                              final sub = category.subCategories![index];
+                                              setState(() {
+                                                selectedSubCategoryId = sub.id;
+                                              });
+                                              onSubCategoryTap(sub);
+                                            },
+                                          ),
+
+                                          const SizedBox(height: 6),
+                                          // if (breadcrumbNames.isNotEmpty) ...[
+                                          //   _buildBreadcrumbs(),
+                                          //   const SizedBox(height: 8),
+                                          // ],
+                                          Expanded(
+                                            child: BlocBuilder<
+                                                MiniSubCategoryBloc,
+                                                MiniSubCategoryState>(
+                                              builder: (context, miniState) {
+                                                if (miniState
+                                                is MiniSubCategoryLoading) {
+                                                  return const Center(
+                                                      child:
+                                                      CircularProgressIndicator());
+                                                } else if (miniState
+                                                is MiniSubCategoryLoaded) {
+                                                  currentSubCategories =
+                                                      miniState.miniSubCategories;
+
+                                                  final variantRepo =
+                                                  VariantRepository(
+                                                    baseUrl:
+                                                    'https://merchantrestaurant.alektasolutions.com',
+                                                    token: widget.token,
+                                                  );
+
+                                                  return MiniSubCategoryWidget(
+                                                    subCategories: currentSubCategories,
+                                                    section: category,
+                                                    onFolderSelected: onFolderSelected,
+                                                    onItemSelected: (product) => onItemSelected(product, category),
+                                                    fetchProducts: productRepo.fetchProductsBySubCategory, // Corrected
+                                                    repository: miniSubRepo, // If required, pass the correct repo
+                                                    tappedSubCategoryId: selectedSubCategoryId ?? -1,
+                                                    variantRepository: variantRepo,
+                                                  );
+
+                                                } else if (miniState
+                                                is MiniSubCategoryError) {
+                                                  return Center(
+                                                      child:
+                                                      Text(miniState.message));
+                                                } else {
+                                                  return const Center(
+                                                      child: Text(
+                                                          'No mini subcategories available'));
+                                                }
+                                              },
+                                            ),
+                                          )
+                                        ],
+                                      );
+                                    }
+                                    return const Center(
+                                        child: Text("Select a section from sidebar"));
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+
+                      // Bottom Navigation
+                      SizedBox(
+                        height: 55,
+                        child: BottomNavBar(
+                          selectedIndex: _bottomNavIndex,
+                          onItemTapped: _onNavItemTapped,
+                          userPermissions: _userPermissions,
+                        ),
+                      ),
+                    ],
                   ),
-
-                  // Bottom Navigation
-                  SizedBox(
-                    height: 55,
-                    child: BottomNavBar(
-                      selectedIndex: _bottomNavIndex,
-                      onItemTapped: _onNavItemTapped,
-                      userPermissions: _userPermissions,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // RIGHT SIDE: Order Panel
-            Expanded(
-              flex: 49,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(6, 12, 12, 12),
-                child: BlocBuilder<OrderBloc, OrderState>(
-                  builder: (context, state) {
-                    return OrderPanel(
-                      token: widget.token,
-                      loadedTables: widget.loadedTables,
-                      restaurantId: widget.restaurantId,
-                      guestcount: state.guestDetails,
-
-                      orderId: widget.orderId,
-                      addonPrices: state.addonPrices,
-                      onGuestSaved: (int value) {},
-                      tableId: state.tableId,
-                      tableName: state.tableName,
-                      zoneId: state.zoneId,
-                      zoneName: state.zoneName,
-                      placedTables: [],
-                      pin: widget.pin,
-                      restaurantName: widget.restaurantName,
-                      userId: _userPermissions?.userId ?? '',
-                    );
-                  },
                 ),
-              ),
-            ),
-            // ✅ ADD THIS BLOCK (ONLY ONCE)
-            BlocListener<SearchProductBloc, SearchProductState>(
-              listener: (context, state) {
-                debugPrint("🧠 Search State Changed → $state");
-                if (!_isSearchActive) {
-                  _removeSearchOverlay();
-                  return;
-                }
 
-                if (state is SearchProductLoaded) {
-                  debugPrint(
-                      "📥 Overlay showing ${state.products.length} items");
-                  _showSearchOverlay(state.products);
-                }
+                // RIGHT SIDE: Order Panel
+                Expanded(
+                  flex: 49,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(6, 12, 12, 12),
+                    child: BlocBuilder<OrderBloc, OrderState>(
+                      builder: (context, state) {
+                        return OrderPanel(
+                          token: widget.token,
+                          loadedTables: widget.loadedTables,
+                          restaurantId: widget.restaurantId,
+                          guestcount: state.guestDetails,
 
-                if (state is SearchProductEmpty ||
-                    state is SearchProductInitial ||
-                    state is SearchProductError) {
-                  _removeSearchOverlay();
-                }
-              },
-              child: const SizedBox.shrink(),
+                          orderId: widget.orderId,
+                          addonPrices: state.addonPrices,
+                          onGuestSaved: (int value) {},
+                          tableId: state.tableId,
+                          tableName: state.tableName,
+                          zoneId: state.zoneId,
+                          zoneName: state.zoneName,
+                          placedTables: [],
+                          pin: widget.pin,
+                          restaurantName: widget.restaurantName,
+                          userId: _userPermissions?.userId ?? '',
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                // ✅ ADD THIS BLOCK (ONLY ONCE)
+                BlocListener<SearchProductBloc, SearchProductState>(
+                  listener: (context, state) {
+                    debugPrint("🧠 Search State Changed → $state");
+                    if (!_isSearchActive) {
+                      _removeSearchOverlay();
+                      return;
+                    }
+
+                    if (state is SearchProductLoaded) {
+                      debugPrint(
+                          "📥 Overlay showing ${state.products.length} items");
+                      _showSearchOverlay(state.products);
+                    }
+
+                    if (state is SearchProductEmpty ||
+                        state is SearchProductInitial ||
+                        state is SearchProductError) {
+                      _removeSearchOverlay();
+                    }
+                  },
+                  child: const SizedBox.shrink(),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
-    ));
+          ),
+        ));
   }
 }

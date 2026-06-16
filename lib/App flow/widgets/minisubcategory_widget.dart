@@ -197,6 +197,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
     if (folders.isNotEmpty) {
       selectedFolder = folders[0];
       widget.onFolderSelected?.call(selectedFolder!);
+      if (!mounted) return;
       setState(() {});
 
       if (selectedFolder!.products.isEmpty) {
@@ -217,6 +218,8 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
             products: updatedProducts,
             count: updatedProducts.length,
           );
+          if (!mounted) return;
+
 
           setState(() {
             // IMPORTANT: replace selectedFolder and also update it in the list
@@ -242,9 +245,15 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
 
 
   Future<void> _fetchDirectProducts(int subCategoryId) async {
+    if (!mounted) return;
+
     setState(() => isLoadingDirectProducts = true);
+
     try {
       final products = await widget.fetchProducts(subCategoryId);
+
+      if (!mounted) return;
+
       setState(() {
         currentSubCategories = [
           MiniSubCategory(
@@ -259,6 +268,8 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
     } catch (e) {
       print("[MiniSubCategoryWidget] Error fetching direct products: $e");
     } finally {
+      if (!mounted) return;
+
       setState(() => isLoadingDirectProducts = false);
     }
   }
@@ -268,6 +279,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
     if (selectedFolder?.id == folder.id) {
       return;
     }
+    if (!mounted) return;
 
     // select the new folder
     setState(() {
@@ -633,35 +645,35 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
     );
   }
 
-  // Widget _buildItemsSection(List<Product> items) {
-  //   final bool hasComboItems = items.any(isComboItem);
-  //
-  //   return Column(
-  //     crossAxisAlignment: CrossAxisAlignment.stretch,
-  //     children: [
-  //       _buildItemsGrid(items),
-  //
-  //       if (hasComboItems)
-  //         Padding(
-  //           padding: const EdgeInsets.only(top: 6),
-  //           child: Center(
-  //             child: InkWell(
-  //               onTap: () => _openComboDetails(context, items.firstWhere(isComboItem)),
-  //               child: const Text(
-  //                 "View more",
-  //                 style: TextStyle(
-  //                   fontSize: 12,
-  //                   fontWeight: FontWeight.w600,
-  //                   decoration: TextDecoration.underline,
-  //                   color: Color(0xFF191919),
-  //                 ),
-  //               ),
-  //             ),
-  //           ),
-  //         ),
-  //     ],
-  //   );
-  // }
+// Widget _buildItemsSection(List<Product> items) {
+//   final bool hasComboItems = items.any(isComboItem);
+//
+//   return Column(
+//     crossAxisAlignment: CrossAxisAlignment.stretch,
+//     children: [
+//       _buildItemsGrid(items),
+//
+//       if (hasComboItems)
+//         Padding(
+//           padding: const EdgeInsets.only(top: 6),
+//           child: Center(
+//             child: InkWell(
+//               onTap: () => _openComboDetails(context, items.firstWhere(isComboItem)),
+//               child: const Text(
+//                 "View more",
+//                 style: TextStyle(
+//                   fontSize: 12,
+//                   fontWeight: FontWeight.w600,
+//                   decoration: TextDecoration.underline,
+//                   color: Color(0xFF191919),
+//                 ),
+//               ),
+//             ),
+//           ),
+//         ),
+//     ],
+//   );
+// }
 
 
 

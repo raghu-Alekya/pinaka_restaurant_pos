@@ -162,11 +162,11 @@ class _SideBarWidgetsState extends State<SideBarWidgets> {
             if (state is MiniSubCategoryLoaded &&
                 state.miniSubCategories.isNotEmpty) {
               final firstMiniSub = state.miniSubCategories.first;
-              context.read<ProductBloc>().add(
-                FetchProductsByMiniSubCategory(
-                  miniSubCategoryId: firstMiniSub.id,
-                ),
-              );
+              // context.read<ProductBloc>().add(
+              //   FetchProductsByMiniSubCategory(
+              //     miniSubCategoryId: firstMiniSub.id,
+              //   ),
+              // );
             }
           },
         ),
