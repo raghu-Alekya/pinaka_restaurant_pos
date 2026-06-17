@@ -12,7 +12,7 @@ class OrderLocalStorage {
 
     final list = jsonDecode(raw) as List;
     return list
-        .map((e) => KitchenOrder.fromStoredJson(Map<String, dynamic>.from(e)))
+        .map((e) => KitchenOrder.fromJson(Map<String, dynamic>.from(e)))
         .toList();
   }
 

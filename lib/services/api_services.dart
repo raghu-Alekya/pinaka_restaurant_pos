@@ -252,4 +252,49 @@ class OrderApiService {
     KdsDebugLog.info('Response Body: ${response.body}');
     return jsonBody ?? {'success': true};
   }
+  Future<List<dynamic>> getKitchenDisplayOrders() async {
+    final token = await _requireToken();
+
+    final url = Uri.parse(
+      '$baseUrl/kot/kitchen-display-orders?restaurant_id=$restaurantId',
+    );
+
+    KdsDebugLog.info('GET $url');
+
+    final response = await _client.get(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw OrderApiException(
+        statusCode: response.statusCode,
+        message: 'Failed to load kitchen display orders',
+        body: response.body,
+      );
+    }
+
+
+    final decoded = jsonDecode(response.body);
+
+    if (decoded is List) {
+      return decoded;
+    }
+
+    if (decoded is Map<String, dynamic>) {
+      if (decoded['data'] is List) {
+        return decoded['data'];
+      }
+
+      if (decoded['orders'] is List) {
+        return decoded['orders'];
+      }
+    }
+
+    return [];
+  }
+
 }

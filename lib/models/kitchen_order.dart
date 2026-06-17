@@ -47,6 +47,7 @@ class KitchenOrder {
   final String? tableName;
   final DateTime? kotTime;
   final List<OrderItem> items;
+  final String kotStatus;
 
   KitchenOrder({
     required this.id,
@@ -60,6 +61,7 @@ class KitchenOrder {
     this.tableName,
     this.kotTime,
     required this.items,
+    this.kotStatus = '',
   });
 
   Color get headerColor {
@@ -117,26 +119,50 @@ class KitchenOrder {
   }
 
   /// Load from local storage (SharedPreferences)
-  factory KitchenOrder.fromStoredJson(Map<String, dynamic> json) {
+  factory KitchenOrder.fromJson(Map<String, dynamic> json) {
+    final kotStatus =
+        json['kot_status']?.toString().trim().toLowerCase() ?? '';
+
+    String uiStatus;
+
+    switch (kotStatus) {
+      case 'processing':
+        uiStatus = 'Pending';
+        break;
+
+      case 'preparing':
+        uiStatus = 'Preparing';
+        break;
+
+      case 'ready':
+        uiStatus = 'Ready';
+        break;
+
+      case 'served':
+      case 'completed':
+        uiStatus = 'Served';
+        break;
+
+      default:
+        uiStatus = 'Pending';
+    }
+
     return KitchenOrder(
-      id: json['id']?.toString() ?? '',
-      kotId: (json['kotId'] as num?)?.toInt(),
-      parentOrderId: (json['parentOrderId'] as num?)?.toInt(),
-      zoneId: (json['zoneId'] as num?)?.toInt(),
-      zoneName: json['zoneName']?.toString(),
-      type: json['type']?.toString() ?? 'Dine-In',
-      status: json['status']?.toString() ?? 'Pending',
-      isCancelled: json['isCancelled'] == true,
-      tableName: json['tableName']?.toString(),
-      kotTime: json['kotTime'] != null
-          ? DateTime.tryParse(json['kotTime'].toString())
-          : null,
-      items: (json['items'] as List? ?? [])
+      id: json['kot_number']?.toString() ?? '',
+      kotId: (json['kot_id'] as num?)?.toInt(),
+      parentOrderId: (json['order_id'] as num?)?.toInt(),
+      zoneId: (json['zone_id'] as num?)?.toInt(),
+      zoneName: json['zone_name']?.toString(),
+      type: json['order_type']?.toString() ?? 'Dine In',
+      status: uiStatus,
+      kotStatus: json['kot_status']?.toString() ?? '',
+      tableName: json['table_name']?.toString(),
+      kotTime: _parseKotTime(json['kot_time']?.toString()),
+      items: (json['kot_items'] as List? ?? [])
           .map((e) => OrderItem.fromJson(Map<String, dynamic>.from(e)))
           .toList(),
     );
   }
-
   /// Save to local storage
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -150,6 +176,7 @@ class KitchenOrder {
     'tableName': tableName,
     'kotTime': kotTime?.toIso8601String(),
     'items': items.map((item) => item.toJson()).toList(),
+    'kotStatus': kotStatus,
   };
 
   /// For UI widgets
@@ -177,4 +204,6 @@ class KitchenOrder {
     })
         .toList(),
   };
+
+  // static Future<void> fromJson(e) {}
 }

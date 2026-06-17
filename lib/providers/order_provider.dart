@@ -14,12 +14,15 @@ class OrderProvider extends ChangeNotifier {
 
   OrderProvider(this._mqttService, this._apiService) {
     KdsDebugLog.info('OrderProvider created');
-    _init();
+    // _init();
 
     _servedCleanupTimer =
         Timer.periodic(const Duration(seconds: 30), (_) {
           _clearServedOrders();
         });
+  }
+  Future<void> initialize() async {
+    await _init();
   }
 
   final KdsMqttService _mqttService;
@@ -29,6 +32,7 @@ class OrderProvider extends ChangeNotifier {
   bool _loaded = false;
 
   bool get isLoaded => _loaded;
+  // final Set<int> selectedIndexes = {};
 
   List<KitchenOrder> get orders => List.unmodifiable(_orders);
   KdsConnectionState get connectionState => _mqttService.state;
@@ -57,17 +61,23 @@ class OrderProvider extends ChangeNotifier {
       .where((o) => o.status == 'Served')
       .map((o) => o.toUiMap())
       .toList();
-
   Future<void> _init() async {
     final saved = await _storage.loadOrders();
+
+    _orders.clear();
     _orders.addAll(saved);
+
+    await loadExistingOrders();
+
     _loaded = true;
-    KdsDebugLog.info('Loaded ${saved.length} orders from local storage');
+
     notifyListeners();
 
     _mqttService.messages.listen(_handleMessage);
     _mqttService.connectionState.listen((_) => notifyListeners());
     _mqttService.connect();
+
+    print('Provider notifyListeners called');
   }
 
   Future<void> _persist() async {
@@ -137,18 +147,31 @@ class OrderProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> startOrder(String orderId) async {
+  Future<bool> startOrder(
+      String orderId,
+      List<Map<String, dynamic>> remainingItems,
+      ) async {
     final order = _findOrder(orderId);
     if (order == null) return false;
 
     try {
-      await _apiService.startOrder(order);
 
       _updateAndSave(() {
+
+        // Keep only unchecked items
+        order.items.removeWhere((item) {
+          return !remainingItems.any(
+                (r) => r['name'] == item.name,
+          );
+        });
+
         order.status = 'Preparing';
         order.isCancelled = false;
+
         _notifyPos(order, 'Preparing');
       });
+
+      await _apiService.startOrder(order);
 
       return true;
     } catch (e, stack) {
@@ -156,7 +179,6 @@ class OrderProvider extends ChangeNotifier {
       return false;
     }
   }
-
   Future<bool> cancelOrder(String orderId) async {
     final order = _findOrder(orderId);
     if (order == null) return false;
@@ -165,7 +187,12 @@ class OrderProvider extends ChangeNotifier {
       await _apiService.cancelOrder(order);
 
       _updateAndSave(() {
+        // Remove from master list
+        _orders.removeWhere(
+              (o) => o.id.toString() == orderId,
+        );
 
+        // Remove from pending list if present
         pendingOrders.removeWhere(
               (o) => o['id'].toString() == orderId,
         );
@@ -177,6 +204,34 @@ class OrderProvider extends ChangeNotifier {
         );
       });
 
+      notifyListeners();
+
+      return true;
+    } catch (e, stack) {
+      print('cancelOrder error: $e');
+      print(stack);
+      return false;
+    }
+  }
+  Future<bool> cancelItems(
+      String orderId,
+      List<Map<String, dynamic>> selectedItems,
+      ) async {
+    final order = _findOrder(orderId);
+
+    if (order == null) return false;
+
+    try {
+      _updateAndSave(() {
+        order.items.removeWhere((item) {
+          return selectedItems.any(
+                (selected) =>
+            selected['name'] == item.name,
+          );
+        });
+      });
+
+      notifyListeners();
       return true;
     } catch (e) {
       return false;
@@ -201,55 +256,61 @@ class OrderProvider extends ChangeNotifier {
       return false;
     }
   }
+  Future<void> loadExistingOrders() async {
+    try {
+      final apiOrders = await _apiService.getKitchenDisplayOrders();
+
+      _orders.clear();
+
+      for (final json in apiOrders) {
+        print('API Status = ${json['status']}');
+
+        final order = KitchenOrder.fromJson(
+          Map<String, dynamic>.from(json),
+        );
+
+        _orders.add(order);
+
+        KdsDebugLog.info(
+          'Loaded ${order.id} status=${order.status}',
+        );
+      }
+
+      print('Total Orders Loaded 1: ${_orders.length}');
+      print('Pending Count 2: ${pendingOrders.length}');
+      print('Preparing Count 3: ${preparingOrders.length}');
+      print('Served Count 4: ${servedOrders.length}');
+
+      await _persist();
+      notifyListeners();
+    } catch (e, stack) {
+      KdsDebugLog.error(
+        'Failed to load existing orders: $e\n$stack',
+      );
+    }
+  }
 
   Future<bool> updateOrderStatus(String orderId, String status) async {
     final order = _findOrder(orderId);
     if (order == null) return false;
 
+    final oldStatus = order.status;
+
+    // Update UI immediately
+    _updateAndSave(() {
+      order.status = status;
+      _notifyPos(order, status);
+    });
+
     try {
       await _apiService.updateOrderStatus(order, status);
-
-      _updateAndSave(() {
-        order.status = status;
-        _notifyPos(order, status);
-      });
-      for (final o in _orders) {
-        print(
-          'ID=${o.id} Status=${o.status} Items=${o.items.length}',
-        );
-      }
-
-      if (status.toLowerCase() == 'served') {
-        print('Entered served block');
-
-        final currentOrderId = orderId;
-
-        Future.delayed(const Duration(seconds: 30), () {
-          print('Timer fired');
-
-          final order = _findOrder(currentOrderId);
-
-          print('Order found = ${order?.id}');
-
-          if (order != null &&
-              order.status.toLowerCase() == 'served') {
-
-            print(
-              'Before clear: ${order.id} -> ${order.items.length}',
-            );
-
-            order.items.clear();
-
-            notifyListeners();
-
-            print(
-              'After clear: ${order.id} -> ${order.items.length}',
-            );
-          }
-        });
-      }
       return true;
     } catch (e, stack) {
+      // Roll back if API fails
+      _updateAndSave(() {
+        order.status = oldStatus;
+      });
+
       KdsDebugLog.error('updateOrderStatus failed: $e\n$stack');
       return false;
     }

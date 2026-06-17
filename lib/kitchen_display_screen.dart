@@ -24,14 +24,27 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
   OrderTypeFilter selectedFilter =
       OrderTypeFilter.all;
   String? selectedCancelKotId;
+  // Add these here
+  String? selectedCancelItemKotId;
+  final Set<String> selectedItems = {};
+  // String? selectedCancelKotId;
+  // String? selectedCancelItemKotId;
+
+  final Map<String, List<bool>> selectedItemsMap = {};
 
   KotView selectedView =
       KotView.pending;
 
   @override
   Widget build(BuildContext context) {
+    print('KitchenDashboardScreen rebuild');
     final orderProvider = context.watch<OrderProvider>();
+    print('ui Total Orders: ${orderProvider.orders.length}');
+    print('ui Pending Orders: ${orderProvider.pendingOrders.length}');
+    print('ui Preparing Orders: ${orderProvider.preparingOrders.length}');
+
     final orders = orderProvider.pendingOrders;
+    print('Displaying ${orders.length} pending orders');
 
     final filteredOrders = orders.where((order) {
       final type =
@@ -195,7 +208,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                 crossAxisCount: 4,
                                 crossAxisSpacing: 16,
                                 mainAxisSpacing: 16,
-                                childAspectRatio: 1.08,
+                                childAspectRatio: 1.0,
                               ),
                               itemBuilder: (context, index) {
                                 final order = filteredOrders[index];
@@ -256,6 +269,17 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
     final kotNo = order['kotNo']?.toString() ?? '';
     final orderType = order['type']?.toString() ?? '';
     final location = order['locationLabel']?.toString() ?? '';
+    final items = order['items'] as List<dynamic>? ?? [];
+    selectedItemsMap.putIfAbsent(
+      kotId,
+          () => List.generate(items.length, (_) => false),
+    );
+
+    final selected = selectedItemsMap[kotId]!;
+
+
+    // String? selectedCancelItemKotId;
+    // final Map<String, List<bool>> selectedItemsMap = {};
     final tableNo =
         order['tableName']?.toString() ??
             order['tableNo']?.toString() ??
@@ -282,7 +306,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
       }
     }
 
-    final items = order['items'] as List<dynamic>? ?? [];
+    // final items = order['items'] as List<dynamic>? ?? [];
 
     final isDineIn =
     orderType.toLowerCase().contains('dine');
@@ -291,7 +315,8 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
       children: [
 
      Container(
-      decoration: BoxDecoration(
+       height: 800,
+       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
         border: Border(
@@ -485,16 +510,33 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                     as Map<String, dynamic>;
 
                     return Padding(
-                      padding:
-                      const EdgeInsets.only(
-                        bottom: 10,
-                      ),
-                      child: Text(
-                        "1 × ${item['name']}",
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xff444444),
-                        ),
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Row(
+                        children: [
+                          if (selectedCancelItemKotId == kotId)
+                            Checkbox(
+                              value: selected[index],
+                              onChanged: (value) {
+                                setState(() {
+                                  selected[index] = value ?? false;
+                                });
+                              },
+                            ),
+                          Expanded(
+                            child:Text(
+                              "1 × ${item['name']}",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: selected[index]
+                                    ? Colors.red
+                                    : const Color(0xff444444),
+                                decoration: selected[index]
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     );
                   },
@@ -528,16 +570,29 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                   ),
                 ),
                 onPressed: () async {
-                  await orderProvider
-                      .startOrder(kotId);
+                  final remainingItems = <Map<String, dynamic>>[];
+
+                  for (int i = 0; i < items.length; i++) {
+                    if (!selected[i]) {
+                      remainingItems.add(
+                        items[i] as Map<String, dynamic>,
+                      );
+                    }
+                  }
+
+                  print("Remaining Items: $remainingItems");
+
+                  await orderProvider.startOrder(
+                    kotId,
+                    remainingItems,
+                  );
 
                   if (!context.mounted) return;
 
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) =>
-                      const ActiveOrdersScreen(),
+                      builder: (_) => const ActiveOrdersScreen(),
                     ),
                   );
                 },
@@ -576,7 +631,15 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      onPressed: () {},
+                      onPressed: () {
+                        setState(() {
+                          if (selectedCancelItemKotId == kotId) {
+                            selectedCancelItemKotId = null;
+                          } else {
+                            selectedCancelItemKotId = kotId;
+                          }
+                        });
+                      },
                     ),
                   ),
                 ),
@@ -653,14 +716,16 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-
                         ElevatedButton(
                           onPressed: () async {
+                            final success =
                             await orderProvider.cancelOrder(kotId);
 
-                            setState(() {
-                              selectedCancelKotId = null;
-                            });
+                            if (success) {
+                              setState(() {
+                                selectedCancelKotId = null;
+                              });
+                            }
                           },
                           child: const Text("Yes"),
                         ),

@@ -66,12 +66,18 @@ class _MyAppState extends State<MyApp> {
       restaurantId: int.tryParse(config.restaurantId) ?? 1,
     );
 
+    final provider = OrderProvider(
+      mqttService,
+      apiService,
+    );
+
     setState(() {
       _config = config;
-      _orderProvider = OrderProvider(
-        mqttService,
-        apiService,
-      );
+      _orderProvider = provider;
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      provider.initialize();
     });
   }
 
