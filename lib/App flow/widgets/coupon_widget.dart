@@ -1,23 +1,84 @@
 import 'package:flutter/material.dart';
 
-class Couponscreen extends StatefulWidget {
-  final Function(String) onCouponApplied;
+import '../../models/order/coupon_model.dart';
+import '../../repositories/coupon_repository.dart';
 
-  const Couponscreen({super.key, required this.onCouponApplied});
+class Couponscreen extends StatefulWidget {
+  final Function(String, double) onCouponApplied;
+  final int orderId;
+  final String token;
+
+  const Couponscreen({
+    super.key,
+    required this.onCouponApplied,
+    required this.orderId,
+    required this.token,
+  });
+
 
   @override
   State<Couponscreen> createState() => _CouponscreenState();
 }
 
+
+
+
 class _CouponscreenState extends State<Couponscreen> {
   final TextEditingController _couponController = TextEditingController();
+  final CouponRepository _couponRepository = CouponRepository();
 
-  final List<String> availableCoupons = [
-    "WELCOME10",
-    "FOODIE20",
-    "HAPPYHOUR15",
-    "FESTIVE50",
-  ];
+
+  List<CouponModel> availableCoupons = [];
+  bool isLoading = true;
+  bool _isApplying = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCoupons();
+  }
+
+  Future<void> _loadCoupons() async {
+    final repository = CouponRepository();
+
+    final coupons = await repository.fetchCoupons();
+
+    if (!mounted) return;
+
+    setState(() {
+      availableCoupons = coupons;
+      isLoading = false;
+    });
+  }
+  Future<void> _applyCoupon() async {
+    final code = _couponController.text.trim();
+
+    final selectedCoupon = availableCoupons.firstWhere(
+          (c) => c.code == code,
+      orElse: () => CouponModel(
+        id: 0,
+        code: code,
+        description: '',
+        discountType: 'fixed_cart',
+        amount: 0.0,
+      ),
+    );
+
+    final success = await _couponRepository.applyCoupon(
+      token: widget.token,
+      orderId: widget.orderId,
+      couponCode: code,
+    );
+
+    if (success) {
+      widget.onCouponApplied(
+        selectedCoupon.code,
+        selectedCoupon.amount,
+      );
+
+      Navigator.pop(context);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -100,9 +161,7 @@ class _CouponscreenState extends State<Couponscreen> {
                   SizedBox(
                     height: 40,
                     child:ElevatedButton(
-                      onPressed: () {
-                        widget.onCouponApplied(_couponController.text.trim());
-                      },
+                      onPressed: _isApplying ? null : _applyCoupon,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF4C5F7D),
                         shape: RoundedRectangleBorder(
@@ -125,35 +184,55 @@ class _CouponscreenState extends State<Couponscreen> {
 
               // Available coupons horizontal list
               SizedBox(
-                height: 30,
+                height: 40,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   itemCount: availableCoupons.length,
                   itemBuilder: (context, index) {
+                    final coupon = availableCoupons[index];
+
                     return InkWell(
                       onTap: () {
-                        _couponController.text = availableCoupons[index];
+                        _couponController.text = coupon.code;
                       },
                       child: Container(
-                        margin: EdgeInsets.symmetric(horizontal: 4),
-                        padding:
-                        EdgeInsets.symmetric(vertical: 4, horizontal: 10),
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 4,
+                          horizontal: 10,
+                        ),
                         decoration: BoxDecoration(
-                          color: Color(0xFF4C81F1),
+                          color: const Color(0xFF4C81F1),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: Center(
-                          child: Text(
-                            availableCoupons[index],
-                            style:
-                            TextStyle(color: Colors.white, fontSize: 12),
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              coupon.code,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              coupon.discountType == 'percent'
+                                  ? '${coupon.amount}% OFF'
+                                  : '₹${coupon.amount.toInt()} OFF',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     );
                   },
                 ),
-              ),
+              )
             ],
           ),
         ),

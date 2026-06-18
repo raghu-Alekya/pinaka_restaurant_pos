@@ -47,6 +47,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
   int? shiftId;
 
   Map<String, dynamic>? _selectedUser;
+  double _tipAmount = 0.0;
+  double _couponAmount = 0.0;
   // double merchantDiscount = 0.0;
 
 
@@ -133,8 +135,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
           final paymentSummary = state.summary;
           final orderId = context.read<OrderBloc>().state.orderId; //
           final merchantDiscount = state.merchantDiscount; // ✅ important
-          final hasCouponApplied = paymentSummary.coupons > 0;
+          final hasCouponApplied =
+              paymentSummary.coupons > 0 || _couponAmount > 0;
           final hasDiscountApplied = merchantDiscount.abs() > 0;
+          debugPrint("🔥 _couponAmount = $_couponAmount");
+          debugPrint(
+              "🔥 paymentSummary.coupons = ${paymentSummary.coupons}");
+          debugPrint(
+              "🚨 Passing coupon to sidebar = $_couponAmount");
 
           return Scaffold(
             appBar: PreferredSize(
@@ -148,6 +156,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ),
             body: Row(
               children: [
+
                 /// LEFT SIDEBAR
                 Expanded(
                   flex: 25,
@@ -155,14 +164,21 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     create: (context) => TaxBloc(TaxRepository())..add(LoadTaxesEvent()),
 
 
+
+
+
                     child: Sidebarwidgets(
                       userPermissions: _userPermissions,
                       selectedUser: _selectedUser,
                       merchantDiscount: merchantDiscount,
+                      tipAmount: _tipAmount,
                       paymentSummary: paymentSummary,
                       hasCouponApplied: hasCouponApplied,
                       hasDiscountApplied: hasDiscountApplied,
+                      appliedCouponAmount: _couponAmount,
+
                     ),
+
                   ),
                 ),
 
@@ -180,14 +196,41 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     zoneId: widget.zoneId,
                     PaymentSummary: paymentSummary,
                     orderId: orderId,
+
                     onMerchantDiscountChanged: (double value) {
-                      debugPrint("🟢 PaymentScreen received merchantDiscount = $value");
-
-                      context.read<PaymentBloc>().add(UpdateMerchantDiscount(value));
-
+                      context.read<PaymentBloc>().add(
+                        UpdateMerchantDiscount(value),
+                      );
                     },
 
+                    onTipChanged: (double value) {
+                      setState(() {
+                        _tipAmount = value;
+                      });
+                    },
+
+                    onCouponAmountChanged: (double amount) {
+                      debugPrint("🎟 Coupon Amount Callback = $amount");
+
+                      setState(() {
+                        _couponAmount = amount;
+
+                        // update amount textbox immediately
+                        final currentNetPayable =
+                            (context.read<PaymentBloc>().state as PaymentSummaryLoaded)
+                                .summary
+                                .netTotal;
+
+                        // this.amount = (currentNetPayable - amount).toStringAsFixed(2);
+                      });
+
+
+                      debugPrint(
+                          "✅ Stored _couponAmount = $_couponAmount");
+                    },
                   ),
+
+
                 ),
               ],
             ),

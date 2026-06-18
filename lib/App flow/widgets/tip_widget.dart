@@ -1,15 +1,30 @@
 import 'package:flutter/material.dart';
 
+import '../../repositories/TIP_repository.dart';
+
 class TipPopup extends StatefulWidget {
-  const TipPopup({super.key});
+  final int orderId;
+  final String token;
+  final Function(double) onTipApplied;
+
+  const TipPopup({
+    super.key,
+    required this.orderId,
+    required this.token,
+    required this.onTipApplied,
+  });
 
   @override
   State<TipPopup> createState() => _TipPopupState();
 }
 
+
+
 class _TipPopupState extends State<TipPopup> {
   final TextEditingController _tipController = TextEditingController();
   int? selectedTip;
+  bool _isLoading = false;
+  final TipRepository _tipRepository = TipRepository();
 
   final List<int> tipOptions = [10, 20, 50, 100];
 
@@ -34,6 +49,67 @@ class _TipPopupState extends State<TipPopup> {
             _tipController.text.substring(0, _tipController.text.length - 1);
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _tipController.dispose();
+    super.dispose();
+  }
+  Future<void> _applyTip() async {
+    if (_tipController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter tip amount')),
+      );
+      return;
+    }
+
+    final amount = double.tryParse(_tipController.text) ?? 0;
+
+    if (amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid tip amount')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final success = await _tipRepository.addTip(
+        token: widget.token,
+        orderId: widget.orderId,
+        amount: amount,
+      );
+
+      if (!mounted) return;
+
+      if (success) {
+        widget.onTipApplied(amount);
+
+        Navigator.pop(context, amount);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tip added successfully')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to add tip')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   Widget _buildTipButton(int value) {
@@ -195,9 +271,7 @@ class _TipPopupState extends State<TipPopup> {
                           ),
                           const SizedBox(height: 25),
                           ElevatedButton(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                            },
+                            onPressed: _isLoading ? null : _applyTip,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.redAccent,
                               minimumSize: const Size(double.infinity, 50),
@@ -205,7 +279,16 @@ class _TipPopupState extends State<TipPopup> {
                                 borderRadius: BorderRadius.circular(6),
                               ),
                             ),
-                            child: const Text(
+                            child: _isLoading
+                                ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                                : const Text(
                               "Save & Continue",
                               style: TextStyle(
                                 color: Colors.white,

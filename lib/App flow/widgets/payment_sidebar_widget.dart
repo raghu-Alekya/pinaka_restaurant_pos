@@ -16,7 +16,8 @@ class Sidebarwidgets extends StatefulWidget {
   final double merchantDiscount;
   final bool hasCouponApplied;
   final bool hasDiscountApplied;
-
+  final double tipAmount;
+  final double appliedCouponAmount;
 
   const Sidebarwidgets({
     super.key,
@@ -24,9 +25,13 @@ class Sidebarwidgets extends StatefulWidget {
     required userPermissions,
     Map<String, dynamic>? selectedUser,
     required this.merchantDiscount,
+    required this.tipAmount,
+    required this.appliedCouponAmount, // 👈 ADD THIS
     this.hasCouponApplied = false,
     this.hasDiscountApplied = false,
   });
+
+
 
   @override
   State<Sidebarwidgets> createState() => _SidebarwidgetsState();
@@ -59,9 +64,56 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
 
 
 
+
   // until backend provides it
 
+  @override
+  void didUpdateWidget(covariant Sidebarwidgets oldWidget) {
+    super.didUpdateWidget(oldWidget);
 
+    if (oldWidget.tipAmount != widget.tipAmount ||
+        oldWidget.appliedCouponAmount != widget.appliedCouponAmount ||
+        oldWidget.merchantDiscount != widget.merchantDiscount) {
+      debugPrint(
+        "Coupon Changed: ${oldWidget.appliedCouponAmount} -> ${widget.appliedCouponAmount}",
+      );
+
+      final taxState = context.read<TaxBloc>().state;
+
+      if (taxState is TaxLoaded) {
+        _calculateTaxAndPayable(taxState);
+      } else {
+        _calculateInitialPayable();
+        setState(() {});
+      }
+    } {
+      final taxState = context.read<TaxBloc>().state;
+
+      if (taxState is TaxLoaded) {
+        _calculateTaxAndPayable(taxState);
+      }
+
+      debugPrint(
+        "💰 Tip changed: ${oldWidget.tipAmount} -> ${widget.tipAmount}",
+      );
+    }
+  }
+
+  void _calculateInitialPayable() {
+    final grossTotal = widget.paymentSummary.grossTotal;
+    final couponDiscount =
+    widget.paymentSummary.coupons > 0
+        ? widget.paymentSummary.coupons
+        : widget.appliedCouponAmount;
+
+    final merchantDiscount = widget.merchantDiscount.abs();
+
+    calculatedNetPayable =
+        grossTotal -
+            couponDiscount -
+            merchantDiscount +
+            widget.tipAmount;
+  }
 
 
   @override
@@ -131,14 +183,26 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
     }
 
     final grossTotal = widget.paymentSummary.grossTotal;
-    final couponDiscount = widget.paymentSummary.coupons;
+    final couponDiscount =
+    widget.paymentSummary.coupons > 0
+        ? widget.paymentSummary.coupons
+        : widget.appliedCouponAmount;
     final merchantDiscount = widget.merchantDiscount.abs();
+    final tipAmount = widget.tipAmount;
 
     final subTotal = grossTotal - couponDiscount;
     final totalTaxTemp =
         foodCgstTemp + foodSgstTemp + beverageCgstTemp + beverageSgstTemp;
 
-    final netPayableTemp = subTotal + totalTaxTemp - merchantDiscount;
+    final netPayableTemp = subTotal + totalTaxTemp - merchantDiscount + tipAmount;
+    debugPrint("""
+Gross Total      : $grossTotal
+Coupon Discount  : $couponDiscount
+Total Tax        : $totalTaxTemp
+Merchant Discount: $merchantDiscount
+Tip Amount       : $tipAmount
+Net Payable      : $netPayableTemp
+""");
 
     setState(() {
       foodCgst = foodCgstTemp;
@@ -167,7 +231,7 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
 
-    // _calculateNetPayableOnce();
+    _calculateInitialPayable();
 
     // ✅ LOAD TAX IMMEDIATELY (before expand)
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -612,6 +676,7 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
 
 
                         debugPrint('🔼 Tax panel expanded');
+                        debugPrint("💰 Sidebar Tip = ${widget.tipAmount}");
 
                         return Padding(
                           padding: const EdgeInsets.all(12),
@@ -658,18 +723,26 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                                   if (!mounted) return;
                                   // _calculateTaxAndPayable(state);
                                 });
+                                final double appliedCouponAmount;
 
                                 final grossTotal = widget.paymentSummary.grossTotal;
-                                final couponDiscount = widget.paymentSummary.coupons;
+                                final couponDiscount =
+                                widget.paymentSummary.coupons > 0
+                                    ? widget.paymentSummary.coupons
+                                    : widget.appliedCouponAmount;
                                 final merchantDiscount = widget.merchantDiscount.abs();
                                 final subTotal = grossTotal - couponDiscount;
                                 final netTotal = subTotal + totalTax;
+                                debugPrint(
+                                  "Coupon Amount From Summary = ${widget.paymentSummary.coupons}",
+                                );
 
                                 return Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     _row("Gross Total", grossTotal, isBold: true),
                                     _row("Coupon / Discounts", -couponDiscount, color: Colors.green),
+
                                     const DottedLine(),
                                     _row("Sub Total", subTotal, isBold: true),
 
@@ -733,10 +806,20 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
                                     const DottedLine(),
                                     _row("Net Total", netTotal, isBold: true),
                                     _row("Merchant Discount", merchantDiscount, color: Colors.blue),
+
+                                    if (widget.tipAmount > 0)
+                                      _row(
+                                        "Tip Amount",
+                                        widget.tipAmount,
+                                        color: Colors.green,
+                                      ),
+
+
                                     const DottedLine(),
+
                                     _row(
                                       "Net Payable",
-                                      calculatedNetPayable.abs().roundToDouble(),
+                                      calculatedNetPayable.abs(),
                                       isBold: true,
                                       fontSize: 18,
                                     ),

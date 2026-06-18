@@ -16,6 +16,8 @@ import '../../blocs/Bloc State/create_payment_state.dart';
 import '../../blocs/Bloc State/discount_stata.dart';
 import '../../blocs/Bloc State/payment_state.dart';
 import '../../models/payment/create_payment_model.dart';
+import '../../repositories/TIP_repository.dart';
+import '../../repositories/coupon_repository.dart';
 import '../../repositories/create_payment_repository.dart';
 import '../../repositories/discount_repository.dart';
 import '../../services/app_database.dart';
@@ -32,6 +34,8 @@ class paymentsummary extends StatefulWidget {
   final int? zoneId;
   final int orderId;
   final ValueChanged<double> onMerchantDiscountChanged;
+  final ValueChanged<double> onTipChanged;
+  final Function(double)? onCouponAmountChanged;
 
 
   const paymentsummary({
@@ -45,6 +49,8 @@ class paymentsummary extends StatefulWidget {
     required PaymentSummary,
     required this.orderId,
     required this.onMerchantDiscountChanged,
+    required this.onTipChanged,
+    this.onCouponAmountChanged,
   }) : super(key: key);
 
 
@@ -75,11 +81,9 @@ class _paymentsummaryState extends State<paymentsummary> {
   double _lastNetPayable = 0.0;
   bool _isNcDiscount = false;
   bool _isPaying = false;
+  final TipRepository _tipRepository = TipRepository();
   final CreatePaymentRepository _paymentRepository = CreatePaymentRepository();
-
-
-
-
+  final CouponRepository _couponRepository = CouponRepository();
 
 
   final TextEditingController discountController =
@@ -123,8 +127,9 @@ class _paymentsummaryState extends State<paymentsummary> {
           _isDiscountApplied = discount != 0;
           merchantDiscount = discount;
           // ✅ AUTO DISPLAY suggested amount (netPayable)
-          amount = netPayable.toStringAsFixed(0);
+          // amount = netPayable.toStringAsFixed(0);
         });
+        _updateAmountField();
         debugPrint("✅ Auto amount updated = $amount");
       }
 
@@ -138,6 +143,30 @@ class _paymentsummaryState extends State<paymentsummary> {
     tipController.dispose();
     splitPayController.dispose();
     super.dispose();
+  }
+  void _updateAmountField() {
+    final state = context.read<PaymentBloc>().state;
+
+    if (state is! PaymentSummaryLoaded) return;
+
+    double payable = state.summary.netTotal;
+
+    // Coupon reduces amount
+    payable -= _couponAmount;
+
+    // Merchant discount reduces amount
+    payable -= merchantDiscount.abs();
+
+    // Tip increases amount
+    payable += _tipAmount;
+
+    if (payable < 0) payable = 0;
+
+    setState(() {
+      amount = payable.toStringAsFixed(2);
+    });
+
+    debugPrint("💰 Updated Payable = $payable");
   }
 
 
@@ -349,12 +378,16 @@ class _paymentsummaryState extends State<paymentsummary> {
         .state
         .grossTotal}");
 
-    final double netPayable = context.select(
-          (PaymentBloc bloc) =>
-      bloc.state is PaymentSummaryLoaded
-          ? (bloc.state as PaymentSummaryLoaded).summary.netTotal
-          : 0.0,
-    );
+    final paymentState = context.watch<PaymentBloc>().state;
+
+    double netPayable = 0.0;
+
+    if (paymentState is PaymentSummaryLoaded) {
+      netPayable =
+          paymentState.summary.netTotal -
+              _couponAmount +
+              _tipAmount;
+    }
     final bool isPaymentDisabled = netPayable <= 0;
 
 
@@ -381,21 +414,36 @@ class _paymentsummaryState extends State<paymentsummary> {
 
               final newIsDiscountApplied = discount != 0;
 
-              debugPrint("🟣 Before setState:");
-              debugPrint("   _isDiscountApplied (old) = $_isDiscountApplied");
-              debugPrint("   _isNcDiscount (old) = $_isNcDiscount");
-
               setState(() {
                 _isDiscountApplied = newIsDiscountApplied;
-                merchantDiscount = discount;
-
+                if (_isDiscountApplied) {
+                  merchantDiscount = discount;
+                } else {
+                  merchantDiscount = 0.0;
+                }
                 _isNcDiscount = state.isNoCharge;
-
               });
 
-              debugPrint("🟣 After setState:");
-              debugPrint("   _isDiscountApplied (new) = $_isDiscountApplied");
-              debugPrint("   _isNcDiscount (new) = $_isNcDiscount");
+              // ✅ Calculate final payable using all applied values
+              double finalPayable = state.summary.netTotal;
+
+              finalPayable -= _couponAmount; // Coupon reduces
+              finalPayable -= merchantDiscount.abs(); // Discount reduces
+              finalPayable += _tipAmount; // Tip increases
+
+              if (finalPayable < 0) {
+                finalPayable = 0;
+              }
+
+              setState(() {
+                amount = finalPayable.toStringAsFixed(2);
+              });
+
+              debugPrint("💰 Backend Net Total = ${state.summary.netTotal}");
+              debugPrint("💰 Coupon Amount = $_couponAmount");
+              debugPrint("💰 Merchant Discount = ${merchantDiscount.abs()}");
+              debugPrint("💰 Tip Amount = $_tipAmount");
+              debugPrint("💰 Final Amount TextBox = $amount");
             }
           },
         ),
@@ -496,30 +544,32 @@ class _paymentsummaryState extends State<paymentsummary> {
                 SnackBar(content: Text(state.response.message)),
               );
 
-              // Now clear everything only after backend confirmed removal
               setState(() {
                 _isDiscountApplied = false;
-                _isNcDiscount = false;   // ✅ reset NC here
+                _isNcDiscount = false;
                 _discountAmount = 0;
                 merchantDiscount = 0.0;
                 discountController.clear();
               });
-
-              // // sync bloc and parent after state is cleaned
-              // context.read<PaymentBloc>().add(UpdateMerchantDiscount(0.0));
-              // widget.onMerchantDiscountChanged(0.0);
-
-              // finally refresh summary from server
               context.read<PaymentBloc>().add(
-                LoadPaymentSummary(
-                  token: widget.token,
-                  orderId: widget.orderId,
-                  restaurantId: widget.restaurantId,
-                  orderType: "Dine In",
-                ),
+                UpdateMerchantDiscount(0.0),
               );
-            }
 
+              widget.onMerchantDiscountChanged(0.0);
+
+              // ✅ Update amount textbox immediately
+              _updateAmountField();
+
+              // // ✅ Refresh summary from backend
+              // context.read<PaymentBloc>().add(
+              //   LoadPaymentSummary(
+              //     token: widget.token,
+              //     orderId: widget.orderId,
+              //     restaurantId: widget.restaurantId,
+              //     orderType: "Dine In",
+              //   ),
+              // );
+            }
 
             if (state is RemoveDiscountFailure) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -825,12 +875,29 @@ class _paymentsummaryState extends State<paymentsummary> {
                                   );
                                 },
 
-                                onCouponApplied: (coupon) {
+                                onCouponApplied: (coupon, amount) {
                                   setState(() {
                                     _isCouponApplied = true;
                                     _appliedCoupon = coupon;
+                                    _couponAmount = amount;
+
                                     couponController.text = coupon;
+                                    // update textbox
+                                    // this.amount = (
+                                    //     (context.read<PaymentBloc>().state as PaymentSummaryLoaded)
+                                    //         .summary
+                                    //         .netTotal -
+                                    //         amount
+                                    // ).toStringAsFixed(2);
                                   });
+
+
+                                  widget.onCouponAmountChanged?.call(amount);
+                                  _updateAmountField();
+
+                                  debugPrint("Coupon Applied = $coupon");
+                                  debugPrint("Coupon Amount = $amount");
+                                  debugPrint("_couponAmount = $_couponAmount");
                                 },
 
                                 onTipApplied: (amount) {
@@ -839,8 +906,20 @@ class _paymentsummaryState extends State<paymentsummary> {
                                     _tipAmount = amount;
                                     tipController.text =
                                         amount.toStringAsFixed(2);
+                                    // this.amount = (
+                                    //     (context.read<PaymentBloc>().state as PaymentSummaryLoaded)
+                                    //         .summary
+                                    //         .netTotal -
+                                    //         amount
+                                    // ).toStringAsFixed(2);
                                   });
+                                  widget.onTipChanged(amount);
+                                  _updateAmountField();
+
+                                  debugPrint("✅ Tip Applied = $amount");
+
                                 },
+
 
                                 onSplitApplied: (amount) {
                                   setState(() {
@@ -880,19 +959,62 @@ class _paymentsummaryState extends State<paymentsummary> {
                                 //   });
                                 // },
 
-                                onCouponDelete: () {
-                                  setState(() {
-                                    _isCouponApplied = false;
-                                    _appliedCoupon = '';
-                                    couponController.clear();
-                                  });
-                                },
-                                onTipDelete: () {
-                                  setState(() {
-                                    _isTipApplied = false;
-                                    _tipAmount = 0;
-                                    tipController.clear();
-                                  });
+                                  onCouponDelete: () async {
+                                    final success = await _couponRepository.removeCoupon(
+                                      token: widget.token,
+                                      orderId: widget.orderId,
+                                    );
+
+                                    if (success) {
+                                      setState(() {
+                                        _isCouponApplied = false;
+                                        _appliedCoupon = '';
+                                        _couponAmount = 0.0;
+                                        couponController.clear();
+                                      });
+
+                                      widget.onCouponAmountChanged?.call(0.0);
+
+                                      context.read<PaymentBloc>().add(
+                                        LoadPaymentSummary(
+                                          token: widget.token,
+                                          orderId: widget.orderId,
+                                          restaurantId: widget.restaurantId,
+                                          orderType: "Dine In",
+                                        ),
+                                      );
+
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text("Coupon removed successfully"),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                onTipDelete: () async {
+                                  final success = await _tipRepository.removeTip(
+                                    token: widget.token,
+                                    orderId: widget.orderId,
+                                  );
+
+                                  if (success) {
+                                    setState(() {
+                                      _isTipApplied = false;
+                                      _tipAmount = 0;
+                                      tipController.clear();
+                                    });
+
+                                    widget.onTipChanged(0);
+                                    _updateAmountField();
+
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Tip removed successfully')),
+                                    );
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Failed to remove tip')),
+                                    );
+                                  }
                                 },
 
                                 onSplitDelete: () {
@@ -1217,7 +1339,7 @@ Widget _buildPaymentDiscountItem(
 
       required void Function(double amount, bool isNc) onDiscountApplied,
 
-      required ValueChanged<String> onCouponApplied,
+      required Function(String, double) onCouponApplied,
       required ValueChanged<double> onTipApplied,
       required ValueChanged<double> onSplitApplied,
 
@@ -1324,6 +1446,7 @@ Widget _buildPaymentDiscountItem(
 
         const SizedBox(height: 4),
 
+
         /// 🔻 COUPON
         const Text('Coupon :',
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
@@ -1339,9 +1462,10 @@ Widget _buildPaymentDiscountItem(
                     context: context,
                     barrierDismissible: false,
                     builder: (_) => Couponscreen(
-                      onCouponApplied: (coupon) {
-                        onCouponApplied(coupon);
-                        Navigator.pop(context);
+                      orderId: orderId,
+                      token: token,
+                      onCouponApplied: (coupon, amount) {
+                        onCouponApplied(coupon, amount);
                       },
                     ),
                   );
@@ -1362,6 +1486,7 @@ Widget _buildPaymentDiscountItem(
           ],
         ),
 
+
         const SizedBox(height: 4),
 
         /// 🔻 TIP
@@ -1378,7 +1503,11 @@ Widget _buildPaymentDiscountItem(
                   final double? result = await showDialog<double>(
                     context: context,
                     barrierDismissible: false,
-                    builder: (_) => const TipPopup(),
+                    builder: (_) => TipPopup(
+                      orderId: orderId,
+                      token: token,
+                      onTipApplied: onTipApplied,
+                    ),
                   );
 
                   if (result != null && result > 0) {
@@ -1463,7 +1592,7 @@ Widget _inputField({
     child: TextFormField(
       controller: controller,
       readOnly: true,
-      enabled:  true,
+      enabled: enabled,
       keyboardType: keyboardType,
       decoration: InputDecoration(
         hintText: hint,
