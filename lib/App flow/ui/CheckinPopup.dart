@@ -6,7 +6,7 @@ import '../../blocs/Bloc State/checkin_state.dart';
 import '../../models/UserPermissions.dart';
 import '../../utils/SessionManager.dart';
 import '../widgets/area_movement_notifier.dart';
-import 'kitchen_display_screen.dart';
+// import 'kitchen_display_screen.dart';
 
 class Checkinpopup extends StatefulWidget {
   final VoidCallback? onCheckIn;

@@ -13,6 +13,7 @@ import '../widgets/area_movement_notifier.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/top_bar.dart';
 import 'create_reservation_screen.dart';
+import 'home_screen.dart';
 
 class ReservationListScreen extends StatefulWidget {
   final String pin;
@@ -252,19 +253,51 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
       body: Stack(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(15, 18, 15,3),
+            padding: const EdgeInsets.fromLTRB(25, 18, 15,3),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Filters Row
                 Row(
                   children: [
+                    /// 🔙 BACK BUTTON
+                    InkWell(
+                      onTap: () {
+                        Navigator.pop(context);
+                      },
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.arrow_back,
+                          color: Color(0xFF0A1B4D),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 8),
+
                     const Expanded(
                       child: Text(
                         "Reservation List",
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: Colors.black87),
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
                       ),
                     ),
+
                     SizedBox(
                       width: 260,
                       child: TextField(
@@ -551,6 +584,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                                               onTap: () {
                                                 showDialog(
                                                   context: context,
+                                                  barrierDismissible: false,
                                                   builder: (_) => DeleteReservationDialog(
                                                     onDelete: () async {
                                                       final success = await _reservationRepository.cancelReservation(
@@ -626,22 +660,22 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
             ),
           ),
 
-          BottomNavBar(
-            selectedIndex: 3,
-            onItemTapped: (index) {
-              NavigationHelper.handleNavigation(
-                context,
-                3,
-                index,
-                widget.pin,
-                widget.token,
-                widget.restaurantId,
-                widget.restaurantName,
-                _userPermissions,
-              );
-            },
-            userPermissions: _userPermissions,
-          ),
+          // BottomNavBar(
+          //   selectedIndex: 3,
+          //   onItemTapped: (index) {
+          //     NavigationHelper.handleNavigation(
+          //       context,
+          //       3,
+          //       index,
+          //       widget.pin,
+          //       widget.token,
+          //       widget.restaurantId,
+          //       widget.restaurantName,
+          //       _userPermissions,
+          //     );
+          //   },
+          //   userPermissions: _userPermissions,
+          // ),
         ],
       ),
     );

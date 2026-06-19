@@ -17,6 +17,7 @@ import '../widgets/NavigationHelper.dart';
 import '../widgets/area_movement_notifier.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/top_bar.dart';
+import 'home_screen.dart';
 
 class KitchenStatusScreen extends StatefulWidget {
   final String pin;
@@ -330,7 +331,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       if (!mounted) return;
       await showDialog(
         context: context,
-        barrierDismissible: true,
+        barrierDismissible: false,
         builder: (_) {
           return MultiBlocProvider(
             providers: [
@@ -596,22 +597,22 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: BottomNavBar(
-        selectedIndex: 2,
-        onItemTapped: (index) {
-          NavigationHelper.handleNavigation(
-            context,
-            2,
-            index,
-            widget.pin,
-            widget.token,
-            widget.restaurantId,
-            widget.restaurantName,
-            _userPermissions,
-          );
-        },
-        userPermissions: _userPermissions,
-      ),
+      // bottomNavigationBar: BottomNavBar(
+      //   selectedIndex: 2,
+      //   onItemTapped: (index) {
+      //     NavigationHelper.handleNavigation(
+      //       context,
+      //       2,
+      //       index,
+      //       widget.pin,
+      //       widget.token,
+      //       widget.restaurantId,
+      //       widget.restaurantName,
+      //       _userPermissions,
+      //     );
+      //   },
+      //   userPermissions: _userPermissions,
+      // ),
     );
   }
   Widget _buildKotListHeader() {
@@ -745,6 +746,34 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           /// 🔹 LEFT: Title
+          /// 🔙 BACK BUTTON
+          InkWell(
+            onTap: () {
+              Navigator.pop(context);
+            },
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 4,
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.arrow_back,
+                color: Color(0xFF0A1B4D),
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 8),
+
+          /// 🔹 TITLE
           const Text(
             'Kitchen Status',
             style: TextStyle(

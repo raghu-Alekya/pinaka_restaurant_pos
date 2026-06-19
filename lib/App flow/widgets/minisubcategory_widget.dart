@@ -98,6 +98,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
 
       showDialog(
         context: context,
+        barrierDismissible: false,
         builder: (_) => Dialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -376,6 +377,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       ) {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) => VariantPopupContent(
         product: product,
         itemName: product.name,

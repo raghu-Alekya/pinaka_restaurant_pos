@@ -77,16 +77,16 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
   }
 
   void _onItemTapped(int index) {
-    NavigationHelper.handleNavigation(
-      context,
-      _selectedIndex,
-      index,
-      widget.pin,
-      widget.token,
-      widget.restaurantId,
-      widget.restaurantName,
-      widget.userPermissions,
-    );
+    // NavigationHelper.handleNavigation(
+    //   context,
+    //   _selectedIndex,
+    //   index,
+    //   widget.pin,
+    //   widget.token,
+    //   widget.restaurantId,
+    //   widget.restaurantName,
+    //   widget.userPermissions,
+    // );
 
     setState(() {
       _selectedIndex = index;
@@ -1586,22 +1586,22 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
       ),
 
       /// 🔹 BOTTOM NAV BAR
-      bottomNavigationBar: BottomNavBar(
-        selectedIndex: 4,
-        userPermissions: _userPermissions,
-        onItemTapped: (int index) {
-          NavigationHelper.handleNavigation(
-            context,
-            4,
-            index,
-            widget.pin,
-            widget.token,
-            widget.restaurantId,
-            widget.restaurantName,
-            _userPermissions,
-          );
-        },
-      ),
+      // bottomNavigationBar: BottomNavBar(
+      //   selectedIndex: 4,
+      //   userPermissions: _userPermissions,
+      //   onItemTapped: (int index) {
+      //     NavigationHelper.handleNavigation(
+      //       context,
+      //       4,
+      //       index,
+      //       widget.pin,
+      //       widget.token,
+      //       widget.restaurantId,
+      //       widget.restaurantName,
+      //       _userPermissions,
+      //     );
+      //   },
+      // ),
     );
   }
 

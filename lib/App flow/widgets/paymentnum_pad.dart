@@ -1546,6 +1546,7 @@ Widget _buildPaymentDiscountItem(
                     : () async {
                   final result = await showDialog<Map<String, dynamic>>(
                     context: context,
+                    barrierDismissible: false,
                     builder: (_) => SplitPaymentPopup(netPayable: netPayable),
                   );
 

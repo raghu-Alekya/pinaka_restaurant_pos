@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 
+import '../models/tip_model.dart';
+
 class TipRepository {
   final String baseUrl =
       'https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1/orders';
@@ -60,6 +62,39 @@ class TipRepository {
     } catch (e) {
       debugPrint('Remove Tip Error: $e');
       return false;
+    }
+  }
+}
+// import 'dart:convert';
+// import 'package:http/http.dart' as http;
+//
+// import '../../models/tips/tips_screen_model.dart';
+
+
+class TipssummaryRepository {
+  Future<TipsScreenModel?> getTips({
+    required String token,
+    required String tipDate,
+  }) async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+          'https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1/kot/get-all-tip-orders?tip_date=$tipDate',
+        ),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final jsonData = jsonDecode(response.body);
+
+        return TipsScreenModel.fromJson(jsonData);
+      }
+
+      return null;
+    } catch (e) {
+      throw Exception('Failed to fetch tips: $e');
     }
   }
 }

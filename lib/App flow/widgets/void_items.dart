@@ -110,6 +110,10 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
       decoration: const BoxDecoration(
         color: Color(0xFFF0F3FC),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(12),
+          topRight: Radius.circular(12),
+        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -731,6 +735,9 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
         }
       },
       child: Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
         insetPadding: const EdgeInsets.symmetric(horizontal: 26, vertical: 10),
         backgroundColor: Colors.white,
         child: Container(
@@ -743,7 +750,7 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
               .size
               .height * 0.82,
           decoration: BoxDecoration(
-            border: Border.all(color: const Color(0xFF1E63FF), width: 2),
+            // border: Border.all(color: const Color(0xFF1E63FF), width: 2),
           ),
           child: Column(
             children: [

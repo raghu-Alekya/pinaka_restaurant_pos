@@ -58,6 +58,7 @@ import 'CheckinPopup.dart';
 import 'DailyAttendanceScreen.dart';
 import 'dashboard screen.dart';
 import 'guest_details_popup.dart';
+import 'home_screen.dart';
 
 /// Screen widget that manages the floor plan of tables in a restaurant POS system.
 ///
@@ -121,17 +122,17 @@ class _TablesScreenState extends State<TablesScreen> {
 
 
   void _onNavItemTapped(int index) {
-    NavigationHelper.handleNavigation(
-      context,
-      _selectedIndex,
-      index,
-      widget.pin,
-      widget.token,
-      widget.restaurantId,
-      widget.restaurantName,
-      _userPermissions as UserPermissions?,
-      // widget.zoneId as UserPermissions?
-    );
+    // NavigationHelper.handleNavigation(
+    //   context,
+    //   _selectedIndex,
+    //   index,
+    //   widget.pin,
+    //   widget.token,
+    //   widget.restaurantId,
+    //   widget.restaurantName,
+    //   _userPermissions as UserPermissions?,
+    //   // widget.zoneId as UserPermissions?
+    // );
     setState(() {
       _selectedIndex = index;
     });
@@ -263,37 +264,51 @@ class _TablesScreenState extends State<TablesScreen> {
         final currentShift = await EmployeeRepository().getCurrentShift(
           widget.token,
         );
-        final shiftStatus = currentShift?['shift_status']?.toLowerCase();
+        AppLogger.info("Current Shift Response => $currentShift");
+
+        final shiftStatus =
+        currentShift?['shift_status']?.toString().toLowerCase();
         final shiftId = currentShift?['shift_id'];
 
-        AppLogger.info("Shift Status: $shiftStatus, Shift ID: $shiftId");
+        AppLogger.info(
+          "Shift Status: $shiftStatus, Shift ID: $shiftId",
+        );
 
-        if (shiftStatus == 'closed' && shiftId != null) {
+        // ✅ Shift closed → always show Attendance popup
+        if (shiftStatus == 'closed') {
           setState(() => _isCheckInDone = false);
+
           context.read<AttendanceBloc>().add(
-            InitializeAttendanceFlow(token: widget.token, pin: widget.pin),
-          );
-        } else if (shiftStatus == 'open' &&
-            shiftId != null &&
-            savedPermissions == null) {
-          setState(() => _isCheckInDone = false);
-          _showCheckInPopupDirectly();
-        } else if (shiftStatus == 'open' && shiftId == null) {
-          AppLogger.error(
-            "Shift is open but shift_id is null. Cannot proceed reliably.",
-          );
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Shift data error. Please contact admin."),
+            InitializeAttendanceFlow(
+              token: widget.token,
+              pin: widget.pin,
             ),
           );
-        } else {
+        }
+
+        // ✅ Shift open but permissions not loaded → show PIN popup
+        else if (shiftStatus == 'open' && savedPermissions == null) {
+          setState(() => _isCheckInDone = false);
+
+          _showCheckInPopupDirectly();
+        }
+
+        // ✅ Shift open and permissions already available
+        else if (shiftStatus == 'open') {
           setState(() => _isCheckInDone = true);
+        }
+
+        else {
+          AppLogger.error("Unknown shift status: $shiftStatus");
+          setState(() => _isCheckInDone = false);
         }
       } catch (e) {
         AppLogger.error("Shift check failed: $e");
+
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Failed to verify shift status")),
+          const SnackBar(
+            content: Text("Failed to verify shift status"),
+          ),
         );
       }
     });
@@ -633,7 +648,7 @@ class _TablesScreenState extends State<TablesScreen> {
 
     await showDialog(
       context: context,
-      barrierDismissible: true,
+      barrierDismissible: false,
       builder: (ctx) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
@@ -776,6 +791,7 @@ class _TablesScreenState extends State<TablesScreen> {
                             Navigator.of(ctx).pop();
                             showDialog(
                               context: context,
+                              barrierDismissible: false,
                               builder: (_) => UnmergeTablePopup(
                                 index: index,
                                 tableData: tableData,
@@ -827,6 +843,7 @@ class _TablesScreenState extends State<TablesScreen> {
                             Navigator.of(ctx).pop();
                             showDialog(
                               context: context,
+                              barrierDismissible: false,
                               builder: (_) => MergeEditTablePopup(
                                 index: index,
                                 tableData: tableData,
@@ -942,7 +959,7 @@ class _TablesScreenState extends State<TablesScreen> {
             !isReservationTimePassed(reservationDateStr, reservationTimeStr)) {
           showDialog(
             context: context,
-            barrierDismissible: true,
+            barrierDismissible: false,
             builder: (_) => ReservationInfoDialog(
               reservationDate: reservationDateStr,
               reservationTime: reservationTimeStr,
@@ -1181,7 +1198,7 @@ class _TablesScreenState extends State<TablesScreen> {
             !isReservationTimePassed(reservationDateStr, reservationTimeStr)) {
           showDialog(
             context: context,
-            barrierDismissible: true,
+            barrierDismissible: false,
             builder: (_) => ReservationInfoDialog(
               reservationDate: reservationDateStr,
               reservationTime: reservationTimeStr,
@@ -1332,7 +1349,7 @@ class _TablesScreenState extends State<TablesScreen> {
             !isReservationTimePassed(reservationDateStr, reservationTimeStr)) {
           showDialog(
             context: context,
-            barrierDismissible: true,
+            barrierDismissible: false,
             builder: (_) =>
                 ReservationInfoDialog(
                   reservationDate: reservationDateStr,
@@ -1787,6 +1804,7 @@ class _TablesScreenState extends State<TablesScreen> {
 
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (BuildContext context) {
         return DeleteConfirmationDialog(
           tableName: table['tableName'],
@@ -2193,11 +2211,11 @@ class _TablesScreenState extends State<TablesScreen> {
             ),
 
             if (!_showPopup)
-              BottomNavBar(
-                selectedIndex: _selectedIndex,
-                onItemTapped: _onNavItemTapped,
-                userPermissions: _userPermissions,
-              ),
+              // BottomNavBar(
+              //   selectedIndex: _selectedIndex,
+              //   onItemTapped: _onNavItemTapped,
+              //   userPermissions: _userPermissions,
+              // ),
 
             // 8. Legend at bottom
             if (!_showPopup)
@@ -2324,6 +2342,46 @@ class _TablesScreenState extends State<TablesScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  // 🔙 BACK BUTTON
+                  InkWell(
+                    onTap: () {
+                      if (Navigator.canPop(context)) {
+                        Navigator.pop(context);
+                      } else {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => HomeScreen(
+                              token: widget.token,
+                              pin: widget.pin,
+                              restaurantId: widget.restaurantId,
+                              restaurantName: widget.restaurantName,
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.arrow_back,
+                        color: Color(0xFF0A1B4D),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(width: 15),
                   if (!_showPopup)
                     ViewLayoutToggle(
                       selectedMode: _currentViewMode,

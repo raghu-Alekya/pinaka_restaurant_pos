@@ -34,6 +34,7 @@ class OrderPanelList extends StatelessWidget {
     final item = orderItems[index];
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
+      barrierDismissible: false,
       builder: (_) => ModifierAddOnPopup(
         item: item,
         productId: item.productId,

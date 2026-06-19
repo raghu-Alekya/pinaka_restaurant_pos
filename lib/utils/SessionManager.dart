@@ -51,6 +51,16 @@ class SessionManager {
     return UserPermissions.fromJson(jsonDecode(jsonStr));
   }
 
+  static Future<void> clearPermissions() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.remove(_permissionsKey);
+    await prefs.remove(_userIdKey);
+    await prefs.remove(_shiftIdKey);
+
+    print("🧹 Permissions cleared");
+  }
+
   // -------- USER ID --------
   static Future<void> saveUserId(int userId) async {
     final prefs = await SharedPreferences.getInstance();

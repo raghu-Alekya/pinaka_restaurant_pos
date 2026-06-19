@@ -16,6 +16,7 @@ import '../widgets/NavigationHelper.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/top_bar.dart';
 import '../widgets/vieworderscreen.dart';
+import 'home_screen.dart';
 
 class OrdersListTable extends StatefulWidget {
   final String token;
@@ -46,16 +47,16 @@ class _OrdersListTableState extends State<OrdersListTable> {
   DateTime? selectedDate;
 
   void _onItemTapped(int index) {
-    NavigationHelper.handleNavigation(
-      context,
-      _selectedIndex,
-      index,
-      widget.pin,
-      widget.token,
-      widget.restaurantId,
-      widget.restaurantName,
-      widget.userPermissions,
-    );
+    // NavigationHelper.handleNavigation(
+    //   context,
+    //   _selectedIndex,
+    //   index,
+    //   widget.pin,
+    //   widget.token,
+    //   widget.restaurantId,
+    //   widget.restaurantName,
+    //   widget.userPermissions,
+    // );
 
     setState(() {
       _selectedIndex = index;
@@ -210,6 +211,39 @@ class _OrdersListTableState extends State<OrdersListTable> {
       ),
       body: Column(
         children: [
+          // InkWell(
+          //   onTap: () {
+          //     Navigator.pushReplacement(
+          //       context,
+          //       MaterialPageRoute(
+          //         builder: (_) => HomeScreen(
+          //           pin: widget.pin,
+          //           token: widget.token,
+          //           restaurantId: widget.restaurantId,
+          //           restaurantName: widget.restaurantName,
+          //         ),
+          //       ),
+          //     );
+          //   },
+          //   child: Container(
+          //     width: 40,
+          //     height: 40,
+          //     decoration: BoxDecoration(
+          //       color: Colors.white,
+          //       borderRadius: BorderRadius.circular(8),
+          //       boxShadow: const [
+          //         BoxShadow(
+          //           color: Colors.black12,
+          //           blurRadius: 4,
+          //         ),
+          //       ],
+          //     ),
+          //     child: const Icon(
+          //       Icons.arrow_back,
+          //       color: Color(0xFF0A1B4D),
+          //     ),
+          //   ),
+          // ),
           const SizedBox(height: 4),
 
           // MAIN CONTENT (BlocBuilder)
@@ -293,6 +327,32 @@ class _OrdersListTableState extends State<OrdersListTable> {
                         /// HEADER + SEARCH
                         Row(
                           children: [
+                            InkWell(
+                              onTap: () {
+                                Navigator.pop(context);
+                              },
+                              child: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Colors.black12,
+                                      blurRadius: 4,
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(
+                                  Icons.arrow_back,
+                                  color: Color(0xFF0A1B4D),
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(width: 8),
+
                             const Text(
                               "Orders List",
                               style: TextStyle(
@@ -300,6 +360,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
+
                             const Spacer(),
 
                             /// SEARCH
@@ -355,6 +416,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                 onTap: () async {
                                   final picked = await showDatePicker(
                                     context: context,
+                                    barrierDismissible: false,
                                     initialDate: selectedDate ?? DateTime.now(),
                                     firstDate: DateTime(2020),
                                     lastDate: DateTime(2030),
@@ -654,22 +716,22 @@ class _OrdersListTableState extends State<OrdersListTable> {
       ),
 
       // BOTTOM NAV BAR
-      bottomNavigationBar: BottomNavBar(
-        selectedIndex: 4,
-        userPermissions: _userPermissions,
-        onItemTapped: (int index) {
-          NavigationHelper.handleNavigation(
-            context,
-            4,
-            index,
-            widget.pin,
-            widget.token,
-            widget.restaurantId,
-            widget.restaurantName,
-            _userPermissions,
-          );
-        },
-      ),
+      // bottomNavigationBar: BottomNavBar(
+      //   selectedIndex: 4,
+      //   userPermissions: _userPermissions,
+      //   onItemTapped: (int index) {
+      //     NavigationHelper.handleNavigation(
+      //       context,
+      //       4,
+      //       index,
+      //       widget.pin,
+      //       widget.token,
+      //       widget.restaurantId,
+      //       widget.restaurantName,
+      //       _userPermissions,
+      //     );
+      //   },
+      // ),
     );
   }
 

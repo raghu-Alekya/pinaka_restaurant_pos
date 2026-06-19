@@ -22,48 +22,48 @@ class CouponRepository {
         : token;
   }
 
-  Future<List<CouponModel>> fetchCoupons() async {
-    try {
-      final token = await _getToken();
-
-      final url = "$baseUrl"; // <-- update endpoint if needed
-
-      if (kDebugMode) {
-        print("📤 [COUPON API]");
-        print("➡️ URL: $url");
-      }
-
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {
-          "Authorization": "Bearer $token",
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-        },
-      );
-
-      if (kDebugMode) {
-        print("⬅️ STATUS CODE: ${response.statusCode}");
-        print("⬅️ RESPONSE BODY: ${response.body}");
-      }
-
-      if (response.statusCode == 200) {
-        final List<dynamic> jsonData =
-        jsonDecode(response.body);
-
-        return jsonData
-            .map((e) => CouponModel.fromJson(e))
-            .toList();
-      }
-
-      throw Exception(
-        "Failed to load coupons (${response.statusCode})",
-      );
-    } catch (e) {
-      debugPrint("❌ Error fetching coupons: $e");
-      return [];
-    }
-  }
+  // Future<List<CouponModel>> fetchCoupons() async {
+  //   try {
+  //     final token = await _getToken();
+  //
+  //     final url = "$baseUrl"; // <-- update endpoint if needed
+  //
+  //     if (kDebugMode) {
+  //       print("📤 [COUPON API]");
+  //       print("➡️ URL: $url");
+  //     }
+  //
+  //     final response = await http.get(
+  //       Uri.parse(url),
+  //       headers: {
+  //         "Authorization": "Bearer $token",
+  //         "Content-Type": "application/json",
+  //         "Accept": "application/json",
+  //       },
+  //     );
+  //
+  //     if (kDebugMode) {
+  //       print("⬅️ STATUS CODE: ${response.statusCode}");
+  //       print("⬅️ RESPONSE BODY: ${response.body}");
+  //     }
+  //
+  //     if (response.statusCode == 200) {
+  //       final List<dynamic> jsonData =
+  //       jsonDecode(response.body);
+  //
+  //       return jsonData
+  //           .map((e) => CouponModel.fromJson(e))
+  //           .toList();
+  //     }
+  //
+  //     throw Exception(
+  //       "Failed to load coupons (${response.statusCode})",
+  //     );
+  //   } catch (e) {
+  //     debugPrint("❌ Error fetching coupons: $e");
+  //     return [];
+  //   }
+  // }
   Future<bool> applyCoupon({
     required String token,
     required int orderId,

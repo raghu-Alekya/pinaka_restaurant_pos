@@ -534,6 +534,7 @@ class _CustomBoxState extends State<CustomBox> {
   void _onAddItem() {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) => AddItemDialog(
         token: widget.token,
         scannedBarcode: _lastScannedBarcode,

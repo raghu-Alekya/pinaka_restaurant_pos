@@ -148,7 +148,7 @@ class _TopBarState extends State<TopBar> {
     onPressed: () async {
     final result = await showDialog<bool>(
     context: context,
-    barrierDismissible: true,
+    barrierDismissible: false,
     builder: (_) => LogoutConfirmationDialog(
     onCancel: () => Navigator.pop(context, false),
     onConfirm: () => Navigator.pop(context, true),
@@ -296,7 +296,7 @@ class _TopBarState extends State<TopBar> {
       onTap: () {
         showDialog(
           context: context,
-          barrierDismissible: true,
+          barrierDismissible: false,
           builder: (context) => Checkinpopup(
             token: widget.token,
             onCheckIn: () {

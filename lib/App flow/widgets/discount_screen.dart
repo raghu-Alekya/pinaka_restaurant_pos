@@ -256,7 +256,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFF1FBF75), width: 2),
+            // border: Border.all(color: const Color(0xFF1FBF75), width: 2),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,

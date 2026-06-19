@@ -8,6 +8,8 @@ import '../widgets/number_pad.dart';
 import '../widgets/pin_input.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'home_screen.dart';
+
 class EmployeeLoginPage extends StatefulWidget {
   const EmployeeLoginPage({super.key});
 
@@ -98,9 +100,12 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
                   SnackBar(content: Text(state.message)),
                 );
               }
+              // final tableDao = TableDao();
+              // final tables = await tableDao.getTablesByManagerPin(state.pin);
 
               if (state is AuthSuccess) {
                 _timer.cancel();
+
                 final prefs = await SharedPreferences.getInstance();
                 await prefs.setString('pin', state.pin);
                 await prefs.setString('token', state.token);
@@ -113,12 +118,12 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => TablesScreen(
+                    builder: (_) => HomeScreen(
                       pin: state.pin,
                       token: state.token,
                       restaurantId: state.restaurantId,
                       restaurantName: state.restaurantName,
-                      loadedTables: tables,
+                      // loadedTables: tables,
                     ),
                   ),
                 );

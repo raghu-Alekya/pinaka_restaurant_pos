@@ -717,19 +717,9 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
               borderRadius: BorderRadius.circular(10),
             ),
             child: InkWell(
-              onTap:
-                  () => Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder:
-                      (context) => ReservationListScreen(
-                    pin: widget.pin,
-                    token: widget.token,
-                    restaurantId: widget.restaurantId,
-                    restaurantName: widget.restaurantName,
-                  ),
-                ),
-              ),
+              onTap: () {
+                Navigator.pop(context);
+              },
               borderRadius: BorderRadius.circular(10),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -738,7 +728,10 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                   SizedBox(width: 6),
                   Text(
                     'Back',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),
@@ -1416,7 +1409,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
 
     await showDialog(
       context: context,
-      barrierDismissible: true,
+      barrierDismissible: false,
       builder: (ctx) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
@@ -1552,7 +1545,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                             Navigator.of(ctx).pop();
                             showDialog(
                               context: context,
-                              barrierDismissible: true,
+                              barrierDismissible: false,
                               builder: (_) => ReservationUnmergePopup(
                                 index: index,
                                 tableData: tableData,
@@ -1599,7 +1592,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                             Navigator.of(ctx).pop();
                             showDialog(
                               context: context,
-                              barrierDismissible: true,
+                              barrierDismissible: false,
                               builder: (_) => ReservationMergePopup(
                                 index: index,
                                 tableData: tableData,

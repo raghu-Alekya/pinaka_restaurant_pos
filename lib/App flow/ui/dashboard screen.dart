@@ -269,7 +269,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       ) {
     showDialog(
       context: context,
-      barrierDismissible: true,
+      barrierDismissible: false,
       builder: (_) => VariantPopupContent(
         key: UniqueKey(),
         product: product,
@@ -482,7 +482,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     if (product.variants.isNotEmpty) {
       showDialog(
         context: context, // use parent context, not dialog builder context
-        barrierDismissible: true,
+        barrierDismissible: false,
         builder: (dialogContext) {
           return VariantPopupContent(
             product: product,
@@ -689,16 +689,16 @@ class _DashboardScreenState extends State<DashboardScreen>
     debugPrint("BOTTOM NAV PERMS: ${permissions?.displayName}");
 
 
-    NavigationHelper.handleNavigation(
-      context,
-      _bottomNavIndex,
-      index,
-      widget.pin,
-      widget.token,
-      widget.restaurantId,
-      widget.restaurantName,
-      permissions, // ✅ NEVER NULL NOW
-    );
+    // NavigationHelper.handleNavigation(
+    //   context,
+    //   _bottomNavIndex,
+    //   index,
+    //   widget.pin,
+    //   widget.token,
+    //   widget.restaurantId,
+    //   widget.restaurantName,
+    //   permissions, // ✅ NEVER NULL NOW
+    // );
   }
 
   Future<void> _loadPermissions() async {
@@ -861,14 +861,14 @@ class _DashboardScreenState extends State<DashboardScreen>
                       ),
 
                       // Bottom Navigation
-                      SizedBox(
-                        height: 55,
-                        child: BottomNavBar(
-                          selectedIndex: _bottomNavIndex,
-                          onItemTapped: _onNavItemTapped,
-                          userPermissions: _userPermissions,
-                        ),
-                      ),
+                      // SizedBox(
+                      //   height: 55,
+                      //   child: BottomNavBar(
+                      //     selectedIndex: _bottomNavIndex,
+                      //     onItemTapped: _onNavItemTapped,
+                      //     userPermissions: _userPermissions,
+                      //   ),
+                      // ),
                     ],
                   ),
                 ),

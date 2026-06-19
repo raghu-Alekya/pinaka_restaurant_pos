@@ -142,6 +142,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
   void _showVoidedItemsDialog(List<VoidedItem> items) {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
           title: const Text("Voided Items"),
@@ -180,16 +181,16 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
 
   void _onItemTapped(int index) {
-    NavigationHelper.handleNavigation(
-      context,
-      _selectedIndex,
-      index,
-      widget.pin,
-      widget.token,
-      widget.restaurantId,
-      widget.restaurantName,
-      widget.userPermissions,
-    );
+    // NavigationHelper.handleNavigation(
+    //   context,
+    //   _selectedIndex,
+    //   index,
+    //   widget.pin,
+    //   widget.token,
+    //   widget.restaurantId,
+    //   widget.restaurantName,
+    //   widget.userPermissions,
+    // );
     setState(() => _selectedIndex = index);
   }
 
@@ -1054,22 +1055,22 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
 
       // BOTTOM NAV
-      bottomNavigationBar: BottomNavBar(
-        selectedIndex: 4,
-        userPermissions: _userPermissions,
-        onItemTapped: (int index) {
-          NavigationHelper.handleNavigation(
-            context,
-            4,
-            index,
-            widget.pin,
-            widget.token,
-            widget.restaurantId,
-            widget.restaurantName,
-            _userPermissions,
-          );
-        },
-      ),
+      // bottomNavigationBar: BottomNavBar(
+      //   selectedIndex: 4,
+      //   userPermissions: _userPermissions,
+      //   onItemTapped: (int index) {
+      //     NavigationHelper.handleNavigation(
+      //       context,
+      //       4,
+      //       index,
+      //       widget.pin,
+      //       widget.token,
+      //       widget.restaurantId,
+      //       widget.restaurantName,
+      //       _userPermissions,
+      //     );
+      //   },
+      // ),
     );
   }
 

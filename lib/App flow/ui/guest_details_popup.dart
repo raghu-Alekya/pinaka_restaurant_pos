@@ -38,6 +38,7 @@ class GuestDetailsPopup extends StatefulWidget {
 
 class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
   List<int> selectedGuests = [];
+  bool _isCreatingOrder = false; // NEW
 
   @override
   Widget build(BuildContext context) {
@@ -130,49 +131,54 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     ElevatedButton(
-                      onPressed: () async {
+                      onPressed: _isCreatingOrder
+                          ? null
+                          : () async {
                         if (selectedGuests.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content:
-                              Text('Please select number of guests'),
+                              content: Text('Please select number of guests'),
                             ),
                           );
                           return;
                         }
 
-                        final guestDetails =
-                        Guestcount(guestCount: selectedGuests.length);
-
-                        if (tableId == 0 || zoneId == 0) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                  'Cannot create order: Table/Zone ID missing'),
-                            ),
-                          );
-                          return;
-
-                        }
-                        // 🧹 Clear old order items before creating new one
-                        context.read<OrderBloc>().add(ClearOrder());
-
-                        context.read<OrderBloc>().add(
-                          SelectTable(
-                            tableId: tableId,
-                            zoneId: zoneId,
-                            tableName: tableName,
-                            zoneName: zoneName,
-                            restaurantId: int.parse(widget.restaurantId), // use widget.restaurantId
-                          ),
-                        );
-
-                        final orderRepository = OrderRepository(
-                          baseUrl:
-                          'https://merchantrestaurant.alektasolutions.com',
-                        );
+                        setState(() {
+                          _isCreatingOrder = true;
+                        });
 
                         try {
+                          final guestDetails =
+                          Guestcount(guestCount: selectedGuests.length);
+
+                          if (tableId == 0 || zoneId == 0) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Cannot create order: Table/Zone ID missing',
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+
+                          context.read<OrderBloc>().add(ClearOrder());
+
+                          context.read<OrderBloc>().add(
+                            SelectTable(
+                              tableId: tableId,
+                              zoneId: zoneId,
+                              tableName: tableName,
+                              zoneName: zoneName,
+                              restaurantId: int.parse(widget.restaurantId),
+                            ),
+                          );
+
+                          final orderRepository = OrderRepository(
+                            baseUrl:
+                            'https://merchantrestaurant.alektasolutions.com',
+                          );
+
                           final OrderModel orderData =
                           await orderRepository.createOrder(
                             tableId: tableId,
@@ -187,7 +193,6 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                             reservationId: reservationId,
                           );
 
-                          // Dispatch CreateOrder event to Bloc
                           context.read<OrderBloc>().add(
                             CreateOrder(
                               orderId: orderData.orderId,
@@ -197,13 +202,12 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                               zoneName: zoneName,
                               restaurantId: widget.restaurantId,
                               guestDetails: guestDetails,
-                              // guests: [guestDetails],
                             ),
                           );
 
+                          if (!mounted) return;
 
-                          // Navigate to DashboardScreen
-                          Navigator.pushReplacement(
+                          Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => DashboardScreen(
@@ -215,7 +219,8 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                                 tableId: tableId,
                                 tableName: tableName,
                                 zoneId: zoneId,
-                                zoneName: zoneName, kotList: [],
+                                zoneName: zoneName,
+                                kotList: [],
                                 pin: widget.pin,
                                 restaurantName: widget.restaurantId,
                                 userPermissions: widget.userPermissions,
@@ -226,20 +231,42 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                         } catch (e) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                                content: Text('Failed to create order: $e')),
+                              content: Text('Failed to create order: $e'),
+                            ),
                           );
+                        } finally {
+                          if (mounted) {
+                            setState(() {
+                              _isCreatingOrder = false;
+                            });
+                          }
                         }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFFF4D20),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 26, vertical: 10),
+                          horizontal: 26,
+                          vertical: 10,
+                        ),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
-                      child: const Text(
+                      child: _isCreatingOrder
+                          ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                          : const Text(
                         "SELECT AND CONTINUE",
-                        style: TextStyle(color: Colors.white, fontSize: 12),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                        ),
                       ),
                     )
                   ],

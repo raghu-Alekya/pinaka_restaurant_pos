@@ -385,7 +385,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
 
                                         await showDialog(
                                           context: context,
-                                          barrierDismissible: true,
+                                          barrierDismissible: false,
                                           builder: (dialogContext) {
                                             return BlocProvider.value(
                                               value: context.read<UpdatekotBloc>(), // ✅ pass existing bloc

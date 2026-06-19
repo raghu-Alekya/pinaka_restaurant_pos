@@ -117,22 +117,22 @@ class _DashboardState extends State<Dashboard> {
         ),
       ),
 
-      bottomNavigationBar: BottomNavBar(
-        selectedIndex: 5,
-        userPermissions: _userPermissions,
-        onItemTapped: (int index) {
-          NavigationHelper.handleNavigation(
-            context,
-            5,
-            index,
-            widget.pin,
-            widget.token,
-            widget.restaurantId,
-            widget.restaurantName,
-            _userPermissions,
-          );
-        },
-      ),
+      // bottomNavigationBar: BottomNavBar(
+      //   selectedIndex: 5,
+      //   userPermissions: _userPermissions,
+      //   onItemTapped: (int index) {
+      //     NavigationHelper.handleNavigation(
+      //       context,
+      //       5,
+      //       index,
+      //       widget.pin,
+      //       widget.token,
+      //       widget.restaurantId,
+      //       widget.restaurantName,
+      //       _userPermissions,
+      //     );
+      //   },
+      // ),
     );
   }
 }

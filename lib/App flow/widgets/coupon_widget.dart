@@ -35,21 +35,21 @@ class _CouponscreenState extends State<Couponscreen> {
   @override
   void initState() {
     super.initState();
-    _loadCoupons();
+    // _loadCoupons();
   }
 
-  Future<void> _loadCoupons() async {
-    final repository = CouponRepository();
-
-    final coupons = await repository.fetchCoupons();
-
-    if (!mounted) return;
-
-    setState(() {
-      availableCoupons = coupons;
-      isLoading = false;
-    });
-  }
+  // Future<void> _loadCoupons() async {
+  //   final repository = CouponRepository();
+  //
+  //   final coupons = await repository.fetchCoupons();
+  //
+  //   if (!mounted) return;
+  //
+  //   setState(() {
+  //     availableCoupons = coupons;
+  //     isLoading = false;
+  //   });
+  // }
   Future<void> _applyCoupon() async {
     final code = _couponController.text.trim();
 

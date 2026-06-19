@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'employee_login_page.dart';
+import 'home_screen.dart';
 import 'tables_screen.dart';
 import '../../local database/table_dao.dart';
 
@@ -61,12 +62,12 @@ class _SplashScreenState extends State<SplashScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => TablesScreen(
+          builder: (_) => HomeScreen(
             pin: pin,
             token: token,
             restaurantId: restaurantId,
             restaurantName: restaurantName,
-            loadedTables: tables,
+            // loadedTables: tables,
           ),
         ),
       );

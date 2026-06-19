@@ -83,6 +83,7 @@ class OrderPanel extends StatefulWidget {
 }
 class _OrderPanelState extends State<OrderPanel> {
   StreamSubscription? _mqttSubscription;
+  bool _isRepeatingOrder = false;
 
   @override
   void initState() {
@@ -243,7 +244,7 @@ class _OrderPanelState extends State<OrderPanel> {
                                 final tables =
                                 await tableDao.getTablesByManagerPin(widget.pin);
 
-                                Navigator.pushAndRemoveUntil(
+                                Navigator.pushReplacement(
                                   context,
                                   MaterialPageRoute(
                                     builder: (_) => TablesScreen(
@@ -254,7 +255,6 @@ class _OrderPanelState extends State<OrderPanel> {
                                       restaurantName: widget.restaurantName,
                                     ),
                                   ),
-                                      (Route<dynamic> route) => false,
                                 );
                               } else {
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -679,15 +679,24 @@ class _OrderPanelState extends State<OrderPanel> {
                         child: orderButton(
                           'Repeat order',
                           const Color(0xFFF7C127),
-                          onPressed: () {
-                            final bloc = context.read<OrderBloc>();
+                          isLoading: _isRepeatingOrder,
+                          onPressed: _isRepeatingOrder
+                              ? null
+                              : () {
+                            setState(() {
+                              _isRepeatingOrder = true;
+                            });
 
-                            if (bloc.state.isLoading) return;
+                            final bloc = context.read<OrderBloc>();
 
                             if (bloc.state.orderId == 0) {
                               ScaffoldMessenger.of(scaffoldContext).showSnackBar(
                                 const SnackBar(content: Text("Order not found")),
                               );
+
+                              setState(() {
+                                _isRepeatingOrder = false;
+                              });
                               return;
                             }
 
@@ -699,6 +708,14 @@ class _OrderPanelState extends State<OrderPanel> {
                                 token: widget.token,
                               ),
                             );
+
+                            Future.delayed(const Duration(seconds: 2), () {
+                              if (mounted) {
+                                setState(() {
+                                  _isRepeatingOrder = false;
+                                });
+                              }
+                            });
                           },
                         ),
                       );
@@ -1102,7 +1119,7 @@ class _OrderPanelState extends State<OrderPanel> {
       );
 
 
-  Widget orderButton(String text, Color color, {required VoidCallback onPressed}) => Expanded(
+  Widget orderButton(String text, Color color, {VoidCallback? onPressed, bool isLoading = false,}) => Expanded(
     child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2),
       child: SizedBox(

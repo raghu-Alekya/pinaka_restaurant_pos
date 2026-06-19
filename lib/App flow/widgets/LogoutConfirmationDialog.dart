@@ -12,7 +12,7 @@ class LogoutConfirmationDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onCancel, // dismiss when tapping outside
+      onTap: (){}, // dismiss when tapping outside
       child: Container(
         color: Colors.black.withAlpha(80),
         child: Center(

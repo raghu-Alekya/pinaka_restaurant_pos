@@ -562,22 +562,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: BottomNavBar(
-        selectedIndex: 0,
-        onItemTapped: (index) {
-          NavigationHelper.handleNavigation(
-            context,
-            0,
-            index,
-            widget.pin,
-            widget.token,
-            widget.restaurantId,
-            widget.restaurantName,
-            _userPermissions,
-          );
-        },
-        userPermissions: _userPermissions,
-      ),
+      // bottomNavigationBar: BottomNavBar(
+      //   selectedIndex: 0,
+      //   onItemTapped: (index) {
+      //     NavigationHelper.handleNavigation(
+      //       context,
+      //       0,
+      //       index,
+      //       widget.pin,
+      //       widget.token,
+      //       widget.restaurantId,
+      //       widget.restaurantName,
+      //       _userPermissions,
+      //     );
+      //   },
+      //   userPermissions: _userPermissions,
+      // ),
     );
   }
 
