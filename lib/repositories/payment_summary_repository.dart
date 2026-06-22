@@ -47,7 +47,7 @@ class PaymentRepository {
           "?${Uri(queryParameters: queryParams).query}",
     );
 
-    final token = await _getToken(); // 🔥 same like RepeatKot
+    final token = await _getToken();
 
     if (kDebugMode) {
       debugPrint("➡️ PAYMENT API URL: $uri");

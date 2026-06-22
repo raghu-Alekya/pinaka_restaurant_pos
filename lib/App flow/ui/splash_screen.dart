@@ -7,7 +7,7 @@ import 'tables_screen.dart';
 import '../../local database/table_dao.dart';
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+  const SplashScreen({super.key, required String storeBaseUrl, required String storeName, required String storeId});
 
   @override
   _SplashScreenState createState() => _SplashScreenState();
@@ -75,7 +75,7 @@ class _SplashScreenState extends State<SplashScreen> {
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const EmployeeLoginPage()),
+        MaterialPageRoute(builder: (_) => const EmployeeLoginPage(storeBaseUrl: '', storeName: '', storeId: '',)),
       );
     }
   }

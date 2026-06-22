@@ -23,6 +23,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import 'App flow/ui/merchantvalidation_screen.dart';
 import 'App flow/ui/splash_screen.dart';
 
 // Bloc Logic
@@ -229,7 +230,7 @@ class MyApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           title: 'Employee Login',
           theme: ThemeData(primarySwatch: Colors.blue),
-          home: const SplashScreen(),
+          home: const MerchantOnboardingScreen(),
         ),
       )
       ,

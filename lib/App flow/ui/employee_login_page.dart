@@ -11,10 +11,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'home_screen.dart';
 
 class EmployeeLoginPage extends StatefulWidget {
-  const EmployeeLoginPage({super.key});
+  final String storeBaseUrl;
+  final String storeName;
+  final String storeId;
+
+  const EmployeeLoginPage({
+    super.key,
+    required this.storeBaseUrl,
+    required this.storeName,
+    required this.storeId,
+  });
 
   @override
-  _EmployeeLoginPageState createState() => _EmployeeLoginPageState();
+  State<EmployeeLoginPage> createState() => _EmployeeLoginPageState();
 }
 
 class _EmployeeLoginPageState extends State<EmployeeLoginPage> {

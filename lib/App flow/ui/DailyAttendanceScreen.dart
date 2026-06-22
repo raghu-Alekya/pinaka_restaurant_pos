@@ -343,7 +343,7 @@ class _AttendancePopupState extends State<AttendancePopup> {
                             if (context.mounted) {
                               Navigator.pushAndRemoveUntil(
                                 context,
-                                MaterialPageRoute(builder: (_) => const EmployeeLoginPage()),
+                                MaterialPageRoute(builder: (_) => const EmployeeLoginPage(storeBaseUrl: '', storeName: '', storeId: '',)),
                                     (route) => false,
                               );
                             }

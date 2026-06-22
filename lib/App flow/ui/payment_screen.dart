@@ -135,8 +135,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           final paymentSummary = state.summary;
           final orderId = context.read<OrderBloc>().state.orderId; //
           final merchantDiscount = state.merchantDiscount; // ✅ important
-          final hasCouponApplied =
-              paymentSummary.coupons > 0 || _couponAmount > 0;
+          final hasCouponApplied = paymentSummary.coupons > 0;
           final hasDiscountApplied = merchantDiscount.abs() > 0;
           debugPrint("🔥 _couponAmount = $_couponAmount");
           debugPrint(
@@ -175,8 +174,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       paymentSummary: paymentSummary,
                       hasCouponApplied: hasCouponApplied,
                       hasDiscountApplied: hasDiscountApplied,
-                      appliedCouponAmount: _couponAmount,
-
+                      appliedCouponAmount: paymentSummary.coupons,
                     ),
 
                   ),
@@ -208,25 +206,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         _tipAmount = value;
                       });
                     },
-
                     onCouponAmountChanged: (double amount) {
                       debugPrint("🎟 Coupon Amount Callback = $amount");
 
                       setState(() {
-                        _couponAmount = amount;
-
-                        // update amount textbox immediately
-                        final currentNetPayable =
-                            (context.read<PaymentBloc>().state as PaymentSummaryLoaded)
-                                .summary
-                                .netTotal;
-
-                        // this.amount = (currentNetPayable - amount).toStringAsFixed(2);
+                        // Only use callback if > 0
+                        if (amount > 0) {
+                          _couponAmount = amount;
+                        }
                       });
-
-
-                      debugPrint(
-                          "✅ Stored _couponAmount = $_couponAmount");
                     },
                   ),
 

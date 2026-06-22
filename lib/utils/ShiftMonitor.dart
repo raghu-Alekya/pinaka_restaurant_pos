@@ -205,7 +205,7 @@ class ShiftMonitor {
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(
-              builder: (_) => const EmployeeLoginPage(),
+              builder: (_) => const EmployeeLoginPage(storeBaseUrl: '', storeName: '', storeId: '',),
             ),
                 (route) => false,
           );

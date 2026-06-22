@@ -6,12 +6,14 @@ class PaymentSummary {
   final double fees;
   final double coupons;
   final double discount;
+  final double tipAmount;
   final double netTotal;
   final List<LineItem> lineItems;
   final int tableId;
   final int zoneId;
   final bool modifiersTaxable;
   final bool isNoCharge;
+  final List<CouponDetail> couponDetails;
 
 
 
@@ -23,12 +25,14 @@ class PaymentSummary {
     required this.fees,
     required this.discount,
     required this.coupons,
+    required this.tipAmount,
     required this.netTotal,
     required this.lineItems,
     required this.tableId,
     required this.zoneId,
     required this.modifiersTaxable,
     required this.isNoCharge,
+    required this.couponDetails,
   });
 
   factory PaymentSummary.fromJson(Map<String, dynamic> json) {
@@ -46,9 +50,15 @@ class PaymentSummary {
       discount: double.tryParse(
         (json['merchant_discount'] ?? json['discount'] ?? 0).toString(),
       ) ?? 0.0,
+      tipAmount: double.tryParse(
+        (json['tip'] ?? 0).toString(),
+      ) ?? 0.0,
 
       coupons: (json['coupons'] ?? 0).toDouble(),
       netTotal: (json['net_total'] ?? 0).toDouble(),
+      couponDetails: (json['coupon_details'] as List? ?? [])
+          .map((e) => CouponDetail.fromJson(e))
+          .toList(),
 
       lineItems: (json['line_items'] as List? ?? [])
           .map((e) => LineItem.fromJson(e))
@@ -134,6 +144,22 @@ class LineItem {
       taxClass: (json['tax_class'] ?? 'food').toString().toLowerCase(),
       modifiers: List<String>.from(json['modifiers'] ?? []),
       modifierAmount: (json['modifier_amount'] ?? 0).toDouble(),
+    );
+  }
+}
+class CouponDetail {
+  final String code;
+  final double value;
+
+  CouponDetail({
+    required this.code,
+    required this.value,
+  });
+
+  factory CouponDetail.fromJson(Map<String,dynamic> json) {
+    return CouponDetail(
+      code: json['code'] ?? '',
+      value: (json['value'] ?? 0).toDouble(),
     );
   }
 }

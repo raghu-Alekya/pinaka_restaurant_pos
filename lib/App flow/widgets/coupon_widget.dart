@@ -54,7 +54,8 @@ class _CouponscreenState extends State<Couponscreen> {
     final code = _couponController.text.trim();
 
     final selectedCoupon = availableCoupons.firstWhere(
-          (c) => c.code == code,
+          (c) => c.code.trim().toLowerCase() ==
+          code.trim().toLowerCase(),
       orElse: () => CouponModel(
         id: 0,
         code: code,
