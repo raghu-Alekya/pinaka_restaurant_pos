@@ -1,82 +1,169 @@
 class AppConstants {
-  static const String baseDomain = 'https://merchantrestaurant.alektasolutions.com';
-  static const String baseApiPath = '$baseDomain/wp-json/pinaka-restaurant-pos/v1';
+  static String baseDomain =
+      'https://merchantrestaurant.alektasolutions.com';
+
+  static void updateBaseUrl(String url) {
+    baseDomain = url.endsWith('/')
+        ? url.substring(0, url.length - 1)
+        : url;
+  }
+
+  static String get baseApiPath =>
+      '$baseDomain/wp-json/pinaka-restaurant-pos/v1';
 
   // Authentication
-  static const String authTokenEndpoint = '$baseApiPath/token';
-  static const String empOrderPinValidationEndpoint = '$baseApiPath/emp-order-pin-validation';
-  static const String logoutEndpoint = '$baseApiPath/logout';
+  static String get authTokenEndpoint =>
+      '$baseApiPath/token';
+
+  static String get empOrderPinValidationEndpoint =>
+      '$baseApiPath/emp-order-pin-validation';
+
+  static String get logoutEndpoint =>
+      '$baseApiPath/logout';
 
   // Zone Management
-  static const String createZoneEndpoint = '$baseApiPath/zones/create-zone';
-  static const String updateZoneEndpoint = '$baseApiPath/zones/update-zone';
-  static const String getAllZonesEndpoint = '$baseApiPath/zones/get-all-zones';
-  static const String deleteZoneEndpoint = '$baseApiPath/zones/delete-zone';
+  static String get createZoneEndpoint =>
+      '$baseApiPath/zones/create-zone';
+
+  static String get updateZoneEndpoint =>
+      '$baseApiPath/zones/update-zone';
+
+  static String get getAllZonesEndpoint =>
+      '$baseApiPath/zones/get-all-zones';
+
+  static String get deleteZoneEndpoint =>
+      '$baseApiPath/zones/delete-zone';
 
   // Dashboard
-  static const String getChartRevenueEndpoint = '$baseApiPath/merchant-dashboard/get-chart-revenue';
-  static const String getPaymentModesRevenueEndpoint = '$baseApiPath/merchant-dashboard/get-payment-modes-revenue';
-  static const String getRevenueByFiltersEndpoint = '$baseApiPath/merchant-dashboard/get-revenue-by-filters';
-  static const String topProductsSoldEndpoint = '$baseApiPath/merchant-dashboard/top-products-sold';
-  static const String topCategoriesSoldEndpoint = '$baseApiPath/merchant-dashboard/top-categories-sold';
+  static String get getChartRevenueEndpoint =>
+      '$baseApiPath/merchant-dashboard/get-chart-revenue';
+
+  static String get getPaymentModesRevenueEndpoint =>
+      '$baseApiPath/merchant-dashboard/get-payment-modes-revenue';
+
+  static String get getRevenueByFiltersEndpoint =>
+      '$baseApiPath/merchant-dashboard/get-revenue-by-filters';
+
+  static String get topProductsSoldEndpoint =>
+      '$baseApiPath/merchant-dashboard/top-products-sold';
+
+  static String get topCategoriesSoldEndpoint =>
+      '$baseApiPath/merchant-dashboard/top-categories-sold';
 
   // Table Management
-  static const String createTableEndpoint = '$baseApiPath/tables/create-table';
-  static const String getAllTablesEndpoint = '$baseApiPath/tables/get-all-tables';
-  static const String updateTableEndpoint = '$baseApiPath/tables/update-table';
-  static const String deleteTableEndpoint = '$baseApiPath/tables/delete-table';
-  static const String getAllMergeTablesEndpoint = '$baseApiPath/tables/get-all-merge-tables';
-  static const String createMergeTablesWithStatusEndpoint = '$baseApiPath/tables/create-merge-tables-with-table-status';
-  static const String updateMergeTablesWithStatusEndpoint = '$baseApiPath/tables/update-merge-tables-with-table-status';
-  static const String deleteMergeTablesWithStatusEndpoint = '$baseApiPath/tables/delete-merge-tables-with-table-status';
+  static String get createTableEndpoint =>
+      '$baseApiPath/tables/create-table';
 
-  static String getAllTablesByTime(String reservationTime,
-      String reservationDate) =>
-      '$baseApiPath/tables/get-all-tables-by-time?reservation_time=${Uri
-          .encodeComponent(reservationTime)}&reservation_date=${Uri
-          .encodeComponent(reservationDate)}';
+  static String get getAllTablesEndpoint =>
+      '$baseApiPath/tables/get-all-tables';
+
+  static String get updateTableEndpoint =>
+      '$baseApiPath/tables/update-table';
+
+  static String get deleteTableEndpoint =>
+      '$baseApiPath/tables/delete-table';
+
+  static String get getAllMergeTablesEndpoint =>
+      '$baseApiPath/tables/get-all-merge-tables';
+
+  static String get createMergeTablesWithStatusEndpoint =>
+      '$baseApiPath/tables/create-merge-tables-with-table-status';
+
+  static String get updateMergeTablesWithStatusEndpoint =>
+      '$baseApiPath/tables/update-merge-tables-with-table-status';
+
+  static String get deleteMergeTablesWithStatusEndpoint =>
+      '$baseApiPath/tables/delete-merge-tables-with-table-status';
 
   // Employee Management
-  static const String getAllEmployeesEndpoint = '$baseApiPath/users/get-all-employees';
+  static String get getAllEmployeesEndpoint =>
+      '$baseApiPath/users/get-all-employees';
 
   // Employee Attendance
-  static const String currentShiftEmployeesEndpoint = '$baseApiPath/employee-attendance/current-shift';
-  static const String employeeAttendanceEndpoint = '$baseApiPath/employee-attendance';
-  static const String inventoryAlertsEndpoint = '$baseApiPath/employee-attendance/get-inventory-alerts';
-  static const String completedOrdersEndpoint = '$baseApiPath/employee-attendance/get-all-completed-orders';
+  static String get currentShiftEmployeesEndpoint =>
+      '$baseApiPath/employee-attendance/current-shift';
+
+  static String get employeeAttendanceEndpoint =>
+      '$baseApiPath/employee-attendance';
+
+  static String get inventoryAlertsEndpoint =>
+      '$baseApiPath/employee-attendance/get-inventory-alerts';
+
+  static String get completedOrdersEndpoint =>
+      '$baseApiPath/employee-attendance/get-all-completed-orders';
 
   // Shift Management
-  static const String createShiftEndpoint = '$baseApiPath/shifts/create-shift';
-  static const String updateShiftEndpoint = '$baseApiPath/shifts/update-shift';
-  static const String closeShiftEndpoint = '$baseApiPath/shifts/close-shift';
-  static const String currentShiftEndpoint = '$baseApiPath/shifts/current-shift';
-  static const String getAllShiftsEndpoint = '$baseApiPath/users/get-all-shifts';
+  static String get createShiftEndpoint =>
+      '$baseApiPath/shifts/create-shift';
+
+  static String get updateShiftEndpoint =>
+      '$baseApiPath/shifts/update-shift';
+
+  static String get closeShiftEndpoint =>
+      '$baseApiPath/shifts/close-shift';
+
+  static String get currentShiftEndpoint =>
+      '$baseApiPath/shifts/current-shift';
+
+  static String get getAllShiftsEndpoint =>
+      '$baseApiPath/users/get-all-shifts';
 
   // Reservation Management
-  static const String createReservationEndpoint = '$baseApiPath/reservation/create-reservation';
-  static const String getAllReservationsEndpoint = '$baseApiPath/reservation/get-all-reservations';
-  static const String updateReservationEndpoint = '$baseApiPath/reservation/update-reservation';
-  static const String cancelReservationEndpoint = '$baseApiPath/reservation/cancel-reservation';
-  static const String reservationDateRangeEndpoint = '$baseApiPath/reservation/reservation-date-range';
-  static const String getAllMergeTablesWithReservationEndpoint = '$baseApiPath/tables/get-all-merge-tables-with-reservation';
+  static String get createReservationEndpoint =>
+      '$baseApiPath/reservation/create-reservation';
 
-  // kitchen status
-  static const String getAllOrderTypesEndpoint = '$baseApiPath/kot/get-all-order-types';
-  static const String getAllUsersEndpoint = '$baseApiPath/users/get-all-users';
-  static const String getAllOrdersEndpoint = '$baseApiPath/kot/order-filters-api';
-  static const String getParentKotOrdersEndpoint = '$baseApiPath/kot/get-parent-kot-orders';
+  static String get getAllReservationsEndpoint =>
+      '$baseApiPath/reservation/get-all-reservations';
+
+  static String get updateReservationEndpoint =>
+      '$baseApiPath/reservation/update-reservation';
+
+  static String get cancelReservationEndpoint =>
+      '$baseApiPath/reservation/cancel-reservation';
+
+  static String get reservationDateRangeEndpoint =>
+      '$baseApiPath/reservation/reservation-date-range';
+
+  static String get getAllMergeTablesWithReservationEndpoint =>
+      '$baseApiPath/tables/get-all-merge-tables-with-reservation';
+
+  // Kitchen Status
+  static String get getAllOrderTypesEndpoint =>
+      '$baseApiPath/kot/get-all-order-types';
+
+  static String get getAllUsersEndpoint =>
+      '$baseApiPath/users/get-all-users';
+
+  static String get getAllOrdersEndpoint =>
+      '$baseApiPath/kot/order-filters-api';
+
+  static String get getParentKotOrdersEndpoint =>
+      '$baseApiPath/kot/get-parent-kot-orders';
 
   // Settings
-  static const String getGeneralSettingsEndpoint = '$baseApiPath/settings/get-general-settings';
+  static String get getGeneralSettingsEndpoint =>
+      '$baseApiPath/settings/get-general-settings';
 
-  // Slots
-  static String getAllSlotsByDate(String formattedDate) =>
-      '$baseApiPath/slots/get-all-slots?reservation_date=$formattedDate';
+  // Orders
+  static String get getAllOrdersList =>
+      '$baseApiPath/kot/get-all-orders';
 
-  //  orders list
-  static const String getAllOrdersList = '$baseApiPath/kot/get-all-orders';
+  static String getAllTablesByTime(
+      String reservationTime,
+      String reservationDate,
+      ) {
+    return '$baseApiPath/tables/get-all-tables-by-time'
+        '?reservation_time=${Uri.encodeComponent(reservationTime)}'
+        '&reservation_date=${Uri.encodeComponent(reservationDate)}';
+  }
 
-  // Cancel an order
+  static String getAllSlotsByDate(
+      String formattedDate,
+      ) {
+    return '$baseApiPath/slots/get-all-slots'
+        '?reservation_date=$formattedDate';
+  }
+
   static String cancelOrder(int orderId) {
     return '$baseApiPath/orders/$orderId';
   }

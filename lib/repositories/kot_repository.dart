@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
+import '../constants/constants.dart';
 import '../models/order/KOT_model.dart';
 import '../models/order/transfer_table_model.dart';
 import '../utils/logger.dart'; // make sure your AppLogger is here
@@ -16,8 +17,10 @@ class KotRepository {
     required String token,
   }) async {
     final url = Uri.parse(
-      "$baseUrl/wp-json/pinaka-restaurant-pos/v1/kot/get-parent-kot-orders"
-          "?parent_order_id=$parentOrderId&restaurant_id=$restaurantId&zone_id=$zoneId",
+      "${AppConstants.getParentKotOrdersEndpoint}"
+          "?parent_order_id=$parentOrderId"
+          "&restaurant_id=$restaurantId"
+          "&zone_id=$zoneId",
     );
 
     AppLogger.info("Fetching KOTs from URL: $url");
@@ -60,8 +63,8 @@ class KotRepository {
 }
 
 class KotTransferRepository {
-  final String baseUrl =
-      "https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1";
+  String get baseUrl =>
+      AppConstants.baseApiPath;
 
   Future<KotTransferResponse> transferKot({
     required int orderId,

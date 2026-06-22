@@ -144,11 +144,17 @@ class EmployeeRepository {
       final Map<String, dynamic> shift = jsonDecode(response.body);
 
       // ✅ SAVE SHIFT ID HERE
-      if (shift.containsKey('shift_id')) {
-        final int shiftId = shift['shift_id'];
-        await SessionManager.saveShiftId(shiftId);
-        print("✅ Shift ID saved from current shift: $shiftId");
-      } else {
+      if (shift.containsKey('shift_id') &&
+          shift['shift_id'] != null) {
+
+        final int shiftId =
+            int.tryParse(shift['shift_id'].toString()) ?? 0;
+
+        if (shiftId > 0) {
+          await SessionManager.saveShiftId(shiftId);
+          print("✅ Shift ID saved: $shiftId");
+        }
+      }else {
         print("⚠️ shift_id not found in response");
       }
 

@@ -4,12 +4,12 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../constants/constants.dart';
 import '../models/order/repeat_kot_model.dart';
 
 class RepeatOrderRepository {
-  final String baseUrl;
 
-  RepeatOrderRepository({required this.baseUrl});
+  RepeatOrderRepository();
 
   /// ✅ Always get token from storage
   Future<String> _getToken() async {
@@ -20,7 +20,6 @@ class RepeatOrderRepository {
       throw Exception("JWT token missing");
     }
 
-    // ✅ Safety cleanup (handles old stored Bearer tokens)
     return token.startsWith('Bearer ')
         ? token.substring(7)
         : token;
@@ -32,15 +31,17 @@ class RepeatOrderRepository {
     required int zoneId,
     required String token,
   }) async {
+
     final uri = Uri.parse(
-      "$baseUrl/wp-json/pinaka-restaurant-pos/v1/orders/repeat-kot-order",
+      "${AppConstants.baseApiPath}/orders/repeat-kot-order",
     );
 
-    final token = await _getToken(); // 🔥 CORRECT
+    final cleanToken = await _getToken();
 
     if (kDebugMode) {
-      print("🔐 CLEAN TOKEN => $token");
-      print("🔐 HEADER     => Bearer $token");
+      print("🔐 CLEAN TOKEN => $cleanToken");
+      print("🔐 HEADER => Bearer $cleanToken");
+      print("➡️ URL => $uri");
     }
 
     final response = await http.post(
@@ -48,7 +49,7 @@ class RepeatOrderRepository {
       headers: {
         "Content-Type": "application/json; charset=utf-8",
         "Accept": "application/json",
-        "Authorization": "Bearer $token",
+        "Authorization": "Bearer $cleanToken",
       },
       body: jsonEncode({
         "order_id": orderId,
@@ -58,11 +59,13 @@ class RepeatOrderRepository {
     );
 
     if (response.statusCode == 200) {
-      return RepeatKotModel.fromJson(jsonDecode(response.body));
-    } else {
-      throw Exception(
-        "Repeat KOT failed (${response.statusCode}): ${response.body}",
+      return RepeatKotModel.fromJson(
+        jsonDecode(response.body),
       );
     }
+
+    throw Exception(
+      "Repeat KOT failed (${response.statusCode}): ${response.body}",
+    );
   }
 }

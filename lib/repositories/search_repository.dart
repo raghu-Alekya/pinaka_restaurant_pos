@@ -6,13 +6,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pinaka_restaurant_pos/models/search/search_model.dart';
 // import 'package:pinaka_restaurant_pos/models/product/product_model.dart';
 
+import '../constants/constants.dart';
 import '../models/category/items_model.dart'; // ✅ Product model
 
 class Search_ProductRepository {
-  final String baseUrl =
-      "https://merchantrestaurant.alektasolutions.com/wp-json/"
-      "pinaka-restaurant-pos/v1/products-by-category/get-products";
-
+  String get baseUrl =>
+      "${AppConstants.baseApiPath}/products-by-category/get-products";
   // 🔐 TOKEN
   Future<String> _getToken() async {
     final prefs = await SharedPreferences.getInstance();

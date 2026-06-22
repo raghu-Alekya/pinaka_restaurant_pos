@@ -3,11 +3,12 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../constants/constants.dart';
 import '../models/payment/discount_model.dart';
 
 class DiscountReasonRepository {
-  final String baseUrl =
-      'https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1/orders/discount-reasons';
+  String get baseUrl =>
+      '${AppConstants.baseApiPath}/orders/discount-reasons';
 
   /// ✅ Single source of truth
   Future<String> _getToken() async {
@@ -65,8 +66,8 @@ class DiscountReasonRepository {
 
 
 class AddDiscountRepository {
-  final String baseUrl =
-      "https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1";
+  String get baseUrl =>
+      AppConstants.baseApiPath;
 
   Future<String> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -112,9 +113,8 @@ class AddDiscountRepository {
   }
 }
 class RemoveDiscountRepository {
-  final String baseUrl =
-      "https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1";
-
+  String get baseUrl =>
+      AppConstants.baseApiPath;
   /// ✅ Single source of truth
   Future<String> _getToken() async {
     final prefs = await SharedPreferences.getInstance();

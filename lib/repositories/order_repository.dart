@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../constants/constants.dart';
 import '../models/order/KOT_model.dart';
 import '../models/order/order_items.dart';
 import '../models/order/order_model.dart';
@@ -22,9 +23,16 @@ class OrderRepository {
     required String restaurantName,
     required List<Guestcount> guests,
     required String tableName,
-  }) async
-  {
-    final url = Uri.parse('$baseUrl/wp-json/pinaka-restaurant-pos/v1/orders');
+  }) async {
+
+    final url = Uri.parse(
+      '${AppConstants.baseDomain}/wp-json/pinaka-restaurant-pos/v1/orders',
+    );
+
+    AppLogger.info("BASE URL => $baseUrl");
+    AppLogger.info("ORDER URL => $url");
+    AppLogger.info("RESTAURANT ID => $restaurantId");
+    AppLogger.info("ZONE ID => $zoneId");
 
     final body = {
       "flag_type": "parent_order",
@@ -36,45 +44,50 @@ class OrderRepository {
       "restaurant_name": restaurantName,
       "guest_count": guestCount,
       "guest_details": guests.map((g) => g.toJson()).toList(),
-      "reservation_id": reservationId
+      "reservation_id": reservationId,
     };
 
-    if (reservationId != null) body["reservation_id"] = reservationId;
+    AppLogger.info("REQUEST BODY => ${jsonEncode(body)}");
 
-    AppLogger.info('Creating order with body: ${jsonEncode(body)}');
+    final authHeader = token.startsWith("Bearer ")
+        ? token
+        : "Bearer $token";
+
+    AppLogger.info("AUTH HEADER => $authHeader");
 
     final response = await http.post(
       url,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': token.startsWith("Bearer ")
-            ? token
-            : "Bearer $token",
+        'Authorization': authHeader,
       },
       body: jsonEncode(body),
     );
-    AppLogger.info('🪪 Using Token: $token');
 
+    AppLogger.info(
+      'ORDER API RESPONSE => ${response.statusCode}',
+    );
+    AppLogger.info(
+      'ORDER API BODY => ${response.body}',
+    );
 
-    AppLogger.info('Order API response: ${response.statusCode} ${response.body}');
-
-    if (response.statusCode == 200 || response.statusCode == 201) {
+    if (response.statusCode == 200 ||
+        response.statusCode == 201) {
       final data = jsonDecode(response.body);
 
       final order = OrderModel.fromJson(data);
 
-      //  Extract the order_id
-      final orderId = data['order_id'] ?? order.id;
+      final orderId =
+          data['order_id'] ?? order.id;
 
-      AppLogger.info(" Order created successfully with ID: $orderId");
-
-      return order.copyWith(orderId: orderId);
-      // ensure your model keeps id
+      return order.copyWith(
+        orderId: orderId,
+      );
     }
 
-    else {
-      throw Exception('Failed to create order: ${response.body}');
-    }
+    throw Exception(
+      'Failed to create order: ${response.body}',
+    );
   }
   Future<Map<String, dynamic>> cancelOrder({
     required int parentOrderId,
@@ -82,7 +95,7 @@ class OrderRepository {
     required  restaurantId,
     required int zoneId,
   }) async {
-    final url = Uri.parse('$baseUrl/wp-json/pinaka-restaurant-pos/v1/orders/$parentOrderId');
+    final url = Uri.parse('${AppConstants.baseDomain}/wp-json/pinaka-restaurant-pos/v1/orders/$parentOrderId');
 
     final body = {
       "flag_type": "cancel_parent_order",
@@ -127,7 +140,11 @@ class OrderRepository {
     required int zoneId,
     required int captainId,
   }) async {
-    final url = Uri.parse('$baseUrl/wp-json/pinaka-restaurant-pos/v1/orders');
+    final url = Uri.parse(
+      '${AppConstants.baseDomain}/wp-json/pinaka-restaurant-pos/v1/orders',
+    );
+
+
 
     final lineItems = items
         .map((item) => _orderItemToLineItem(item))
@@ -270,7 +287,7 @@ class OrderRepository {
       };
 
       final url = Uri.parse(
-        '$baseUrl/wp-json/pinaka-restaurant-pos/v1/kot/get-order-by-table',
+        '${AppConstants.baseDomain}/wp-json/pinaka-restaurant-pos/v1/kot/get-order-by-table',
       ).replace(queryParameters: queryParams);
 
       AppLogger.debug("🐛 Request URL: $url");

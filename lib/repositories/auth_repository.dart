@@ -13,24 +13,52 @@ class AuthRepository {
 
   Future<Map<String, dynamic>> login(String pin) async {
     final url = Uri.parse(baseUrl);
+    print("AUTH URL => $url");
     AppLogger.info('Sending login request for PIN: $pin');
+
 
     var request = http.MultipartRequest('POST', url);
     request.fields['emp_login_pin'] = pin.trim();
 
+    print("REQUEST FIELDS => ${request.fields}");
+
     var streamedResponse = await request.send();
     var response = await http.Response.fromStream(streamedResponse);
+    print("EMPLOYEE LOGIN STATUS => ${response.statusCode}");
+    print("EMPLOYEE LOGIN RESPONSE => ${response.body}");
+
 
     final responseData = jsonDecode(response.body);
 
     if (response.statusCode == 200 && responseData['success'] == true) {
       final data = responseData['data'];
+      print("FULL DATA => $data");
 
       final String token = data['token'];
       final String restaurantId = data['restaurant_id'].toString();
       final String restaurantName = data['restaurant_name'].toString();
+      print("RESTAURANT ID FROM API => $restaurantId");
       final Map<String, dynamic> permissions =
       Map<String, dynamic>.from(data['permissions'] ?? {});
+      final prefs = await SharedPreferences.getInstance();
+      print(
+        "USING RESTAURANT ID => ${prefs.getString('restaurant_id')}",
+      );
+
+      print(
+        "USING BASE URL => ${AppConstants.baseDomain}",
+      );
+
+      await prefs.setString('token', token);
+      await prefs.setString('restaurant_id', restaurantId);
+      await prefs.setString('restaurant_name', restaurantName);
+      print(
+        "Saved Restaurant ID => ${prefs.getString('restaurant_id')}",
+      );
+
+      print(
+        "Base URL => ${AppConstants.baseDomain}",
+      );
 
       // 🔥🔥🔥 THIS IS MANDATORY 🔥🔥🔥
       await SessionManager.saveToken(token);

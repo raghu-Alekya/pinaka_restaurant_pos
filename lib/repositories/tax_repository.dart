@@ -3,12 +3,12 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../constants/constants.dart';
 import '../models/tax_model.dart';
 
 class TaxRepository {
-  final String _baseUrl =
-      'https://merchantrestaurant.alektasolutions.com/wp-json/wc/v3/taxes';
-
+  String get _baseUrl =>
+      '${AppConstants.baseDomain}/wp-json/wc/v3/taxes';
   /// 🔐 Always read JWT from storage
   Future<String> _getToken() async {
     final prefs = await SharedPreferences.getInstance();

@@ -82,7 +82,6 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
 
   Future<void> _fetchItems() async {
     final repo = ModifierRepository(
-      baseUrl: 'https://merchantrestaurant.alektasolutions.com',
       token: widget.token,
     );
 

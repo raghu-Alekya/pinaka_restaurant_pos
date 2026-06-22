@@ -7,6 +7,7 @@ class SessionManager {
   static const _userIdKey = 'user_id';
   static const _shiftIdKey = 'shift_id';
   static const String _tokenKey = 'auth_token';
+  static const _restaurantIdKey = 'restaurant_id';
 
   // -------- TOKEN --------
   static Future<void> saveToken(String token) async {
@@ -86,6 +87,34 @@ class SessionManager {
     final prefs = await SharedPreferences.getInstance();
     final id = prefs.getInt(_shiftIdKey);
     print("🔍 FETCH SHIFT ID: $id");
+    return id;
+  }
+  static Future<void> saveRestaurantId(
+      String restaurantId,
+      ) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.setString(
+      _restaurantIdKey,
+      restaurantId,
+    );
+
+    print(
+      "✅ RESTAURANT ID SAVED: $restaurantId",
+    );
+  }
+
+  static Future<String?> getRestaurantId() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final id = prefs.getString(
+      _restaurantIdKey,
+    );
+
+    print(
+      "🔍 FETCH RESTAURANT ID: $id",
+    );
+
     return id;
   }
 

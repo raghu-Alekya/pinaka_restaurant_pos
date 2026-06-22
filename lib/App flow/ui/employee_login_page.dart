@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/ui/tables_screen.dart';
 import '../../blocs/Bloc Logic/auth_bloc.dart';
+import '../../constants/constants.dart';
 import '../../local database/table_dao.dart';
 import '../widgets/number_pad.dart';
 import '../widgets/pin_input.dart';
@@ -50,6 +51,8 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
   @override
   void initState() {
     super.initState();
+    print("CURRENT DOMAIN => ${AppConstants.baseDomain}");
+    print("AUTH URL => ${AppConstants.authTokenEndpoint}");
     _pageController = PageController();
 
     _timer = Timer.periodic(const Duration(seconds: 2), (Timer timer) {
@@ -118,8 +121,19 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
                 final prefs = await SharedPreferences.getInstance();
                 await prefs.setString('pin', state.pin);
                 await prefs.setString('token', state.token);
-                await prefs.setString('restaurantId', state.restaurantId);
-                await prefs.setString('restaurantName', state.restaurantName);
+                await prefs.setString(
+                  'restaurant_id',
+                  state.restaurantId,
+                );
+
+                await prefs.setString(
+                  'restaurant_name',
+                  state.restaurantName,
+                );
+
+                print(
+                  "✅ Saved Restaurant ID => ${state.restaurantId}",
+                );
 
                 final tableDao = TableDao();
                 final tables = await tableDao.getTablesByManagerPin(state.pin);

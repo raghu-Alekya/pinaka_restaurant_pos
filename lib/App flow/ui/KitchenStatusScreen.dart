@@ -8,6 +8,7 @@ import 'package:pinaka_restaurant_pos/blocs/Bloc%20Logic/void_item_bloc.dart';
 import 'package:pinaka_restaurant_pos/repositories/kot_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/table_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/void_item_repository.dart';
+import '../../constants/constants.dart';
 import '../../models/UserPermissions.dart';
 import '../../models/order/void_kot_items.dart';
 import '../../repositories/kitchen_repository.dart';
@@ -321,7 +322,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     }
 
     try {
-      final response = await VoidItemRepository(baseUrl: _apiBaseUrl).getKotLineItems(
+      final response = await VoidItemRepository().getKotLineItems(
         kotId: kotId,
         restaurantId: restaurantId,
         zoneId: zoneId,
@@ -329,6 +330,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       );
 
       if (!mounted) return;
+
       await showDialog(
         context: context,
         barrierDismissible: false,
@@ -337,23 +339,28 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
             providers: [
               BlocProvider<UpdatekotBloc>(
                 create: (_) => UpdatekotBloc(
-                  repository: UpdatekotRepository(baseUrl: _apiBaseUrl),
+                  repository: UpdatekotRepository(),
                 ),
               ),
+
               BlocProvider<KotBloc>(
                 create: (_) => KotBloc(
-                  KotRepository(baseUrl: _apiBaseUrl),
+                  KotRepository(
+                    baseUrl: AppConstants.baseDomain,
+                  ),
                 ),
               ),
+
               BlocProvider<KotLineItemsBloc>(
                 create: (_) => KotLineItemsBloc(
-                  repository: VoidItemRepository(baseUrl: _apiBaseUrl),
+                  repository: VoidItemRepository(),
                 ),
               ),
             ],
             child: VoidItemsDialog(
               items: response.items,
-              tableNo: (_selectedTable?['table_name'] ?? '').toString(),
+              tableNo:
+              (_selectedTable?['table_name'] ?? '').toString(),
               kotNo: response.kotNumber,
               kotId: response.kotId,
               restaurantId: response.restaurantId,
@@ -368,8 +375,13 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       );
     } catch (e) {
       if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to load KOT items: $e")),
+        SnackBar(
+          content: Text(
+            "Failed to load KOT items: $e",
+          ),
+        ),
       );
     }
   }

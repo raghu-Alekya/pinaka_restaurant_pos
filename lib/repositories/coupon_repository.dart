@@ -3,11 +3,12 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../constants/constants.dart';
 import '../models/order/coupon_model.dart';
 
 class CouponRepository {
-  final String baseUrl =
-      "https://merchantrestaurant.alektasolutions.com/wp-json/wc/v3/coupons";
+  String get couponUrl =>
+      '${AppConstants.baseDomain}/wp-json/wc/v3/coupons';
 
   Future<String> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -72,7 +73,7 @@ class CouponRepository {
     try {
       final response = await http.put(
         Uri.parse(
-          'https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1/orders/$orderId',
+          '${AppConstants.baseApiPath}/orders/$orderId',
         ),
         headers: {
           'Content-Type': 'application/json',
@@ -103,7 +104,7 @@ class CouponRepository {
     try {
       final response = await http.put(
         Uri.parse(
-          'https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1/orders/$orderId',
+          '${AppConstants.baseApiPath}/orders/$orderId',
         ),
         headers: {
           'Content-Type': 'application/json',

@@ -261,9 +261,24 @@ class _TablesScreenState extends State<TablesScreen> {
       }
 
       try {
-        final currentShift = await EmployeeRepository().getCurrentShift(
-          widget.token,
-        );
+        final currentShift =
+        await EmployeeRepository().getCurrentShift(widget.token);
+
+        AppLogger.info("Current Shift Response => $currentShift");
+
+        if (currentShift == null) {
+          AppLogger.warning("No active shift found");
+
+          context.read<AttendanceBloc>().add(
+            InitializeAttendanceFlow(
+              token: widget.token,
+              pin: widget.pin,
+            ),
+          );
+
+          return;
+        }
+
         AppLogger.info("Current Shift Response => $currentShift");
 
         final shiftStatus =

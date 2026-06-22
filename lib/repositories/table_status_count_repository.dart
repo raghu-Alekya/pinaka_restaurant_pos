@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import '../constants/constants.dart';
 import '../models/table_count_model.dart';
 // import '../models/table_status_count_model.dart';
 
@@ -15,7 +16,7 @@ class TableStatusCountRepository {
   }) async {
     try {
       final url = Uri.parse(
-        'https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1/tables/table-status-counts?restaurant_id=$restaurantId',
+        '${AppConstants.baseApiPath}/tables/table-status-counts?restaurant_id=$restaurantId',
       );
 
       if (kDebugMode) {
@@ -71,7 +72,7 @@ class ReservationStatusCountRepository {
   }) async {
     try {
       final url = Uri.parse(
-        'https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1/reservation/reservation-status-counts?restaurant_id=$restaurantId',
+        '${AppConstants.baseApiPath}/reservation/reservation-status-counts?restaurant_id=$restaurantId',
       );
 
       final response = await http.get(
@@ -108,7 +109,7 @@ class ActiveOrdersCountRepository {
   }) async {
     try {
       final url = Uri.parse(
-        'https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1/kot/order-status-counts?restaurant_id=$restaurantId',
+        '${AppConstants.baseApiPath}/kot/order-status-counts?restaurant_id=$restaurantId',
       );
 
       if (kDebugMode) {

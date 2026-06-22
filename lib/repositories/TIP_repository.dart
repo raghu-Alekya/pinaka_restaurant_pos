@@ -2,12 +2,12 @@ import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 
+import '../constants/constants.dart';
 import '../models/tip_model.dart';
 
 class TipRepository {
-  final String baseUrl =
-      'https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1/orders';
-
+  String get baseUrl =>
+      '${AppConstants.baseApiPath}/orders';
   Future<bool> addTip({
     required String token,
     required int orderId,
@@ -79,7 +79,7 @@ class TipssummaryRepository {
     try {
       final response = await http.get(
         Uri.parse(
-          'https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1/kot/get-all-tip-orders?tip_date=$tipDate',
+          '${AppConstants.baseApiPath}/kot/get-all-tip-orders?tip_date=$tipDate',
         ),
         headers: {
           'Authorization': 'Bearer $token',

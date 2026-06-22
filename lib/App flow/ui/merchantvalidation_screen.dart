@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/ui/splash_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../constants/constants.dart';
 import '../../repositories/merchantvalidation_repository.dart';
 import 'employee_login_page.dart';
 
@@ -73,7 +75,7 @@ class _MerchantOnboardingScreenState
                                 decoration: const BoxDecoration(
                                   image: DecorationImage(
                                     image: AssetImage(
-                                      "assets/images/pinaka_logo.png",
+                                      "assets/icon/pinaka_logo.png",
                                     ),
                                     fit: BoxFit.contain,
                                   ),
@@ -157,20 +159,27 @@ class _MerchantOnboardingScreenState
                                           deviceId: "42343432424234",
                                         );
                                         if (response.success) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(
-                                              content: Text(response.message),
-                                              backgroundColor: Colors.green,
-                                            ),
+
+                                          AppConstants.updateBaseUrl(
+                                            response.storeBaseUrl,
                                           );
 
-                                          print("Store Name: ${response.storeName}");
-                                          print("Base URL: ${response.storeBaseUrl}");
+                                          final prefs =
+                                          await SharedPreferences.getInstance();
+
+                                          await prefs.setString(
+                                            'store_base_url',
+                                            response.storeBaseUrl,
+                                          );
+
+                                          print(
+                                            "Current API Base => ${AppConstants.baseApiPath}",
+                                          );
 
                                           Navigator.pushReplacement(
                                             context,
                                             MaterialPageRoute(
-                                              builder: (_) =>EmployeeLoginPage (
+                                              builder: (_) => EmployeeLoginPage(
                                                 storeBaseUrl: response.storeBaseUrl,
                                                 storeName: response.storeName,
                                                 storeId: response.storeId,

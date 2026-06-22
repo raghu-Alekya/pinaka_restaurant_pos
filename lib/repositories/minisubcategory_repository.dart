@@ -2,14 +2,15 @@ import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../constants/constants.dart';
 import '../models/category/items_model.dart';
 import '../models/category/minisubcategory_model.dart';
 
 class MiniSubCategoryRepository {
-  final String baseUrl;
-  // final String token;
+  MiniSubCategoryRepository();
 
-  MiniSubCategoryRepository({required this.baseUrl});
+  String get baseUrl =>
+      AppConstants.baseDomain;
 
   /// 🔐 Load token safely (APK + Run mode)
   Future<String?> _getToken() async {
@@ -25,7 +26,9 @@ class MiniSubCategoryRepository {
     if (token == null || token.isEmpty) {
       throw Exception("Token not available");
     }
-    final url = Uri.parse("$baseUrl/wp-json/pinaka-restaurant-pos/v1/categories/mini-subcategories?subcategory_id=$subCategoryId");
+    final url = Uri.parse(
+      "${AppConstants.baseApiPath}/categories/mini-subcategories?subcategory_id=$subCategoryId",
+    );
 
     print("Fetching mini-subcategories from: $url");
 
@@ -85,9 +88,9 @@ class MiniSubCategoryRepository {
 
 }
 class ComboRepository {
-  final String baseUrl;
 
-  ComboRepository({required this.baseUrl});
+  String get baseUrl =>
+      AppConstants.baseDomain;
 
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -102,7 +105,7 @@ class ComboRepository {
     }
 
     final url = Uri.parse(
-      "$baseUrl/wp-json/pinaka-restaurant-pos/v1/combos/search-combos?product_id=$productId",
+      "${AppConstants.baseApiPath}/combos/search-combos?product_id=$productId",
     );
 
     debugPrint("🟢 Fetching combo details: $url");

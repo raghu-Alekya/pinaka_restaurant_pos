@@ -17,6 +17,7 @@ import 'package:pinaka_restaurant_pos/repositories/subcategory_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/variant_repository.dart';
 import 'package:pinaka_restaurant_pos/utils/GlobalReservationMonitor.dart';
 import 'package:pinaka_restaurant_pos/utils/ShiftMonitor.dart';
+// import 'package:pinaka_restaurant_pos/utils/app.config.dart';
 import 'package:pinaka_restaurant_pos/utils/global_navigator.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -46,6 +47,7 @@ import 'blocs/Bloc Logic/attendance_bloc.dart';
 import 'blocs/Bloc Logic/checkin_bloc.dart';
 
 // Repositories
+import 'constants/constants.dart';
 import 'repositories/auth_repository.dart';
 import 'repositories/table_repository.dart';
 import 'repositories/zone_repository.dart';
@@ -59,12 +61,21 @@ void main() async {
   }
   final dbPath = await getDatabasesPath();
   await deleteDatabase(join(dbPath, 'tables.db'));
+
   final prefs = await SharedPreferences.getInstance();
+
   final token = prefs.getString('token') ?? '';
 
-  final orderRepo = OrderRepository(
-    baseUrl: "https://merchantrestaurant.alektasolutions.com",
+  final savedBaseUrl =
+  prefs.getString('store_base_url');
 
+  if (savedBaseUrl != null &&
+      savedBaseUrl.isNotEmpty) {
+    AppConstants.updateBaseUrl(savedBaseUrl);
+  }
+
+  final orderRepo = OrderRepository(
+    baseUrl: AppConstants.baseDomain,
   );
 
   if (token != null && token.isNotEmpty) {
@@ -112,10 +123,7 @@ class MyApp extends StatelessWidget {
           // 1️⃣ MiniSubCategoryBloc first
           BlocProvider<MiniSubCategoryBloc>(
             create: (_) => MiniSubCategoryBloc(
-              repository: MiniSubCategoryRepository(
-                baseUrl: "https://merchantrestaurant.alektasolutions.com",
-                // token: token, // use your actual token
-              ),
+              repository: MiniSubCategoryRepository(),
             ),
           ),
           BlocProvider<SearchProductBloc>(
@@ -128,7 +136,7 @@ class MyApp extends StatelessWidget {
           BlocProvider<SubCategoryBloc>(
             create: (context) => SubCategoryBloc(
               subCategoryRepository: SubCategoryRepository(
-                baseUrl: "https://merchantrestaurant.alektasolutions.com",
+                  // baseUrl: AppConstants.baseDomain
               ),
               miniSubCategoryBloc: context.read<MiniSubCategoryBloc>(), // ✅ works now
             ),
@@ -138,7 +146,7 @@ class MyApp extends StatelessWidget {
           BlocProvider<CategoryBloc>(
             create: (_) => CategoryBloc(
               repository: CategoryRepository(
-                baseUrl: "https://merchantrestaurant.alektasolutions.com",
+                  baseUrl: AppConstants.baseDomain
               ),
             ),
           ),
@@ -148,29 +156,31 @@ class MyApp extends StatelessWidget {
           BlocProvider<ProductBloc>(
             create: (_) => ProductBloc(
               ProductRepository(
-                baseUrl: "https://merchantrestaurant.alektasolutions.com",
-                // token: token,
+                  // baseUrl: AppConstants.baseDomain
               ),
             ),
           ),
           RepositoryProvider<VariantRepository>(
             create: (context) => VariantRepository(
-              baseUrl: "https://merchantrestaurant.alektasolutions.com",
+              // baseUrl: AppConstants.baseDomain,
               token: token,
             ),
           ),
 
           BlocProvider<OrderBloc>(
             create: (context) => OrderBloc(
-              OrderRepository(baseUrl: ''),
-              RepeatOrderRepository(baseUrl: "https://merchantrestaurant.alektasolutions.com"),
+              OrderRepository(
+                  baseUrl: AppConstants.baseDomain
+              ),
+              RepeatOrderRepository(
+                  // baseUrl: AppConstants.baseDomain
+              ),
               token,
             ),
           ),
-
           BlocProvider<KotBloc>(
             create: (_) => KotBloc(
-                KotRepository(baseUrl: 'https://merchantrestaurant.alektasolutions.com')),
+                KotRepository(baseUrl: AppConstants.baseDomain)),
           ),
           BlocProvider<CreatePaymentBloc>(
             create: (_) => CreatePaymentBloc(
@@ -180,8 +190,7 @@ class MyApp extends StatelessWidget {
           BlocProvider<PaymentBloc>(
             create: (_) => PaymentBloc(
               PaymentRepository(
-                baseUrl: "https://merchantrestaurant.alektasolutions.com",
-                // token: token, // ✅ use real token
+                  // baseUrl: AppConstants.baseDomain
               ),
             ),
           ),

@@ -3,22 +3,24 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import '../constants/constants.dart';
 import '../models/payment/create_payment_model.dart';
 import '../models/payment/payment_response_model.dart';
 
 class CreatePaymentRepository {
-  final String _baseUrl =
-      'https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1';
 
   Future<PaymentResponse> createPayment({
     required String token,
     required CreatePaymentRequest request,
   }) async {
-    final url = Uri.parse('$_baseUrl/payments/create-payment');
+
+    final url = Uri.parse(
+      '${AppConstants.baseApiPath}/payments/create-payment',
+    );
 
     try {
       if (kDebugMode) {
-        print("📤 PAYMENT REQUEST → ${url.toString()}");
+        print("📤 PAYMENT REQUEST → $url");
         print("🔐 TOKEN: $token");
         print("📦 BODY: ${jsonEncode(request.toJson())}");
       }
@@ -34,29 +36,34 @@ class CreatePaymentRepository {
 
       if (kDebugMode) {
         print("📥 STATUS CODE: ${response.statusCode}");
-        print("📥 RESPONSE BODY OF PAYMENT: ${response.body}");
+        print("📥 RESPONSE BODY: ${response.body}");
       }
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
+      if (response.statusCode == 200 ||
+          response.statusCode == 201) {
         final decoded = jsonDecode(response.body);
         return PaymentResponse.fromJson(decoded);
-      } else {
-        throw Exception(
-          "Payment failed (${response.statusCode}): ${response.body}",
-        );
       }
+
+      throw Exception(
+        "Payment failed (${response.statusCode}): ${response.body}",
+      );
     } catch (e, stack) {
       debugPrint("❌ Payment API Error: $e");
       debugPrint("📍 StackTrace: $stack");
       rethrow;
     }
   }
+
   Future<String> voidPayment({
     required String token,
     required int paymentId,
     required int orderId,
   }) async {
-    final url = Uri.parse('$_baseUrl/payments/void-payment');
+
+    final url = Uri.parse(
+      '${AppConstants.baseApiPath}/payments/void-payment',
+    );
 
     try {
       final body = {
@@ -65,7 +72,7 @@ class CreatePaymentRepository {
       };
 
       if (kDebugMode) {
-        print("📤 VOID PAYMENT REQUEST → ${url.toString()}");
+        print("📤 VOID PAYMENT REQUEST → $url");
         print("🔐 TOKEN: $token");
         print("📦 BODY: ${jsonEncode(body)}");
       }
@@ -86,8 +93,11 @@ class CreatePaymentRepository {
 
       final decoded = jsonDecode(response.body);
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return (decoded["message"] ?? "Payment voided successfully").toString();
+      if (response.statusCode == 200 ||
+          response.statusCode == 201) {
+        return (decoded["message"] ??
+            "Payment voided successfully")
+            .toString();
       }
 
       throw Exception(

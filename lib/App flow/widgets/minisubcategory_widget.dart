@@ -86,9 +86,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
     );
 
     try {
-      final comboRepo = ComboRepository(
-        baseUrl: widget.repository.baseUrl,
-      );
+      final comboRepo = ComboRepository();
 
       final comboProduct =
       await comboRepo.fetchComboDetails(product.id);

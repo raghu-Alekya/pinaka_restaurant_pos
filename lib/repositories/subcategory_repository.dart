@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../constants/constants.dart';
 import '../models/category/subcategory_model.dart';
 
 import 'dart:convert';
@@ -7,9 +8,8 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SubCategoryRepository {
-  final String baseUrl;
 
-  SubCategoryRepository({required this.baseUrl});
+  SubCategoryRepository();
 
   Future<List<SubCategory>> fetchSubCategories({
     required String categoryId,
@@ -58,7 +58,7 @@ class SubCategoryRepository {
 
       final response = await http.get(
         Uri.parse(
-          '$baseUrl/wp-json/pinaka-restaurant-pos/v1/categories/get-main-courses',
+          '${AppConstants.baseApiPath}/categories/get-main-courses',
         ),
         headers: {
           'Authorization': 'Bearer $token',

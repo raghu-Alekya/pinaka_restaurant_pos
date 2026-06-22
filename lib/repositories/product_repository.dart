@@ -1,16 +1,14 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../constants/constants.dart';
 import '../models/category/items_model.dart';
 
 
 
 class ProductRepository {
-  final String baseUrl;
-  // final String token;
 
-  ProductRepository({required this.baseUrl});
-
+  ProductRepository();
   /// 🔐 Load token safely (APK + Run mode)
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -70,7 +68,7 @@ class ProductRepository {
     }
 
     final url =
-        "$baseUrl/wp-json/pinaka-restaurant-pos/v1/products-by-category/$subCategoryId";
+        "${AppConstants.baseApiPath}/products-by-category/$subCategoryId";
 
     final response = await http.get(
       Uri.parse(url),

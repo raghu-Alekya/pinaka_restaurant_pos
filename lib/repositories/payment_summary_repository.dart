@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../constants/constants.dart';
 import '../models/payment/payment_summary_model.dart';
 
 class PaymentRepository {
-  final String baseUrl;
 
-  PaymentRepository({required this.baseUrl});
+  PaymentRepository();
 
   /// ✅ Always get token from storage
   Future<String> _getToken() async {
@@ -20,7 +20,6 @@ class PaymentRepository {
       throw Exception("JWT token missing");
     }
 
-    // ✅ remove "Bearer " if already stored
     return token.startsWith('Bearer ')
         ? token.substring(7)
         : token;
@@ -32,6 +31,7 @@ class PaymentRepository {
     int? zoneId,
     required String orderType,
   }) async {
+
     final queryParams = <String, String>{
       "order_id": orderId.toString(),
       "restaurant_id": restaurantId.toString(),
@@ -43,7 +43,7 @@ class PaymentRepository {
     }
 
     final uri = Uri.parse(
-      "$baseUrl/wp-json/pinaka-restaurant-pos/v1/orders/get-order-items"
+      "${AppConstants.baseApiPath}/orders/get-order-items"
           "?${Uri(queryParameters: queryParams).query}",
     );
 
@@ -52,7 +52,7 @@ class PaymentRepository {
     if (kDebugMode) {
       debugPrint("➡️ PAYMENT API URL: $uri");
       debugPrint("🔐 CLEAN TOKEN => $token");
-      debugPrint("🔐 HEADER     => Bearer $token");
+      debugPrint("🔐 HEADER => Bearer $token");
     }
 
     final response = await http.get(
@@ -70,9 +70,13 @@ class PaymentRepository {
     }
 
     if (response.statusCode == 200) {
-      return PaymentSummary.fromJson(jsonDecode(response.body));
-    } else {
-      throw Exception("Payment summary failed (${response.statusCode}): ${response.body}");
+      return PaymentSummary.fromJson(
+        jsonDecode(response.body),
+      );
     }
+
+    throw Exception(
+      "Payment summary failed (${response.statusCode}): ${response.body}",
+    );
   }
 }

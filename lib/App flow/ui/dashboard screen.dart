@@ -17,6 +17,7 @@ import '../../blocs/Bloc State/minisubcategory.dart';
 import '../../blocs/Bloc State/order_state.dart';
 import '../../blocs/Bloc State/search_product_state.dart';
 import '../../blocs/Bloc State/subcategory_states.dart';
+import '../../constants/constants.dart';
 import '../../models/UserPermissions.dart';
 import '../../models/category/items_model.dart';
 import '../../models/category/minisubcategory_model.dart';
@@ -110,16 +111,14 @@ class _DashboardScreenState extends State<DashboardScreen>
   @override
   void initState() {
     super.initState();
-    miniSubRepo = MiniSubCategoryRepository(
-      baseUrl: "https://merchantrestaurant.alektasolutions.com",
-      // token: widget.token,
-    );
+    miniSubRepo = MiniSubCategoryRepository();
+
     productRepo = ProductRepository(
-      baseUrl: "https://merchantrestaurant.alektasolutions.com",
-      // token: widget.token,
+      // baseUrl: AppConstants.baseDomain,
     );
+
     variantRepository = VariantRepository(
-      baseUrl: 'https://merchantrestaurant.alektasolutions.com',
+      // baseUrl: AppConstants.baseDomain,
       token: widget.token,
     );
     // 🔥 Force keyboard to close when screen opens
@@ -135,6 +134,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     _loadCategories();
     _loadPermissions();
   }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -818,8 +818,8 @@ class _DashboardScreenState extends State<DashboardScreen>
 
                                                   final variantRepo =
                                                   VariantRepository(
-                                                    baseUrl:
-                                                    'https://merchantrestaurant.alektasolutions.com',
+                                                    // baseUrl:
+                                                    // 'https://merchantrestaurant.alektasolutions.com',
                                                     token: widget.token,
                                                   );
 
