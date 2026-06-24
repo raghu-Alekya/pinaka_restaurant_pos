@@ -42,7 +42,6 @@ class PrinterDBHelper {
         AppDBConst.printerType: EnumToString.convertToString(
             printer.typePrinter),
         AppDBConst.receiptIconPath: printer.receiptIconPath,
-        //Build #1.0.122 : Added new column's
         AppDBConst.receiptHeaderText: printer.receiptHeaderText,
         AppDBConst.receiptFooterText: printer.receiptFooterText,
       });
@@ -71,7 +70,6 @@ class PrinterDBHelper {
 
   Future<List<Map<String, dynamic>>> getPrinterFromDB() async {
     final db = await DatabaseInitializer().initDatabase();
-    //Build #1.0.279: Code Updated - Could not re add printer device to POS machine in setting-printer setting
     final printerDevice = await db.query(AppDBConst.printerTable);
 
     if (kDebugMode) {

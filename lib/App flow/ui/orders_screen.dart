@@ -5,6 +5,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/ui/payment_screen.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/ui/tables_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:thermal_printer/esc_pos_utils_platform/src/capability_profile.dart';
+import 'package:thermal_printer/esc_pos_utils_platform/src/enums.dart';
+import 'package:thermal_printer/esc_pos_utils_platform/src/generator.dart';
+import 'package:thermal_printer/esc_pos_utils_platform/src/pos_column.dart';
+import 'package:thermal_printer/esc_pos_utils_platform/src/pos_styles.dart';
 
 import '../../blocs/Bloc Event/kot_event.dart';
 import '../../blocs/Bloc Event/kot_event.dart' as kot_evt;
@@ -23,6 +29,7 @@ import '../../local database/table_dao.dart';
 import '../../models/order/order_items.dart';
 import '../../models/order/KOT_model.dart';
 import '../../models/order/guest_details.dart';
+import '../../printer/printer_settings.dart';
 import '../../repositories/checkin_repository.dart';
 import '../../repositories/discount_repository.dart';
 import '../../repositories/kot_repository.dart';
@@ -30,6 +37,7 @@ import '../../repositories/order_repository.dart';
 import '../../repositories/payment_summary_repository.dart';
 import '../../repositories/void_item_repository.dart';
 import '../../services/kds_seivices.dart';
+import '../../utils/SessionManager.dart';
 import '../../utils/logger.dart';
 import '../widgets/orderlist_widget.dart';
 import '../widgets/view_all_kots.dart';
@@ -115,6 +123,171 @@ class _OrderPanelState extends State<OrderPanel> {
     super.dispose();
   }
 
+  Future<void> printKot({
+    required String kotNo,
+    required String orderId,
+    required String tableName,
+    required String captainName,
+    required List<Map<String, dynamic>> items, required KotModel kot,
+  }) async {
+
+    final profile = await CapabilityProfile.load();
+    final generator = Generator(
+      PaperSize.mm80,
+      profile,
+    );
+
+    List<int> bytes = [];
+    final displayKotNo =
+    kotNo.replaceAll('KOT#', '');
+
+    bytes += generator.text(
+      "KOT - $displayKotNo",
+      styles: const PosStyles(
+        align: PosAlign.center,
+        bold: true,
+        height: PosTextSize.size3,
+        width: PosTextSize.size2,
+      ),
+    );
+
+    bytes += generator.text(
+      "Dine In",
+      styles: const PosStyles(
+        align: PosAlign.center,
+        bold: true,
+      ),
+    );
+
+    bytes += generator.hr();
+    // table row
+
+    bytes += generator.row([
+      PosColumn(
+        width: 7,
+        text:
+        "Date : ${DateFormat('dd/MM/yyyy hh:mm a').format(DateTime.now())}",
+      ),
+      PosColumn(
+        width: 5,
+        text: "Dine In : $tableName",
+        styles: const PosStyles(
+          align: PosAlign.right,
+        ),
+      ),
+    ]);
+
+    // order /captain row
+
+    bytes += generator.row([
+      PosColumn(
+        width: 6,
+        text: "Order Id : $orderId",
+      ),
+      PosColumn(
+        width: 6,
+        text: "Captain : $captainName",
+        styles: const PosStyles(
+          align: PosAlign.right,
+        ),
+      ),
+    ]);
+
+    bytes += generator.hr();
+    //  header
+
+
+    bytes += generator.row([
+      PosColumn(
+        width: 1,
+        text: "S",
+        styles: const PosStyles(bold: true),
+      ),
+      PosColumn(
+        width: 8,
+        text: "Item Name",
+        styles: const PosStyles(bold: true),
+      ),
+      PosColumn(
+        width: 3,
+        text: "Qty",
+        styles: const PosStyles(
+          bold: true,
+          align: PosAlign.right,
+        ),
+      ),
+    ]);
+
+    bytes += generator.hr();
+
+    // items
+    int index = 1;
+
+    for (final item in items) {
+      bytes += generator.row([
+        PosColumn(
+          width: 1,
+          text: index.toString(),
+        ),
+        PosColumn(
+          width: 8,
+          text: item['name'].toString(),
+        ),
+        PosColumn(
+          width: 3,
+          text: "x ${item['qty']}",
+          styles: const PosStyles(
+            align: PosAlign.right,
+          ),
+        ),
+      ]);
+
+      // Modifiers
+      if (item['modifiers'] != null &&
+          (item['modifiers'] as List).isNotEmpty) {
+        bytes += generator.text(
+          "  + ${(item['modifiers'] as List).join(', ')}",
+        );
+      }
+
+// Addons
+      if (item['addons'] != null &&
+          (item['addons'] as Map).isNotEmpty) {
+
+        final addons = item['addons'] as Map<String, dynamic>;
+
+        addons.forEach((name, details) {
+          bytes += generator.text(
+            "   * $name x${details['quantity']}",
+          );
+        });
+      }
+
+      index++;
+    }
+    //  footer
+
+    bytes += generator.hr();
+
+    bytes += generator.text(
+      "Note :",
+      styles: const PosStyles(
+        align: PosAlign.left,
+      ),
+    );
+
+    bytes += generator.feed(3);
+    bytes += generator.cut();
+
+
+    final printerSettings = PrinterSettings();
+    await printerSettings.loadPrinter();
+
+    if (printerSettings.selectedPrinter != null) {
+      await printerSettings.printTicket(bytes, generator);
+    }
+  }
+
 
 
   @override
@@ -164,7 +337,7 @@ class _OrderPanelState extends State<OrderPanel> {
                 children: [
                   // LEFT: header badges
                   // Expanded(
-                     headerBadgeRow(state),
+                  headerBadgeRow(state),
                   // ),
 
 
@@ -505,7 +678,7 @@ class _OrderPanelState extends State<OrderPanel> {
 
                               const SizedBox(width: 40),
                               SizedBox(
-                              child: headerText('Modifiers'),
+                                child: headerText('Modifiers'),
                               ),// modifier icon space
 
                               SizedBox(
@@ -777,9 +950,25 @@ class _OrderPanelState extends State<OrderPanel> {
                           captainId: captainId,
                         );
 
-                        Navigator.of(context).pop(); // close loader
+                        Navigator.of(context).pop();
 
+                        final permissions = await SessionManager.loadPermissions();
+
+                        final captainName = permissions?.displayName ?? '';
                         if (kot != null) {
+                          await printKot(
+                            kotNo: kot.kotNumber ?? '',
+                            orderId: kot.parentOrderId.toString(),
+                            tableName: orderBloc.state.tableName,
+                            captainName:  captainName, // or logged-in employee name
+                            items: state.orderItems.map((e) => {
+                              "name": e.name,
+                              "qty": e.quantity,
+                              "modifiers": e.modifiers.toList(),
+                              "addons": e.addOns,
+                            }).toList(),
+                            kot: kot,
+                          );
                           await KdsMqttPublisher.notifyKotCreated(
                             restaurantId: orderBloc.state.restaurantId.toString(),
                             parentOrderId: state.orderId,
@@ -859,6 +1048,7 @@ class _OrderPanelState extends State<OrderPanel> {
 
                     },
                   ),
+
                   // orderButton(
                   //   'KOT Print',
                   //   const Color(0xFFFF4D20),

@@ -263,24 +263,48 @@ Net Payable      : $netPayableTemp
   }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      debugPrint("store_name => ${prefs.getString('store_name')}");
+      debugPrint("store_address => ${prefs.getString('store_address')}");
+      debugPrint("store_phone => ${prefs.getString('store_phone')}");
+      debugPrint("store_gst => ${prefs.getString('store_gst')}");
 
-      final restaurantName = prefs.getString('store_name') ?? 'Restaurant';
+      final restaurantName =
+          prefs.getString('store_name') ?? 'Restaurant';
 
-      final address = prefs.getString('store_address') ?? '';
+      final address =
+          prefs.getString('store_address') ?? '';
 
-      final phone = prefs.getString('store_phone') ?? '';
+      final phone =
+          prefs.getString('store_phone') ?? '';
 
-      final gstNumber = prefs.getString('store_gst') ?? '';
+      final gstNumber =
+          prefs.getString('store_gst') ?? '';
 
       List<int> bytes = [];
 
-      final profile = await CapabilityProfile.load(name: 'XP-N160I');
+      final profile =
+      await CapabilityProfile.load(name: 'XP-N160I');
 
-      final generator = Generator(PaperSize.mm58, profile);
+      final generator = Generator(
+        PaperSize.mm80,
+        profile,
+      );
 
       // =========================
       // Restaurant Header
       // =========================
+
+      // =========================
+// HEADER
+// =========================
+
+      bytes += generator.text(
+        "**** CUST-INVOICE ****",
+        styles: const PosStyles(
+          align: PosAlign.center,
+          bold: true,
+        ),
+      );
 
       bytes += generator.text(
         restaurantName,
@@ -295,52 +319,64 @@ Net Payable      : $netPayableTemp
       if (address.isNotEmpty) {
         bytes += generator.text(
           address,
-          styles: const PosStyles(align: PosAlign.center),
+          styles: const PosStyles(
+            align: PosAlign.center,
+          ),
         );
       }
 
       if (gstNumber.isNotEmpty) {
         bytes += generator.text(
-          "GSTIN : $gstNumber",
-          styles: const PosStyles(align: PosAlign.center),
+          "GSTIN: $gstNumber",
+          styles: const PosStyles(
+            align: PosAlign.center,
+          ),
         );
       }
 
       if (phone.isNotEmpty) {
         bytes += generator.text(
-          "Phone : $phone",
-          styles: const PosStyles(align: PosAlign.center),
+          "Ph: $phone",
+          styles: const PosStyles(
+            align: PosAlign.center,
+          ),
         );
       }
 
       bytes += generator.hr();
 
-      // =========================
-      // Bill Details
-      // =========================
+      // customer detail
 
-      final now = DateTime.now();
+      // bytes += generator.text(
+      //   "Name : ${customerName ?? '-'}",
+      // );
 
       bytes += generator.row([
-        PosColumn(width: 6, text: "${now.day}/${now.month}/${now.year}"),
         PosColumn(
           width: 6,
-          text: tableName,
-          styles: const PosStyles(align: PosAlign.right),
+          text: "Date : ${DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now())}",
+        ),
+        PosColumn(
+          width: 6,
+          text: "Dine In : $tableName",
+          styles: const PosStyles(
+            align: PosAlign.right,
+          ),
         ),
       ]);
 
       bytes += generator.row([
-        PosColumn(width: 6, text: "Cashier"),
         PosColumn(
           width: 6,
-          text: cashierName,
-          styles: const PosStyles(align: PosAlign.right),
+          text: "Cashier : $cashierName",
         ),
-      ]);
-
-      bytes += generator.row([
-        PosColumn(width: 12, text: "Order ID : $orderId"),
+        PosColumn(
+          width: 6,
+          text: "Order Id : $orderId",
+          styles: const PosStyles(
+            align: PosAlign.right,
+          ),
+        ),
       ]);
 
       bytes += generator.hr();
@@ -350,33 +386,45 @@ Net Payable      : $netPayableTemp
       // =========================
 
       bytes += generator.row([
-        PosColumn(width: 5, text: "Item", styles: const PosStyles(bold: true)),
+        PosColumn(
+          width: 6,
+          text: "Item Name",
+          styles: const PosStyles(bold: true),
+        ),
         PosColumn(
           width: 2,
           text: "Qty",
-          styles: const PosStyles(bold: true, align: PosAlign.center),
+          styles: const PosStyles(
+            bold: true,
+            align: PosAlign.center,
+          ),
         ),
         PosColumn(
           width: 2,
-          text: "Rate",
-          styles: const PosStyles(bold: true, align: PosAlign.right),
+          text: "Price",
+          styles: const PosStyles(
+            bold: true,
+            align: PosAlign.right,
+          ),
         ),
         PosColumn(
-          width: 3,
-          text: "Amt",
-          styles: const PosStyles(bold: true, align: PosAlign.right),
+          width: 2,
+          text: "Amount",
+          styles: const PosStyles(
+            bold: true,
+            align: PosAlign.right,
+          ),
         ),
       ]);
 
       bytes += generator.hr();
-
       // =========================
       // Items
       // =========================
 
       for (final item in items) {
         bytes += generator.row([
-          PosColumn(width: 5, text: item['name'].toString()),
+          PosColumn(width: 6, text: item['name'].toString()),
           PosColumn(
             width: 2,
             text: item['qty'].toString(),
@@ -384,23 +432,28 @@ Net Payable      : $netPayableTemp
           ),
           PosColumn(
             width: 2,
-            text: item['price'].toString(),
+            text: double.parse(item['price'].toString()).toStringAsFixed(2),
             styles: const PosStyles(align: PosAlign.right),
           ),
           PosColumn(
-            width: 3,
-            text: item['amount'].toString(),
+            width: 2,
+            text: double.parse(item['amount'].toString()).toStringAsFixed(2),
             styles: const PosStyles(align: PosAlign.right),
           ),
         ]);
 
-        // Modifiers
+        // Print modifiers
         if (item['modifiers'] != null &&
             (item['modifiers'] as List).isNotEmpty) {
-          bytes += generator.text(
-            "  + ${(item['modifiers'] as List).join(', ')}",
-            styles: const PosStyles(align: PosAlign.left),
-          );
+
+          for (final modifier in (item['modifiers'] as List)) {
+            bytes += generator.text(
+              "   + $modifier",
+              styles: const PosStyles(
+                align: PosAlign.left,
+              ),
+            );
+          }
         }
       }
 
@@ -419,33 +472,76 @@ Net Payable      : $netPayableTemp
         ),
       ]);
 
-      bytes += generator.row([
-        PosColumn(width: 8, text: "Coupon"),
-        PosColumn(
-          width: 4,
-          text: "-${couponDiscount.toStringAsFixed(2)}",
-          styles: const PosStyles(align: PosAlign.right),
-        ),
-      ]);
+// Coupon
+      if (couponDiscount > 0) {
+        bytes += generator.row([
+          PosColumn(width: 8, text: "Coupon"),
+          PosColumn(
+            width: 4,
+            text: "-${couponDiscount.toStringAsFixed(2)}",
+            styles: const PosStyles(align: PosAlign.right),
+          ),
+        ]);
+      }
 
-      bytes += generator.row([
-        PosColumn(width: 8, text: "Discount"),
-        PosColumn(
-          width: 4,
-          text: "-${merchantDiscount.toStringAsFixed(2)}",
-          styles: const PosStyles(align: PosAlign.right),
-        ),
-      ]);
+// Merchant Discount
+      if (merchantDiscount != 0) {
+        bytes += generator.row([
+          PosColumn(
+            width: 8,
+            text: "Merchant Discount",
+          ),
+          PosColumn(
+            width: 4,
+            text: merchantDiscount.toStringAsFixed(2),
+            styles: const PosStyles(
+              align: PosAlign.right,
+            ),
+          ),
+        ]);
+      }
 
-      bytes += generator.row([
-        PosColumn(width: 8, text: "Tax"),
-        PosColumn(
-          width: 4,
-          text: taxAmount.toStringAsFixed(2),
-          styles: const PosStyles(align: PosAlign.right),
-        ),
-      ]);
+// Tax
+      if (taxAmount > 0) {
+        final cgst = taxAmount / 2;
+        final sgst = taxAmount / 2;
 
+        bytes += generator.row([
+          PosColumn(width: 8, text: "CGST @ 2.5%"),
+          PosColumn(
+            width: 4,
+            text: cgst.toStringAsFixed(2),
+            styles: const PosStyles(
+              align: PosAlign.right,
+            ),
+          ),
+        ]);
+
+        bytes += generator.row([
+          PosColumn(width: 8, text: "SGST @ 2.5%"),
+          PosColumn(
+            width: 4,
+            text: sgst.toStringAsFixed(2),
+            styles: const PosStyles(
+              align: PosAlign.right,
+            ),
+          ),
+        ]);
+      }
+
+// Service Charge
+      if (widget.paymentSummary.serviceChargeValue > 0) {
+        bytes += generator.row([
+          PosColumn(width: 8, text: "Service Charge"),
+          PosColumn(
+            width: 4,
+            text: widget.paymentSummary.serviceChargeValue.toStringAsFixed(2),
+            styles: const PosStyles(align: PosAlign.right),
+          ),
+        ]);
+      }
+
+// Tip
       if (tipAmount > 0) {
         bytes += generator.row([
           PosColumn(width: 8, text: "Tip"),
@@ -456,18 +552,39 @@ Net Payable      : $netPayableTemp
           ),
         ]);
       }
+      bytes += generator.hr();
 
-      bytes += generator.hr(ch: '=');
+      final grandTotal = netPayable.roundToDouble();
+      final roundOff = grandTotal - netPayable;
 
       bytes += generator.row([
         PosColumn(
           width: 8,
-          text: "NET PAYABLE",
-          styles: const PosStyles(bold: true, height: PosTextSize.size2),
+          text: "Round Off",
         ),
         PosColumn(
           width: 4,
-          text: netPayable.toStringAsFixed(2),
+          text: roundOff.toStringAsFixed(2),
+          styles: const PosStyles(
+            align: PosAlign.right,
+          ),
+        ),
+      ]);
+
+      bytes += generator.hr();
+
+      bytes += generator.row([
+        PosColumn(
+          width: 8,
+          text: "Grand Total",
+          styles: const PosStyles(
+            bold: true,
+            height: PosTextSize.size2,
+          ),
+        ),
+        PosColumn(
+          width: 4,
+          text: grandTotal.toStringAsFixed(2),
           styles: const PosStyles(
             bold: true,
             align: PosAlign.right,
@@ -475,12 +592,21 @@ Net Payable      : $netPayableTemp
           ),
         ),
       ]);
-
       bytes += generator.hr();
 
       bytes += generator.text(
-        "Thank You Visit Again",
-        styles: const PosStyles(align: PosAlign.center, bold: true),
+        "Thank You Visit Again..!!",
+        styles: const PosStyles(
+          align: PosAlign.center,
+          bold: true,
+        ),
+      );
+
+      bytes += generator.text(
+        "Service charge is optional",
+        styles: const PosStyles(
+          align: PosAlign.center,
+        ),
       );
       bytes += generator.feed(2);
       bytes += generator.cut();
@@ -490,13 +616,18 @@ Net Payable      : $netPayableTemp
       await printerSettings.loadPrinter();
 
       if (printerSettings.selectedPrinter == null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("No printer selected")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("No printer selected"),
+          ),
+        );
         return;
       }
 
-      await printerSettings.printTicket(bytes, generator);
+      await printerSettings.printTicket(
+        bytes,
+        generator,
+      );
     } catch (e) {
       debugPrint("Print Bill Error: $e");
     }
@@ -732,24 +863,32 @@ Net Payable      : $netPayableTemp
                                   debugPrint("PRINT BUTTON TAPPED");
 
                                   final printers =
-                                      await PrinterDBHelper()
-                                          .getPrinterFromDB();
+                                  await PrinterDBHelper().getPrinterFromDB();
 
                                   debugPrint("Saved Printers => $printers");
 
+                                  final printItems = widget.paymentSummary.lineItems.map((item) {
+                                    return {
+                                      "name": item.name,
+                                      "qty": item.qty,
+                                      "price": item.price,
+                                      "amount": item.total.toStringAsFixed(2),
+                                      "modifiers": item.modifiers,
+                                    };
+                                  }).toList();
+
                                   await printBill(
-                                    orderId:
-                                        widget.paymentSummary.orderId
-                                            .toString(),
-                                    tableName: "Table 1",
+                                    orderId: widget.paymentSummary.orderId.toString(),
+                                    tableName: widget.paymentSummary.tableName,
                                     cashierName: "Admin",
-                                    items: [],
-                                    grossTotal: 100,
-                                    couponDiscount: 0,
-                                    merchantDiscount: 0,
-                                    tipAmount: 0,
-                                    taxAmount: 0,
-                                    netPayable: 100,
+                                    items: printItems,
+                                    // modifiers: item.modifiers,
+                                    grossTotal: widget.paymentSummary.grossTotal,
+                                    couponDiscount: widget.paymentSummary.coupons,
+                                    merchantDiscount: widget.paymentSummary.discount,
+                                    tipAmount: widget.paymentSummary.tipAmount,
+                                    taxAmount: widget.paymentSummary.tax,
+                                    netPayable: widget.paymentSummary.netTotal,
                                   );
                                 },
                                 child: Container(

@@ -178,6 +178,25 @@ class _MerchantOnboardingScreenState
                                             'store_base_url',
                                             response.storeBaseUrl,
                                           );
+                                          await prefs.setString(
+                                            'store_name',
+                                            response.storeName,
+                                          );
+
+                                          await prefs.setString(
+                                            'store_address',
+                                            response.storeAddress,
+                                          );
+
+                                          await prefs.setString(
+                                            'store_phone',
+                                            response.storePhone,
+                                          );
+
+                                          await prefs.setString(
+                                            'store_logo',
+                                            response.storeLogo,
+                                          );
 
                                           Navigator.pushReplacement(
                                             context,

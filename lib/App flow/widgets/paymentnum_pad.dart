@@ -427,7 +427,7 @@ class _paymentsummaryState extends State<paymentsummary> {
     int step = 50;
     double current = total;
 
-    while (result.length < 3) {
+    while (result.length < 4) {
       final next = (current / step).ceil() * step;
       if (next > total) {
         add(next.toDouble());
@@ -719,42 +719,42 @@ class _paymentsummaryState extends State<paymentsummary> {
                                   ),
                                   child: Column(
                                     children: [
-                                      SizedBox(height: 8),
-                                      Container(
-                                        height:
-                                            MediaQuery.of(context).size.height *
-                                            0.05,
-                                        width:
-                                            MediaQuery.of(context).size.width *
-                                            0.38,
-                                        decoration: BoxDecoration(
-                                          color: Color(0xFFFDF7F7),
-                                          borderRadius: BorderRadius.circular(
-                                            5,
-                                          ),
-                                          border: Border.all(
-                                            color: Colors.white.withOpacity(
-                                              0.5,
-                                            ),
-                                            width: 0.8,
-                                          ),
-                                        ),
-                                        child: Padding(
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                          ),
-                                          child: Text(
-                                            "$selectedPaymentMode Payment",
-                                            style: TextStyle(
-                                              color: Color(0xFFFE6464),
-                                              fontSize: 15,
-                                              fontFamily: 'Inter',
-                                              fontWeight: FontWeight.w500,
-                                              decoration: TextDecoration.none,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
+                                      // SizedBox(height: 8),
+                                      // Container(
+                                      //   height:
+                                      //       MediaQuery.of(context).size.height *
+                                      //       0.05,
+                                      //   width:
+                                      //       MediaQuery.of(context).size.width *
+                                      //       0.38,
+                                      //   decoration: BoxDecoration(
+                                      //     color: Color(0xFFFDF7F7),
+                                      //     borderRadius: BorderRadius.circular(
+                                      //       5,
+                                      //     ),
+                                      //     border: Border.all(
+                                      //       color: Colors.white.withOpacity(
+                                      //         0.5,
+                                      //       ),
+                                      //       width: 0.8,
+                                      //     ),
+                                      //   ),
+                                      //   child: Padding(
+                                      //     padding: EdgeInsets.symmetric(
+                                      //       horizontal: 12,
+                                      //     ),
+                                      //     child: Text(
+                                      //       "$selectedPaymentMode Payment",
+                                      //       style: TextStyle(
+                                      //         color: Color(0xFFFE6464),
+                                      //         fontSize: 15,
+                                      //         fontFamily: 'Inter',
+                                      //         fontWeight: FontWeight.w500,
+                                      //         decoration: TextDecoration.none,
+                                      //       ),
+                                      //     ),
+                                      //   ),
+                                      // ),
                                       SizedBox(height: 8),
                                       Container(
                                         height:
@@ -822,7 +822,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                                                 buildPresetAmounts(currentGrandTotal);
 
                                             return Wrap(
-                                              spacing: 10,
+                                              spacing: 22,
                                               runSpacing: 10,
                                               children:
                                                   presetAmounts.map((value) {
@@ -833,7 +833,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                                                               : () => _onPresetAmountTap(
                                                                 value
                                                                     .toStringAsFixed(
-                                                                      0,
+                                                                      2,
                                                                     ),
                                                               ),
 
@@ -847,7 +847,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                                                             MediaQuery.of(
                                                               context,
                                                             ).size.width *
-                                                            0.10,
+                                                            0.08,
                                                         decoration: BoxDecoration(
                                                           color:
                                                               isPaymentDisabled
@@ -878,7 +878,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                                                         ),
                                                         child: Center(
                                                           child: Text(
-                                                            "₹${value.toStringAsFixed(0)}",
+                                                            "₹${value.toStringAsFixed(2)}",
                                                             style: const TextStyle(
                                                               color: Color(
                                                                 0xFF318616,

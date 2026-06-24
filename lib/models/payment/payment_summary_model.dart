@@ -10,12 +10,14 @@ class PaymentSummary {
   final double netTotal;
   final List<LineItem> lineItems;
   final int tableId;
+  final String tableName;
   final int zoneId;
   final bool modifiersTaxable;
   final bool isNoCharge;
   final List<CouponDetail> couponDetails;
   final double serviceChargePercentage;
   final double serviceChargeValue;
+  final double roundOff;
 
 
 
@@ -31,12 +33,14 @@ class PaymentSummary {
     required this.netTotal,
     required this.lineItems,
     required this.tableId,
+    required this.tableName,
     required this.zoneId,
     required this.modifiersTaxable,
     required this.isNoCharge,
     required this.couponDetails,
     required this.serviceChargePercentage,
     required this.serviceChargeValue,
+    required this.roundOff,
   });
 
   factory PaymentSummary.fromJson(Map<String, dynamic> json) {
@@ -69,6 +73,7 @@ class PaymentSummary {
           .toList(),
 
       tableId: (json['table_id'] ?? 0).toInt(),
+      tableName: json['table_name']?.toString() ?? '',
       zoneId: (json['zone_id'] ?? 0).toInt(),
       // ✅ ADD THIS
       modifiersTaxable:
@@ -84,6 +89,9 @@ class PaymentSummary {
 
       serviceChargeValue:
       (json['service_charge_value'] ?? 0).toDouble(),
+      roundOff: double.tryParse(
+        (json['round_off'] ?? 0).toString(),
+      ) ?? 0.0,
     );
   }
 }
@@ -95,6 +103,8 @@ class LineItem {
   final int variationId;
   final String name;
   final int qty;
+  final double price;
+
 
   /// Backend totals (SOURCE OF TRUTH)
   final double total;
@@ -116,6 +126,7 @@ class LineItem {
     required this.total,
     required this.tax,
     required this.taxClass,
+    required this.price,
     required this.modifiers,
     required this.modifierAmount,
   }) {
@@ -149,6 +160,9 @@ class LineItem {
       name: json['name'] ?? '',
       qty: (json['qty'] ?? 0).toInt(),
       total: (json['total'] ?? 0).toDouble(),
+      price: double.tryParse(
+        (json['price'] ?? 0).toString(),
+      ) ?? 0.0,
       tax: (json['tax'] ?? 0).toDouble(),
       taxClass: (json['tax_class'] ?? 'food').toString().toLowerCase(),
       modifiers: List<String>.from(json['modifiers'] ?? []),

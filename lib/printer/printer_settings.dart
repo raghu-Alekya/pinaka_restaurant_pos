@@ -20,49 +20,6 @@ class PrinterSettings {
   List<int>? pendingTask;
   final PrinterDBHelper _printerDBHelper = PrinterDBHelper();
 
-  // static Future<void> openDrawer({BuildContext? context}) async {
-  //   // 1. Try Sunmi internal printer drawer (Broad compatibility for Sunmi devices)
-  //   try {
-  //     await SunmiPrinterPlusPlatform.instance.openDrawer();
-  //   } catch (e) {
-  //     if (kDebugMode) print("Sunmi openDrawer failed: $e");
-  //   }
-  //
-  //   // 2. Try Generic ESC/POS command for external printers (USB, Bluetooth, etc.)
-  //   try {
-  //     final printerSettings = PrinterSettings();
-  //     await printerSettings.loadPrinter();
-  //     if (printerSettings.selectedPrinter != null) {
-  //       final profile = await CapabilityProfile.load(name: 'default');
-  //       final generator = Generator(PaperSize.mm80, profile);
-  //
-  //       // Send both Pin 2 and Pin 5 commands to cover most cash drawers
-  //       List<int> bytes = generator.drawer(pin: PosDrawer.pin2);
-  //       bytes += generator.drawer(pin: PosDrawer.pin5);
-  //
-  //       bool connected = await printerSettings.connectDevice();
-  //       if (connected) {
-  //         printerSettings.printerManager.send(
-  //           type: printerSettings.selectedPrinter!.typePrinter,
-  //           bytes: bytes,
-  //         );
-  //       }
-  //     }
-  //   } catch (e) {
-  //     if (kDebugMode) print("Generic openDrawer error: $e");
-  //   }
-  //
-  //   // if (context != null) {
-  //   //   ScaffoldMessenger.of(context).showSnackBar(
-  //   //     const SnackBar(
-  //   //       content: Text(TextConstants.cashDrawerIsOpening),
-  //   //       backgroundColor: Colors.orange,
-  //   //       duration: Duration(seconds: 1),
-  //   //     ),
-  //   //   );
-  //   // }
-  // }
-
   Future<void> loadPrinter() async {
     await setSelectedPrinterFromDB();
   }
