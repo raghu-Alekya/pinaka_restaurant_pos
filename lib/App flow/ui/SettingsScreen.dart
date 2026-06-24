@@ -860,6 +860,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../printer/printer_setup_screen.dart';
+
 class SettingsScreen extends StatefulWidget {
   final String token;
   final String pin;
@@ -1541,7 +1543,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   ElevatedButton(
-                    onPressed: () {},
+                    onPressed: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const  PrinterSetup(),
+                        ),
+                      );
+
+                      if (result == true) {
+                        setState(() {});
+                      }
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF007BFF),
                       padding: const EdgeInsets.symmetric(

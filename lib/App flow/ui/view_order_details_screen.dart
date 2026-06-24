@@ -1260,6 +1260,19 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                               "-₹${(orderModel.merchantDiscount ?? 0).toDouble().toStringAsFixed(2)}",
                                               color: Colors.blue,
                                             ),
+                                            if ((orderModel.tipAmount ?? 0) > 0)
+                                              paymentRow(
+                                                "Tip Amount",
+                                                "₹${(orderModel.tipAmount ?? 0).toDouble().toStringAsFixed(2)}",
+                                                color: Colors.green,
+                                              ),
+
+                                            if ((orderModel.serviceChargeValue ?? 0) > 0)
+                                              paymentRow(
+                                                "Service Charges",
+                                                "₹${(orderModel.serviceChargeValue ?? 0).toDouble().toStringAsFixed(2)}",
+                                                color: Colors.blue,
+                                              ),
 
                                             paymentRow(
                                               "Round Off",

@@ -24,6 +24,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import 'App flow/ui/employee_login_page.dart';
 import 'App flow/ui/merchantvalidation_screen.dart';
 import 'App flow/ui/splash_screen.dart';
 
@@ -88,18 +89,29 @@ void main() async {
     GlobalReservationMonitor().start(token);
   }
 
-  runApp(MyApp(
-    orderRepo: orderRepo,
-    token: token,
-  ));
+  final hasMerchantValidation =
+      prefs.getString('store_base_url')?.isNotEmpty ?? false;
+
+  runApp(
+    MyApp(
+      orderRepo: orderRepo,
+      token: token,
+      hasMerchantValidation: hasMerchantValidation,
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
   final OrderRepository orderRepo;
   final String token;
+  final bool hasMerchantValidation;
 
-  const MyApp({super.key, required this.orderRepo, required this.token});
-
+  const MyApp({
+    super.key,
+    required this.orderRepo,
+    required this.token,
+    required this.hasMerchantValidation,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -239,7 +251,9 @@ class MyApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           title: 'Employee Login',
           theme: ThemeData(primarySwatch: Colors.blue),
-          home: const MerchantOnboardingScreen(),
+          home: hasMerchantValidation
+              ? const EmployeeLoginPage(storeBaseUrl: '', storeName: '', storeId: '',)
+              : const MerchantOnboardingScreen(),
         ),
       )
       ,

@@ -3,6 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:pinaka_restaurant_pos/models/payment/payment_summary_model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:thermal_printer/esc_pos_utils_platform/src/capability_profile.dart';
+import 'package:thermal_printer/esc_pos_utils_platform/src/enums.dart';
+import 'package:thermal_printer/esc_pos_utils_platform/src/generator.dart';
+import 'package:thermal_printer/esc_pos_utils_platform/src/pos_column.dart';
+import 'package:thermal_printer/esc_pos_utils_platform/src/pos_styles.dart';
 
 import '../../blocs/Bloc Event/tax_event.dart';
 import '../../blocs/Bloc Logic/payment_bloc.dart';
@@ -10,6 +16,9 @@ import '../../blocs/Bloc Logic/tax_bloc.dart';
 import '../../blocs/Bloc State/payment_state.dart';
 import '../../blocs/Bloc State/tax_state.dart';
 import '../../models/tax_model.dart';
+import '../../printer/printer_db_helper.dart';
+import '../../printer/printer_settings.dart';
+import '../../repositories/ordertype_payment.dart';
 
 class Sidebarwidgets extends StatefulWidget {
   final PaymentSummary paymentSummary;
@@ -18,6 +27,7 @@ class Sidebarwidgets extends StatefulWidget {
   final bool hasDiscountApplied;
   final double tipAmount;
   final double appliedCouponAmount;
+  final String token;
 
   const Sidebarwidgets({
     super.key,
@@ -29,6 +39,7 @@ class Sidebarwidgets extends StatefulWidget {
     required this.appliedCouponAmount, // 👈 ADD THIS
     this.hasCouponApplied = false,
     this.hasDiscountApplied = false,
+    required  this.token,
   });
 
 
@@ -61,6 +72,13 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
 
   // final merchantDiscount = 0.0;
   double calculatedNetPayable = 0.0;
+  // order type
+  List<String> orderTypes = [];
+  String? selectedOrderType;
+
+  // service charges
+  double serviceChargeAmount = 0.0;
+  String? selectedServiceCharge;
 
 
 
@@ -112,7 +130,13 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
         grossTotal -
             couponDiscount -
             merchantDiscount +
+            widget.paymentSummary.serviceChargeValue +
             widget.tipAmount;
+
+
+    debugPrint(
+      "Service Charge value : ${widget.paymentSummary.serviceChargeValue}",
+    );
   }
 
 
@@ -189,12 +213,14 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
         : widget.appliedCouponAmount;
     final merchantDiscount = widget.merchantDiscount.abs();
     final tipAmount = widget.tipAmount;
+    final serviceCharge =
+        widget.paymentSummary.serviceChargeValue;
 
     final subTotal = grossTotal - couponDiscount;
     final totalTaxTemp =
         foodCgstTemp + foodSgstTemp + beverageCgstTemp + beverageSgstTemp;
 
-    final netPayableTemp = subTotal + totalTaxTemp - merchantDiscount + tipAmount;
+    final netPayableTemp = subTotal + totalTaxTemp - merchantDiscount + tipAmount +serviceCharge;
     debugPrint("""
 Gross Total      : $grossTotal
 Coupon Discount  : $couponDiscount
@@ -213,6 +239,331 @@ Net Payable      : $netPayableTemp
       calculatedNetPayable = netPayableTemp;
     });
   }
+  Future<void> printBill({
+    required String orderId,
+    required String tableName,
+    required String cashierName,
+    required List<Map<String, dynamic>> items,
+    required double grossTotal,
+    required double couponDiscount,
+    required double merchantDiscount,
+    required double tipAmount,
+    required double taxAmount,
+    required double netPayable,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      final restaurantName =
+          prefs.getString('store_name') ?? 'Restaurant';
+
+      final address =
+          prefs.getString('store_address') ?? '';
+
+      final phone =
+          prefs.getString('store_phone') ?? '';
+
+      final gstNumber =
+          prefs.getString('store_gst') ?? '';
+
+      List<int> bytes = [];
+
+      final profile =
+      await CapabilityProfile.load(name: 'XP-N160I');
+
+      final generator = Generator(
+        PaperSize.mm58,
+        profile,
+      );
+
+      // =========================
+      // Restaurant Header
+      // =========================
+
+      bytes += generator.text(
+        restaurantName,
+        styles: const PosStyles(
+          align: PosAlign.center,
+          bold: true,
+          height: PosTextSize.size2,
+          width: PosTextSize.size2,
+        ),
+      );
+
+      if (address.isNotEmpty) {
+        bytes += generator.text(
+          address,
+          styles: const PosStyles(
+            align: PosAlign.center,
+          ),
+        );
+      }
+
+      if (gstNumber.isNotEmpty) {
+        bytes += generator.text(
+          "GSTIN : $gstNumber",
+          styles: const PosStyles(
+            align: PosAlign.center,
+          ),
+        );
+      }
+
+      if (phone.isNotEmpty) {
+        bytes += generator.text(
+          "Phone : $phone",
+          styles: const PosStyles(
+            align: PosAlign.center,
+          ),
+        );
+      }
+
+      bytes += generator.hr();
+
+      // =========================
+      // Bill Details
+      // =========================
+
+      final now = DateTime.now();
+
+      bytes += generator.row([
+        PosColumn(
+          width: 6,
+          text:
+          "${now.day}/${now.month}/${now.year}",
+        ),
+        PosColumn(
+          width: 6,
+          text: tableName,
+          styles: const PosStyles(
+            align: PosAlign.right,
+          ),
+        ),
+      ]);
+
+      bytes += generator.row([
+        PosColumn(
+          width: 6,
+          text: "Cashier",
+        ),
+        PosColumn(
+          width: 6,
+          text: cashierName,
+          styles: const PosStyles(
+            align: PosAlign.right,
+          ),
+        ),
+      ]);
+
+      bytes += generator.row([
+        PosColumn(
+          width: 12,
+          text: "Order ID : $orderId",
+        ),
+      ]);
+
+      bytes += generator.hr();
+
+      // =========================
+      // Item Header
+      // =========================
+
+      bytes += generator.row([
+        PosColumn(
+          width: 5,
+          text: "Item",
+          styles: const PosStyles(bold: true),
+        ),
+        PosColumn(
+          width: 2,
+          text: "Qty",
+          styles: const PosStyles(
+            bold: true,
+            align: PosAlign.center,
+          ),
+        ),
+        PosColumn(
+          width: 2,
+          text: "Rate",
+          styles: const PosStyles(
+            bold: true,
+            align: PosAlign.right,
+          ),
+        ),
+        PosColumn(
+          width: 3,
+          text: "Amt",
+          styles: const PosStyles(
+            bold: true,
+            align: PosAlign.right,
+          ),
+        ),
+      ]);
+
+      bytes += generator.hr();
+
+      // =========================
+      // Items
+      // =========================
+
+      for (final item in items) {
+        bytes += generator.row([
+          PosColumn(
+            width: 5,
+            text: item['name'].toString(),
+          ),
+          PosColumn(
+            width: 2,
+            text: item['qty'].toString(),
+            styles: const PosStyles(
+              align: PosAlign.center,
+            ),
+          ),
+          PosColumn(
+            width: 2,
+            text: item['price'].toString(),
+            styles: const PosStyles(
+              align: PosAlign.right,
+            ),
+          ),
+          PosColumn(
+            width: 3,
+            text: item['amount'].toString(),
+            styles: const PosStyles(
+              align: PosAlign.right,
+            ),
+          ),
+        ]);
+
+        // Modifiers
+        if (item['modifiers'] != null &&
+            (item['modifiers'] as List).isNotEmpty) {
+          bytes += generator.text(
+            "  + ${(item['modifiers'] as List).join(', ')}",
+            styles: const PosStyles(
+              align: PosAlign.left,
+            ),
+          );
+        }
+      }
+
+      bytes += generator.hr();
+
+      // =========================
+      // Summary
+      // =========================
+
+      bytes += generator.row([
+        PosColumn(width: 8, text: "Gross Total"),
+        PosColumn(
+          width: 4,
+          text: grossTotal.toStringAsFixed(2),
+          styles: const PosStyles(
+            align: PosAlign.right,
+          ),
+        ),
+      ]);
+
+      bytes += generator.row([
+        PosColumn(width: 8, text: "Coupon"),
+        PosColumn(
+          width: 4,
+          text: "-${couponDiscount.toStringAsFixed(2)}",
+          styles: const PosStyles(
+            align: PosAlign.right,
+          ),
+        ),
+      ]);
+
+      bytes += generator.row([
+        PosColumn(width: 8, text: "Discount"),
+        PosColumn(
+          width: 4,
+          text: "-${merchantDiscount.toStringAsFixed(2)}",
+          styles: const PosStyles(
+            align: PosAlign.right,
+          ),
+        ),
+      ]);
+
+      bytes += generator.row([
+        PosColumn(width: 8, text: "Tax"),
+        PosColumn(
+          width: 4,
+          text: taxAmount.toStringAsFixed(2),
+          styles: const PosStyles(
+            align: PosAlign.right,
+          ),
+        ),
+      ]);
+
+      if (tipAmount > 0) {
+        bytes += generator.row([
+          PosColumn(width: 8, text: "Tip"),
+          PosColumn(
+            width: 4,
+            text: tipAmount.toStringAsFixed(2),
+            styles: const PosStyles(
+              align: PosAlign.right,
+            ),
+          ),
+        ]);
+      }
+
+      bytes += generator.hr(ch: '=');
+
+      bytes += generator.row([
+        PosColumn(
+          width: 8,
+          text: "NET PAYABLE",
+          styles: const PosStyles(
+            bold: true,
+            height: PosTextSize.size2,
+          ),
+        ),
+        PosColumn(
+          width: 4,
+          text: netPayable.toStringAsFixed(2),
+          styles: const PosStyles(
+            bold: true,
+            align: PosAlign.right,
+            height: PosTextSize.size2,
+          ),
+        ),
+      ]);
+
+      bytes += generator.hr();
+
+      bytes += generator.text(
+        "Thank You Visit Again",
+        styles: const PosStyles(
+          align: PosAlign.center,
+          bold: true,
+        ),
+      );
+      bytes += generator.feed(2);
+      bytes += generator.cut();
+
+      final printerSettings = PrinterSettings();
+
+      await printerSettings.loadPrinter();
+
+      if (printerSettings.selectedPrinter == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("No printer selected"),
+          ),
+        );
+        return;
+      }
+
+      await printerSettings.printTicket(
+        bytes,
+        generator,
+      );
+    } catch (e) {
+      debugPrint("Print Bill Error: $e");
+    }
+  }
 
 
 
@@ -221,6 +572,7 @@ Net Payable      : $netPayableTemp
   @override
   void initState() {
     super.initState();
+    loadOrderTypes();
 
     _controller = AnimationController(
       vsync: this,
@@ -230,6 +582,19 @@ Net Payable      : $netPayableTemp
     _heightAnimation = Tween<double>(begin: 60, end: 260).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
+    selectedServiceCharge =
+        widget.paymentSummary.serviceChargePercentage.toString();
+
+    serviceChargeAmount =
+        widget.paymentSummary.serviceChargeValue;
+
+    debugPrint(
+      "Service Charge %: ${widget.paymentSummary.serviceChargePercentage}",
+    );
+
+    debugPrint(
+      "Service Charge Value: ${widget.paymentSummary.serviceChargeValue}",
+    );
 
     _calculateInitialPayable();
 
@@ -237,6 +602,36 @@ Net Payable      : $netPayableTemp
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<TaxBloc>() .add(LoadTaxesEvent());
     });
+  }
+  Future<void> loadOrderTypes() async {
+    try {
+      debugPrint("══════════════════════════════");
+      debugPrint("🚀 loadOrderTypes Started");
+      debugPrint("🚀 Token: ${widget.token}");
+
+      final repo = OrderTypesInPaymentScreenRepository();
+
+      final result = await repo.getOrderTypes(
+        token: widget.token,
+      );
+
+      debugPrint("🟡 API Result: $result");
+
+      if (result != null && mounted) {
+        setState(() {
+          orderTypes = result.orderTypes;
+          selectedOrderType = null;
+        });
+        debugPrint("✅ Order Types Count: ${orderTypes.length}");
+        debugPrint("✅ Order Types: $orderTypes");
+        debugPrint("✅ Selected Type: $selectedOrderType");
+      } else {
+        debugPrint("❌ Result is NULL");
+      }
+    } catch (e, stackTrace) {
+      debugPrint("❌ Order Types Error: $e");
+      debugPrint("$stackTrace");
+    }
   }
 
   void _toggleExpand() {
@@ -397,22 +792,103 @@ Net Payable      : $netPayableTemp
                         children: [
 
                           /// 🖨️ Print Button (row 1)
-                          Container(
-                            width: 90,
-                            height: 36,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: Colors.green, // ✅ background
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.green),
-                            ),
-                            child: Text(
-                              "Print",
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white, // ✅ text color
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+
+                              /// Print Button Only
+                              InkWell(
+                                onTap: () async {
+                                  debugPrint("PRINT BUTTON TAPPED");
+
+                                  final printers =
+                                  await PrinterDBHelper().getPrinterFromDB();
+
+                                  debugPrint("Saved Printers => $printers");
+
+                                  await printBill(
+                                    orderId: widget.paymentSummary.orderId.toString(),
+                                    tableName: "Table 1",
+                                    cashierName: "Admin",
+                                    items: [],
+                                    grossTotal: 100,
+                                    couponDiscount: 0,
+                                    merchantDiscount: 0,
+                                    tipAmount: 0,
+                                    taxAmount: 0,
+                                    netPayable: 100,
+                                  );
+                                },
+                                child: Container(
+                                  width: 90,
+                                  height: 36,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: Colors.green,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.green),
+                                  ),
+                                  child: const Text(
+                                    "Print",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
                               ),
-                            ),
+
+                              const SizedBox(width: 10),
+
+                              /// Order Type Dropdown (No InkWell)
+                              Container(
+                                width: 165,
+                                height: 40,
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF9FBFF),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: const Color(0xFFE6E6E6),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    value: selectedOrderType,
+                                    isExpanded: true,
+                                    hint: const Text("Dine In"),
+                                    items: orderTypes.map((type) {
+                                      return DropdownMenuItem<String>(
+                                        value: type,
+                                        child: Text(type),
+                                      );
+                                    }).toList(),
+                                    onChanged: (value) async {
+                                      if (value == null) return;
+
+                                      setState(() {
+                                        selectedOrderType = value;
+                                      });
+
+                                      final result =
+                                      await OrderTypesInPaymentScreenRepository()
+                                          .updateOrderType(
+                                        token: widget.token,
+                                        orderId: widget.paymentSummary.orderId,
+                                        orderType: value,
+                                      );
+
+                                      if (result?.success == true) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text(result!.message)),
+                                        );
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
 
 
@@ -806,6 +1282,11 @@ Net Payable      : $netPayableTemp
                                     const DottedLine(),
                                     _row("Net Total", netTotal, isBold: true),
                                     _row("Merchant Discount", merchantDiscount, color: Colors.blue),
+                                    _row(
+                                      "Service Charges (Optional)",
+                                      widget.paymentSummary.serviceChargeValue,
+                                      color: Colors.black,
+                                    ),
 
                                     if (widget.tipAmount > 0)
                                       _row(

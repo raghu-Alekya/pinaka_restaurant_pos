@@ -20,6 +20,7 @@ import '../../repositories/TIP_repository.dart';
 import '../../repositories/coupon_repository.dart';
 import '../../repositories/create_payment_repository.dart';
 import '../../repositories/discount_repository.dart';
+import '../../repositories/service_charge_repository.dart';
 import '../../services/app_database.dart';
 import '../../utils/SessionManager.dart';
 import 'coupon_widget.dart';
@@ -81,6 +82,10 @@ class _paymentsummaryState extends State<paymentsummary> {
   double _lastNetPayable = 0.0;
   bool _isNcDiscount = false;
   bool _isPaying = false;
+  double serviceChargeAmount = 0.0;
+  int? selectedServiceCharge;
+  final serviceChargeRepository = ServiceChargeRepository();
+  bool isServiceChargeApplied = false;
   final TipRepository _tipRepository = TipRepository();
   final CreatePaymentRepository _paymentRepository = CreatePaymentRepository();
   final CouponRepository _couponRepository = CouponRepository();
@@ -125,6 +130,7 @@ class _paymentsummaryState extends State<paymentsummary> {
         discountController.text =
         discount != 0 ? discount.abs().toStringAsFixed(2) : "";
 
+
         /// COUPON
         if (summary.couponDetails.isNotEmpty) {
           _appliedCoupon = summary.couponDetails.first.code;
@@ -147,7 +153,18 @@ class _paymentsummaryState extends State<paymentsummary> {
         setState(() {
           _isDiscountApplied = discount != 0;
           merchantDiscount = discount;
-        });
+
+          final serviceCharge =
+              state.summary.serviceChargePercentage ?? 0;
+
+          if (serviceCharge > 0) {
+            selectedServiceCharge = serviceCharge.toInt();
+            isServiceChargeApplied = true;
+          } else {
+            selectedServiceCharge = null;
+            isServiceChargeApplied = false;
+          }
+        });        _updateAmountField();
 
         _updateAmountField();
 
@@ -200,6 +217,66 @@ class _paymentsummaryState extends State<paymentsummary> {
 
     return payable;
   }
+  Future<void> applyServiceCharge(int percentage) async {
+    final response =
+    await serviceChargeRepository.applyServiceCharge(
+      token: widget.token,
+      orderId: widget.orderId,
+      percentage: percentage,
+    );
+
+    if (response != null && response.success) {
+      setState(() {
+        selectedServiceCharge = response.serviceChargePercentage;
+        isServiceChargeApplied = true;
+      });
+
+      context.read<PaymentBloc>().add(
+        LoadPaymentSummary(
+          token: widget.token,
+          orderId: widget.orderId,
+          restaurantId: widget.restaurantId,
+          orderType: "Dine In",
+        ),
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Service charge applied successfully"),
+        ),
+      );
+    }
+  }
+  Future<void> deleteServiceCharge() async {
+    final response =
+    await serviceChargeRepository.deleteServiceCharge(
+      token: widget.token,
+      orderId: widget.orderId,
+    );
+
+    if (response != null && response.success) {
+      setState(() {
+        selectedServiceCharge = null;
+        isServiceChargeApplied = false;
+      });
+
+      context.read<PaymentBloc>().add(
+        LoadPaymentSummary(
+          token: widget.token,
+          orderId: widget.orderId,
+          restaurantId: widget.restaurantId,
+          orderType: "Dine In",
+        ),
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Service charge removed successfully"),
+        ),
+      );
+    }
+  }
+
 
 
   Future<void> _submitPayment() async {
@@ -901,6 +978,17 @@ class _paymentsummaryState extends State<paymentsummary> {
                                 isCouponApplied: _isCouponApplied,
                                 isTipApplied: _isTipApplied,
                                 isSplitApplied: _isSplitApplied,
+                                // 👇 ADD THESE
+                                selectedServiceCharge: selectedServiceCharge,
+                                isServiceChargeApplied: isServiceChargeApplied,
+
+                                onServiceChargeApplied: (percentage) async {
+                                  await applyServiceCharge(percentage);
+                                },
+
+                                onServiceChargeDelete: () async {
+                                  await deleteServiceCharge();
+                                },
 
                                 appliedCoupon: _appliedCoupon,
 
@@ -1395,6 +1483,10 @@ Widget _buildPaymentDiscountItem(
       required VoidCallback onCouponDelete,
       required VoidCallback onTipDelete,
       required VoidCallback onSplitDelete,
+      required int? selectedServiceCharge,
+      required bool isServiceChargeApplied,
+      required ValueChanged<int> onServiceChargeApplied,
+      required VoidCallback onServiceChargeDelete,
 
 
       String appliedCoupon = "", required String token, required String restaurantId,
@@ -1582,41 +1674,110 @@ Widget _buildPaymentDiscountItem(
         const SizedBox(height: 4),
 
         /// 🔻 SPLIT PAY
-        const Text('Split pay :',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-        const SizedBox(height: 6),
+        // const Text('Split pay :',
+        //     style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+        // const SizedBox(height: 6),
+        // Row(
+        //   children: [
+        //     Expanded(
+        //       child: GestureDetector(
+        //         onTap: isSplitApplied
+        //             ? null
+        //             : () async {
+        //           final result = await showDialog<Map<String, dynamic>>(
+        //             context: context,
+        //             barrierDismissible: false,
+        //             builder: (_) => SplitPaymentPopup(netPayable: netPayable),
+        //           );
+        //
+        //           if (result != null) {
+        //             print(result['payable']);
+        //           }
+        //
+        //         },
+        //
+        //         child: AbsorbPointer(
+        //           child: _inputField(
+        //             hint: 'Enter split amount',
+        //             keyboardType: TextInputType.number,
+        //             enabled: !isSplitApplied,
+        //             controller:  splitPayController,
+        //           ),
+        //         ),
+        //       ),
+        //     ),
+        //     const SizedBox(width: 4),
+        //     if (isSplitApplied)
+        //       _deleteButton(onSplitDelete),
+        //   ],
+        // ),
+        /// 🔻 SERVICE CHARGES
+        const SizedBox(height: 4),
+
+        const Text(
+          'Service Charges :',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+
+        // const SizedBox(height: 6),
+
         Row(
           children: [
             Expanded(
-              child: GestureDetector(
-                onTap: isSplitApplied
-                    ? null
-                    : () async {
-                  final result = await showDialog<Map<String, dynamic>>(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (_) => SplitPaymentPopup(netPayable: netPayable),
-                  );
+              child: Container(
+                height: 36,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    value: selectedServiceCharge,
+                    hint: const Text(
+                      "Select Service Charge",
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    isExpanded: true,
+                    items: const [
+                      DropdownMenuItem(
+                        value: 1,
+                        child: Text("1%"),
+                      ),
+                      DropdownMenuItem(
+                        value: 2,
+                        child: Text("2%"),
+                      ),
+                      DropdownMenuItem(
+                        value: 3,
+                        child: Text("3%"),
+                      ),
+                      DropdownMenuItem(
+                        value: 4,
+                        child: Text("4%"),
+                      ),
+                      DropdownMenuItem(
+                        value: 5,
+                        child: Text("5%"),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) return;
 
-                  if (result != null) {
-                    print(result['payable']);
-                  }
-
-                },
-
-                child: AbsorbPointer(
-                  child: _inputField(
-                    hint: 'Enter split amount',
-                    keyboardType: TextInputType.number,
-                    enabled: !isSplitApplied,
-                    controller:  splitPayController,
+                      onServiceChargeApplied(value);
+                    },
                   ),
                 ),
               ),
             ),
+
             const SizedBox(width: 4),
-            if (isSplitApplied)
-              _deleteButton(onSplitDelete),
+
+            if (selectedServiceCharge != null)
+              _deleteButton(onServiceChargeDelete),
           ],
         ),
       ],

@@ -6,13 +6,24 @@ import 'package:intl/intl.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/ui/reservation_list_screen.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/ui/tables_screen.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/ui/tip_screen.dart';
+import 'package:pinaka_restaurant_pos/App%20flow/ui/vendor_payment_screen.dart';
 
+import '../../blocs/Bloc Event/attendance_event.dart';
+import '../../blocs/Bloc Logic/attendance_bloc.dart';
+import '../../blocs/Bloc Logic/checkin_bloc.dart';
 import '../../blocs/Bloc Logic/order_list_bloc.dart';
+import '../../blocs/Bloc State/attendance_state.dart';
 import '../../models/UserPermissions.dart';
+import '../../models/tip_model.dart';
+import '../../repositories/TIP_repository.dart';
+import '../../repositories/checkin_repository.dart';
+import '../../repositories/employee_repository.dart';
 import '../../repositories/order_list_repository.dart';
 import '../../repositories/table_status_count_repository.dart';
 import '../../utils/SessionManager.dart';
 import '../widgets/top_bar.dart';
+import 'CheckinPopup.dart';
+import 'DailyAttendanceScreen.dart';
 import 'KitchenStatusScreen.dart';
 import 'orderstatus_screen.dart';
 
@@ -57,6 +68,10 @@ class _HomeScreenState extends State<HomeScreen> {
     loadTableStatusCounts();
     loadReservationCounts();
     loadActiveOrdersCount();
+    loadTotalTipAmount();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkShiftStatus();
+    });
   }
   void _startClock() {
     _updateTime();
@@ -73,6 +88,59 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _currentTime = DateFormat('hh:mm:ss a').format(DateTime.now());
     });
+  }
+
+  Future<void> _checkShiftStatus() async {
+    final savedPermissions =
+    await SessionManager.loadPermissions();
+
+    try {
+      final currentShift =
+      await EmployeeRepository()
+          .getCurrentShift(widget.token);
+
+      final shiftStatus =
+      currentShift?['shift_status']
+          ?.toString()
+          .toLowerCase();
+
+      if (shiftStatus == 'closed') {
+        context.read<AttendanceBloc>().add(
+          InitializeAttendanceFlow(
+            token: widget.token,
+            pin: widget.pin,
+          ),
+        );
+      } else if (shiftStatus == 'open' &&
+          savedPermissions == null) {
+        _showCheckInPopupDirectly();
+      }
+    } catch (e) {
+      debugPrint("Shift check failed: $e");
+    }
+  }
+  void _showCheckInPopupDirectly() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => BlocProvider(
+        create: (_) => CheckInBloc(CheckInRepository()),
+        child: Checkinpopup(
+          token: widget.token,
+          onCheckIn: () {
+            Navigator.of(context).pop();
+          },
+          onCancel: () {
+            Navigator.of(context).pop();
+          },
+          onPermissionsReceived: (permissions) {
+            setState(() {
+              _userPermissions = permissions;
+            });
+          },
+        ),
+      ),
+    );
   }
 
 
@@ -159,10 +227,46 @@ class _HomeScreenState extends State<HomeScreen> {
       debugPrint('Active Orders Count Error: $e');
     }
   }
+  Future<void> loadTotalTipAmount() async {
+    try {
+      final repo = TipssummaryRepository();
+
+      final String today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
+      final TipsScreenModel? response = await repo.getTips(
+        token: widget.token,
+        tipDate: today,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        totalTipAmount = response?.totalTipAmt ?? 0.0;
+      });
+    } catch (e) {
+      debugPrint("Error loading tips: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BlocListener<AttendanceBloc, AttendanceState>(
+        listener: (context, state) async {
+          if (state is AttendancePopupReady) {
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (_) => AttendancePopup(
+                employees: state.employees,
+                token: widget.token,
+                onComplete: (String extractedStartTime) async {
+                  _showCheckInPopupDirectly();
+                },
+              ),
+            );
+          }
+        },
+        child: Scaffold(
       backgroundColor: const Color(0xffF5F6FA),
 
       appBar: TopBar(
@@ -403,7 +507,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     flex: 2,
                     child: _whiteModuleCard(
                       title: "Tips",
-                      count: "1200",
+                      count: totalTipAmount.toStringAsFixed(2),
                       countLabel: "Tips",
                       icon: Icons.account_balance_wallet_outlined,
                       iconColor: Colors.orange,
@@ -491,6 +595,19 @@ class _HomeScreenState extends State<HomeScreen> {
                       iconColor: Colors.orange,
                       description:
                       "Manage supplier profiles, orders and deliveries",
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => Vendorpaymentsscreen(
+                              token: widget.token,
+                              pin: widget.pin,
+                              restaurantId: widget.restaurantId,
+                              restaurantName: widget.restaurantName,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -501,7 +618,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-    );
+    ));
   }
 
   Widget _greetingSection() {

@@ -118,6 +118,9 @@ class _TablesScreenState extends State<TablesScreen> {
   bool _showTable = true;
   Offset _canvasOffset = Offset.zero;
   bool _resetCanvasView = false;
+  UserPermissions? _userPermissions;
+  Map<String, dynamic>? _selectedUser;
+  late VoidCallback _reservationListener;
 
 
 
@@ -170,7 +173,7 @@ class _TablesScreenState extends State<TablesScreen> {
   bool _showEditPopup = false;
 
   bool _isDeletingArea = false;
-  UserPermissions? _userPermissions;
+  // UserPermissions? _userPermissions;
 
   /// Data of the table currently being edited.
   Map<String, dynamic>? _editingTableData;
@@ -235,98 +238,59 @@ class _TablesScreenState extends State<TablesScreen> {
     });
   }
 
+
+
   @override
   void initState() {
     super.initState();
+
     _loadZones();
-    context.read<TableBloc>().add(LoadTablesEvent(widget.token));
+    _loadSavedPermissions();
+
+    context.read<TableBloc>().add(
+      LoadTablesEvent(widget.token),
+    );
+
     GlobalReservationMonitor().start(widget.token);
-    GlobalReservationMonitor().reservationsNotifier.addListener(() {
-      context.read<TableBloc>().add(LoadTablesEvent(widget.token));
-    });
 
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (_popupsHandled) return;
-      _popupsHandled = true;
+    _reservationListener = () {
+      if (!mounted) return;
 
-      final savedPermissions = await SessionManager.loadPermissions();
-      if (savedPermissions != null) {
-        setState(() {
-          _userPermissions = savedPermissions;
-          _currentViewMode =
-          _userPermissions!.canDefaultLayout == 'gridCommonImage'
-              ? ViewMode.gridCommonImage
-              : ViewMode.normal;
-        });
-      }
+      context.read<TableBloc>().add(
+        LoadTablesEvent(widget.token),
+      );
+    };
 
-      try {
-        final currentShift =
-        await EmployeeRepository().getCurrentShift(widget.token);
+    GlobalReservationMonitor()
+        .reservationsNotifier
+        .addListener(_reservationListener);
+  }
+  @override
+  void dispose() {
+    GlobalReservationMonitor()
+        .reservationsNotifier
+        .removeListener(_reservationListener);
 
-        AppLogger.info("Current Shift Response => $currentShift");
+    super.dispose();
+  }
 
-        if (currentShift == null) {
-          AppLogger.warning("No active shift found");
+  Future<void> _loadSavedPermissions() async {
+    final permissions = await SessionManager.loadPermissions();
 
-          context.read<AttendanceBloc>().add(
-            InitializeAttendanceFlow(
-              token: widget.token,
-              pin: widget.pin,
-            ),
-          );
+    print("Table Screen User: ${permissions?.displayName}");
+    print("Table Screen Role: ${permissions?.role}");
 
-          return;
-        }
+    if (permissions != null && mounted) {
+      setState(() {
+        _userPermissions = permissions;
 
-        AppLogger.info("Current Shift Response => $currentShift");
-
-        final shiftStatus =
-        currentShift?['shift_status']?.toString().toLowerCase();
-        final shiftId = currentShift?['shift_id'];
-
-        AppLogger.info(
-          "Shift Status: $shiftStatus, Shift ID: $shiftId",
-        );
-
-        // ✅ Shift closed → always show Attendance popup
-        if (shiftStatus == 'closed') {
-          setState(() => _isCheckInDone = false);
-
-          context.read<AttendanceBloc>().add(
-            InitializeAttendanceFlow(
-              token: widget.token,
-              pin: widget.pin,
-            ),
-          );
-        }
-
-        // ✅ Shift open but permissions not loaded → show PIN popup
-        else if (shiftStatus == 'open' && savedPermissions == null) {
-          setState(() => _isCheckInDone = false);
-
-          _showCheckInPopupDirectly();
-        }
-
-        // ✅ Shift open and permissions already available
-        else if (shiftStatus == 'open') {
-          setState(() => _isCheckInDone = true);
-        }
-
-        else {
-          AppLogger.error("Unknown shift status: $shiftStatus");
-          setState(() => _isCheckInDone = false);
-        }
-      } catch (e) {
-        AppLogger.error("Shift check failed: $e");
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Failed to verify shift status"),
-          ),
-        );
-      }
-    });
+        _selectedUser = {
+          "id": permissions.userId,
+          "name": permissions.displayName,
+          "role": permissions.role,
+        };
+      });
+    }
   }
 
   Future<void> _loadZones() async {
@@ -347,35 +311,35 @@ class _TablesScreenState extends State<TablesScreen> {
     }
   }
 
-  void _showCheckInPopupDirectly() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder:
-          (_) => BlocProvider(
-        create: (_) => CheckInBloc(CheckInRepository()),
-        child: Checkinpopup(
-          token: widget.token,
-          onCheckIn: () {
-            Navigator.of(context).pop();
-            setState(() => _isCheckInDone = true);
-          },
-          onCancel: () {
-            Navigator.of(context).pop();
-          },
-          onPermissionsReceived: (permissions) {
-            setState(() {
-              _userPermissions = permissions;
-              _currentViewMode =
-              _userPermissions!.canDefaultLayout == 'gridCommonImage'
-                  ? ViewMode.gridCommonImage
-                  : ViewMode.normal;
-            });
-          },
-        ),
-      ),
-    );
-  }
+  // void _showCheckInPopupDirectly() {
+  //   showDialog(
+  //     context: context,
+  //     barrierDismissible: false,
+  //     builder:
+  //         (_) => BlocProvider(
+  //       create: (_) => CheckInBloc(CheckInRepository()),
+  //       child: Checkinpopup(
+  //         token: widget.token,
+  //         onCheckIn: () {
+  //           Navigator.of(context).pop();
+  //           setState(() => _isCheckInDone = true);
+  //         },
+  //         onCancel: () {
+  //           Navigator.of(context).pop();
+  //         },
+  //         onPermissionsReceived: (permissions) {
+  //           setState(() {
+  //             _userPermissions = permissions;
+  //             _currentViewMode =
+  //             _userPermissions!.canDefaultLayout == 'gridCommonImage'
+  //                 ? ViewMode.gridCommonImage
+  //                 : ViewMode.normal;
+  //           });
+  //         },
+  //       ),
+  //     ),
+  //   );
+  // }
 
   /// Increases the zoom scale by 0.1, max limited elsewhere.
   // void _zoomIn() => setState(() => _scale += 0.1);
@@ -1982,7 +1946,7 @@ class _TablesScreenState extends State<TablesScreen> {
                       currentShift['start_time'] != false;
 
               if (isValidShift) {
-                if (!_isCheckInDone) _showCheckInPopupDirectly();
+                // if (!_isCheckInDone) _showCheckInPopupDirectly();
                 return;
               }
 
@@ -1995,7 +1959,7 @@ class _TablesScreenState extends State<TablesScreen> {
                   employees: state.employees,
                   token: widget.token,
                   onComplete: (String extractedStartTime) async {
-                    _showCheckInPopupDirectly();
+                    // _showCheckInPopupDirectly();
                   },
                 ),
               );

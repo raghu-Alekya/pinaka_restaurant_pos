@@ -52,6 +52,10 @@ dependencies:
   mobile_scanner: ^5.1.0
   flutter_barcode_listener: ^0.1.4
   mqtt_client: ^10.8.0
+  thermal_printer:
+  esc_pos_utils_plus:
+  image: ^4.5.4
+
 
 dev_dependencies:
   flutter_test:

@@ -175,6 +175,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       hasCouponApplied: hasCouponApplied,
                       hasDiscountApplied: hasDiscountApplied,
                       appliedCouponAmount: paymentSummary.coupons,
+                      token: widget.token,
                     ),
 
                   ),

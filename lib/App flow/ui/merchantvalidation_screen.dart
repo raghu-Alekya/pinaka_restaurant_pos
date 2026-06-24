@@ -24,6 +24,7 @@ class _MerchantOnboardingScreenState
   final MerchantLoginRepository _repository =
   MerchantLoginRepository();
   bool _obscurePassword = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -148,9 +149,15 @@ class _MerchantOnboardingScreenState
 
                                 SizedBox(
                                   width: double.infinity,
-                                  height: 55,
-                                  child:ElevatedButton(
-                                    onPressed: () async {
+                                  height: 50,
+                                  child: ElevatedButton(
+                                    onPressed: _isLoading
+                                        ? null
+                                        : () async {
+                                      setState(() {
+                                        _isLoading = true;
+                                      });
+
                                       try {
                                         final response = await _repository.login(
                                           username: _usernameController.text.trim(),
@@ -158,8 +165,8 @@ class _MerchantOnboardingScreenState
                                           storeId: _storeIdController.text.trim(),
                                           deviceId: "42343432424234",
                                         );
-                                        if (response.success) {
 
+                                        if (response.success) {
                                           AppConstants.updateBaseUrl(
                                             response.storeBaseUrl,
                                           );
@@ -172,10 +179,6 @@ class _MerchantOnboardingScreenState
                                             response.storeBaseUrl,
                                           );
 
-                                          print(
-                                            "Current API Base => ${AppConstants.baseApiPath}",
-                                          );
-
                                           Navigator.pushReplacement(
                                             context,
                                             MaterialPageRoute(
@@ -186,7 +189,7 @@ class _MerchantOnboardingScreenState
                                               ),
                                             ),
                                           );
-                                        }else {
+                                        } else {
                                           ScaffoldMessenger.of(context).showSnackBar(
                                             SnackBar(
                                               content: Text(response.message),
@@ -201,6 +204,12 @@ class _MerchantOnboardingScreenState
                                             backgroundColor: Colors.red,
                                           ),
                                         );
+                                      } finally {
+                                        if (mounted) {
+                                          setState(() {
+                                            _isLoading = false;
+                                          });
+                                        }
                                       }
                                     },
                                     style: ElevatedButton.styleFrom(
@@ -210,7 +219,17 @@ class _MerchantOnboardingScreenState
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                     ),
-                                    child: const Text(
+                                    child: _isLoading
+                                        ? const SizedBox(
+                                      height: 22,
+                                      width: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                        AlwaysStoppedAnimation<Color>(Colors.white),
+                                      ),
+                                    )
+                                        : const Text(
                                       "Login",
                                       style: TextStyle(
                                         fontSize: 24,
@@ -218,8 +237,8 @@ class _MerchantOnboardingScreenState
                                         fontWeight: FontWeight.w500,
                                       ),
                                     ),
-                                  )
-                                ),
+                                  ),
+                                )
                               ],
                             ),
                           ),

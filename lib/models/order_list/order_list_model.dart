@@ -36,7 +36,9 @@ class OrderlistModel {
   bool? isParent;
 
   List<KotOrder>? kotOrders;
-
+  num? serviceChargeValue;
+  num? serviceChargePercentage;
+  num? tipAmount;
   OrderlistModel({
     this.completedByUserId,
     this.orderId,
@@ -68,6 +70,9 @@ class OrderlistModel {
     this.status,
     this.isParent,
     this.kotOrders,
+    this.serviceChargeValue,
+    this.serviceChargePercentage,
+    this.tipAmount,
   });
 
   factory OrderlistModel.fromJson(Map<String, dynamic> json) {
@@ -111,6 +116,13 @@ class OrderlistModel {
       kotOrders: (json['kot_orders'] as List?)
           ?.map((v) => KotOrder.fromJson(v))
           .toList(),
+      serviceChargeValue:
+      num.tryParse(json['service_charge_value']?.toString() ?? "0") ?? 0,
+
+      serviceChargePercentage:
+      num.tryParse(json['service_charge_percentage']?.toString() ?? "0") ?? 0,
+      tipAmount:
+      num.tryParse(json['tip_amt']?.toString() ?? "0") ?? 0,
     );
   }
 }

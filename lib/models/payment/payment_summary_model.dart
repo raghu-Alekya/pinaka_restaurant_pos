@@ -14,6 +14,8 @@ class PaymentSummary {
   final bool modifiersTaxable;
   final bool isNoCharge;
   final List<CouponDetail> couponDetails;
+  final double serviceChargePercentage;
+  final double serviceChargeValue;
 
 
 
@@ -33,6 +35,8 @@ class PaymentSummary {
     required this.modifiersTaxable,
     required this.isNoCharge,
     required this.couponDetails,
+    required this.serviceChargePercentage,
+    required this.serviceChargeValue,
   });
 
   factory PaymentSummary.fromJson(Map<String, dynamic> json) {
@@ -75,6 +79,11 @@ class PaymentSummary {
       (json['is_nc'] ?? 'no')
           .toString()
           .toLowerCase() == 'yes',
+      serviceChargePercentage:
+      (json['service_charge_percentage'] ?? 0).toDouble(),
+
+      serviceChargeValue:
+      (json['service_charge_value'] ?? 0).toDouble(),
     );
   }
 }
