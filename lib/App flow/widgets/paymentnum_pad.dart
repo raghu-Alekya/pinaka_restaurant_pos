@@ -37,7 +37,7 @@ class paymentsummary extends StatefulWidget {
   final ValueChanged<double> onMerchantDiscountChanged;
   final ValueChanged<double> onTipChanged;
   final Function(double)? onCouponAmountChanged;
-
+  final double? grandTotal;
 
   const paymentsummary({
     Key? key,
@@ -52,8 +52,8 @@ class paymentsummary extends StatefulWidget {
     required this.onMerchantDiscountChanged,
     required this.onTipChanged,
     this.onCouponAmountChanged,
+    this.grandTotal,
   }) : super(key: key);
-
 
   @override
   State<paymentsummary> createState() => _paymentsummaryState();
@@ -90,26 +90,18 @@ class _paymentsummaryState extends State<paymentsummary> {
   final CreatePaymentRepository _paymentRepository = CreatePaymentRepository();
   final CouponRepository _couponRepository = CouponRepository();
 
+  final TextEditingController discountController = TextEditingController();
+  final TextEditingController couponController = TextEditingController();
 
-  final TextEditingController discountController =
-  TextEditingController();
-  final TextEditingController couponController =
-  TextEditingController();
+  final TextEditingController tipController = TextEditingController();
 
-  final TextEditingController tipController =
-  TextEditingController();
+  final TextEditingController splitPayController = TextEditingController();
 
-  final TextEditingController splitPayController =
-  TextEditingController();
-
-
-// ✅ FIXED
-
+  // ✅ FIXED
 
   // / Delete button enabled if any of the above are applied
   bool get isDeleteEnabled =>
       _isTipApplied || _isDiscountApplied || _isCouponApplied;
-
 
   @override
   @override
@@ -128,8 +120,7 @@ class _paymentsummaryState extends State<paymentsummary> {
         final discount = state.merchantDiscount;
 
         discountController.text =
-        discount != 0 ? discount.abs().toStringAsFixed(2) : "";
-
+            discount != 0 ? discount.abs().toStringAsFixed(2) : "";
 
         /// COUPON
         if (summary.couponDetails.isNotEmpty) {
@@ -144,8 +135,7 @@ class _paymentsummaryState extends State<paymentsummary> {
         if (summary.tipAmount > 0) {
           _tipAmount = summary.tipAmount;
 
-          tipController.text =
-              summary.tipAmount.toStringAsFixed(2);
+          tipController.text = summary.tipAmount.toStringAsFixed(2);
 
           _isTipApplied = true;
         }
@@ -154,8 +144,7 @@ class _paymentsummaryState extends State<paymentsummary> {
           _isDiscountApplied = discount != 0;
           merchantDiscount = discount;
 
-          final serviceCharge =
-              state.summary.serviceChargePercentage ?? 0;
+          final serviceCharge = state.summary.serviceChargePercentage ?? 0;
 
           if (serviceCharge > 0) {
             selectedServiceCharge = serviceCharge.toInt();
@@ -164,7 +153,8 @@ class _paymentsummaryState extends State<paymentsummary> {
             selectedServiceCharge = null;
             isServiceChargeApplied = false;
           }
-        });        _updateAmountField();
+        });
+        _updateAmountField();
 
         _updateAmountField();
 
@@ -183,43 +173,35 @@ class _paymentsummaryState extends State<paymentsummary> {
     splitPayController.dispose();
     super.dispose();
   }
+
   void _updateAmountField() {
     final state = context.read<PaymentBloc>().state;
-
     if (state is! PaymentSummaryLoaded) return;
-
-    double payable = state.summary.netTotal;
-
-    // Coupon reduces amount
-    payable -= _couponAmount;
-
-    // Merchant discount reduces amount
-    payable -= merchantDiscount.abs();
-
-    // Tip increases amount
-    payable += _tipAmount;
-
-    if (payable < 0) payable = 0;
-
-    setState(() {
-      amount = payable.toStringAsFixed(2);
-    });
-
-    debugPrint("💰 Updated Payable = $payable");
+    double payable = getGrandTotal(state);
+    debugPrint("💰 Updated Payable (not overwritten) = $payable");
   }
-  double _calculateNetPayable(PaymentSummaryLoaded state) {
-    double payable = state.summary.netTotal;
 
-    payable -= merchantDiscount.abs();
-    payable += _tipAmount;
+  double getGrandTotal(PaymentState state) {
+    if (widget.grandTotal != null) {
+      return widget.grandTotal!.abs().roundToDouble();
+    }
+    if (state is! PaymentSummaryLoaded) return 0.0;
+    final summary = state.summary;
+    final couponDiscount = summary.coupons > 0 ? summary.coupons : _couponAmount;
+    final merchantDiscountAbs = merchantDiscount.abs();
+    final serviceCharge = summary.serviceChargeValue;
 
-    if (payable < 0) payable = 0;
+    double basePayable = summary.netTotal;
+    if (summary.coupons <= 0) {
+      basePayable -= _couponAmount;
+    }
 
-    return payable;
+    double calculatedPayable = basePayable - merchantDiscountAbs + _tipAmount + serviceCharge;
+    return calculatedPayable.abs().roundToDouble();
   }
+
   Future<void> applyServiceCharge(int percentage) async {
-    final response =
-    await serviceChargeRepository.applyServiceCharge(
+    final response = await serviceChargeRepository.applyServiceCharge(
       token: widget.token,
       orderId: widget.orderId,
       percentage: percentage,
@@ -241,15 +223,13 @@ class _paymentsummaryState extends State<paymentsummary> {
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Service charge applied successfully"),
-        ),
+        const SnackBar(content: Text("Service charge applied successfully")),
       );
     }
   }
+
   Future<void> deleteServiceCharge() async {
-    final response =
-    await serviceChargeRepository.deleteServiceCharge(
+    final response = await serviceChargeRepository.deleteServiceCharge(
       token: widget.token,
       orderId: widget.orderId,
     );
@@ -270,14 +250,10 @@ class _paymentsummaryState extends State<paymentsummary> {
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Service charge removed successfully"),
-        ),
+        const SnackBar(content: Text("Service charge removed successfully")),
       );
     }
   }
-
-
 
   Future<void> _submitPayment() async {
     debugPrint("🟡 SUBMIT PAYMENT CALLED");
@@ -294,7 +270,6 @@ class _paymentsummaryState extends State<paymentsummary> {
     //   );
     //   return;
     // }
-
 
     final orderBloc = context.read<OrderBloc>();
 
@@ -314,29 +289,33 @@ class _paymentsummaryState extends State<paymentsummary> {
     // ---------- VALIDATION ----------
     if (orderId == null) {
       debugPrint("❌ ERROR: orderId is NULL");
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Order not created")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Order not created")));
       return;
     }
 
     if (userId == null) {
       debugPrint("❌ ERROR: userId is NULL");
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("User not logged in")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("User not logged in")));
       return;
     }
 
     if (shiftId == null) {
       debugPrint("❌ ERROR: shiftId is NULL");
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Shift not started")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Shift not started")));
       return;
     }
 
     if (amount.isEmpty) {
       debugPrint("❌ ERROR: amount is empty");
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Enter payment amount")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Enter payment amount")));
       return;
     }
 
@@ -353,23 +332,19 @@ class _paymentsummaryState extends State<paymentsummary> {
           shiftId: shiftId,
           userId: userId,
           restaurantId: widget.restaurantId,
-          notes: {
-            "source": "POS",
-            "device": "ANDROID",
-          },
+          notes: {"source": "POS", "device": "ANDROID"},
         ),
       ),
     );
   }
 
-
   Future<void> handleKeyPress(String key) async {
     final netPayable =
-    (context.read<PaymentBloc>().state is PaymentSummaryLoaded)
-        ? (context.read<PaymentBloc>().state as PaymentSummaryLoaded)
-        .summary
-        .netTotal
-        : 0.0;
+        (context.read<PaymentBloc>().state is PaymentSummaryLoaded)
+            ? (context.read<PaymentBloc>().state as PaymentSummaryLoaded)
+                .summary
+                .netTotal
+            : 0.0;
 
     if (netPayable <= 0 && key != "Pay") {
       return; // ⛔ block digits, allow Pay
@@ -381,9 +356,9 @@ class _paymentsummaryState extends State<paymentsummary> {
       if (_isPaying) return; // ⛔ prevent double tap
 
       if (amount.isEmpty && netPayable > 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please enter amount")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Please enter amount")));
         return;
       }
 
@@ -394,7 +369,6 @@ class _paymentsummaryState extends State<paymentsummary> {
       await _submitPayment();
       return;
     }
-
 
     // ✅ CLEAR
     if (key == "C") {
@@ -417,7 +391,6 @@ class _paymentsummaryState extends State<paymentsummary> {
       return;
     }
 
-
     // ✅ PREVENT MULTIPLE DOTS
     if (key == "." && amount.contains(".")) {
       return;
@@ -434,7 +407,6 @@ class _paymentsummaryState extends State<paymentsummary> {
       amount = value;
     });
   }
-
 
   List<double> buildPresetAmounts(double total) {
     if (total <= 0) return [];
@@ -471,40 +443,24 @@ class _paymentsummaryState extends State<paymentsummary> {
     return result;
   }
 
-
   @override
   Widget build(BuildContext context) {
     debugPrint("🔥 paymentsummary build called");
-    final double totalAmount =
-    context.select(
-          (PaymentBloc bloc) =>
-      bloc.state is PaymentSummaryLoaded
-          ? (bloc.state as PaymentSummaryLoaded).summary.grossTotal
-          : 0.0,
+    final double totalAmount = context.select(
+      (PaymentBloc bloc) =>
+          bloc.state is PaymentSummaryLoaded
+              ? (bloc.state as PaymentSummaryLoaded).summary.grossTotal
+              : 0.0,
     );
-    debugPrint("💰 grossTotal = ${context
-        .read<OrderBloc>()
-        .state
-        .grossTotal}");
+    debugPrint("💰 grossTotal = ${context.read<OrderBloc>().state.grossTotal}");
 
     final paymentState = context.watch<PaymentBloc>().state;
 
-    double netPayable = 0.0;
-
-    if (paymentState is PaymentSummaryLoaded) {
-      netPayable =
-          paymentState.summary.netTotal -
-              _couponAmount +
-              _tipAmount;
-    }
+    double netPayable = getGrandTotal(paymentState);
     final bool isPaymentDisabled = netPayable <= 0;
 
-
-
-
     // ✅ DEFINE HERE
-    final List<double> presetAmounts =
-    buildPresetAmounts(netPayable);
+    final List<double> presetAmounts = buildPresetAmounts(netPayable);
 
     return MultiBlocListener(
       listeners: [
@@ -519,11 +475,11 @@ class _paymentsummaryState extends State<paymentsummary> {
                 _isDiscountApplied = discount != 0;
                 merchantDiscount = _isDiscountApplied ? discount : 0.0;
 
-                discountController.text = _isDiscountApplied
-                    ? discount.abs().toStringAsFixed(2)
-                    : "";
+                discountController.text =
+                    _isDiscountApplied ? discount.abs().toStringAsFixed(2) : "";
 
                 _isNcDiscount = state.isNoCharge;
+
                 /// ===== COUPON =====
                 if (state.summary.couponDetails.isNotEmpty) {
                   final coupon = state.summary.couponDetails.first;
@@ -540,29 +496,31 @@ class _paymentsummaryState extends State<paymentsummary> {
                   _isTipApplied = true;
                   _tipAmount = state.summary.tipAmount;
 
-                  tipController.text =
-                      state.summary.tipAmount.toStringAsFixed(2);
+                  tipController.text = state.summary.tipAmount.toStringAsFixed(
+                    2,
+                  );
                 }
               });
 
               final grossTotal = state.summary.grossTotal;
 
-              final couponAmount = state.summary.coupons > 0
-                  ? state.summary.coupons
-                  : _couponAmount;
+              final couponAmount =
+                  state.summary.coupons > 0
+                      ? state.summary.coupons
+                      : _couponAmount;
 
               double finalPayable =
                   grossTotal -
-                      couponAmount -
-                      merchantDiscount.abs() +
-                      _tipAmount;
+                  couponAmount -
+                  merchantDiscount.abs() +
+                  _tipAmount;
 
               if (finalPayable < 0) {
                 finalPayable = 0;
               }
 
               setState(() {
-                amount = finalPayable.toStringAsFixed(2);
+                // Keep amount empty initially or as typed by the user
               });
               debugPrint("TextField Amount  : $amount");
 
@@ -575,7 +533,6 @@ class _paymentsummaryState extends State<paymentsummary> {
             }
           },
         ),
-
 
         /// ✅ PAYMENT LISTENER
         BlocListener<CreatePaymentBloc, CreatePaymentState>(
@@ -628,9 +585,9 @@ class _paymentsummaryState extends State<paymentsummary> {
                   );
 
                   if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(message)),
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(message)));
 
                   context.read<PaymentBloc>().add(
                     LoadPaymentSummary(
@@ -642,9 +599,9 @@ class _paymentsummaryState extends State<paymentsummary> {
                   );
                 } catch (e) {
                   if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(e.toString())),
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(e.toString())));
                 }
               } else {
                 /// 🔥 Reset order completely
@@ -656,9 +613,9 @@ class _paymentsummaryState extends State<paymentsummary> {
               setState(() {
                 _isPaying = false; // ❌ stop loading on error
               });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(state.error)),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(state.error)));
             }
           },
         ),
@@ -667,9 +624,9 @@ class _paymentsummaryState extends State<paymentsummary> {
         BlocListener<RemoveDiscountBloc, RemoveDiscountState>(
           listener: (context, state) {
             if (state is RemoveDiscountSuccess) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(state.response.message)),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(state.response.message)));
 
               setState(() {
                 _isDiscountApplied = false;
@@ -679,9 +636,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                 discountController.clear();
               });
 
-              context.read<PaymentBloc>().add(
-                UpdateMerchantDiscount(0.0),
-              );
+              context.read<PaymentBloc>().add(UpdateMerchantDiscount(0.0));
 
               widget.onMerchantDiscountChanged(0.0);
 
@@ -699,9 +654,9 @@ class _paymentsummaryState extends State<paymentsummary> {
             }
 
             if (state is RemoveDiscountFailure) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(state.error)),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(state.error)));
             }
           },
         ),
@@ -715,14 +670,8 @@ class _paymentsummaryState extends State<paymentsummary> {
                 Padding(
                   padding: EdgeInsets.only(top: 15),
                   child: Container(
-                    height: MediaQuery
-                        .of(context)
-                        .size
-                        .height * 0.85,
-                    width: MediaQuery
-                        .of(context)
-                        .size
-                        .width * 0.65,
+                    height: MediaQuery.of(context).size.height * 0.85,
+                    width: MediaQuery.of(context).size.width * 0.65,
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(10),
@@ -732,14 +681,8 @@ class _paymentsummaryState extends State<paymentsummary> {
                       // ),
                     ),
                     child: Container(
-                      height: MediaQuery
-                          .of(context)
-                          .size
-                          .height * 0.60,
-                      width: MediaQuery
-                          .of(context)
-                          .size
-                          .width * 0.50,
+                      height: MediaQuery.of(context).size.height * 0.60,
+                      width: MediaQuery.of(context).size.width * 0.50,
                       child: Row(
                         children: [
                           Padding(
@@ -752,7 +695,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                                   "Select Payment Mode",
                                   context,
                                   selectedPaymentMode,
-                                      (val) {
+                                  (val) {
                                     setState(() {
                                       selectedPaymentMode = val;
                                       isCashSelected = val == "Cash";
@@ -763,14 +706,9 @@ class _paymentsummaryState extends State<paymentsummary> {
                                 Container(
                                   alignment: Alignment.center,
                                   height:
-                                  MediaQuery
-                                      .of(context)
-                                      .size
-                                      .height * 0.68,
-                                  width: MediaQuery
-                                      .of(context)
-                                      .size
-                                      .width * 0.40,
+                                      MediaQuery.of(context).size.height * 0.68,
+                                  width:
+                                      MediaQuery.of(context).size.width * 0.40,
                                   decoration: BoxDecoration(
                                     color: Color(0xFFDEE8FF),
                                     borderRadius: BorderRadius.circular(5),
@@ -784,24 +722,20 @@ class _paymentsummaryState extends State<paymentsummary> {
                                       SizedBox(height: 8),
                                       Container(
                                         height:
-                                        MediaQuery
-                                            .of(context)
-                                            .size
-                                            .height *
+                                            MediaQuery.of(context).size.height *
                                             0.05,
                                         width:
-                                        MediaQuery
-                                            .of(context)
-                                            .size
-                                            .width *
+                                            MediaQuery.of(context).size.width *
                                             0.38,
                                         decoration: BoxDecoration(
                                           color: Color(0xFFFDF7F7),
                                           borderRadius: BorderRadius.circular(
-                                              5),
+                                            5,
+                                          ),
                                           border: Border.all(
                                             color: Colors.white.withOpacity(
-                                                0.5),
+                                              0.5,
+                                            ),
                                             width: 0.8,
                                           ),
                                         ),
@@ -823,28 +757,46 @@ class _paymentsummaryState extends State<paymentsummary> {
                                       ),
                                       SizedBox(height: 8),
                                       Container(
-                                        height: MediaQuery.of(context).size.height * 0.07,
-                                        width: MediaQuery.of(context).size.width * 0.38,
+                                        height:
+                                            MediaQuery.of(context).size.height *
+                                            0.07,
+                                        width:
+                                            MediaQuery.of(context).size.width *
+                                            0.38,
                                         decoration: BoxDecoration(
-                                          color: isPaymentDisabled
-                                              ? Colors.grey.shade200   //disabled look
-                                              : const Color(0xFFFFFDFD),
-                                          borderRadius: BorderRadius.circular(5),
+                                          color:
+                                              isPaymentDisabled
+                                                  ? Colors
+                                                      .grey
+                                                      .shade200 //disabled look
+                                                  : const Color(0xFFFFFDFD),
+                                          borderRadius: BorderRadius.circular(
+                                            5,
+                                          ),
                                           border: Border.all(
-                                            color: const Color(0xFFF2EEEE).withOpacity(0.5),
+                                            color: const Color(
+                                              0xFFF2EEEE,
+                                            ).withOpacity(0.5),
                                             width: 0.8,
                                           ),
                                         ),
                                         child: Padding(
-                                          padding: const EdgeInsets.only(right: 8.0),
+                                          padding: const EdgeInsets.only(
+                                            right: 8.0,
+                                          ),
                                           child: Align(
                                             alignment: Alignment.centerRight,
                                             child: Text(
-                                              isPaymentDisabled ? "0.00" : amount,
+                                              isPaymentDisabled
+                                                  ? "0.00"
+                                                  : amount,
                                               style: TextStyle(
-                                                color: isPaymentDisabled
-                                                    ? Colors.grey
-                                                    : const Color(0xFF4C5F7D),
+                                                color:
+                                                    isPaymentDisabled
+                                                        ? Colors.grey
+                                                        : const Color(
+                                                          0xFF4C5F7D,
+                                                        ),
                                                 fontSize: 15,
                                                 fontFamily: 'Inter',
                                                 fontWeight: FontWeight.w500,
@@ -857,62 +809,99 @@ class _paymentsummaryState extends State<paymentsummary> {
 
                                       SizedBox(height: 5),
                                       Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                                        child: BlocBuilder<PaymentBloc, PaymentState>(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                        ),
+                                        child: BlocBuilder<
+                                          PaymentBloc,
+                                          PaymentState
+                                        >(
                                           builder: (context, state) {
-                                            double netPayable = 0.0;
-
-                                            if (state is PaymentSummaryLoaded) {
-                                              netPayable = state.summary.netTotal; // ✅ updated net payable
-                                            }
-
-                                            final presetAmounts = buildPresetAmounts(netPayable);
+                                            final currentGrandTotal = getGrandTotal(state);
+                                            final presetAmounts =
+                                                buildPresetAmounts(currentGrandTotal);
 
                                             return Wrap(
                                               spacing: 10,
                                               runSpacing: 10,
-                                              children: presetAmounts.map((value) {
-                                                return GestureDetector(
-                                                  onTap: isPaymentDisabled
-                                                      ? null
-                                                      : () => _onPresetAmountTap(value.toStringAsFixed(0)),
+                                              children:
+                                                  presetAmounts.map((value) {
+                                                    return GestureDetector(
+                                                      onTap:
+                                                          isPaymentDisabled
+                                                              ? null
+                                                              : () => _onPresetAmountTap(
+                                                                value
+                                                                    .toStringAsFixed(
+                                                                      0,
+                                                                    ),
+                                                              ),
 
-                                                  child: Container(
-                                                    height: MediaQuery.of(context).size.height * 0.05,
-                                                    width: MediaQuery.of(context).size.width * 0.10,
-                                                    decoration: BoxDecoration(
-                                                      color: isPaymentDisabled
-                                                          ? Colors.grey.shade300
-                                                          : amount == value.toStringAsFixed(0)
-                                                          ? const Color(0xFFDFF5E1)
-                                                          : const Color(0xFFE1F9DA),
-                                                      borderRadius: BorderRadius.circular(5),
-                                                      border: Border.all(
-                                                        color: const Color(0xFFF2EEEE).withOpacity(0.5),
-                                                        width: 0.8,
-                                                      ),
-                                                    ),
-                                                    child: Center(
-                                                      child: Text(
-                                                        "₹${value.toStringAsFixed(0)}",
-                                                        style: const TextStyle(
-                                                          color: Color(0xFF318616),
-                                                          fontSize: 15,
-                                                          fontFamily: 'Inter',
-                                                          fontWeight: FontWeight.w500,
-                                                          decoration: TextDecoration.none,
+                                                      child: Container(
+                                                        height:
+                                                            MediaQuery.of(
+                                                              context,
+                                                            ).size.height *
+                                                            0.05,
+                                                        width:
+                                                            MediaQuery.of(
+                                                              context,
+                                                            ).size.width *
+                                                            0.10,
+                                                        decoration: BoxDecoration(
+                                                          color:
+                                                              isPaymentDisabled
+                                                                  ? Colors
+                                                                      .grey
+                                                                      .shade300
+                                                                  : amount ==
+                                                                      value
+                                                                          .toStringAsFixed(
+                                                                            0,
+                                                                          )
+                                                                  ? const Color(
+                                                                    0xFFDFF5E1,
+                                                                  )
+                                                                  : const Color(
+                                                                    0xFFE1F9DA,
+                                                                  ),
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                5,
+                                                              ),
+                                                          border: Border.all(
+                                                            color: const Color(
+                                                              0xFFF2EEEE,
+                                                            ).withOpacity(0.5),
+                                                            width: 0.8,
+                                                          ),
+                                                        ),
+                                                        child: Center(
+                                                          child: Text(
+                                                            "₹${value.toStringAsFixed(0)}",
+                                                            style: const TextStyle(
+                                                              color: Color(
+                                                                0xFF318616,
+                                                              ),
+                                                              fontSize: 15,
+                                                              fontFamily:
+                                                                  'Inter',
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w500,
+                                                              decoration:
+                                                                  TextDecoration
+                                                                      .none,
+                                                            ),
+                                                          ),
                                                         ),
                                                       ),
-                                                    ),
-                                                  ),
-                                                );
-                                              }).toList(),
+                                                    );
+                                                  }).toList(),
                                             );
                                           },
                                         ),
                                       ),
-
-
 
                                       Expanded(
                                         flex: 1,
@@ -921,7 +910,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                                           child: NumberPad(
                                             onKeyPressed: handleKeyPress,
                                             selectedPaymentMode:
-                                            selectedPaymentMode,
+                                                selectedPaymentMode,
                                             isPaying: _isPaying,
                                           ),
                                         ),
@@ -943,7 +932,6 @@ class _paymentsummaryState extends State<paymentsummary> {
                                 amount,
                                 "Transaction Overview :",
                                 netPayable: netPayable,
-
                               ),
                               const SizedBox(height: 5),
                               Text(
@@ -972,7 +960,6 @@ class _paymentsummaryState extends State<paymentsummary> {
                                 tipController: tipController,
                                 splitPayController: splitPayController,
 
-
                                 // ===== STATE FLAGS =====
                                 isDiscountApplied: _isDiscountApplied,
                                 isCouponApplied: _isCouponApplied,
@@ -993,12 +980,14 @@ class _paymentsummaryState extends State<paymentsummary> {
                                 appliedCoupon: _appliedCoupon,
 
                                 // ===== APPLY CALLBACKS =====
-
                                 onDiscountApplied: (double amount, bool isNc) {
-                                  debugPrint("🟠 onDiscountApplied amount=$amount isNc=$isNc");
+                                  debugPrint(
+                                    "🟠 onDiscountApplied amount=$amount isNc=$isNc",
+                                  );
 
                                   // Only update the field visually for instant feedback
-                                  discountController.text = amount.toStringAsFixed(2);
+                                  discountController.text = amount
+                                      .toStringAsFixed(2);
 
                                   // DO NOT touch _isDiscountApplied, merchantDiscount or _isNcDiscount here
 
@@ -1045,7 +1034,9 @@ class _paymentsummaryState extends State<paymentsummary> {
                                   setState(() {
                                     _isTipApplied = true;
                                     _tipAmount = amount;
-                                    tipController.text = amount.toStringAsFixed(2);
+                                    tipController.text = amount.toStringAsFixed(
+                                      2,
+                                    );
                                   });
 
                                   widget.onTipChanged(amount);
@@ -1064,19 +1055,21 @@ class _paymentsummaryState extends State<paymentsummary> {
                                   setState(() {
                                     _isSplitApplied = true;
                                     _splitAmount = amount;
-                                    splitPayController.text =
-                                        amount.toStringAsFixed(2);
+                                    splitPayController.text = amount
+                                        .toStringAsFixed(2);
                                   });
                                 },
 
                                 // ===== DELETE CALLBACKS =====
                                 onDiscountDelete: () {
-                                  final paymentState = context.read<PaymentBloc>().state;
+                                  final paymentState =
+                                      context.read<PaymentBloc>().state;
 
                                   String isNcFlag = "no";
 
                                   if (paymentState is PaymentSummaryLoaded) {
-                                    isNcFlag = paymentState.isNoCharge ? "yes" : "no";
+                                    isNcFlag =
+                                        paymentState.isNoCharge ? "yes" : "no";
                                   }
 
                                   context.read<RemoveDiscountBloc>().add(
@@ -1088,50 +1081,52 @@ class _paymentsummaryState extends State<paymentsummary> {
                                   );
                                 },
 
-
                                 //   // reset local NC flag after sending request
                                 //   setState(() {
                                 //     _isNcDiscount = false;
                                 //   });
                                 // },
+                                onCouponDelete: () async {
+                                  final success = await _couponRepository
+                                      .removeCoupon(
+                                        token: widget.token,
+                                        orderId: widget.orderId,
+                                      );
 
-                                  onCouponDelete: () async {
-                                    final success = await _couponRepository.removeCoupon(
-                                      token: widget.token,
-                                      orderId: widget.orderId,
+                                  if (success) {
+                                    setState(() {
+                                      _isCouponApplied = false;
+                                      _appliedCoupon = '';
+                                      _couponAmount = 0.0;
+                                      couponController.clear();
+                                    });
+
+                                    widget.onCouponAmountChanged?.call(0.0);
+
+                                    context.read<PaymentBloc>().add(
+                                      LoadPaymentSummary(
+                                        token: widget.token,
+                                        orderId: widget.orderId,
+                                        restaurantId: widget.restaurantId,
+                                        orderType: "Dine In",
+                                      ),
                                     );
 
-                                    if (success) {
-                                      setState(() {
-                                        _isCouponApplied = false;
-                                        _appliedCoupon = '';
-                                        _couponAmount = 0.0;
-                                        couponController.clear();
-                                      });
-
-                                      widget.onCouponAmountChanged?.call(0.0);
-
-                                      context.read<PaymentBloc>().add(
-                                        LoadPaymentSummary(
-                                          token: widget.token,
-                                          orderId: widget.orderId,
-                                          restaurantId: widget.restaurantId,
-                                          orderType: "Dine In",
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          "Coupon removed successfully",
                                         ),
-                                      );
-
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text("Coupon removed successfully"),
-                                        ),
-                                      );
-                                    }
-                                  },
+                                      ),
+                                    );
+                                  }
+                                },
                                 onTipDelete: () async {
-                                  final success = await _tipRepository.removeTip(
-                                    token: widget.token,
-                                    orderId: widget.orderId,
-                                  );
+                                  final success = await _tipRepository
+                                      .removeTip(
+                                        token: widget.token,
+                                        orderId: widget.orderId,
+                                      );
 
                                   if (success) {
                                     setState(() {
@@ -1144,11 +1139,17 @@ class _paymentsummaryState extends State<paymentsummary> {
                                     _updateAmountField();
 
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Tip removed successfully')),
+                                      const SnackBar(
+                                        content: Text(
+                                          'Tip removed successfully',
+                                        ),
+                                      ),
                                     );
                                   } else {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Failed to remove tip')),
+                                      const SnackBar(
+                                        content: Text('Failed to remove tip'),
+                                      ),
                                     );
                                   }
                                 },
@@ -1161,8 +1162,6 @@ class _paymentsummaryState extends State<paymentsummary> {
                                   });
                                 },
                               ),
-
-
                             ],
                           ),
                         ],
@@ -1179,28 +1178,23 @@ class _paymentsummaryState extends State<paymentsummary> {
   }
 }
 
-
 @override
 Widget buildPayment(
-    BuildContext context,
-    String amount,
-    String label, {
-      required double netPayable,
-    })
-{
-
+  BuildContext context,
+  String amount,
+  String label, {
+  required double netPayable,
+}) {
   final double tenderAmount =
-  amount.isNotEmpty ? double.tryParse(amount) ?? 0.0 : 0.0;
+      amount.isNotEmpty ? double.tryParse(amount) ?? 0.0 : 0.0;
 
   final double balanceAmount =
-  tenderAmount < netPayable ? (netPayable - tenderAmount) : 0.0;
+      tenderAmount < netPayable ? (netPayable - tenderAmount) : 0.0;
 
   final bool isPartial = tenderAmount < netPayable;
   final bool isOver = tenderAmount > netPayable;
 
-  final double changeAmount =
-  isOver ? (tenderAmount - netPayable) : 0.0;
-
+  final double changeAmount = isOver ? (tenderAmount - netPayable) : 0.0;
 
   /// 🔍 DEBUG
   print('💰 netPayable = $netPayable');
@@ -1246,23 +1240,25 @@ Widget buildPayment(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            SizedBox(height: 8),
+            //SizedBox(height: 12),
             _buildColumnItem(
-              "Balance Amount.",
+              "Balance Amount",
               balanceAmount.toStringAsFixed(2),
               context,
               amount: balanceAmount,
             ),
-            SizedBox(width: 20),
+            const SizedBox(height: 12),
+            //SizedBox(width: 20),
             _buildColumnItem(
-              "Tender Amount.",
+              "Tender Amount",
               tenderAmount.toStringAsFixed(2),
               context,
               amount: tenderAmount,
             ),
-            SizedBox(width: 20),
+            const SizedBox(height: 12),
+            //SizedBox(height: 10),
             _buildColumnItem(
-              "Change.",
+              "Change",
               changeAmount.toStringAsFixed(2),
               context,
               amount: changeAmount,
@@ -1284,7 +1280,6 @@ class NumberPad extends StatelessWidget {
     required this.onKeyPressed,
     required this.selectedPaymentMode,
     required this.isPaying,
-
   });
 
   @override
@@ -1320,9 +1315,9 @@ class NumberPad extends StatelessWidget {
                     child: Container(
                       decoration: BoxDecoration(
                         color:
-                        selectedPaymentMode.isNotEmpty
-                            ? Color(0xFFFE6464)
-                            : Colors.white,
+                            selectedPaymentMode.isNotEmpty
+                                ? Color(0xFFFE6464)
+                                : Colors.white,
                         borderRadius: BorderRadius.circular(10),
                         boxShadow: [
                           BoxShadow(
@@ -1333,26 +1328,29 @@ class NumberPad extends StatelessWidget {
                         ],
                       ),
                       alignment: Alignment.center,
-                      child: isPaying
-                          ? const SizedBox(
-                        height: 26,
-                        width: 26,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 3,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                          : Text(
-                        "PAY",
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: selectedPaymentMode.isNotEmpty
-                              ? Colors.white
-                              : const Color(0xFF4C5F7D),
-                        ),
-                      ),
-
+                      child:
+                          isPaying
+                              ? const SizedBox(
+                                height: 26,
+                                width: 26,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 3,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
+                                ),
+                              )
+                              : Text(
+                                "PAY",
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color:
+                                      selectedPaymentMode.isNotEmpty
+                                          ? Colors.white
+                                          : const Color(0xFF4C5F7D),
+                                ),
+                              ),
                     ),
                   ),
                 ),
@@ -1371,13 +1369,13 @@ class NumberPad extends StatelessWidget {
   }
 
   Widget _buildButton(
-      String label, {
-        int flex = 1,
-        Color? backgroundColor,
-        Color? textColor,
-        BoxBorder? border,
-        bool isPayButton = false,
-      }) {
+    String label, {
+    int flex = 1,
+    Color? backgroundColor,
+    Color? textColor,
+    BoxBorder? border,
+    bool isPayButton = false,
+  }) {
     final bool isNumber = RegExp(r'^(\d+|00|\.)\$').hasMatch(label);
 
     return Expanded(
@@ -1406,7 +1404,7 @@ class NumberPad extends StatelessWidget {
                 fontSize: isNumber ? 24 : 18,
                 fontWeight: FontWeight.bold,
                 color:
-                textColor ??
+                    textColor ??
                     (isNumber ? Color(0xFF4C5F7D) : Color(0xFF4C5F7D)),
               ),
             ),
@@ -1454,46 +1452,40 @@ class NumberPad extends StatelessWidget {
 // final TextEditingController splitPayController = TextEditingController();
 // final TextEditingController _discountController = TextEditingController();
 
-
-
-
-
 Widget _buildPaymentDiscountItem(
-    BuildContext context, {
-      required double netPayable,
-      required int orderId,
+  BuildContext context, {
+  required double netPayable,
+  required int orderId,
 
-      required TextEditingController discountController,
-      required TextEditingController couponController,
-      required TextEditingController tipController,
-      required TextEditingController splitPayController,
+  required TextEditingController discountController,
+  required TextEditingController couponController,
+  required TextEditingController tipController,
+  required TextEditingController splitPayController,
 
-      required bool isDiscountApplied,
-      required bool isCouponApplied,
-      required bool isTipApplied,
-      required bool isSplitApplied,
+  required bool isDiscountApplied,
+  required bool isCouponApplied,
+  required bool isTipApplied,
+  required bool isSplitApplied,
 
-      required void Function(double amount, bool isNc) onDiscountApplied,
+  required void Function(double amount, bool isNc) onDiscountApplied,
 
-      required Function(String, double) onCouponApplied,
-      required ValueChanged<double> onTipApplied,
-      required ValueChanged<double> onSplitApplied,
+  required Function(String, double) onCouponApplied,
+  required ValueChanged<double> onTipApplied,
+  required ValueChanged<double> onSplitApplied,
 
-      required VoidCallback onDiscountDelete,
-      required VoidCallback onCouponDelete,
-      required VoidCallback onTipDelete,
-      required VoidCallback onSplitDelete,
-      required int? selectedServiceCharge,
-      required bool isServiceChargeApplied,
-      required ValueChanged<int> onServiceChargeApplied,
-      required VoidCallback onServiceChargeDelete,
+  required VoidCallback onDiscountDelete,
+  required VoidCallback onCouponDelete,
+  required VoidCallback onTipDelete,
+  required VoidCallback onSplitDelete,
+  required int? selectedServiceCharge,
+  required bool isServiceChargeApplied,
+  required ValueChanged<int> onServiceChargeApplied,
+  required VoidCallback onServiceChargeDelete,
 
-
-      String appliedCoupon = "", required String token, required String restaurantId,
-    })
-
-{
-
+  String appliedCoupon = "",
+  required String token,
+  required String restaurantId,
+}) {
   final screenWidth = MediaQuery.of(context).size.width;
   final screenHeight = MediaQuery.of(context).size.height;
 
@@ -1509,56 +1501,62 @@ Widget _buildPaymentDiscountItem(
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-
         /// 🔻 DISCOUNT
-        const Text('Discount :',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+        const Text(
+          'Discount :',
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        ),
         const SizedBox(height: 4),
         Row(
           children: [
             Expanded(
               child: GestureDetector(
-                onTap: isDiscountApplied
-                    ? null
-                    : () async {
-                  final result = await showDialog<Map<String, dynamic>>(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (_) {
-                      return MultiBlocProvider(
-                        providers: [
-                          BlocProvider(
-                            create: (_) => DiscountReasonBloc(
-                              DiscountReasonRepository(),
-                            ),
-                          ),
-                          BlocProvider.value(
-                            value: context.read<DiscountBloc>(), // ✅ reuse same instance
-                          ),
+                onTap:
+                    isDiscountApplied
+                        ? null
+                        : () async {
+                          final result = await showDialog<Map<String, dynamic>>(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (_) {
+                              return MultiBlocProvider(
+                                providers: [
+                                  BlocProvider(
+                                    create:
+                                        (_) => DiscountReasonBloc(
+                                          DiscountReasonRepository(),
+                                        ),
+                                  ),
+                                  BlocProvider.value(
+                                    value:
+                                        context
+                                            .read<
+                                              DiscountBloc
+                                            >(), // ✅ reuse same instance
+                                  ),
+                                ],
+                                child: DiscountPopup(
+                                  netPayable: netPayable,
+                                  orderId: orderId,
+                                ),
+                              );
+                            },
+                          );
 
-                        ],
-                        child: DiscountPopup(
-                          netPayable: netPayable,
-                          orderId: orderId,
-                        ),
-                      );
-                    },
-                  );
+                          if (result != null) {
+                            final double applied =
+                                (result["amount"] as double).abs();
+                            final bool isNc = result["isNc"] == true;
 
-                  if (result != null) {
-                    final double applied =
-                    (result["amount"] as double).abs();
-                    final bool isNc = result["isNc"] == true;
+                            // update only the field UI here
+                            discountController.text = applied.toStringAsFixed(
+                              2,
+                            );
 
-
-                    // update only the field UI here
-                    discountController.text =
-                        applied.toStringAsFixed(2);
-
-                    // tell parent “a discount was applied”
-                    onDiscountApplied(applied, isNc);
-                  }
-                },
+                            // tell parent “a discount was applied”
+                            onDiscountApplied(applied, isNc);
+                          }
+                        },
                 child: AbsorbPointer(
                   child: _inputField(
                     controller: discountController,
@@ -1578,38 +1576,35 @@ Widget _buildPaymentDiscountItem(
           ],
         ),
 
-
-
-
-
-
-
         const SizedBox(height: 4),
 
-
         /// 🔻 COUPON
-        const Text('Coupon :',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+        const Text(
+          'Coupon :',
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        ),
         const SizedBox(height: 6),
         Row(
           children: [
             Expanded(
               child: GestureDetector(
-                onTap: isCouponApplied
-                    ? null
-                    : () {
-                  showDialog(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (_) => Couponscreen(
-                      orderId: orderId,
-                      token: token,
-                      onCouponApplied: (coupon, amount) {
-                        onCouponApplied(coupon, amount);
-                      },
-                    ),
-                  );
-                },
+                onTap:
+                    isCouponApplied
+                        ? null
+                        : () {
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder:
+                                (_) => Couponscreen(
+                                  orderId: orderId,
+                                  token: token,
+                                  onCouponApplied: (coupon, amount) {
+                                    onCouponApplied(coupon, amount);
+                                  },
+                                ),
+                          );
+                        },
                 child: AbsorbPointer(
                   child: _inputField(
                     hint: 'Enter your coupon code',
@@ -1621,53 +1616,54 @@ Widget _buildPaymentDiscountItem(
               ),
             ),
             const SizedBox(width: 6),
-            if (isCouponApplied)
-              _deleteButton(onCouponDelete),
+            if (isCouponApplied) _deleteButton(onCouponDelete),
           ],
         ),
-
 
         const SizedBox(height: 4),
 
         /// 🔻 TIP
-        const Text('Tip :',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+        const Text(
+          'Tip :',
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        ),
         const SizedBox(height: 4),
         Row(
           children: [
             Expanded(
               child: GestureDetector(
-                onTap: isTipApplied
-                    ? null
-                    : () async {
-                  final double? result = await showDialog<double>(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (_) => TipPopup(
-                      orderId: orderId,
-                      token: token,
-                      onTipApplied: onTipApplied,
-                    ),
-                  );
+                onTap:
+                    isTipApplied
+                        ? null
+                        : () async {
+                          final double? result = await showDialog<double>(
+                            context: context,
+                            barrierDismissible: false,
+                            builder:
+                                (_) => TipPopup(
+                                  orderId: orderId,
+                                  token: token,
+                                  onTipApplied: onTipApplied,
+                                ),
+                          );
 
-                  if (result != null && result > 0) {
-                    onTipApplied(result);
-                  }
-                },
+                          if (result != null && result > 0) {
+                            onTipApplied(result);
+                          }
+                        },
                 child: AbsorbPointer(
                   child: _inputField(
                     hint: 'Enter tip amount',
                     keyboardType: TextInputType.number,
                     enabled: !isTipApplied,
-                    controller:tipController,
+                    controller: tipController,
                     // initialValue: '' ,
                   ),
                 ),
               ),
             ),
             const SizedBox(width: 4),
-            if (isTipApplied)
-              _deleteButton(onTipDelete),
+            if (isTipApplied) _deleteButton(onTipDelete),
           ],
         ),
 
@@ -1716,14 +1712,10 @@ Widget _buildPaymentDiscountItem(
 
         const Text(
           'Service Charges :',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
         ),
 
         // const SizedBox(height: 6),
-
         Row(
           children: [
             Expanded(
@@ -1743,26 +1735,11 @@ Widget _buildPaymentDiscountItem(
                     ),
                     isExpanded: true,
                     items: const [
-                      DropdownMenuItem(
-                        value: 1,
-                        child: Text("1%"),
-                      ),
-                      DropdownMenuItem(
-                        value: 2,
-                        child: Text("2%"),
-                      ),
-                      DropdownMenuItem(
-                        value: 3,
-                        child: Text("3%"),
-                      ),
-                      DropdownMenuItem(
-                        value: 4,
-                        child: Text("4%"),
-                      ),
-                      DropdownMenuItem(
-                        value: 5,
-                        child: Text("5%"),
-                      ),
+                      DropdownMenuItem(value: 1, child: Text("1%")),
+                      DropdownMenuItem(value: 2, child: Text("2%")),
+                      DropdownMenuItem(value: 3, child: Text("3%")),
+                      DropdownMenuItem(value: 4, child: Text("4%")),
+                      DropdownMenuItem(value: 5, child: Text("5%")),
                     ],
                     onChanged: (value) {
                       if (value == null) return;
@@ -1781,11 +1758,10 @@ Widget _buildPaymentDiscountItem(
           ],
         ),
       ],
-
-
     ),
   );
 }
+
 Widget _inputField({
   required String hint,
   required TextEditingController controller,
@@ -1804,14 +1780,10 @@ Widget _inputField({
       readOnly: true,
       // enabled: enabled,
       keyboardType: keyboardType,
-      decoration: InputDecoration(
-        hintText: hint,
-        border: InputBorder.none,
-      ),
+      decoration: InputDecoration(hintText: hint, border: InputBorder.none),
     ),
   );
 }
-
 
 Widget _deleteButton(VoidCallback onTap) {
   return GestureDetector(
@@ -1823,23 +1795,21 @@ Widget _deleteButton(VoidCallback onTap) {
         color: Colors.red.shade50,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const Icon( Icons.delete, size: 18, color: Colors.red),
+      child: const Icon(Icons.delete, size: 18, color: Colors.red),
     ),
   );
 }
 
-
-
 Widget _buildActionRow(
-    BuildContext context, {
-      required Color color,
-      required String ellipse,
-      required String icon,
-      required String label,
-      VoidCallback? onTap, // nullable for disabling main button
-      bool isDeleteEnabled = false, // new flag
-      VoidCallback? onDelete, // callback for delete action
-    }) {
+  BuildContext context, {
+  required Color color,
+  required String ellipse,
+  required String icon,
+  required String label,
+  VoidCallback? onTap, // nullable for disabling main button
+  bool isDeleteEnabled = false, // new flag
+  VoidCallback? onDelete, // callback for delete action
+}) {
   return Row(
     children: [
       Expanded(
@@ -1895,7 +1865,8 @@ Widget _buildActionRow(
               width: 25,
               height: 25,
               fit: BoxFit.contain,
-              color: isDeleteEnabled ? null : Colors.grey, // gray icon if disabled
+              color:
+                  isDeleteEnabled ? null : Colors.grey, // gray icon if disabled
             ),
           ),
         ),
@@ -1904,19 +1875,14 @@ Widget _buildActionRow(
   );
 }
 
-
 Widget _buildPaymentModeItem(
-    String label,
-    BuildContext context,
-    String selectedOption,
-    Function(String) onSelect,
-    ) {
+  String label,
+  BuildContext context,
+  String selectedOption,
+  Function(String) onSelect,
+) {
   final List<Map<String, dynamic>> options = [
-    {
-      "label": "Cash",
-      "image": "assets/cash.png",
-      "enabled": true,
-    },
+    {"label": "Cash", "image": "assets/cash.png", "enabled": true},
     {
       "label": "Card",
       "image": "assets/card.png",
@@ -1928,7 +1894,6 @@ Widget _buildPaymentModeItem(
       "enabled": false, // ❌ disabled
     },
   ];
-
 
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1959,72 +1924,79 @@ Widget _buildPaymentModeItem(
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children:
-          options.map((option) {
-            final bool isSelected = selectedOption == option['label'];
-            final bool isEnabled = option['enabled'] == true;
+              options.map((option) {
+                final bool isSelected = selectedOption == option['label'];
+                final bool isEnabled = option['enabled'] == true;
 
-            return GestureDetector(
-              onTap: isEnabled ? () => onSelect(option['label']!) : null,
-              child: Opacity(
-                opacity: isEnabled ? 1.0 : 0.4, // 👈 disabled look
-                child: Container(
-                  margin: const EdgeInsets.symmetric(vertical: 5),
-                  height: 35,
-                  width: 120,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? const Color(0xFFFCDFDC)
-                        : const Color(0xFFFFFFFF),
-                    borderRadius: BorderRadius.circular(0),
-                    border: isSelected
-                        ? Border.all(color: const Color(0xFFFE6464))
-                        : Border.all(color: Colors.grey.shade300),
-                    boxShadow: [
-                      BoxShadow(
-                        color: isEnabled
-                            ? const Color(0x10000000)
-                            : Colors.transparent,
-                        offset: const Offset(0, 1),
-                        blurRadius: 10,
-                        spreadRadius: 0,
+                return GestureDetector(
+                  onTap: isEnabled ? () => onSelect(option['label']!) : null,
+                  child: Opacity(
+                    opacity: isEnabled ? 1.0 : 0.4, // 👈 disabled look
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(vertical: 5),
+                      height: 35,
+                      width: 120,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
                       ),
-                    ],
+                      decoration: BoxDecoration(
+                        color:
+                            isSelected
+                                ? const Color(0xFFFCDFDC)
+                                : const Color(0xFFFFFFFF),
+                        borderRadius: BorderRadius.circular(0),
+                        border:
+                            isSelected
+                                ? Border.all(color: const Color(0xFFFE6464))
+                                : Border.all(color: Colors.grey.shade300),
+                        boxShadow: [
+                          BoxShadow(
+                            color:
+                                isEnabled
+                                    ? const Color(0x10000000)
+                                    : Colors.transparent,
+                            offset: const Offset(0, 1),
+                            blurRadius: 10,
+                            spreadRadius: 0,
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Image.asset(
+                            option['image']!,
+                            width: 30,
+                            height: 30,
+                            color:
+                                isEnabled ? null : Colors.grey, // 👈 grey icon
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            option['label']!,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color:
+                                  !isEnabled
+                                      ? Colors.grey
+                                      : isSelected
+                                      ? const Color(0xFFFE6464)
+                                      : const Color(0xFF4147D5),
+                              fontSize: 13,
+                              fontFamily: 'Montserrat',
+                              fontWeight: FontWeight.w500,
+                              height: 1.50,
+                              letterSpacing: 0.60,
+                              decoration: TextDecoration.none,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Image.asset(
-                        option['image']!,
-                        width: 30,
-                        height: 30,
-                        color: isEnabled ? null : Colors.grey, // 👈 grey icon
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        option['label']!,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: !isEnabled
-                              ? Colors.grey
-                              : isSelected
-                              ? const Color(0xFFFE6464)
-                              : const Color(0xFF4147D5),
-                          fontSize: 13,
-                          fontFamily: 'Montserrat',
-                          fontWeight: FontWeight.w500,
-                          height: 1.50,
-                          letterSpacing: 0.60,
-                          decoration: TextDecoration.none,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-
+                );
+              }).toList(),
         ),
       ),
     ],
@@ -2032,11 +2004,11 @@ Widget _buildPaymentModeItem(
 }
 
 Widget _buildColumnItem(
-    String label,
-    String insideText,
-    BuildContext context, {
-      num? amount,
-    }) {
+  String label,
+  String insideText,
+  BuildContext context, {
+  num? amount,
+}) {
   // Determine color based on the value
   Color textColor;
   if (amount != null) {

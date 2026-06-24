@@ -49,7 +49,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Map<String, dynamic>? _selectedUser;
   double _tipAmount = 0.0;
   double _couponAmount = 0.0;
-  // double merchantDiscount = 0.0;
+  double? _grandTotal;
 
 
   @override
@@ -176,6 +176,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       hasDiscountApplied: hasDiscountApplied,
                       appliedCouponAmount: paymentSummary.coupons,
                       token: widget.token,
+                      onNetPayableChanged: (double value) {
+                        setState(() {
+                          _grandTotal = value;
+                        });
+                      },
                     ),
 
                   ),
@@ -195,7 +200,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     zoneId: widget.zoneId,
                     PaymentSummary: paymentSummary,
                     orderId: orderId,
-
+                    grandTotal: _grandTotal,
                     onMerchantDiscountChanged: (double value) {
                       context.read<PaymentBloc>().add(
                         UpdateMerchantDiscount(value),

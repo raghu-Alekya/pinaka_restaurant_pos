@@ -28,6 +28,7 @@ class Sidebarwidgets extends StatefulWidget {
   final double tipAmount;
   final double appliedCouponAmount;
   final String token;
+  final ValueChanged<double>? onNetPayableChanged;
 
   const Sidebarwidgets({
     super.key,
@@ -39,16 +40,13 @@ class Sidebarwidgets extends StatefulWidget {
     required this.appliedCouponAmount, // 👈 ADD THIS
     this.hasCouponApplied = false,
     this.hasDiscountApplied = false,
-    required  this.token,
+    required this.token,
+    this.onNetPayableChanged,
   });
-
-
 
   @override
   State<Sidebarwidgets> createState() => _SidebarwidgetsState();
-
 }
-
 
 class _SidebarwidgetsState extends State<Sidebarwidgets>
     with SingleTickerProviderStateMixin {
@@ -59,7 +57,6 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
   double beverageTax = 0;
   double? foodRate;
   double? beverageRate;
-
 
   double foodCgst = 0;
   double foodSgst = 0;
@@ -79,9 +76,6 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
   // service charges
   double serviceChargeAmount = 0.0;
   String? selectedServiceCharge;
-
-
-
 
   // until backend provides it
 
@@ -104,7 +98,8 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
         _calculateInitialPayable();
         setState(() {});
       }
-    } {
+    }
+    {
       final taxState = context.read<TaxBloc>().state;
 
       if (taxState is TaxLoaded) {
@@ -120,39 +115,46 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
   void _calculateInitialPayable() {
     final grossTotal = widget.paymentSummary.grossTotal;
     final couponDiscount =
-    widget.paymentSummary.coupons > 0
-        ? widget.paymentSummary.coupons
-        : widget.appliedCouponAmount;
+        widget.paymentSummary.coupons > 0
+            ? widget.paymentSummary.coupons
+            : widget.appliedCouponAmount;
 
     final merchantDiscount = widget.merchantDiscount.abs();
 
     calculatedNetPayable =
         grossTotal -
-            couponDiscount -
-            merchantDiscount +
-            widget.paymentSummary.serviceChargeValue +
-            widget.tipAmount;
-
+        couponDiscount -
+        merchantDiscount +
+        widget.paymentSummary.serviceChargeValue +
+        widget.tipAmount;
 
     debugPrint(
       "Service Charge value : ${widget.paymentSummary.serviceChargeValue}",
     );
-  }
 
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        widget.onNetPayableChanged?.call(calculatedNetPayable);
+      }
+    });
+  }
 
   @override
   void dispose() {
     _controller.dispose(); // ✅ VERY IMPORTANT
     super.dispose();
   }
+
   String normalizeTaxClass(String? value) {
     return value
-        ?.toLowerCase()
-        .trim()
-        .replaceAll(' ', '')
-        .replaceAll('bewerages', 'beverages') // typo fix
-        ?? '';
+            ?.toLowerCase()
+            .trim()
+            .replaceAll(' ', '')
+            .replaceAll('bewerages', 'beverages') // typo fix
+            ??
+        '';
   }
+
   // void _calculateNetPayableOnce() {
   //   final grossTotal = widget.paymentSummary.grossTotal;
   //   final couponDiscount = widget.paymentSummary.coupons;
@@ -175,15 +177,16 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
       final itemClass = normalizeTaxClass(item.taxClass);
 
       final tax = state.taxes.firstWhere(
-            (t) => normalizeTaxClass(t.taxClass) == itemClass,
-        orElse: () => TaxModel(
-          id: 0,
-          rate: "0",
-          name: "",
-          taxClass: "",
-          compound: false,
-          shipping: false,
-        ),
+        (t) => normalizeTaxClass(t.taxClass) == itemClass,
+        orElse:
+            () => TaxModel(
+              id: 0,
+              rate: "0",
+              name: "",
+              taxClass: "",
+              compound: false,
+              shipping: false,
+            ),
       );
 
       final rate = double.tryParse(tax.rate) ?? 0;
@@ -208,19 +211,19 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
 
     final grossTotal = widget.paymentSummary.grossTotal;
     final couponDiscount =
-    widget.paymentSummary.coupons > 0
-        ? widget.paymentSummary.coupons
-        : widget.appliedCouponAmount;
+        widget.paymentSummary.coupons > 0
+            ? widget.paymentSummary.coupons
+            : widget.appliedCouponAmount;
     final merchantDiscount = widget.merchantDiscount.abs();
     final tipAmount = widget.tipAmount;
-    final serviceCharge =
-        widget.paymentSummary.serviceChargeValue;
+    final serviceCharge = widget.paymentSummary.serviceChargeValue;
 
     final subTotal = grossTotal - couponDiscount;
     final totalTaxTemp =
         foodCgstTemp + foodSgstTemp + beverageCgstTemp + beverageSgstTemp;
 
-    final netPayableTemp = subTotal + totalTaxTemp - merchantDiscount + tipAmount +serviceCharge;
+    final netPayableTemp =
+        subTotal + totalTaxTemp - merchantDiscount + tipAmount + serviceCharge;
     debugPrint("""
 Gross Total      : $grossTotal
 Coupon Discount  : $couponDiscount
@@ -238,7 +241,14 @@ Net Payable      : $netPayableTemp
       totalTax = totalTaxTemp;
       calculatedNetPayable = netPayableTemp;
     });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        widget.onNetPayableChanged?.call(calculatedNetPayable);
+      }
+    });
   }
+
   Future<void> printBill({
     required String orderId,
     required String tableName,
@@ -254,27 +264,19 @@ Net Payable      : $netPayableTemp
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      final restaurantName =
-          prefs.getString('store_name') ?? 'Restaurant';
+      final restaurantName = prefs.getString('store_name') ?? 'Restaurant';
 
-      final address =
-          prefs.getString('store_address') ?? '';
+      final address = prefs.getString('store_address') ?? '';
 
-      final phone =
-          prefs.getString('store_phone') ?? '';
+      final phone = prefs.getString('store_phone') ?? '';
 
-      final gstNumber =
-          prefs.getString('store_gst') ?? '';
+      final gstNumber = prefs.getString('store_gst') ?? '';
 
       List<int> bytes = [];
 
-      final profile =
-      await CapabilityProfile.load(name: 'XP-N160I');
+      final profile = await CapabilityProfile.load(name: 'XP-N160I');
 
-      final generator = Generator(
-        PaperSize.mm58,
-        profile,
-      );
+      final generator = Generator(PaperSize.mm58, profile);
 
       // =========================
       // Restaurant Header
@@ -293,27 +295,21 @@ Net Payable      : $netPayableTemp
       if (address.isNotEmpty) {
         bytes += generator.text(
           address,
-          styles: const PosStyles(
-            align: PosAlign.center,
-          ),
+          styles: const PosStyles(align: PosAlign.center),
         );
       }
 
       if (gstNumber.isNotEmpty) {
         bytes += generator.text(
           "GSTIN : $gstNumber",
-          styles: const PosStyles(
-            align: PosAlign.center,
-          ),
+          styles: const PosStyles(align: PosAlign.center),
         );
       }
 
       if (phone.isNotEmpty) {
         bytes += generator.text(
           "Phone : $phone",
-          styles: const PosStyles(
-            align: PosAlign.center,
-          ),
+          styles: const PosStyles(align: PosAlign.center),
         );
       }
 
@@ -326,39 +322,25 @@ Net Payable      : $netPayableTemp
       final now = DateTime.now();
 
       bytes += generator.row([
-        PosColumn(
-          width: 6,
-          text:
-          "${now.day}/${now.month}/${now.year}",
-        ),
+        PosColumn(width: 6, text: "${now.day}/${now.month}/${now.year}"),
         PosColumn(
           width: 6,
           text: tableName,
-          styles: const PosStyles(
-            align: PosAlign.right,
-          ),
+          styles: const PosStyles(align: PosAlign.right),
         ),
       ]);
 
       bytes += generator.row([
-        PosColumn(
-          width: 6,
-          text: "Cashier",
-        ),
+        PosColumn(width: 6, text: "Cashier"),
         PosColumn(
           width: 6,
           text: cashierName,
-          styles: const PosStyles(
-            align: PosAlign.right,
-          ),
+          styles: const PosStyles(align: PosAlign.right),
         ),
       ]);
 
       bytes += generator.row([
-        PosColumn(
-          width: 12,
-          text: "Order ID : $orderId",
-        ),
+        PosColumn(width: 12, text: "Order ID : $orderId"),
       ]);
 
       bytes += generator.hr();
@@ -368,34 +350,21 @@ Net Payable      : $netPayableTemp
       // =========================
 
       bytes += generator.row([
-        PosColumn(
-          width: 5,
-          text: "Item",
-          styles: const PosStyles(bold: true),
-        ),
+        PosColumn(width: 5, text: "Item", styles: const PosStyles(bold: true)),
         PosColumn(
           width: 2,
           text: "Qty",
-          styles: const PosStyles(
-            bold: true,
-            align: PosAlign.center,
-          ),
+          styles: const PosStyles(bold: true, align: PosAlign.center),
         ),
         PosColumn(
           width: 2,
           text: "Rate",
-          styles: const PosStyles(
-            bold: true,
-            align: PosAlign.right,
-          ),
+          styles: const PosStyles(bold: true, align: PosAlign.right),
         ),
         PosColumn(
           width: 3,
           text: "Amt",
-          styles: const PosStyles(
-            bold: true,
-            align: PosAlign.right,
-          ),
+          styles: const PosStyles(bold: true, align: PosAlign.right),
         ),
       ]);
 
@@ -407,30 +376,21 @@ Net Payable      : $netPayableTemp
 
       for (final item in items) {
         bytes += generator.row([
-          PosColumn(
-            width: 5,
-            text: item['name'].toString(),
-          ),
+          PosColumn(width: 5, text: item['name'].toString()),
           PosColumn(
             width: 2,
             text: item['qty'].toString(),
-            styles: const PosStyles(
-              align: PosAlign.center,
-            ),
+            styles: const PosStyles(align: PosAlign.center),
           ),
           PosColumn(
             width: 2,
             text: item['price'].toString(),
-            styles: const PosStyles(
-              align: PosAlign.right,
-            ),
+            styles: const PosStyles(align: PosAlign.right),
           ),
           PosColumn(
             width: 3,
             text: item['amount'].toString(),
-            styles: const PosStyles(
-              align: PosAlign.right,
-            ),
+            styles: const PosStyles(align: PosAlign.right),
           ),
         ]);
 
@@ -439,9 +399,7 @@ Net Payable      : $netPayableTemp
             (item['modifiers'] as List).isNotEmpty) {
           bytes += generator.text(
             "  + ${(item['modifiers'] as List).join(', ')}",
-            styles: const PosStyles(
-              align: PosAlign.left,
-            ),
+            styles: const PosStyles(align: PosAlign.left),
           );
         }
       }
@@ -457,9 +415,7 @@ Net Payable      : $netPayableTemp
         PosColumn(
           width: 4,
           text: grossTotal.toStringAsFixed(2),
-          styles: const PosStyles(
-            align: PosAlign.right,
-          ),
+          styles: const PosStyles(align: PosAlign.right),
         ),
       ]);
 
@@ -468,9 +424,7 @@ Net Payable      : $netPayableTemp
         PosColumn(
           width: 4,
           text: "-${couponDiscount.toStringAsFixed(2)}",
-          styles: const PosStyles(
-            align: PosAlign.right,
-          ),
+          styles: const PosStyles(align: PosAlign.right),
         ),
       ]);
 
@@ -479,9 +433,7 @@ Net Payable      : $netPayableTemp
         PosColumn(
           width: 4,
           text: "-${merchantDiscount.toStringAsFixed(2)}",
-          styles: const PosStyles(
-            align: PosAlign.right,
-          ),
+          styles: const PosStyles(align: PosAlign.right),
         ),
       ]);
 
@@ -490,9 +442,7 @@ Net Payable      : $netPayableTemp
         PosColumn(
           width: 4,
           text: taxAmount.toStringAsFixed(2),
-          styles: const PosStyles(
-            align: PosAlign.right,
-          ),
+          styles: const PosStyles(align: PosAlign.right),
         ),
       ]);
 
@@ -502,9 +452,7 @@ Net Payable      : $netPayableTemp
           PosColumn(
             width: 4,
             text: tipAmount.toStringAsFixed(2),
-            styles: const PosStyles(
-              align: PosAlign.right,
-            ),
+            styles: const PosStyles(align: PosAlign.right),
           ),
         ]);
       }
@@ -515,10 +463,7 @@ Net Payable      : $netPayableTemp
         PosColumn(
           width: 8,
           text: "NET PAYABLE",
-          styles: const PosStyles(
-            bold: true,
-            height: PosTextSize.size2,
-          ),
+          styles: const PosStyles(bold: true, height: PosTextSize.size2),
         ),
         PosColumn(
           width: 4,
@@ -535,10 +480,7 @@ Net Payable      : $netPayableTemp
 
       bytes += generator.text(
         "Thank You Visit Again",
-        styles: const PosStyles(
-          align: PosAlign.center,
-          bold: true,
-        ),
+        styles: const PosStyles(align: PosAlign.center, bold: true),
       );
       bytes += generator.feed(2);
       bytes += generator.cut();
@@ -548,26 +490,17 @@ Net Payable      : $netPayableTemp
       await printerSettings.loadPrinter();
 
       if (printerSettings.selectedPrinter == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("No printer selected"),
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("No printer selected")));
         return;
       }
 
-      await printerSettings.printTicket(
-        bytes,
-        generator,
-      );
+      await printerSettings.printTicket(bytes, generator);
     } catch (e) {
       debugPrint("Print Bill Error: $e");
     }
   }
-
-
-
-
 
   @override
   void initState() {
@@ -579,14 +512,14 @@ Net Payable      : $netPayableTemp
       duration: const Duration(milliseconds: 300),
     );
 
-    _heightAnimation = Tween<double>(begin: 60, end: 260).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _heightAnimation = Tween<double>(
+      begin: 60,
+      end: 260,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
     selectedServiceCharge =
         widget.paymentSummary.serviceChargePercentage.toString();
 
-    serviceChargeAmount =
-        widget.paymentSummary.serviceChargeValue;
+    serviceChargeAmount = widget.paymentSummary.serviceChargeValue;
 
     debugPrint(
       "Service Charge %: ${widget.paymentSummary.serviceChargePercentage}",
@@ -600,9 +533,10 @@ Net Payable      : $netPayableTemp
 
     // ✅ LOAD TAX IMMEDIATELY (before expand)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<TaxBloc>() .add(LoadTaxesEvent());
+      context.read<TaxBloc>().add(LoadTaxesEvent());
     });
   }
+
   Future<void> loadOrderTypes() async {
     try {
       debugPrint("══════════════════════════════");
@@ -611,9 +545,7 @@ Net Payable      : $netPayableTemp
 
       final repo = OrderTypesInPaymentScreenRepository();
 
-      final result = await repo.getOrderTypes(
-        token: widget.token,
-      );
+      final result = await repo.getOrderTypes(token: widget.token);
 
       debugPrint("🟡 API Result: $result");
 
@@ -646,6 +578,7 @@ Net Payable      : $netPayableTemp
       }
     });
   }
+
   Widget rightAlignedDottedLine({double width = 120}) {
     return Align(
       alignment: Alignment.centerRight,
@@ -661,15 +594,13 @@ Net Payable      : $netPayableTemp
     );
   }
 
-
-
   Widget _row(
-      String label,
-      double value, {
-        bool isBold = false,
-        Color? color,
-        double fontSize = 14,
-      }) {
+    String label,
+    double value, {
+    bool isBold = false,
+    Color? color,
+    double fontSize = 14,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
@@ -684,7 +615,7 @@ Net Payable      : $netPayableTemp
             ),
           ),
           Text(
-            "₹${value.toStringAsFixed(2)}",
+            "${value <= 0 ? '-₹' : '₹'}${value.abs().toStringAsFixed(2)}",
             style: TextStyle(
               fontSize: fontSize,
               fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
@@ -695,7 +626,6 @@ Net Payable      : $netPayableTemp
       ),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -709,7 +639,7 @@ Net Payable      : $netPayableTemp
         }
       },
 
-      child:  Scaffold(
+      child: Scaffold(
         backgroundColor: const Color(0xFFF5F5F6),
         body: Stack(
           children: [
@@ -723,25 +653,27 @@ Net Payable      : $netPayableTemp
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-
                       /// LEFT COLUMN
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-
                           /// 🔙 Back Button (row 1)
                           GestureDetector(
                             onTap: () {
                               if (!mounted) return;
                               if (widget.hasCouponApplied) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text("Remove coupon first")),
+                                  const SnackBar(
+                                    content: Text("Remove coupon first"),
+                                  ),
                                 );
                                 return;
                               }
                               if (widget.hasDiscountApplied) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text("Remove discount first")),
+                                  const SnackBar(
+                                    content: Text("Remove discount first"),
+                                  ),
                                 );
                                 return;
                               }
@@ -790,24 +722,25 @@ Net Payable      : $netPayableTemp
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-
                           /// 🖨️ Print Button (row 1)
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-
                               /// Print Button Only
                               InkWell(
                                 onTap: () async {
                                   debugPrint("PRINT BUTTON TAPPED");
 
                                   final printers =
-                                  await PrinterDBHelper().getPrinterFromDB();
+                                      await PrinterDBHelper()
+                                          .getPrinterFromDB();
 
                                   debugPrint("Saved Printers => $printers");
 
                                   await printBill(
-                                    orderId: widget.paymentSummary.orderId.toString(),
+                                    orderId:
+                                        widget.paymentSummary.orderId
+                                            .toString(),
                                     tableName: "Table 1",
                                     cashierName: "Admin",
                                     items: [],
@@ -844,7 +777,9 @@ Net Payable      : $netPayableTemp
                               Container(
                                 width: 165,
                                 height: 40,
-                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFF9FBFF),
                                   borderRadius: BorderRadius.circular(10),
@@ -858,12 +793,13 @@ Net Payable      : $netPayableTemp
                                     value: selectedOrderType,
                                     isExpanded: true,
                                     hint: const Text("Dine In"),
-                                    items: orderTypes.map((type) {
-                                      return DropdownMenuItem<String>(
-                                        value: type,
-                                        child: Text(type),
-                                      );
-                                    }).toList(),
+                                    items:
+                                        orderTypes.map((type) {
+                                          return DropdownMenuItem<String>(
+                                            value: type,
+                                            child: Text(type),
+                                          );
+                                        }).toList(),
                                     onChanged: (value) async {
                                       if (value == null) return;
 
@@ -872,16 +808,23 @@ Net Payable      : $netPayableTemp
                                       });
 
                                       final result =
-                                      await OrderTypesInPaymentScreenRepository()
-                                          .updateOrderType(
-                                        token: widget.token,
-                                        orderId: widget.paymentSummary.orderId,
-                                        orderType: value,
-                                      );
+                                          await OrderTypesInPaymentScreenRepository()
+                                              .updateOrderType(
+                                                token: widget.token,
+                                                orderId:
+                                                    widget
+                                                        .paymentSummary
+                                                        .orderId,
+                                                orderType: value,
+                                              );
 
                                       if (result?.success == true) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text(result!.message)),
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(result!.message),
+                                          ),
                                         );
                                       }
                                     },
@@ -891,25 +834,33 @@ Net Payable      : $netPayableTemp
                             ],
                           ),
 
-
                           const SizedBox(height: 12),
 
                           /// 📅 Date & Time (row 2)
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Image.asset("assets/icon/calender.png", width: 16),
+                              Image.asset(
+                                "assets/icon/calender.png",
+                                width: 16,
+                              ),
                               const SizedBox(width: 4),
                               Text(
                                 formattedDate,
-                                style: const TextStyle(fontSize: 12, color: Color(0xFF656161)),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF656161),
+                                ),
                               ),
                               const SizedBox(width: 8),
                               Image.asset("assets/icon/clock.png", width: 16),
                               const SizedBox(width: 4),
                               Text(
                                 formattedTime,
-                                style: const TextStyle(fontSize: 12, color: Color(0xFF656161)),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF656161),
+                                ),
                               ),
                             ],
                           ),
@@ -921,7 +872,6 @@ Net Payable      : $netPayableTemp
                   const SizedBox(height: 8),
 
                   // ---------- Items Container ----------
-
                   Expanded(
                     child: Container(
                       decoration: BoxDecoration(
@@ -936,10 +886,12 @@ Net Payable      : $netPayableTemp
                         ),
                         child: Column(
                           children: [
-
                             // 🔴 HEADER ROW
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
                               decoration: const BoxDecoration(
                                 color: Color(0xFFFF5A5A), // Red header
                                 borderRadius: BorderRadius.only(
@@ -958,7 +910,6 @@ Net Payable      : $netPayableTemp
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
-
                                   ),
                                   SizedBox(
                                     width: 40, // column width
@@ -988,31 +939,42 @@ Net Payable      : $netPayableTemp
                             // 📜 LIST ITEMS
                             Expanded(
                               child: ListView.builder(
-                                itemCount: widget.paymentSummary.lineItems.length,
+                                itemCount:
+                                    widget.paymentSummary.lineItems.length,
                                 itemBuilder: (context, index) {
-                                  final item = widget.paymentSummary.lineItems[index];
+                                  final item =
+                                      widget.paymentSummary.lineItems[index];
 
                                   return Column(
                                     children: [
                                       Padding(
                                         padding: const EdgeInsets.symmetric(
-                                            horizontal: 12, vertical: 6),
-                                        child:Row(
+                                          horizontal: 12,
+                                          vertical: 6,
+                                        ),
+                                        child: Row(
                                           children: [
                                             Expanded(
                                               child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
                                                 children: [
-                                                  Text(item.name, overflow: TextOverflow.ellipsis),
+                                                  Text(
+                                                    item.name,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
                                                   if (item.modifiers.isNotEmpty)
                                                     Text(
                                                       "${item.modifiers.join(", ")}  (+₹${item.modifierAmount.toStringAsFixed(0)})",
                                                       style: const TextStyle(
                                                         fontSize: 10,
                                                         color: Colors.red,
-                                                        fontWeight: FontWeight.w600,
+                                                        fontWeight:
+                                                            FontWeight.w600,
                                                       ),
-                                                      overflow: TextOverflow.ellipsis,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
                                                     ),
                                                 ],
                                               ),
@@ -1024,7 +986,9 @@ Net Payable      : $netPayableTemp
                                               child: Text(
                                                 '${item.qty} × ${((item.qty > 0 ? ((item.total - item.modifierAmount) / item.qty) : 0)).toStringAsFixed(0)}',
                                                 textAlign: TextAlign.right,
-                                                style: const TextStyle(fontSize: 12),
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                ),
                                               ),
                                             ),
 
@@ -1034,12 +998,13 @@ Net Payable      : $netPayableTemp
                                               child: Text(
                                                 item.total.toStringAsFixed(2),
                                                 textAlign: TextAlign.right,
-                                                style: const TextStyle(fontSize: 12),
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                ),
                                               ),
                                             ),
                                           ],
                                         ),
-
                                       ),
                                       const Divider(
                                         color: Color(0xFFE6E7E8),
@@ -1056,18 +1021,19 @@ Net Payable      : $netPayableTemp
                     ),
                   ),
 
-                  const SizedBox(height: 60), // space for bottom toggle container
+                  const SizedBox(
+                    height: 60,
+                  ), // space for bottom toggle container
                 ],
               ),
             ),
-
 
             // ---------- Fixed Bottom Toggle Container ----------
             Align(
               alignment: Alignment.bottomCenter,
               child: Container(
                 width: MediaQuery.of(context).size.width * 0.315,
-                margin: const EdgeInsets.only( bottom: 8),
+                margin: const EdgeInsets.only(bottom: 8),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFFFFF),
                   borderRadius: BorderRadius.circular(10),
@@ -1082,7 +1048,6 @@ Net Payable      : $netPayableTemp
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-
                     /// 🔼 EXPANDABLE PART (Animated)
                     AnimatedBuilder(
                       animation: _controller,
@@ -1150,7 +1115,6 @@ Net Payable      : $netPayableTemp
                           return const SizedBox.shrink();
                         }
 
-
                         debugPrint('🔼 Tax panel expanded');
                         debugPrint("💰 Sidebar Tip = ${widget.tipAmount}");
 
@@ -1158,15 +1122,20 @@ Net Payable      : $netPayableTemp
                           padding: const EdgeInsets.all(12),
                           child: BlocBuilder<TaxBloc, TaxState>(
                             builder: (context, state) {
-
-                              debugPrint('📦 BlocBuilder state = ${state.runtimeType}');
+                              debugPrint(
+                                '📦 BlocBuilder state = ${state.runtimeType}',
+                              );
 
                               if (state is TaxLoading) {
                                 debugPrint('⏳ TaxLoading...');
-                                return const Center(child: CircularProgressIndicator());
+                                return const Center(
+                                  child: CircularProgressIndicator(),
+                                );
                               }
-                              final grossTotal = widget.paymentSummary.grossTotal;
-                              final couponDiscount = widget.paymentSummary.coupons;
+                              final grossTotal =
+                                  widget.paymentSummary.grossTotal;
+                              final couponDiscount =
+                                  widget.paymentSummary.coupons;
                               // final merchantDiscount = widget.paymentSummary.discount ?? 0.0;
                               // final merchantDiscount = widget.merchantDiscount;
                               // double netPayable = widget.paymentSummary.netTotal;
@@ -1175,14 +1144,14 @@ Net Payable      : $netPayableTemp
                               //       ? (bloc.state as PaymentSummaryLoaded).merchantDiscount
                               //       : 0.0;
                               // });
-                              final double merchantDiscount = widget.merchantDiscount;
-
+                              final double merchantDiscount =
+                                  widget.merchantDiscount;
 
                               final double backendNetPayable =
-                                  widget.paymentSummary.netTotal -  widget.merchantDiscount.abs();
+                                  widget.paymentSummary.netTotal -
+                                  widget.merchantDiscount.abs();
 
-
-// backend not available yet
+                              // backend not available yet
 
                               final subTotal = grossTotal - couponDiscount;
                               // final netPayable = subTotal + totalTax - merchantDiscount;
@@ -1190,23 +1159,23 @@ Net Payable      : $netPayableTemp
                               final bool modifiersTaxable =
                                   widget.paymentSummary.modifiersTaxable;
 
-
-
-
-
                               if (state is TaxLoaded) {
-                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                WidgetsBinding.instance.addPostFrameCallback((
+                                  _,
+                                ) {
                                   if (!mounted) return;
                                   // _calculateTaxAndPayable(state);
                                 });
                                 final double appliedCouponAmount;
 
-                                final grossTotal = widget.paymentSummary.grossTotal;
+                                final grossTotal =
+                                    widget.paymentSummary.grossTotal;
                                 final couponDiscount =
-                                widget.paymentSummary.coupons > 0
-                                    ? widget.paymentSummary.coupons
-                                    : widget.appliedCouponAmount;
-                                final merchantDiscount = widget.merchantDiscount.abs();
+                                    widget.paymentSummary.coupons > 0
+                                        ? widget.paymentSummary.coupons
+                                        : widget.appliedCouponAmount;
+                                final merchantDiscount =
+                                    widget.merchantDiscount.abs();
                                 final subTotal = grossTotal - couponDiscount;
                                 final netTotal = subTotal + totalTax;
                                 debugPrint(
@@ -1216,13 +1185,22 @@ Net Payable      : $netPayableTemp
                                 return Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    _row("Gross Total", grossTotal, isBold: true),
-                                    _row("Coupon / Discounts", -couponDiscount, color: Colors.green),
+                                    _row(
+                                      "Gross Total",
+                                      grossTotal,
+                                      isBold: true,
+                                    ),
+                                    _row(
+                                      "Coupon / Discounts",
+                                      couponDiscount,
+                                      color: Colors.green,
+                                    ),
 
                                     const DottedLine(),
                                     _row("Sub Total", subTotal, isBold: true),
 
-                                    if (foodRate != null && (foodCgst > 0 || foodSgst > 0)) ...[
+                                    if (foodRate != null &&
+                                        (foodCgst > 0 || foodSgst > 0)) ...[
                                       const SizedBox(height: 6),
 
                                       Align(
@@ -1237,17 +1215,27 @@ Net Payable      : $netPayableTemp
                                       ),
 
                                       Padding(
-                                        padding: const EdgeInsets.only(left: 12),
+                                        padding: const EdgeInsets.only(
+                                          left: 12,
+                                        ),
                                         child: Column(
                                           children: [
-                                            _row("CGST ${(foodRate! / 2).toStringAsFixed(1)}%", foodCgst),
-                                            _row("SGST ${(foodRate! / 2).toStringAsFixed(1)}%", foodSgst),
+                                            _row(
+                                              "CGST ${(foodRate! / 2).toStringAsFixed(1)}%",
+                                              foodCgst,
+                                            ),
+                                            _row(
+                                              "SGST ${(foodRate! / 2).toStringAsFixed(1)}%",
+                                              foodSgst,
+                                            ),
                                           ],
                                         ),
                                       ),
                                     ],
 
-                                    if (beverageRate != null && (beverageCgst > 0 || beverageSgst > 0)) ...[
+                                    if (beverageRate != null &&
+                                        (beverageCgst > 0 ||
+                                            beverageSgst > 0)) ...[
                                       const SizedBox(height: 6),
 
                                       Align(
@@ -1262,26 +1250,37 @@ Net Payable      : $netPayableTemp
                                       ),
 
                                       Padding(
-                                        padding: const EdgeInsets.only(left: 12),
+                                        padding: const EdgeInsets.only(
+                                          left: 12,
+                                        ),
                                         child: Column(
                                           children: [
-                                            _row("CGST ${(beverageRate! / 2).toStringAsFixed(1)}%", beverageCgst),
-                                            _row("SGST ${(beverageRate! / 2).toStringAsFixed(1)}%", beverageSgst),
+                                            _row(
+                                              "CGST ${(beverageRate! / 2).toStringAsFixed(1)}%",
+                                              beverageCgst,
+                                            ),
+                                            _row(
+                                              "SGST ${(beverageRate! / 2).toStringAsFixed(1)}%",
+                                              beverageSgst,
+                                            ),
                                           ],
                                         ),
                                       ),
                                     ],
                                     _row(
-                                      "Tax Alcohol @Nil (Price inclusive of Excise Duty)",
+                                      "Tax Alcohol @Nil (Amt. inclusive of Excise Duty)",
                                       0.00,
                                     ),
-
 
                                     halfDottedLine(width: 100),
                                     _row("Total Tax", totalTax, isBold: true),
                                     const DottedLine(),
                                     _row("Net Total", netTotal, isBold: true),
-                                    _row("Merchant Discount", merchantDiscount, color: Colors.blue),
+                                    _row(
+                                      "Merchant Discount",
+                                      merchantDiscount,
+                                      color: Colors.blue,
+                                    ),
                                     _row(
                                       "Service Charges (Optional)",
                                       widget.paymentSummary.serviceChargeValue,
@@ -1295,7 +1294,6 @@ Net Payable      : $netPayableTemp
                                         color: Colors.green,
                                       ),
 
-
                                     const DottedLine(),
 
                                     _row(
@@ -1304,12 +1302,16 @@ Net Payable      : $netPayableTemp
                                       isBold: true,
                                       fontSize: 18,
                                     ),
-
-
+                                    _row(
+                                      "Round Off",
+                                      calculatedNetPayable.round() -
+                                          calculatedNetPayable,
+                                      isBold: true,
+                                      fontSize: 14,
+                                    ),
                                   ],
                                 );
                               }
-
 
                               if (state is TaxError) {
                                 debugPrint('❌ TaxError → ${state.message}');
@@ -1327,16 +1329,14 @@ Net Payable      : $netPayableTemp
                       },
                     ),
 
-
-
-
-
-
                     /// 🔽 FIXED BOTTOM (Never moves)
                     GestureDetector(
                       onTap: _toggleExpand,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFDEE8FF), // SAME COLOR AS IMAGE
                           borderRadius: BorderRadius.circular(8),
@@ -1357,14 +1357,12 @@ Net Payable      : $netPayableTemp
                             /// NET PAYABLE
                             /// NET PAYABLE (ROUNDED)
                             Text(
-                              "Net Payable : ${calculatedNetPayable.abs().roundToDouble().toStringAsFixed(2)}",
+                              "Grand Total : ${calculatedNetPayable.abs().roundToDouble().toStringAsFixed(2)}",
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
                               ),
                             ),
-
-
 
                             const SizedBox(width: 6),
 
@@ -1379,18 +1377,17 @@ Net Payable      : $netPayableTemp
                         ),
                       ),
                     ),
-
                   ],
                 ),
               ),
             ),
-
           ],
         ),
       ),
     );
   }
 }
+
 Widget halfDottedLine({double width = 140}) {
   return Align(
     alignment: Alignment.centerRight,
