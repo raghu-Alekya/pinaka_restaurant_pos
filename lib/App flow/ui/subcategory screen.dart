@@ -112,9 +112,8 @@ class _SubCategoryScreenState extends State<SubCategoryScreen> {
                         section: widget.section,
                         repository: widget.miniSubRepo,
                         variantRepository: widget.variantRepo,
-                        tappedSubCategoryId: subCategories[
-                        selectedIndex >= 0 ? selectedIndex : 0]
-                            .id,
+                        tappedSubCategoryId: subState.selectedSubCategory ??
+                            subCategories.first.id,
                         fetchProducts: widget.fetchProducts,
                       );
                     }

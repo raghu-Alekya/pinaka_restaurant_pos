@@ -25,8 +25,13 @@ class CategoryBloc extends Bloc<CategoryEvent, CategoryState> {
         categories: categories,
         selectedCategory: categories.isNotEmpty ? categories[0] : null,
       ));
-    } catch (e) {
-      emit(CategoryError(e.toString()));
+    } catch (e, stackTrace) {
+      final message = e.toString().replaceFirst("Exception: ", "");
+
+      print("Category Error: $message");
+      print(stackTrace);
+
+      emit(CategoryError(message));
     }
   }
 

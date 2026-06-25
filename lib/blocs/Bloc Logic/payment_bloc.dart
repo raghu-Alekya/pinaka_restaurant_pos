@@ -34,7 +34,11 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
         debugPrint("🟥 PaymentBloc emitted merchantDiscount(from API) = ${summary.discount}");
         debugPrint("🟥 PaymentBloc emitted isNoCharge (NC) = ${summary.isNoCharge}");
       } catch (e) {
-        emit(PaymentFailure(e.toString()));
+        final message = e.toString().replaceFirst("Exception: ", "");
+
+        debugPrint("Payment Error: $message");
+
+        emit(PaymentFailure(message));
       }
     });
 

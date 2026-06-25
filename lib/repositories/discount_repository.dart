@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants/constants.dart';
 import '../models/payment/discount_model.dart';
+import '../services/api_exception.dart';
 
 class DiscountReasonRepository {
   String get baseUrl =>
@@ -37,7 +38,7 @@ class DiscountReasonRepository {
       print("🔐 HEADER     => Bearer $token");
     }
 
-    final response = await http.get(
+    final response = await ApiExceptionHandler.get(
       Uri.parse(baseUrl),
       headers: {
         'Authorization': 'Bearer $token',
@@ -46,19 +47,18 @@ class DiscountReasonRepository {
       },
     );
 
-    if (kDebugMode) {
-      print('⬅️ STATUS CODE: ${response.statusCode}');
-      print('⬅️ RESPONSE BODY: ${response.body}');
-    }
-
     if (response.statusCode == 200) {
-      final decoded = json.decode(response.body);
-      return DiscountReasonResponse.fromJson(decoded);
-    } else {
-      throw Exception(
-        'Failed to load discount reasons (${response.statusCode})',
+      return DiscountReasonResponse.fromJson(
+        jsonDecode(response.body),
       );
     }
+
+    throw Exception(
+      ApiExceptionHandler.parseError(
+        response,
+        defaultMessage: "Unable to load discount reasons.",
+      ),
+    );
   }
 }
 // repositories/discount_repository.dart
@@ -93,23 +93,27 @@ class AddDiscountRepository {
     print('➡️ URL: $url');
     print('➡️ REQUEST BODY: ${jsonEncode(request.toJson())}');
 
-    final response = await http.post(
-      Uri.parse(url),
+    final response = await ApiExceptionHandler.post(
+      Uri.parse("$baseUrl/orders/add-discount"),
       headers: {
-        "Content-Type": "application/json",
         "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
       },
       body: jsonEncode(request.toJson()),
     );
 
-    print('⬅️ STATUS CODE: ${response.statusCode}');
-    print('⬅️ RESPONSE BODY: ${response.body}');
-
     if (response.statusCode == 200) {
-      return AddDiscountResponse.fromJson(jsonDecode(response.body));
-    } else {
-      throw Exception("Failed to apply discount: ${response.body}");
+      return AddDiscountResponse.fromJson(
+        jsonDecode(response.body),
+      );
     }
+
+    throw Exception(
+      ApiExceptionHandler.parseError(
+        response,
+        defaultMessage: "Unable to apply discount.",
+      ),
+    );
   }
 }
 class RemoveDiscountRepository {
@@ -139,11 +143,11 @@ class RemoveDiscountRepository {
     print("➡️ URL: $url");
     print("➡️ BODY: ${jsonEncode({"order_id": orderId, "is_nc": isNc})}");
 
-    final response = await http.post(
-      url,
+    final response = await ApiExceptionHandler.post(
+      Uri.parse("$baseUrl/orders/remove-discount"),
       headers: {
-        "Content-Type": "application/json",
         "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
       },
       body: jsonEncode({
         "order_id": orderId,
@@ -151,15 +155,17 @@ class RemoveDiscountRepository {
       }),
     );
 
-    print("⬅️ STATUS CODE: ${response.statusCode}");
-    print("⬅️ RESPONSE BODY: ${response.body}");
-
-    final decoded = jsonDecode(response.body);
-
     if (response.statusCode == 200) {
-      return RemoveDiscountResponseModel.fromJson(decoded);
-    } else {
-      throw Exception(decoded["message"] ?? "Failed to remove discount");
+      return RemoveDiscountResponseModel.fromJson(
+        jsonDecode(response.body),
+      );
     }
+
+    throw Exception(
+      ApiExceptionHandler.parseError(
+        response,
+        defaultMessage: "Unable to remove discount.",
+      ),
+    );
   }
 }

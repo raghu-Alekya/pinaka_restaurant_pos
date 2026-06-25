@@ -93,6 +93,7 @@ class _OrderPanelState extends State<OrderPanel> {
   StreamSubscription? _mqttSubscription;
   bool _isRepeatingOrder = false;
 
+
   @override
   void initState() {
     super.initState();
@@ -297,6 +298,7 @@ class _OrderPanelState extends State<OrderPanel> {
     final kotBloc = context.read<KotBloc>();
 
 
+
     // ✅ Initialize OrderBloc with existing order items if not already loaded
     if (widget.orderId != 0 && orderBloc.state.orderId != widget.orderId) {
       orderBloc.add(LoadExistingOrder(
@@ -437,15 +439,20 @@ class _OrderPanelState extends State<OrderPanel> {
                                 );
                               }
                             } catch (e) {
-                              Navigator.of(context).pop();
-                              AppLogger.error(
-                                "Cancel order API error: $e",
-                              );
+                              if (Navigator.canPop(context)) {
+                                Navigator.of(context).pop();
+                              }
+
+                              AppLogger.error("Cancel order API error: $e");
+
+                              String message = e.toString().replaceFirst("Exception: ", "");
+
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text(
-                                    "Error cancelling order: $e",
-                                  ),
+                                  content: Text(message),
+                                  backgroundColor: Colors.red,
+                                  behavior: SnackBarBehavior.floating,
+                                  duration: const Duration(seconds: 1),
                                 ),
                               );
                             }
@@ -483,6 +490,8 @@ class _OrderPanelState extends State<OrderPanel> {
                   ),
                 ],
               ),
+
+
 
 
               // const SizedBox(height: 1),
@@ -1021,29 +1030,25 @@ class _OrderPanelState extends State<OrderPanel> {
                             ),
                           );
 
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Failed to create KOT')),
-                          );
                         }
                       }
                       catch (e) {
-                        String message = 'Failed to create KOT';
+                        if (Navigator.of(context, rootNavigator: true).canPop()) {
+                          Navigator.of(context, rootNavigator: true).pop();
+                        }
 
-                        try {
-                          // 🧠 force extract response body even without DioException type
-                          final errorString = e.toString();
+                        final message = e.toString().replaceFirst("Exception: ", "");
 
-                          if (errorString.contains('woocommerce_rest_stock_error') ||
-                              errorString.contains('out of stock')) {
-                            message = 'This item is out of stock. Please check.';
-                          }
-                        } catch (_) {}
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(message),
+                            backgroundColor: Colors.red,
+                            behavior: SnackBarBehavior.floating,
+                            duration: const Duration(seconds: 1),
+                          ),
+                        );
 
-                        AppLogger.error("⛔ Failed to create KOT: $e");
-
-                        // 🔥 THIS IS MANDATORY
-                        throw Exception(message);
+                        AppLogger.error(message);
                       }
 
                     },

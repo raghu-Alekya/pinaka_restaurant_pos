@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/constants.dart';
 import '../models/category/items_model.dart';
+import '../services/api_exception.dart';
 
 
 
@@ -16,106 +18,108 @@ class ProductRepository {
   }
 
   // Fetch products by subcategory
+
   Future<List<Product>> fetchProductsBySubCategory(
       int subCategoryId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
 
-    final prefs = await SharedPreferences.getInstance();
+      final cacheKey = 'products_subcategory_$subCategoryId';
 
-    final cacheKey =
-        'products_subcategory_$subCategoryId';
+      // Load cache first
+      final cachedData = prefs.getString(cacheKey);
 
-    // Load cache first
-    final cachedData =
-    prefs.getString(cacheKey);
+      if (cachedData != null) {
+        print('📦 Products loaded from cache');
 
-    if (cachedData != null) {
-      print(
-          '📦 Products loaded from cache');
+        final List<dynamic> data = jsonDecode(cachedData);
 
-      final List<dynamic> data =
-      jsonDecode(cachedData);
+        return data.map((json) {
+          final modifiers =
+              (json['modifiers'] as List<dynamic>?)
+                  ?.map((e) => e.toString())
+                  .toList() ??
+                  [];
 
-      return data.map((json) {
-        final modifiers =
-            (json['modifiers']
-            as List<dynamic>?)
-                ?.map((e) => e.toString())
-                .toList() ??
-                [];
+          final addOns =
+              (json['addons'] as Map<String, dynamic>?) ?? {};
 
-        final addOns =
-            (json['addons']
-            as Map<String, dynamic>?) ??
-                {};
+          final hasOptions =
+              modifiers.isNotEmpty || addOns.isNotEmpty;
 
-        final hasOptions =
-            modifiers.isNotEmpty ||
-                addOns.isNotEmpty;
+          return Product.fromJson(json).copyWith(
+            hasOptions: hasOptions,
+          );
+        }).toList();
+      }
 
-        return Product.fromJson(json)
-            .copyWith(
-          hasOptions: hasOptions,
-        );
-      }).toList();
-    }
+      print('🌐 Products loaded from API');
+      print("Fetching products for $subCategoryId");
 
-    print('🌐 Products loaded from API');
+      final token = await _getToken();
 
-    final token = await _getToken();
+      if (token == null || token.isEmpty) {
+        throw Exception("Session expired. Please login again.");
+      }
 
-    if (token == null || token.isEmpty) {
-      throw Exception("Token not available");
-    }
-
-    final url =
-        "${AppConstants.baseApiPath}/products-by-category/$subCategoryId";
-
-    final response = await http.get(
-      Uri.parse(url),
-      headers: {
-        "Authorization": "Bearer $token",
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-        "User-Agent": "PinakaPOS-Android",
-      },
-    );
-
-    if (response.statusCode == 200) {
-      final List<dynamic> data =
-      json.decode(response.body);
-
-      // Save API response in cache
-      await prefs.setString(
-        cacheKey,
-        jsonEncode(data),
+      final response = await ApiExceptionHandler.get(
+        Uri.parse(
+          "${AppConstants.baseApiPath}/products-by-category/$subCategoryId",
+        ),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "User-Agent": "PinakaPOS-Android",
+        },
       );
 
-      return data.map((json) {
-        final modifiers =
-            (json['modifiers']
-            as List<dynamic>?)
-                ?.map((e) => e.toString())
-                .toList() ??
-                [];
+      print("Product Status Code: ${response.statusCode}");
+      print("Product Response: ${response.body}");
 
-        final addOns =
-            (json['addons']
-            as Map<String, dynamic>?) ??
-                {};
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
 
-        final hasOptions =
-            modifiers.isNotEmpty ||
-                addOns.isNotEmpty;
-
-        return Product.fromJson(json)
-            .copyWith(
-          hasOptions: hasOptions,
+        await prefs.setString(
+          cacheKey,
+          jsonEncode(data),
         );
-      }).toList();
-    }
 
-    throw Exception(
-        "Failed to load products");
+        return data.map((json) {
+          final modifiers =
+              (json['modifiers'] as List<dynamic>?)
+                  ?.map((e) => e.toString())
+                  .toList() ??
+                  [];
+
+          final addOns =
+              (json['addons'] as Map<String, dynamic>?) ?? {};
+
+          final hasOptions =
+              modifiers.isNotEmpty || addOns.isNotEmpty;
+
+          return Product.fromJson(json).copyWith(
+            hasOptions: hasOptions,
+          );
+        }).toList();
+      }
+
+      throw Exception(
+        ApiExceptionHandler.parseError(
+          response,
+          defaultMessage: "Unable to load products.",
+        ),
+      );
+    } catch (e) {
+      if (e is Exception) {
+        rethrow;
+      }
+
+      throw Exception(
+        "Something went wrong while loading products.",
+      );
+    }
+  }
   }
 
 
@@ -212,4 +216,4 @@ class ProductRepository {
   // }
 // Fetch variants for a specific product (optional)
 // Future<List<Variant>> fetchVariants(int productId) async { ... }
-}
+

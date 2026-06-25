@@ -133,8 +133,11 @@ class TableBloc extends Bloc<TableEvent, TableState> {
           usedAreaNames: usedAreaNames,
         ));
       } catch (e) {
-        AppLogger.error("Error loading tables: $e");
-        emit(TableLoadErrorState(e.toString()));
+        final message = e.toString().replaceFirst("Exception: ", "");
+
+        AppLogger.error("Error loading tables: $message");
+
+        emit(TableLoadErrorState(message));
       }
     });
 

@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../models/merchantlogin_model.dart';
+import '../services/api_exception.dart';
 
 class MerchantLoginRepository {
   static const String _url =
@@ -15,7 +17,7 @@ class MerchantLoginRepository {
     String shift = '',
   }) async {
     try {
-      var request = http.MultipartRequest(
+      final request = http.MultipartRequest(
         'POST',
         Uri.parse(_url),
       );
@@ -26,7 +28,8 @@ class MerchantLoginRepository {
       request.fields['device_id'] = deviceId;
       request.fields['shifit'] = shift;
 
-      final streamedResponse = await request.send();
+      final streamedResponse =
+      await ApiExceptionHandler.multipart(request);
 
       final response =
       await http.Response.fromStream(streamedResponse);
@@ -35,16 +38,25 @@ class MerchantLoginRepository {
       print("Merchant Login Response: ${response.body}");
 
       if (response.statusCode == 200) {
-        final jsonData = jsonDecode(response.body);
-
-        return MerchantLoginResponse.fromJson(jsonData);
-      } else {
-        throw Exception(
-          'Login failed with status ${response.statusCode}',
+        return MerchantLoginResponse.fromJson(
+          jsonDecode(response.body),
         );
       }
+
+      throw Exception(
+        ApiExceptionHandler.parseError(
+          response,
+          defaultMessage: "Merchant login failed. Please try again.",
+        ),
+      );
     } catch (e) {
-      throw Exception('Merchant Login Error: $e');
+      if (e is Exception) {
+        rethrow;
+      }
+
+      throw Exception(
+        "Something went wrong. Please try again later.",
+      );
     }
   }
 }

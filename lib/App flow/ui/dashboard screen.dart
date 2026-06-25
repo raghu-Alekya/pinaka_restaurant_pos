@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pinaka_restaurant_pos/repositories/variant_repository.dart';
@@ -81,6 +83,7 @@ class _DashboardScreenState extends State<DashboardScreen>
 
 
   int _bottomNavIndex = 1;
+  StreamSubscription<CategoryState>? _categorySubscription;
 
   List<MiniSubCategory> currentSubCategories = [];
   MiniSubCategory? selectedFolder;
@@ -145,6 +148,7 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   @override
   void dispose() {
+    _categorySubscription?.cancel();
     _searchController.dispose();
     routeObserver.unsubscribe(this as RouteAware);
     _searchFocusNode.dispose();
@@ -162,64 +166,12 @@ class _DashboardScreenState extends State<DashboardScreen>
 
 
   void _loadCategories() {
-    final catBloc = context.read<CategoryBloc>();
-    catBloc.add(
-      LoadCategories(token: widget.token, restaurantId: widget.restaurantId),
+    context.read<CategoryBloc>().add(
+      LoadCategories(
+        token: widget.token,
+        restaurantId: widget.restaurantId,
+      ),
     );
-
-    int? _lastFetchedSubCategoryId;
-
-    catBloc.stream.listen((state) {
-      if (state is CategoryLoaded &&
-          state.selectedCategory != null) {
-
-        final category = state.selectedCategory!;
-
-        if (category.subCategories != null &&
-            category.subCategories!.isNotEmpty) {
-
-          final firstSub =
-              category.subCategories!.first;
-
-          if (_lastFetchedSubCategoryId ==
-              firstSub.id) {
-            return;
-          }
-
-          _lastFetchedSubCategoryId =
-              firstSub.id;
-
-          selectedSubCategoryId =
-              firstSub.id;
-
-          if (mounted) {
-            setState(() {
-              breadcrumbNames = [
-                category.name,
-                firstSub.name,
-              ];
-
-              breadcrumbIds = [
-                -1,
-                firstSub.id,
-              ];
-            });
-          }
-
-          context.read<SubCategoryBloc>().add(
-            SelectSubCategory(
-              subCategory: firstSub,
-            ),
-          );
-
-          context.read<MiniSubCategoryBloc>().add(
-            FetchMiniSubCategories(
-              subCategoryId: firstSub.id,
-            ),
-          );
-        }
-      }
-    });
   }
 
   void onSubCategoryTap(SubCategory subCategory) {
@@ -231,8 +183,8 @@ class _DashboardScreenState extends State<DashboardScreen>
       breadcrumbIds = [-1, subCategory.id];
     });
 
-    context.read<MiniSubCategoryBloc>().add(
-      FetchMiniSubCategories(subCategoryId: subCategory.id),
+    context.read<SubCategoryBloc>().add(
+      SelectSubCategory(subCategory: subCategory),
     );
   }
 
@@ -781,18 +733,27 @@ class _DashboardScreenState extends State<DashboardScreen>
                                             _buildBreadcrumbs(),
                                             const SizedBox(height: 8),
                                           ],
-                                          SubCategoryTabWidget(
-                                            subCategories: category.subCategories ?? [],
-                                            selectedIndex: category.subCategories != null
-                                                ? category.subCategories!
-                                                .indexWhere((sub) => sub.id == selectedSubCategoryId)
-                                                : -1,
-                                            onTap: (index) {
-                                              final sub = category.subCategories![index];
-                                              setState(() {
-                                                selectedSubCategoryId = sub.id;
-                                              });
-                                              onSubCategoryTap(sub);
+                                          BlocBuilder<SubCategoryBloc, SubCategoryState>(
+                                            builder: (context, subState) {
+                                              if (subState is! SubCategoryLoaded) {
+                                                return const SizedBox();
+                                              }
+
+                                              final selectedIndex = subState.subcategories.indexWhere(
+                                                    (e) => e.id == subState.selectedSubCategory,
+                                              );
+
+                                              return SubCategoryTabWidget(
+                                                subCategories: subState.subcategories,
+                                                selectedIndex: selectedIndex,
+                                                onTap: (index) {
+                                                  context.read<SubCategoryBloc>().add(
+                                                    SelectSubCategory(
+                                                      subCategory: subState.subcategories[index],
+                                                    ),
+                                                  );
+                                                },
+                                              );
                                             },
                                           ),
 
@@ -823,17 +784,20 @@ class _DashboardScreenState extends State<DashboardScreen>
                                                     token: widget.token,
                                                   );
 
+                                                  final subState = context.watch<SubCategoryBloc>().state;
+
                                                   return MiniSubCategoryWidget(
                                                     subCategories: currentSubCategories,
                                                     section: category,
                                                     onFolderSelected: onFolderSelected,
                                                     onItemSelected: (product) => onItemSelected(product, category),
-                                                    fetchProducts: productRepo.fetchProductsBySubCategory, // Corrected
-                                                    repository: miniSubRepo, // If required, pass the correct repo
-                                                    tappedSubCategoryId: selectedSubCategoryId ?? -1,
+                                                    fetchProducts: productRepo.fetchProductsBySubCategory,
+                                                    repository: miniSubRepo,
+                                                    tappedSubCategoryId: subState is SubCategoryLoaded
+                                                        ? (subState.selectedSubCategory ?? -1)
+                                                        : -1,
                                                     variantRepository: variantRepo,
                                                   );
-
                                                 } else if (miniState
                                                 is MiniSubCategoryError) {
                                                   return Center(

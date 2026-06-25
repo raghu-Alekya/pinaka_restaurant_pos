@@ -143,14 +143,20 @@ class MyApp extends StatelessWidget {
             Search_ProductRepository(),
             ),
           ),
+          BlocProvider<ProductBloc>(
+            create: (_) => ProductBloc(
+              ProductRepository(
+                // baseUrl: AppConstants.baseDomain
+              ),
+            ),
+          ),
 
           // 2️⃣ SubCategoryBloc depends on MiniSubCategoryBloc
           BlocProvider<SubCategoryBloc>(
             create: (context) => SubCategoryBloc(
-              subCategoryRepository: SubCategoryRepository(
-                  // baseUrl: AppConstants.baseDomain
-              ),
-              miniSubCategoryBloc: context.read<MiniSubCategoryBloc>(), // ✅ works now
+              subCategoryRepository: SubCategoryRepository(),
+              miniSubCategoryBloc: context.read<MiniSubCategoryBloc>(),
+              productBloc: context.read<ProductBloc>(),
             ),
           ),
 
@@ -165,13 +171,13 @@ class MyApp extends StatelessWidget {
           // BlocProvider<ProductBloc>(
           //   create: (_) => ProductBloc(ProductRepository as ProductRepository),
           // ),
-          BlocProvider<ProductBloc>(
-            create: (_) => ProductBloc(
-              ProductRepository(
-                  // baseUrl: AppConstants.baseDomain
-              ),
-            ),
-          ),
+          // BlocProvider<ProductBloc>(
+          //   create: (_) => ProductBloc(
+          //     ProductRepository(
+          //         // baseUrl: AppConstants.baseDomain
+          //     ),
+          //   ),
+          // ),
           RepositoryProvider<VariantRepository>(
             create: (context) => VariantRepository(
               // baseUrl: AppConstants.baseDomain,

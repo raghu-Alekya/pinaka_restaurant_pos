@@ -14,6 +14,7 @@ class MiniSubCategoryBloc
     extends Bloc<MiniSubCategoryEvent, MiniSubCategoryState> {
   final MiniSubCategoryRepository repository;
   Set<int> expandedFolderIds = {};
+  final Map<int, List<MiniSubCategory>> _cache = {};
 
   MiniSubCategoryBloc({required this.repository})
       : super(MiniSubCategoryInitial()) {
@@ -41,28 +42,41 @@ class MiniSubCategoryBloc
   }
 
   Future<void> _onFetchMiniSubCategories(
-      FetchMiniSubCategories event, Emitter<MiniSubCategoryState> emit) async {
+      FetchMiniSubCategories event,
+      Emitter<MiniSubCategoryState> emit,
+      ) async {
+
+    // Return cached data immediately
+    if (_cache.containsKey(event.subCategoryId)) {
+      print("📦 MiniSubCategories loaded from cache");
+
+      emit(
+        MiniSubCategoryLoaded(
+          miniSubCategories: _cache[event.subCategoryId]!,
+          expandedFolderIds: Set.from(expandedFolderIds),
+        ),
+      );
+      return;
+    }
+
     emit(MiniSubCategoryLoading());
+
     try {
-      // Fetch folders / mini-subcategories
       final miniSubCategories =
       await repository.fetchMiniSubCategories(event.subCategoryId);
 
-      // Fetch direct products safely for subcategories without folders
-      // for (var sub in miniSubCategories) {
-      //   if (!sub.isFolder && (sub.products.isEmpty || sub.products == null)) {
-      //     final products = await repository.fetchProducts(
-      //         sub.id); // ensure sub.id is int; your model now handles String → int
-      //     sub.products = products;
-      //   }
-      // }
+      // Save to cache
+      _cache[event.subCategoryId] = miniSubCategories;
 
-      emit(MiniSubCategoryLoaded(
-        miniSubCategories: miniSubCategories,
-        expandedFolderIds: Set.from(expandedFolderIds),
-      ));
+      emit(
+        MiniSubCategoryLoaded(
+          miniSubCategories: miniSubCategories,
+          expandedFolderIds: Set.from(expandedFolderIds),
+        ),
+      );
     } catch (e, stack) {
       print("Error fetching mini-subcategories: $e\n$stack");
+
       emit(MiniSubCategoryError(e.toString()));
     }
   }

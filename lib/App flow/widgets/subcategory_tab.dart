@@ -29,22 +29,28 @@ class _SubCategoryTabWidgetState extends State<SubCategoryTabWidget> {
     _selectedIndex = widget.selectedIndex ?? -1; // no default selection
     // Do NOT call widget.onTap here, wait for user tap
   }
-  @override
+
+
+
   @override
   void didUpdateWidget(covariant SubCategoryTabWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // Reset when parent changes selectedIndex
-    if (widget.selectedIndex != oldWidget.selectedIndex) {
-      setState(() {
-        _selectedIndex = widget.selectedIndex ?? 0;
+    if (widget.subCategories != oldWidget.subCategories &&
+        widget.subCategories.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+
+        setState(() {
+          _selectedIndex = 0;
+        });
       });
     }
 
-    // Reset if subcategory list changes (e.g., new category loaded)
-    if (widget.subCategories != oldWidget.subCategories) {
+    if (widget.selectedIndex != oldWidget.selectedIndex &&
+        widget.selectedIndex != null) {
       setState(() {
-        _selectedIndex = 0;
+        _selectedIndex = widget.selectedIndex!;
       });
     }
   }

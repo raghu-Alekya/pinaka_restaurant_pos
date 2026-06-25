@@ -61,7 +61,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           emit(AuthFailure(result['message']));
         }
       } catch (e) {
-        emit(AuthFailure('Network error: $e'));
+        final message = e.toString().replaceFirst("Exception: ", "");
+
+        emit(AuthFailure(message));
       }
     });
   }

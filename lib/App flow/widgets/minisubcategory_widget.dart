@@ -70,6 +70,27 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       _autoSelectAndLoad();
     });
   }
+
+  @override
+  void didUpdateWidget(covariant MiniSubCategoryWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // Reload when the selected subcategory changes
+    if (oldWidget.tappedSubCategoryId != widget.tappedSubCategoryId) {
+      currentSubCategories = widget.subCategories;
+
+      selectedFolder = widget.subCategories
+          .where((e) => e.isFolder)
+          .cast<MiniSubCategory?>()
+          .firstOrNull;
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _autoSelectAndLoad();
+        }
+      });
+    }
+  }
   bool isComboItem(Product item) {
     return item.isCombo;
   }
@@ -193,50 +214,55 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
 
   Future<void> _autoSelectAndLoad() async {
     final folders = currentSubCategories.where((e) => e.isFolder).toList();
+
     if (folders.isNotEmpty) {
-      selectedFolder = folders[0];
+      selectedFolder = folders.first;
       widget.onFolderSelected?.call(selectedFolder!);
-      if (!mounted) return;
-      setState(() {});
 
-      if (selectedFolder!.products.isEmpty) {
-        try {
-          // 1️⃣ Fetch products
-          final products = await widget.fetchProducts(selectedFolder!.id);
-
-          // 2️⃣ Map veg/non-veg based on folder name
-          final folderName = selectedFolder!.name.toLowerCase();
-          final updatedProducts = products.map((p) {
-            if (folderName.contains('veg')) return p.copyWith(isVeg: true);
-            if (folderName.contains('non veg')) return p.copyWith(isVeg: false);
-            return p;
-          }).toList();
-
-          // 3️⃣ Update folder object
-          final newFolder = selectedFolder!.copyWith(
-            products: updatedProducts,
-            count: updatedProducts.length,
-          );
-          if (!mounted) return;
-
-
-          setState(() {
-            // IMPORTANT: replace selectedFolder and also update it in the list
-            selectedFolder = newFolder;
-            currentSubCategories = currentSubCategories.map((e) {
-              return e.id == newFolder.id ? newFolder : e;
-            }).toList();
-          });
-        } catch (e) {
-          print("[MiniSubCategoryWidget] Error fetching products for folder: $e");
+      // Products already available from API
+      if (selectedFolder!.products.isNotEmpty) {
+        if (mounted) {
+          setState(() {}); // only one rebuild
         }
+        return;
       }
+
+      // Only fetch if products are missing
+      final products = await widget.fetchProducts(selectedFolder!.id);
+
+      if (!mounted) return;
+
+      final folderName = selectedFolder!.name.toLowerCase();
+
+      final updatedProducts = products.map((p) {
+        if (folderName.contains('non veg')) {
+          return p.copyWith(isVeg: false);
+        } else if (folderName.contains('veg')) {
+          return p.copyWith(isVeg: true);
+        }
+        return p;
+      }).toList();
+
+      final newFolder = selectedFolder!.copyWith(
+        products: updatedProducts,
+        count: updatedProducts.length,
+      );
+
+      setState(() {
+        selectedFolder = newFolder;
+        currentSubCategories = currentSubCategories.map((e) {
+          return e.id == newFolder.id ? newFolder : e;
+        }).toList();
+      });
+
       return;
     }
 
-    // No folders → fetch direct items
-    final hasDirectItems = currentSubCategories.any((e) => !e.isFolder);
-    if (!hasDirectItems) {
+    // No folders
+    final directItems = currentSubCategories.where((e) => !e.isFolder).toList();
+
+    if (directItems.isEmpty ||
+        directItems.every((e) => e.products.isEmpty)) {
       await _fetchDirectProducts(widget.tappedSubCategoryId);
     }
   }

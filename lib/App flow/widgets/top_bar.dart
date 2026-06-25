@@ -145,42 +145,71 @@ class _TopBarState extends State<TopBar> {
     height: 24,
     color: const Color(0xFFFF9800),
     ),
-    onPressed: () async {
-    final result = await showDialog<bool>(
-    context: context,
-    barrierDismissible: false,
-    builder: (_) => LogoutConfirmationDialog(
-    onCancel: () => Navigator.pop(context, false),
-    onConfirm: () => Navigator.pop(context, true),
-    ),
-    );
+      onPressed: () async {
+        final result = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => LogoutConfirmationDialog(
+            onCancel: () => Navigator.pop(context, false),
+            onConfirm: () => Navigator.pop(context, true),
+          ),
+        );
 
-    if (result != true) return;
+        if (result != true) return;
 
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token') ?? "";
+        final prefs = await SharedPreferences.getInstance();
+        final token = prefs.getString('token') ?? "";
 
-    final authRepository = AuthRepository();
-    final success = await authRepository.logout(token);
+        final authRepository = AuthRepository();
 
-    if (!context.mounted) return;
+        // Show loader
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => const Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
 
-    if (success) {
-    Navigator.pushAndRemoveUntil(
-    context,
-    MaterialPageRoute(
-    builder: (_) => const EmployeeLoginPage(storeBaseUrl: '', storeName: '', storeId: '',),
-    ),
-    (route) => false,
-    );
-    } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
-    content: Text('Logout failed. Please try again.'),
-    ),
-    );
-    }
-    },
+        try {
+          final success = await authRepository.logout(token);
+
+          if (context.mounted && Navigator.canPop(context)) {
+            Navigator.pop(context); // Close loader
+          }
+
+          if (!context.mounted) return;
+
+          if (success) {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const EmployeeLoginPage(
+                  storeBaseUrl: '',
+                  storeName: '',
+                  storeId: '',
+                ),
+              ),
+                  (route) => false,
+            );
+          }
+        } catch (e) {
+          if (context.mounted && Navigator.canPop(context)) {
+            Navigator.pop(context); // Close loader
+          }
+
+          final message =
+          e.toString().replaceFirst("Exception: ", "");
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(message),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      },
     ),
 
 

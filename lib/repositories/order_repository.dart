@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../constants/constants.dart';
 import '../models/order/KOT_model.dart';
 import '../models/order/order_items.dart';
 import '../models/order/order_model.dart';
 import '../models/order/guest_details.dart';
+import '../services/api_exception.dart';
 import '../utils/logger.dart';
 
 class OrderRepository {
@@ -55,47 +58,57 @@ class OrderRepository {
 
     AppLogger.info("AUTH HEADER => $authHeader");
 
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authHeader,
-      },
-      body: jsonEncode(body),
-    );
+    try {
+      final response = await ApiExceptionHandler.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': authHeader,
+        },
+        body: jsonEncode(body),
+      );
 
-    AppLogger.info(
-      'ORDER API RESPONSE => ${response.statusCode}',
-    );
-    AppLogger.info(
-      'ORDER API BODY => ${response.body}',
-    );
+      AppLogger.info("ORDER STATUS => ${response.statusCode}");
+      AppLogger.info("ORDER RESPONSE => ${response.body}");
 
-    if (response.statusCode == 200 ||
-        response.statusCode == 201) {
-      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 ||
+          response.statusCode == 201) {
+        final data = jsonDecode(response.body);
 
-      final order = OrderModel.fromJson(data);
+        final order = OrderModel.fromJson(data);
 
-      final orderId =
-          data['order_id'] ?? order.id;
+        return order.copyWith(
+          orderId: data['order_id'] ?? order.id,
+        );
+      }
 
-      return order.copyWith(
-        orderId: orderId,
+      throw Exception(
+        ApiExceptionHandler.parseError(
+          response,
+          defaultMessage: "Failed to create order.",
+        ),
+      );
+    } catch (e, stackTrace) {
+      AppLogger.error("Create Order Exception: $e");
+      AppLogger.error(stackTrace.toString());
+
+      if (e is Exception) rethrow;
+
+      throw Exception(
+        "Something went wrong while creating the order.",
       );
     }
-
-    throw Exception(
-      'Failed to create order: ${response.body}',
-    );
   }
   Future<Map<String, dynamic>> cancelOrder({
     required int parentOrderId,
     required String token,
-    required  restaurantId,
+    required restaurantId,
     required int zoneId,
   }) async {
-    final url = Uri.parse('${AppConstants.baseDomain}/wp-json/pinaka-restaurant-pos/v1/orders/$parentOrderId');
+    final url = Uri.parse(
+      '${AppConstants
+          .baseDomain}/wp-json/pinaka-restaurant-pos/v1/orders/$parentOrderId',
+    );
 
     final body = {
       "flag_type": "cancel_parent_order",
@@ -104,30 +117,43 @@ class OrderRepository {
       "zone_id": zoneId,
     };
 
-    // 🔹 Debug logs before request
-    AppLogger.debug(" CancelOrder Request URL: $url");
-    AppLogger.debug(" CancelOrder Headers: ${{
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
-    }}");
-    AppLogger.debug(" CancelOrder Body: ${jsonEncode(body)}");
+    AppLogger.debug("CancelOrder Request URL: $url");
+    AppLogger.debug("CancelOrder Body: ${jsonEncode(body)}");
 
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode(body),
-    );
+    try {
+      final response = await ApiExceptionHandler.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(body),
+      );
 
-    AppLogger.info(' Cancel order response: ${response.statusCode}');
-    AppLogger.info(' Cancel order body: ${response.body}');
+      AppLogger.info("Cancel Order Status: ${response.statusCode}");
+      AppLogger.info("Cancel Order Response: ${response.body}");
 
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body) as Map<String, dynamic>;
-    } else {
-      throw Exception(' Failed to cancel order: ${response.body}');
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+
+      throw Exception(
+        ApiExceptionHandler.parseError(
+          response,
+          defaultMessage: "Failed to cancel order.",
+        ),
+      );
+    } catch (e, stackTrace) {
+      AppLogger.error("Cancel Order Exception: $e");
+      AppLogger.error(stackTrace.toString());
+
+      if (e is Exception) {
+        rethrow;
+      }
+
+      throw Exception(
+        "Something went wrong while cancelling the order.",
+      );
     }
   }
 
@@ -143,7 +169,6 @@ class OrderRepository {
     final url = Uri.parse(
       '${AppConstants.baseDomain}/wp-json/pinaka-restaurant-pos/v1/orders',
     );
-
 
 
     final lineItems = items
@@ -164,49 +189,54 @@ class OrderRepository {
     AppLogger.debug("URL: $url");
     AppLogger.debug("Token: $token"); // check if token already has "Bearer "
     AppLogger.debug("Body: ${jsonEncode(body)}");
-
     try {
-      final response = await http.post(
+      final response = await ApiExceptionHandler.post(
         url,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': token.startsWith("Bearer ")
-              ? token
-              : "Bearer $token",   //  fix double-bearer issue
+          'Authorization':
+          token.startsWith("Bearer ") ? token : "Bearer $token",
         },
         body: jsonEncode(body),
       );
 
-      AppLogger.debug(" KOT API Response Code: ${response.statusCode}");
-      AppLogger.debug(" KOT API Response Body: ${response.body}");
+      AppLogger.debug("KOT API Response Code: ${response.statusCode}");
+      AppLogger.debug("KOT API Response Body: ${response.body}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
 
-        final kot = KotModel(
+        return KotModel(
           kotId: data['kot_id'] ?? 0,
           kotNumber: data['kot_number'] ?? '',
           time: DateTime.now(),
           status: 'created',
           items: items,
           parentOrderId: parentOrderId,
-          captainId: captainId, kotItems: [],
+          captainId: captainId,
+          kotItems: [],
         );
-
-
-        AppLogger.info("KOT created successfully: ${jsonEncode(kot.toJson())}");
-        return kot;
-      } else {
-        AppLogger.error(" Failed to create KOT: ${response.statusCode} ${response.body}");
-        return null;
       }
+
+      throw Exception(
+        ApiExceptionHandler.parseError(
+          response,
+          defaultMessage: "Failed to create KOT.",
+        ),
+      );
     } catch (e, stackTrace) {
-      AppLogger.error(" Error creating KOT: $e");
+      AppLogger.error("Error creating KOT: $e");
       AppLogger.error(stackTrace.toString());
-      return null;
+
+      if (e is Exception) {
+        rethrow;
+      }
+
+      throw Exception(
+        "Something went wrong while creating KOT.",
+      );
     }
   }
-
 // Helper to convert OrderItems → backend line_items
   Map<String, dynamic>? _orderItemToLineItem(OrderItems item) {
     final List<Map<String, dynamic>> metaData = [];

@@ -7,6 +7,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/api_exception.dart';
+
 class SubCategoryRepository {
 
   SubCategoryRepository();
@@ -56,12 +58,11 @@ class SubCategoryRepository {
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      final response = await http.get(
-        Uri.parse(
-          '${AppConstants.baseApiPath}/categories/get-main-courses',
-        ),
+      final response = await ApiExceptionHandler.get(
+        Uri.parse('${AppConstants.baseApiPath}/categories/get-main-courses'),
         headers: {
           'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
         },
       );
 
@@ -70,22 +71,16 @@ class SubCategoryRepository {
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
 
-        if (body['status'] == "success" &&
-            body['category'] != null) {
-
-          final category =
-          (body['category'] as List).cast<Map<String, dynamic>>().firstWhere(
-                (cat) =>
-            cat['id'].toString() ==
-                categoryId.toString(),
+        if (body['status'] == "success" && body['category'] != null) {
+          final category = (body['category'] as List)
+              .cast<Map<String, dynamic>>()
+              .firstWhere(
+                (cat) => cat['id'].toString() == categoryId.toString(),
             orElse: () => {},
           );
 
-          if (category.isNotEmpty &&
-              category['subcategory'] != null) {
-
-            final List<dynamic> subCategoryJson =
-            category['subcategory'];
+          if (category.isNotEmpty && category['subcategory'] != null) {
+            final List<dynamic> subCategoryJson = category['subcategory'];
 
             // Save cache
             await prefs.setString(
@@ -94,10 +89,7 @@ class SubCategoryRepository {
             );
 
             final subCategories = subCategoryJson
-                .map(
-                  (json) =>
-                  SubCategory.fromJson(json),
-            )
+                .map((json) => SubCategory.fromJson(json))
                 .toList();
 
             return subCategories;
@@ -107,16 +99,19 @@ class SubCategoryRepository {
         return [];
       }
 
-      throw Exception(
-        'Failed to load subcategories',
+      // If response is not 200, parse the error using the common handler
+      final errorMessage = ApiExceptionHandler.parseError(
+        response,
+        defaultMessage: 'Failed to load subcategories',
       );
+      throw Exception(errorMessage);
     } catch (e) {
-      print(
-        'Error fetching subcategories: $e',
-      );
+      print('Error fetching subcategories: $e');
+      if (e is Exception) {
+        rethrow;
+      }
       throw Exception(
-        'Error fetching subcategories: $e',
-      );
+          'Unexpected error occurred while fetching subcategories.');
     }
   }
 }

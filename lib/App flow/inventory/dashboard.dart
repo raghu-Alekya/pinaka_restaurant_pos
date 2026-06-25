@@ -106,10 +106,10 @@ class _DashboardState extends State<Dashboard> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  child: BlocProvider(
-                    create: (context) => ProductBloc(ProductRepository(token:  widget.token,)),
-                    child: CustomBox(token: widget.token),
-                  ),
+                  // child: BlocProvider(
+                  //   // create: (context) => ProductBloc(ProductRepository(token:  widget.token,)),
+                  //   child: CustomBox(token: widget.token),
+                  // ),
                 ),
               ),
             ),

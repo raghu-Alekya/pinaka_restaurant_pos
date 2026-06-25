@@ -467,6 +467,17 @@ class _paymentsummaryState extends State<paymentsummary> {
         // ✅ ADD THIS LISTENER HERE (PaymentBloc)
         BlocListener<PaymentBloc, PaymentState>(
           listener: (context, state) {
+            if (state is PaymentFailure) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: Colors.red,
+                  behavior: SnackBarBehavior.floating,
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+              return;
+            }
             if (state is PaymentSummaryLoaded) {
               final discount = state.merchantDiscount;
 

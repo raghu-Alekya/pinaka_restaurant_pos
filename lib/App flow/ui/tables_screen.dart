@@ -1844,7 +1844,10 @@ class _TablesScreenState extends State<TablesScreen> {
               });
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Failed to load tables: ${state.error}'),
+                  content: Text(state.error),
+                  backgroundColor: Colors.red,
+                  behavior: SnackBarBehavior.floating,
+                  duration: const Duration(seconds: 1),
                 ),
               );
             } else if (state is TableAddingState) {

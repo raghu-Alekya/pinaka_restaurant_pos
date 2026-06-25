@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import '../constants/constants.dart';
 import '../models/payment/create_payment_model.dart';
 import '../models/payment/payment_response_model.dart';
+import '../services/api_exception.dart';
 
 class CreatePaymentRepository {
 
@@ -13,7 +14,6 @@ class CreatePaymentRepository {
     required String token,
     required CreatePaymentRequest request,
   }) async {
-
     final url = Uri.parse(
       '${AppConstants.baseApiPath}/payments/create-payment',
     );
@@ -25,7 +25,7 @@ class CreatePaymentRepository {
         print("📦 BODY: ${jsonEncode(request.toJson())}");
       }
 
-      final response = await http.post(
+      final response = await ApiExceptionHandler.post(
         url,
         headers: {
           'Authorization': 'Bearer $token',
@@ -39,28 +39,32 @@ class CreatePaymentRepository {
         print("📥 RESPONSE BODY: ${response.body}");
       }
 
-      if (response.statusCode == 200 ||
-          response.statusCode == 201) {
-        final decoded = jsonDecode(response.body);
-        return PaymentResponse.fromJson(decoded);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return PaymentResponse.fromJson(
+          jsonDecode(response.body),
+        );
       }
 
       throw Exception(
-        "Payment failed (${response.statusCode}): ${response.body}",
+        ApiExceptionHandler.parseError(
+          response,
+          defaultMessage: "Unable to process payment.",
+        ),
       );
     } catch (e, stack) {
       debugPrint("❌ Payment API Error: $e");
-      debugPrint("📍 StackTrace: $stack");
-      rethrow;
+      debugPrint("$stack");
+
+      if (e is Exception) rethrow;
+
+      throw Exception("Unable to process payment.");
     }
   }
-
   Future<String> voidPayment({
     required String token,
     required int paymentId,
     required int orderId,
   }) async {
-
     final url = Uri.parse(
       '${AppConstants.baseApiPath}/payments/void-payment',
     );
@@ -73,11 +77,10 @@ class CreatePaymentRepository {
 
       if (kDebugMode) {
         print("📤 VOID PAYMENT REQUEST → $url");
-        print("🔐 TOKEN: $token");
         print("📦 BODY: ${jsonEncode(body)}");
       }
 
-      final response = await http.post(
+      final response = await ApiExceptionHandler.post(
         url,
         headers: {
           'Authorization': 'Bearer $token',
@@ -87,26 +90,30 @@ class CreatePaymentRepository {
       );
 
       if (kDebugMode) {
-        print("📥 VOID STATUS CODE: ${response.statusCode}");
-        print("📥 VOID RESPONSE BODY: ${response.body}");
+        print("📥 STATUS CODE: ${response.statusCode}");
+        print("📥 RESPONSE BODY: ${response.body}");
       }
 
       final decoded = jsonDecode(response.body);
 
-      if (response.statusCode == 200 ||
-          response.statusCode == 201) {
-        return (decoded["message"] ??
-            "Payment voided successfully")
-            .toString();
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return decoded["message"] ??
+            "Payment voided successfully";
       }
 
       throw Exception(
-        "Void payment failed (${response.statusCode}): ${decoded["message"] ?? response.body}",
+        ApiExceptionHandler.parseError(
+          response,
+          defaultMessage: "Unable to void payment.",
+        ),
       );
     } catch (e, stack) {
       debugPrint("❌ Void Payment API Error: $e");
-      debugPrint("📍 StackTrace: $stack");
-      rethrow;
+      debugPrint("$stack");
+
+      if (e is Exception) rethrow;
+
+      throw Exception("Unable to void payment.");
     }
   }
 }

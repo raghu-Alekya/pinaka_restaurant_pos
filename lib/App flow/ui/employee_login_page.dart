@@ -109,7 +109,11 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
             listener: (context, state) async {
               if (state is AuthFailure) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(state.message)),
+                  SnackBar(
+                    content: Text(state.message),
+                    backgroundColor: Colors.red,
+                    behavior: SnackBarBehavior.floating,
+                  ),
                 );
               }
               // final tableDao = TableDao();

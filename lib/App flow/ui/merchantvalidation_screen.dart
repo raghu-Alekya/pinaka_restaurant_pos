@@ -216,11 +216,15 @@ class _MerchantOnboardingScreenState
                                             ),
                                           );
                                         }
-                                      } catch (e) {
+                                      }catch (e) {
+                                        final message = e.toString().replaceFirst("Exception: ", "");
+
                                         ScaffoldMessenger.of(context).showSnackBar(
                                           SnackBar(
-                                            content: Text("Login Failed: $e"),
+                                            content: Text(message),
                                             backgroundColor: Colors.red,
+                                            behavior: SnackBarBehavior.floating,
+                                            duration: const Duration(seconds: 1),
                                           ),
                                         );
                                       } finally {

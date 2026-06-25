@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
@@ -7,6 +9,7 @@ import 'package:pinaka_restaurant_pos/repositories/zone_repository.dart';
 
 import '../constants/constants.dart';
 import '../local database/table_dao.dart';
+import '../services/api_exception.dart';
 import '../utils/logger.dart';
 
 class TableRepository {
@@ -39,36 +42,48 @@ class TableRepository {
 
   /// Get all tables from server
   Future<List<Map<String, dynamic>>> getAllTables(String token) async {
-    final response = await http.get(
-      Uri.parse(AppConstants.getAllTablesEndpoint),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-    );
+    try {
+      final response = await ApiExceptionHandler.get(
+        Uri.parse(AppConstants.getAllTablesEndpoint),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
 
-    // 🔍 PRINT RAW RESPONSE
-    debugPrint("🧪 getAllTables statusCode = ${response.statusCode}");
-    debugPrint("🧪 getAllTables raw body = ${response.body}");
+      debugPrint("🧪 getAllTables statusCode = ${response.statusCode}");
+      debugPrint("🧪 getAllTables raw body = ${response.body}");
 
-    if (response.statusCode == 200) {
-      final decoded = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
 
-      // 🔍 PRINT DECODED JSON
-      debugPrint("🧪 getAllTables decoded = $decoded");
+        debugPrint("🧪 getAllTables decoded = $decoded");
 
-      final tableList = decoded['table_details'];
+        final tableList = decoded['table_details'];
 
-      // 🔍 PRINT TABLE DETAILS
-      debugPrint("🧪 table_details = $tableList");
+        debugPrint("🧪 table_details = $tableList");
 
-      if (tableList != null && tableList is List) {
-        return List<Map<String, dynamic>>.from(tableList);
-      } else {
+        if (tableList != null && tableList is List) {
+          return List<Map<String, dynamic>>.from(tableList);
+        }
+
         throw Exception("No table data found.");
       }
-    } else {
-      throw Exception("Failed to fetch tables: ${response.body}");
+
+      throw Exception(
+        ApiExceptionHandler.parseError(
+          response,
+          defaultMessage: "Unable to load tables.",
+        ),
+      );
+    } catch (e) {
+      if (e is Exception) {
+        rethrow;
+      }
+
+      throw Exception(
+        "Something went wrong while loading tables.",
+      );
     }
   }
 

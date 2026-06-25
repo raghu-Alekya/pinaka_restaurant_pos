@@ -7,28 +7,36 @@ import '../Bloc State/product_states.dart';
 class ProductBloc extends Bloc<ProductEvent, ProductState> {
   final ProductRepository repository;
 
+  final Map<int, List<Product>> _cache = {};
+
   ProductBloc(this.repository) : super(ProductInitial()) {
-    // Existing events
     on<FetchProductsBySubCategory>(_onFetchProducts);
     on<UpdateVariantQuantity>(_onUpdateVariantQuantity);
-    // on<FetchProductsByMiniSubCategory>(_onFetchProductsByMiniSubCategory);
-
-    // ✅ Add ClearProducts handler inside constructor
-    on<ClearProducts>((event, emit) {
-      emit(ProductInitial()); // Or ProductLoading() if you prefer
-    });
+    on<ClearProducts>((event, emit) => emit(ProductInitial()));
   }
 
-  // Fetch products by subcategory
   Future<void> _onFetchProducts(
-      FetchProductsBySubCategory event, Emitter<ProductState> emit) async {
+      FetchProductsBySubCategory event,
+      Emitter<ProductState> emit,
+      ) async {
+
+    // Return cached products immediately
+    if (_cache.containsKey(event.subCategoryId)) {
+      emit(ProductLoaded(_cache[event.subCategoryId]!));
+      return;
+    }
+
     emit(ProductLoading());
+
     try {
       final products =
       await repository.fetchProductsBySubCategory(event.subCategoryId);
+
+      _cache[event.subCategoryId] = products;
+
       emit(ProductLoaded(products));
     } catch (e) {
-      emit(ProductError(e.toString()));
+      emit(ProductError(e.toString().replaceFirst("Exception: ", "")));
     }
   }
   // Future<void> _onFetchProductsByMiniSubCategory(
