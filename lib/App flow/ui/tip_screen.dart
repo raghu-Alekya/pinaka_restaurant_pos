@@ -4,6 +4,7 @@ import '../../models/UserPermissions.dart';
 import '../../models/tip_model.dart';
 // import '../../models/tips/tips_screen_model.dart';
 // import '../../repositories/tips_repository/tips_screen_repository.dart';
+import '../../utils/SessionManager.dart';
 import '../widgets/top_bar.dart';
 import 'home_screen.dart';
 
@@ -42,6 +43,7 @@ class _TipsScreenState extends State<TipsScreen> {
   @override
   void initState() {
     super.initState();
+    _loadPermissions();
 
     selectedDate = DateTime.now();
 
@@ -55,6 +57,15 @@ class _TipsScreenState extends State<TipsScreen> {
           "${selectedDate!.month.toString().padLeft(2, '0')}-"
           "${selectedDate!.day.toString().padLeft(2, '0')}",
     );
+  }
+
+  Future<void> _loadPermissions() async {
+    final savedPermissions = await SessionManager.loadPermissions();
+    if (savedPermissions != null) {
+      setState(() {
+        _userPermissions = savedPermissions;
+      });
+    }
   }
   Future<void> fetchTips(String date) async {
     setState(() {

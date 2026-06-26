@@ -65,16 +65,17 @@ class CouponRepository {
   //     return [];
   //   }
   // }
-  Future<bool> applyCoupon({
+
+
+
+  Future<CouponResponse> applyCoupon({
     required String token,
     required int orderId,
     required String couponCode,
   }) async {
     try {
       final response = await http.put(
-        Uri.parse(
-          '${AppConstants.baseApiPath}/orders/$orderId',
-        ),
+        Uri.parse('${AppConstants.baseApiPath}/orders/$orderId'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -91,12 +92,27 @@ class CouponRepository {
       debugPrint('Apply Coupon Status: ${response.statusCode}');
       debugPrint('Apply Coupon Response: ${response.body}');
 
-      return response.statusCode == 200;
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return CouponResponse(
+          success: true,
+          message: "Coupon applied successfully.",
+        );
+      } else {
+        return CouponResponse(
+          success: false,
+          message: data["message"] ?? "Failed to apply coupon.",
+        );
+      }
     } catch (e) {
-      debugPrint('Apply Coupon Error: $e');
-      return false;
+      return CouponResponse(
+        success: false,
+        message: "Something went wrong. Please try again.",
+      );
     }
   }
+
   Future<bool> removeCoupon({
     required String token,
     required int orderId,

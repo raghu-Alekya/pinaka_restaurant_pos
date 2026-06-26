@@ -393,6 +393,42 @@ class _DashboardScreenState extends State<DashboardScreen>
 
     Overlay.of(context).insert(_searchOverlay!);
   }
+  void _showNoProductsOverlay() {
+    _removeSearchOverlay();
+    _removeOverlayOnly();
+    _searchOverlay = OverlayEntry(
+      builder: (context) => Positioned(
+        width: 300,
+        child: CompositedTransformFollower(
+          link: _searchLink,
+          showWhenUnlinked: false,
+          offset: const Offset(0, 38),
+          child: Material(
+            elevation: 8,
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              height: 50,
+              alignment: Alignment.center,
+              child: const Text(
+                "No Products Found",
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    Overlay.of(context).insert(_searchOverlay!);
+  }
+  void _removeOverlayOnly() {
+    _searchOverlay?.remove();
+    _searchOverlay = null;
+  }
 
   void _removeSearchOverlay() {
     setState(() {
@@ -881,8 +917,11 @@ class _DashboardScreenState extends State<DashboardScreen>
                       _showSearchOverlay(state.products);
                     }
 
-                    if (state is SearchProductEmpty ||
-                        state is SearchProductInitial ||
+                    else if (state is SearchProductEmpty) {
+                      _showNoProductsOverlay(); // 👈 SHOW MESSAGE
+                    }
+
+                    else if (state is SearchProductInitial ||
                         state is SearchProductError) {
                       _removeSearchOverlay();
                     }

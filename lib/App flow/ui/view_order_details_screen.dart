@@ -1251,7 +1251,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
                                             paymentRow(
                                               "Net Total",
-                                              "₹${orderModel.netTotal ?? 0}",
+                                              "₹${(orderModel.netTotal ?? 0).toStringAsFixed(2)}",
                                               fontWeight: FontWeight.bold,
                                             ),
 

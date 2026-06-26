@@ -95,8 +95,8 @@ class TablesScreen extends StatefulWidget {
 }
 
 
-ViewMode _currentViewMode = ViewMode.gridCommonImage;
-
+// ViewMode _currentViewMode = ViewMode.gridCommonImage;
+late ViewMode _currentViewMode;
 class _TablesScreenState extends State<TablesScreen> {
 
   final OrderRepository orderRepository = OrderRepository(
@@ -246,6 +246,7 @@ class _TablesScreenState extends State<TablesScreen> {
 
     _loadZones();
     _loadSavedPermissions();
+    _currentViewMode = ViewMode.gridShapeBased; // default
 
     context.read<TableBloc>().add(
       LoadTablesEvent(widget.token),

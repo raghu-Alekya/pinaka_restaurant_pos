@@ -51,11 +51,16 @@ class _CouponscreenState extends State<Couponscreen> {
   //   });
   // }
   Future<void> _applyCoupon() async {
+    if (_couponController.text.trim().isEmpty) return;
+
+    setState(() {
+      _isApplying = true;
+    });
+
     final code = _couponController.text.trim();
 
     final selectedCoupon = availableCoupons.firstWhere(
-          (c) => c.code.trim().toLowerCase() ==
-          code.trim().toLowerCase(),
+          (c) => c.code.trim().toLowerCase() == code.toLowerCase(),
       orElse: () => CouponModel(
         id: 0,
         code: code,
@@ -65,19 +70,38 @@ class _CouponscreenState extends State<Couponscreen> {
       ),
     );
 
-    final success = await _couponRepository.applyCoupon(
-      token: widget.token,
-      orderId: widget.orderId,
-      couponCode: code,
-    );
-
-    if (success) {
-      widget.onCouponApplied(
-        selectedCoupon.code,
-        selectedCoupon.amount,
+    try {
+      final result = await _couponRepository.applyCoupon(
+        token: widget.token,
+        orderId: widget.orderId,
+        couponCode: code,
       );
 
-      Navigator.pop(context);
+      if (!mounted) return;
+
+      if (result.success) {
+        widget.onCouponApplied(
+          selectedCoupon.code,
+          selectedCoupon.amount,
+        );
+
+        Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result.message.replaceAll('&quot;', '"'),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isApplying = false;
+        });
+      }
     }
   }
 
@@ -159,26 +183,35 @@ class _CouponscreenState extends State<Couponscreen> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  SizedBox(
-                    height: 40,
-                    child:ElevatedButton(
-                      onPressed: _isApplying ? null : _applyCoupon,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF4C5F7D),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                      ),
-                      child: const Text(
-                        "Apply coupon",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
+        SizedBox(
+          height: 40,
+          child: ElevatedButton(
+            onPressed: _isApplying ? null : _applyCoupon,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4C5F7D),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
+            child: _isApplying
+                ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            )
+                : const Text(
+              "Apply Coupon",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
                 ],
               ),
               SizedBox(height: 20),

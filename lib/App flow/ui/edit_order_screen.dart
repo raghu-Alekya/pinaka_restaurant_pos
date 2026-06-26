@@ -850,7 +850,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                           Expanded(
                             child: _infoRow(
                               "Order Net Payable",
-                              "₹${(order.orderPrevTotal ?? 0).round()}",
+                              "₹${(order.orderPrevTotal ?? 0).toStringAsFixed(2)}",
                               bold: true,
                               labelColor: Colors.black87,
                               valueColor: Colors.black87,
@@ -858,13 +858,12 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                               valueFontWeight: FontWeight.w600,
                             ),
                           ),
-
                           const SizedBox(width: 34),
 
                           Expanded(
                             child: _infoRow(
                               "Order Updated Net Payable",
-                              "₹${_dynamicNetPayable.round()}",
+                              "₹${_dynamicNetPayable.toStringAsFixed(2)}",
                               bold: true,
                               labelColor: Colors.black87,
                               valueColor: Colors.black87, //  second value color valueColor: Color(0xFF086888),

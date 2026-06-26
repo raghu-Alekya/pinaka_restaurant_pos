@@ -26,3 +26,12 @@ class CouponModel {
     );
   }
 }
+class CouponResponse {
+  final bool success;
+  final String message;
+
+  CouponResponse({
+    required this.success,
+    required this.message,
+  });
+}

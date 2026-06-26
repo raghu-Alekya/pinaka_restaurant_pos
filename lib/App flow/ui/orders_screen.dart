@@ -321,7 +321,37 @@ class _OrderPanelState extends State<OrderPanel> {
 
     }
     return BlocBuilder<OrderBloc, OrderState>(
+
       builder: (context, state) {
+        // disable buttons
+        final bool hasCartItems = state.orderItems.isNotEmpty;
+
+        final activeKots = state.kotList.where((kot) {
+          final status = (kot.status ?? '').toLowerCase();
+
+          return status != 'served' &&
+              status != 'voided' &&
+              status != 'transferred';
+        }).toList();
+
+        final bool hasActiveKot = activeKots.isNotEmpty;
+        debugPrint("========== KOTS ==========");
+        for (final kot in state.kotList) {
+          debugPrint(
+            "KOT: ${kot.kotNumber} | Status: ${kot.status}",
+          );
+        }
+
+        debugPrint("Total KOTs: ${state.kotList.length}");
+        debugPrint("Active KOTs: ${activeKots.length}");
+        /// Repeat Order -> only if active KOT exists
+        final bool canRepeatOrder = hasActiveKot;
+
+        /// KOT Print -> only if cart contains items
+        final bool canPrintKot = hasCartItems;
+
+        /// Pay -> only if active KOT exists
+        final bool canPay = hasActiveKot;
         return Container(
           width: 700,
           padding: const EdgeInsets.all(12),
@@ -786,8 +816,8 @@ class _OrderPanelState extends State<OrderPanel> {
                               ),
 
                               // ✅ If you are refreshing using KotBloc inside dropdown, also provide KotBloc
-                              BlocProvider<KotBloc>(
-                                create: (_) => KotBloc(KotRepository( baseUrl: "https://merchantrestaurant.alektasolutions.com")),
+                              BlocProvider.value(
+                                value: context.read<KotBloc>(),
                               ),
                             ],
                             child: ViewAllKOTDropdown(
@@ -839,7 +869,18 @@ class _OrderPanelState extends State<OrderPanel> {
               const SizedBox(height: 6),
 
               /// Bottom action buttons
-              Row(
+            BlocBuilder<KotBloc, KotState>(
+              builder: (context, kotState) {
+                bool hasActiveKot = false;
+
+                if (kotState is KotLoaded) {
+                  hasActiveKot = kotState.kots.isNotEmpty;
+
+                  debugPrint("===== KOT BLOC =====");
+                  debugPrint("KOT Count: ${kotState.kots.length}");
+                }
+
+                return Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   Builder(
@@ -860,11 +901,21 @@ class _OrderPanelState extends State<OrderPanel> {
                         },
                         child: orderButton(
                           'Repeat order',
-                          const Color(0xFFF7C127),
+                          hasActiveKot ? const Color(0xFFF7C127) : Colors
+                              .grey,
                           isLoading: _isRepeatingOrder,
-                          onPressed: _isRepeatingOrder
-                              ? null
-                              : () {
+                          onPressed: hasActiveKot
+                              ? () {
+                            if (!hasActiveKot) {
+                              ScaffoldMessenger
+                                  .of(scaffoldContext)
+                                  .showSnackBar(
+                                const SnackBar(
+                                  content: Text('No active KOT available'),
+                                ),
+                              );
+                              return;
+                            }
                             setState(() {
                               _isRepeatingOrder = true;
                             });
@@ -898,7 +949,9 @@ class _OrderPanelState extends State<OrderPanel> {
                                 });
                               }
                             });
-                          },
+
+                          }
+                              : null,
                         ),
                       );
                     },
@@ -906,8 +959,9 @@ class _OrderPanelState extends State<OrderPanel> {
 
                   orderButton(
                     'KOT Print',
-                    const Color(0xFFFF4D20),
-                    onPressed: () async {
+                    canPrintKot ? const Color(0xFFFF4D20) : Colors.grey,
+                    onPressed: canPrintKot
+                        ? () async {
                       final orderBloc = context.read<OrderBloc>();
                       final kotBloc = context.read<KotBloc>();
                       final orderRepo = OrderRepository(
@@ -1051,7 +1105,8 @@ class _OrderPanelState extends State<OrderPanel> {
                         AppLogger.error(message);
                       }
 
-                    },
+                    }
+                    :null,
                   ),
 
                   // orderButton(
@@ -1149,7 +1204,20 @@ class _OrderPanelState extends State<OrderPanel> {
                   // orderButton('Generate e-Bill', Colors.green, onPressed: () {
                   //   AppLogger.info("Generate e-Bill clicked");
                   // }),
-                  orderButton('Pay', const Color(0xFF086888), onPressed: () {
+                  orderButton('Pay',
+                      hasActiveKot ? const Color(0xFF086888) : Colors.grey,
+                      onPressed: hasActiveKot
+                          ? () {
+                        if (!hasActiveKot) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Payment is not allowed when the cart is empty or all KOTs are served.',
+                              ),
+                            ),
+                          );
+                          return;
+                        }
                     AppLogger.info("Pay clicked");
 
                     Navigator.push(
@@ -1188,19 +1256,21 @@ class _OrderPanelState extends State<OrderPanel> {
                         ),
                       ),
                     );
-
-
-                  }),
+                      }
+                          : null,
+                  ),
 
                 ],
-              ),
+                );
+              }
+            ),
             ],
+
           ),
         );
       },
     );
   }
-
   // ================= Widgets =================
 
   Widget headerBadgeRow(OrderState state) {
@@ -1321,7 +1391,8 @@ class _OrderPanelState extends State<OrderPanel> {
         height: 55, // increased height
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(
-            backgroundColor: color,
+            backgroundColor:
+            onPressed == null ? Colors.grey : color,
             padding: const EdgeInsets.symmetric(vertical: 16), // optional: increase padding too
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),

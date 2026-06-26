@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../models/UserPermissions.dart';
-// import '../../models/vendor_payments_model.dart';
-// import '../../repositories/vendor_payments_repository.dart';
+
 import '../../models/vendor_payment_model.dart';
 import '../../repositories/vendor_payment_repository.dart';
+import '../../utils/SessionManager.dart';
 import '../widgets/top_bar.dart';
 import '../widgets/widget_add_vendor_payouts.dart';
 import 'home_screen.dart';
@@ -42,10 +42,15 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
   TextEditingController();
   final TextEditingController _datevendorController = TextEditingController();
   DateTime? selectedDate;
+  int currentPage = 1;
+  int totalPages = 1;
+  static const int rowsPerPage = 8;
   @override
   void initState() {
     super.initState();
     _loadVendorPayments();
+    _loadPermissions();
+
     selectedDate = DateTime.now();
 
     _datevendorController.text =
@@ -54,6 +59,15 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
         "${selectedDate!.year}";
 
   }
+  Future<void> _loadPermissions() async {
+    final savedPermissions = await SessionManager.loadPermissions();
+    if (savedPermissions != null) {
+      setState(() {
+        _userPermissions = savedPermissions;
+      });
+    }
+  }
+
   Future<bool?> _showDeleteDialog() {
     return showDialog<bool>(
       context: context,
@@ -200,6 +214,14 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
 
       setState(() {
         vendorPayments = data;
+
+        totalPages = (vendorPayments.length / rowsPerPage).ceil();
+
+        if (totalPages == 0) {
+          totalPages = 1;
+        }
+
+        currentPage = 1;
       });
     } catch (e) {
       print(e);
@@ -222,6 +244,14 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
 
       setState(() {
         vendorPayments = data;
+
+        totalPages = (vendorPayments.length / rowsPerPage).ceil();
+
+        if (totalPages == 0) {
+          totalPages = 1;
+        }
+
+        currentPage = 1;
       });
     } catch (e) {
       print(e);
@@ -247,6 +277,14 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
 
       setState(() {
         vendorPayments = data;
+
+        totalPages = (vendorPayments.length / rowsPerPage).ceil();
+
+        if (totalPages == 0) {
+          totalPages = 1;
+        }
+
+        currentPage = 1;
       });
     } catch (e) {
       print(e);
@@ -674,80 +712,190 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
 
                                 // Empty State / Table Data
                                 Expanded(
-                                  child: isLoading
-                                      ? const Center(
-                                    child: CircularProgressIndicator(),
-                                  )
-                                      : vendorPayments.isEmpty
-                                      ? const Center(
-                                    child: Text(
-                                      "No Vendor Payments Found",
+                                    child: isLoading
+                                        ? const Center(
+                                      child: CircularProgressIndicator(),
+                                    )
+                                        : vendorPayments.isEmpty
+                                        ? const Center(
+                                      child: Text(
+                                        "No Vendor Payments Found",
+                                      ),
+                                    )
+                                        : Builder(
+                                      builder: (context) {
+                                        final startIndex = (currentPage - 1) * rowsPerPage;
+
+                                        final endIndex =
+                                        (startIndex + rowsPerPage) > vendorPayments.length
+                                            ? vendorPayments.length
+                                            : (startIndex + rowsPerPage);
+
+                                        final currentPagePayments =
+                                        vendorPayments.sublist(startIndex, endIndex);
+
+                                        return ListView.builder(
+                                          itemCount: currentPagePayments.length,
+                                          itemBuilder: (context, index) {
+                                            final payment = currentPagePayments[index];
+
+                                            return _dataRow(
+                                                invoiceNo: payment.invoiceNo.isEmpty
+                                                    ? "-"
+                                                    : payment.invoiceNo,
+                                                vendorName: payment.vendorName.isEmpty
+                                                    ? "-"
+                                                    : payment.vendorName,
+                                                date: payment.paymentDate,
+                                                contact: payment.phoneNumber,
+                                                amount: "₹${payment.amount}",
+                                                mode: payment.paymentMethod,
+                                                purpose: payment.purpose.isEmpty
+                                                    ? "-"
+                                                    : payment.purpose,
+                                                note: payment.notes.isEmpty
+                                                    ? "-"
+                                                    : payment.notes,
+                                                onEdit: () async {
+                                                  try {
+                                                    final data =
+                                                    await _repository.getVendorPaymentById(
+                                                      token: widget.token,
+                                                      vendorPaymentId: payment.vendorPaymentId,
+                                                    );
+
+                                                    if (!mounted) return;
+
+                                                    final result = await showDialog(
+                                                      context: context,
+                                                      barrierDismissible: false,
+                                                      builder: (_) => AddVendorPayoutDialog(
+                                                        token: widget.token,
+                                                        editData: data,
+                                                      ),
+                                                    );
+
+                                                    if (result == true) {
+                                                      _loadVendorPayments();
+                                                    }
+                                                  } catch (e) {
+                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                      SnackBar(
+                                                        content: Text(e.toString()),
+                                                      ),
+                                                    );
+                                                  }
+                                                },
+
+                                                onDelete: () async {
+                                                  final confirm = await _showDeleteDialog();
+
+                                                  if (confirm == true) {
+                                                    await _deleteVendorPayment(
+                                                      payment.vendorPaymentId,
+                                                    );
+                                                  }
+                                                });
+                                          },
+                                        );
+                                      },
+                                    )
+                                ),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Container(
+                                    margin: const EdgeInsets.only(
+                                      right: 5,
+                                      bottom: 5,
+                                      top: 5,
                                     ),
-                                  )
-                                      : ListView.builder(
-                                    itemCount: vendorPayments.length,
-                                    itemBuilder: (context, index) {
-                                      final payment =
-                                      vendorPayments[index];
-
-                                      return _dataRow(
-                                        invoiceNo:
-                                        payment.invoiceNo.isEmpty ? "-" : payment.invoiceNo,
-                                        vendorName:
-                                        payment.vendorName.isEmpty ? "-" : payment.vendorName,
-                                        date: payment.paymentDate,
-                                        contact: payment.phoneNumber,
-                                        amount: "₹${payment.amount}",
-                                        mode: payment.paymentMethod,
-                                        purpose:
-                                        payment.purpose.isEmpty ? "-" : payment.purpose,
-                                        note: payment.notes.isEmpty ? "-" : payment.notes,
-
-                                        onEdit: () async {
-                                          try {
-                                            final data =
-                                            await _repository.getVendorPaymentById(
-                                              token: widget.token,
-                                              vendorPaymentId: payment.vendorPaymentId,
-                                            );
-
-                                            if (!mounted) return;
-
-                                            final result = await showDialog(
-                                              context: context,
-                                              barrierDismissible: false,
-                                              builder: (_) => AddVendorPayoutDialog(
-                                                token: widget.token,
-                                                editData: data,
-                                              ),
-                                            );
-
-                                            if (result == true) {
-                                              _loadVendorPayments();
-                                            }
-                                          } catch (e) {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              SnackBar(
-                                                content: Text(e.toString()),
-                                              ),
-                                            );
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      border: Border.all(
+                                        color: const Color(0xFFEFEFEF),
+                                      ),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        GestureDetector(
+                                          onTap: currentPage > 1
+                                              ? () {
+                                            setState(() {
+                                              currentPage--;
+                                            });
                                           }
-                                        },
+                                              : null,
+                                          child: _paginationTextButton("Previous"),
+                                        ),
 
-                                        onDelete: () async {
-                                          final confirm = await _showDeleteDialog();
+                                        GestureDetector(
+                                          onTap: () {
+                                            setState(() {
+                                              currentPage = 1;
+                                            });
+                                          },
+                                          child: _pageButton(
+                                            1,
+                                            selected: currentPage == 1,
+                                          ),
+                                        ),
 
-                                          if (confirm == true) {
-                                            await _deleteVendorPayment(
-                                              payment.vendorPaymentId,
-                                            );
+                                        if (totalPages >= 2)
+                                          GestureDetector(
+                                            onTap: () {
+                                              setState(() {
+                                                currentPage = 2;
+                                              });
+                                            },
+                                            child: _pageButton(
+                                              2,
+                                              selected: currentPage == 2,
+                                            ),
+                                          ),
+
+                                        if (totalPages >= 3)
+                                          GestureDetector(
+                                            onTap: () {
+                                              setState(() {
+                                                currentPage = 3;
+                                              });
+                                            },
+                                            child: _pageButton(
+                                              3,
+                                              selected: currentPage == 3,
+                                            ),
+                                          ),
+
+                                        if (totalPages > 4)
+                                          _paginationTextButton("..."),
+
+                                        if (totalPages > 4)
+                                          GestureDetector(
+                                            onTap: () {
+                                              setState(() {
+                                                currentPage = totalPages;
+                                              });
+                                            },
+                                            child: _pageButton(
+                                              totalPages,
+                                              selected: currentPage == totalPages,
+                                            ),
+                                          ),
+
+                                        GestureDetector(
+                                          onTap: currentPage < totalPages
+                                              ? () {
+                                            setState(() {
+                                              currentPage++;
+                                            });
                                           }
-
-
-                                        },
-                                      );
-
-                                    },
+                                              : null,
+                                          child: _paginationTextButton("Next"),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ],
@@ -761,6 +909,60 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
               ),
             )
           ],
+        ),
+      ),
+    );
+  }
+  Widget _paginationTextButton(String text) {
+    return Container(
+      height: 32,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: const BoxDecoration(
+        border: Border(
+          right: BorderSide(
+            color: Color(0xFFEFEFEF),
+          ),
+        ),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Color(0xFF727272),
+          fontSize: 11,
+        ),
+      ),
+    );
+  }
+
+  Widget _pageButton(
+      int page, {
+        bool selected = false,
+      }) {
+    return Container(
+      width: 28,
+      height: 32,
+      decoration: BoxDecoration(
+        color: selected
+            ? const Color(0xFFFF4D20)
+            : Colors.white,
+        border: const Border(
+          right: BorderSide(
+            color: Color(0xFFEFEFEF),
+          ),
+        ),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        '$page',
+        style: TextStyle(
+          color: selected
+              ? Colors.white
+              : const Color(0xFF727272),
+          fontSize: 11,
+          fontWeight: selected
+              ? FontWeight.w600
+              : FontWeight.w400,
         ),
       ),
     );

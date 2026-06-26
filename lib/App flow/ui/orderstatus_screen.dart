@@ -81,6 +81,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
       FetchOrders(token: widget.token),
 
     );
+    _selectedStatus = 'All'; // <-- Add this line
 
     _searchController.addListener(() {
       setState(() {
@@ -149,7 +150,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
 
   bool _isResetEnabled() {
     return _searchQuery.isNotEmpty ||
-        _selectedStatus != null ||
+        (_selectedStatus != null && _selectedStatus != 'All') ||
         selectedDate != null;
   }
 
@@ -458,39 +459,33 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                 color: const Color(0xFF4C81F1),
                               ),
                               child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  dropdownColor: const Color(0xFF4C81F1),
-                                  iconEnabledColor: Colors.white,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 13,
-                                  ),
-                                  hint: const Text(
-                                    'Status',
-                                    style: TextStyle(
+                                  child: DropdownButton<String>(
+                                    dropdownColor: const Color(0xFF4C81F1),
+                                    iconEnabledColor: Colors.white,
+                                    style: const TextStyle(
+                                      color: Colors.white,
                                       fontSize: 13,
-                                      color: Colors.white,               // hint color
                                     ),
-                                  ),
-                                  value: _selectedStatus,
-                                  items: statusOptions.map(
-                                        (e) => DropdownMenuItem<String>(
-                                      value: e,
-                                      child: Text(
-                                        e,
-                                        style: const TextStyle(
-                                          color: Colors.white,           // item text color
-                                          fontSize: 13,
+                                    value: _selectedStatus,
+                                    items: statusOptions.map(
+                                          (e) => DropdownMenuItem<String>(
+                                        value: e,
+                                        child: Text(
+                                          e,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 13,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ).toList(),
-                                  onChanged: (val) {
-                                    setState(() {
-                                      _selectedStatus = val;
-                                    });
-                                  },
-                                ),
+                                    ).toList(),
+                                    onChanged: (val) {
+                                      setState(() {
+                                        _selectedStatus = val;
+                                        _currentPage = 0;
+                                      });
+                                    },
+                                  )
                               ),
                             ),
 
@@ -513,7 +508,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                   _searchController.clear();
 
                                   // 🔹 Status
-                                  _selectedStatus = null;
+                                  _selectedStatus = 'All';
 
                                   // 🔹 Date
                                   selectedDate = null;

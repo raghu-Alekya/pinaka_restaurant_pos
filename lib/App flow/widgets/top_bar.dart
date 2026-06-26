@@ -325,7 +325,7 @@ class _TopBarState extends State<TopBar> {
       onTap: () {
         showDialog(
           context: context,
-          barrierDismissible: false,
+          barrierDismissible: true,
           builder: (context) => Checkinpopup(
             token: widget.token,
             onCheckIn: () {
