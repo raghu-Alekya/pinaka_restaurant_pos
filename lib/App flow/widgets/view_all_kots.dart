@@ -411,7 +411,9 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
 
                                       if (state is KotLineItemsError) {
                                         ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text(state.message)),
+                                          SnackBar(content: Text(state.message),
+                                            duration: Duration(seconds: 1),
+                                          ),
                                         );
                                       }
                                     },
@@ -440,7 +442,8 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
 
                                               if (state is UpdatekotFailure) {
                                                 ScaffoldMessenger.of(context).showSnackBar(
-                                                  SnackBar(content: Text(state.message)),
+                                                  SnackBar(content: Text(state.message),
+                                                  duration: Duration(seconds: 1)),
                                                 );
                                               }
                                             },

@@ -113,6 +113,7 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
                     content: Text(state.message),
                     backgroundColor: Colors.red,
                     behavior: SnackBarBehavior.floating,
+                    duration: Duration(seconds: 1),
                   ),
                 );
               }
@@ -257,7 +258,8 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
                                           BlocProvider.of<AuthBloc>(context).add(LoginEvent(pin.trim()));
                                         } else {
                                           ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(content: Text('PIN must be exactly 6 digits')),
+                                            const SnackBar(content: Text('PIN must be exactly 6 digits'),
+                                              duration: Duration(seconds: 1),),
                                           );
                                         }
                                       },

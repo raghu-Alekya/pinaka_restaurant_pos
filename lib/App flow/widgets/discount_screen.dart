@@ -186,7 +186,8 @@ class _DiscountPopupState extends State<DiscountPopup> {
 
   void _showError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg)),
+      SnackBar(content: Text(msg),
+          duration: Duration(seconds: 1),),
     );
   }
   void _exitNCMode() {

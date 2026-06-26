@@ -16,6 +16,7 @@ import '../../blocs/Bloc State/create_payment_state.dart';
 import '../../blocs/Bloc State/discount_stata.dart';
 import '../../blocs/Bloc State/payment_state.dart';
 import '../../models/payment/create_payment_model.dart';
+import '../../models/payment/payment_summary_model.dart';
 import '../../repositories/TIP_repository.dart';
 import '../../repositories/coupon_repository.dart';
 import '../../repositories/create_payment_repository.dart';
@@ -62,6 +63,8 @@ class paymentsummary extends StatefulWidget {
 class _paymentsummaryState extends State<paymentsummary> {
   String selectedOption = '';
   String amount = '';
+  PaymentSummary? _paymentSummary;
+  String _cashierName = "";
 
   // double balanceAmount = AppDatabase.instance.totalamount ?? 0.0;
   double? calculatedChange;
@@ -479,6 +482,7 @@ class _paymentsummaryState extends State<paymentsummary> {
               return;
             }
             if (state is PaymentSummaryLoaded) {
+              _paymentSummary = state.summary;
               final discount = state.merchantDiscount;
 
               setState(() {
@@ -559,6 +563,17 @@ class _paymentsummaryState extends State<paymentsummary> {
               setState(() {
                 _isPaying = false; // ✅ stop loading
               });
+              // ✅ Check before opening dialog
+              final paymentBlocState = context.read<PaymentBloc>().state;
+
+              if (paymentBlocState is! PaymentSummaryLoaded) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Payment summary not available")),
+                );
+                return;
+              }
+
+              final summary = paymentBlocState.summary;
               final action = await showDialog<String>(
                 context: context,
                 barrierDismissible: false,
@@ -580,6 +595,9 @@ class _paymentsummaryState extends State<paymentsummary> {
                         restaurantId: widget.restaurantId,
                         zoneId: widget.zoneId,
                         restaurantName: '',
+                        // ✅ Pass the actual values
+                        paymentSummary: summary,
+                        cashierName: _cashierName,
                       ),
                     ),
                   );
@@ -598,7 +616,9 @@ class _paymentsummaryState extends State<paymentsummary> {
                   if (!mounted) return;
                   ScaffoldMessenger.of(
                     context,
-                  ).showSnackBar(SnackBar(content: Text(message)));
+                  ).showSnackBar(SnackBar(content: Text(message),
+                    duration: Duration(seconds: 1),)
+                  );
 
                   context.read<PaymentBloc>().add(
                     LoadPaymentSummary(
@@ -612,7 +632,9 @@ class _paymentsummaryState extends State<paymentsummary> {
                   if (!mounted) return;
                   ScaffoldMessenger.of(
                     context,
-                  ).showSnackBar(SnackBar(content: Text(e.toString())));
+                  ).showSnackBar(SnackBar(content: Text(e.toString()),
+                    duration: Duration(seconds: 1),),
+                  );
                 }
               } else {
                 /// 🔥 Reset order completely
@@ -626,7 +648,8 @@ class _paymentsummaryState extends State<paymentsummary> {
               });
               ScaffoldMessenger.of(
                 context,
-              ).showSnackBar(SnackBar(content: Text(state.error)));
+              ).showSnackBar(SnackBar(content: Text(state.error),
+                duration: Duration(seconds: 1)));
             }
           },
         ),
@@ -637,7 +660,8 @@ class _paymentsummaryState extends State<paymentsummary> {
             if (state is RemoveDiscountSuccess) {
               ScaffoldMessenger.of(
                 context,
-              ).showSnackBar(SnackBar(content: Text(state.response.message)));
+              ).showSnackBar(SnackBar(content: Text(state.response.message),
+                duration: Duration(seconds: 1),));
 
               setState(() {
                 _isDiscountApplied = false;
@@ -667,7 +691,8 @@ class _paymentsummaryState extends State<paymentsummary> {
             if (state is RemoveDiscountFailure) {
               ScaffoldMessenger.of(
                 context,
-              ).showSnackBar(SnackBar(content: Text(state.error)));
+              ).showSnackBar(SnackBar(content: Text(state.error),
+                duration: Duration(seconds: 1),));
             }
           },
         ),
@@ -1128,6 +1153,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                                         content: Text(
                                           "Coupon removed successfully",
                                         ),
+                                        duration: Duration(seconds: 1),
                                       ),
                                     );
                                   }
@@ -1154,13 +1180,16 @@ class _paymentsummaryState extends State<paymentsummary> {
                                         content: Text(
                                           'Tip removed successfully',
                                         ),
+                                        duration: Duration(seconds: 1),
                                       ),
                                     );
                                   } else {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
                                         content: Text('Failed to remove tip'),
+                                        duration: Duration(seconds: 1),
                                       ),
+
                                     );
                                   }
                                 },
@@ -1897,12 +1926,12 @@ Widget _buildPaymentModeItem(
     {
       "label": "Card",
       "image": "assets/card.png",
-      "enabled": false, // ❌ disabled
+      "enabled": true, // ❌ disabled
     },
     {
       "label": "UPI",
       "image": "assets/icon/upi.png",
-      "enabled": false, // ❌ disabled
+      "enabled": true, // ❌ disabled
     },
   ];
 

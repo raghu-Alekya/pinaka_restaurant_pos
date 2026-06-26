@@ -184,6 +184,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
             response["message"] ??
                 "Vendor payment deleted successfully",
           ),
+          duration: Duration(seconds: 1),
           backgroundColor: Colors.green,
         ),
       );
@@ -194,7 +195,9 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
         SnackBar(
           content: Text(e.toString()),
           backgroundColor: Colors.red,
+          duration: Duration(seconds: 1),
         ),
+
       );
     }
   }
@@ -781,8 +784,11 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                                   } catch (e) {
                                                     ScaffoldMessenger.of(context).showSnackBar(
                                                       SnackBar(
-                                                        content: Text(e.toString()),
+                                                        content: Text(e.toString()
+                                                        ),
+                                                        duration: Duration(seconds: 1),
                                                       ),
+
                                                     );
                                                   }
                                                 },

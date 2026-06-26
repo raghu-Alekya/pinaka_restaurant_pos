@@ -20,6 +20,7 @@ import '../../repositories/checkin_repository.dart';
 import '../../repositories/employee_repository.dart';
 import '../../repositories/order_list_repository.dart';
 import '../../repositories/table_status_count_repository.dart';
+import '../../repositories/vendor_payment_repository.dart';
 import '../../utils/SessionManager.dart';
 import '../widgets/top_bar.dart';
 import 'CheckinPopup.dart';
@@ -59,6 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool isLoading = true;
   int activeOrdersCount = 0;
   double totalTipAmount = 0.0;
+  double vendorcount = 0;
 
   @override
   void initState() {
@@ -72,6 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkShiftStatus();
     });
+    _loadVendorCount();
   }
   void _startClock() {
     _updateTime();
@@ -88,6 +91,22 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _currentTime = DateFormat('hh:mm:ss a').format(DateTime.now());
     });
+  }
+  final VendorPaymentRepository _repository = VendorPaymentRepository();
+
+  Future<void> _loadVendorCount() async {
+    try {
+      final result = await _repository.getVendors(
+        token: widget.token,
+      );
+
+      setState(() {
+        vendorcount =
+            (result["vendor_count"] as num).toDouble();
+      });
+    } catch (e) {
+      print(e);
+    }
   }
 
   Future<void> _checkShiftStatus() async {
@@ -589,7 +608,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     flex: 2,
                     child: _whiteModuleCard(
                       title: "Vendors",
-                      count: "32",
+                      count: vendorcount.toInt().toString(),
                       countLabel: "vendors",
                       icon: Icons.local_shipping_outlined,
                       iconColor: Colors.orange,

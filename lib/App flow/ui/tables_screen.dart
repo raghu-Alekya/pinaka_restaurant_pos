@@ -1699,6 +1699,7 @@ class _TablesScreenState extends State<TablesScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text("Failed to create order, please try again."),
+                    duration: Duration(seconds: 1),
                   ),
                 );
               }
@@ -1997,11 +1998,13 @@ class _TablesScreenState extends State<TablesScreen> {
           onPermissionsReceived: (permissions) {
             setState(() {
               _userPermissions = permissions;
-              if (_userPermissions!.canDefaultLayout == 'gridCommonImage') {
-                _currentViewMode = ViewMode.gridCommonImage;
-              } else {
-                _currentViewMode = ViewMode.normal;
-              }
+              // Always start with Grid Shape Based after check-in
+              _currentViewMode = ViewMode.gridShapeBased;
+              // if (_userPermissions!.canDefaultLayout == 'gridCommonImage') {
+              //   _currentViewMode = ViewMode.gridCommonImage;
+              // } else {
+              //   _currentViewMode = ViewMode.normal;
+              // }
             });
           },
         ),

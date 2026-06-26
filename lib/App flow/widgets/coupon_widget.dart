@@ -91,7 +91,9 @@ class _CouponscreenState extends State<Couponscreen> {
           SnackBar(
             content: Text(
               result.message.replaceAll('&quot;', '"'),
+
             ),
+            duration: Duration(seconds: 1),
             backgroundColor: Colors.red,
           ),
         );

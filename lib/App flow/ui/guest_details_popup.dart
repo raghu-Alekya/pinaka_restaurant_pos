@@ -138,6 +138,7 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text('Please select number of guests'),
+                              duration: Duration(seconds: 1),
                             ),
                           );
                           return;
@@ -157,6 +158,7 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                                 content: Text(
                                   'Cannot create order: Table/Zone ID missing',
                                 ),
+                                duration: Duration(seconds: 1),
                               ),
                             );
                             return;
@@ -232,6 +234,7 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text('Failed to create order: $e'),
+                              duration: Duration(seconds: 1),
                             ),
                           );
                         } finally {

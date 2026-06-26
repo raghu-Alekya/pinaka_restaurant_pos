@@ -598,7 +598,8 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                                                         _fetchReservations();
                                                       } else {
                                                         ScaffoldMessenger.of(context).showSnackBar(
-                                                          const SnackBar(content: Text('Failed to cancel reservation.')),
+                                                          const SnackBar(content: Text('Failed to cancel reservation.'),
+                                                            duration: Duration(seconds: 1),),
                                                         );
                                                       }
                                                     },

@@ -81,7 +81,8 @@ class _ReservationMergePopupState extends State<ReservationMergePopup> {
     } catch (e) {
       setState(() => isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load tables: $e')),
+        SnackBar(content: Text('Failed to load tables: $e'),
+          duration: Duration(seconds: 1)),
       );
     }
   }
@@ -306,7 +307,8 @@ class _ReservationMergePopupState extends State<ReservationMergePopup> {
                 onPressed: () async {
                   if (selectedParent == null || selectedChildren.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Please select parent and child tables.")),
+                      const SnackBar(content: Text("Please select parent and child tables."),
+                          duration: Duration(seconds: 1),),
                     );
                     return;
                   }

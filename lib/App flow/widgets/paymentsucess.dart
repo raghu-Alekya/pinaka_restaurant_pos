@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/widgets/print_receipt.dart';
+
+import '../../models/payment/payment_summary_model.dart';
 // import 'Print_recipt.dart';
 
 class Paymentsucess extends StatelessWidget {
@@ -8,6 +10,8 @@ class Paymentsucess extends StatelessWidget {
   final String? changeAmount;
   final int paymentId;
   final int orderId;
+  final PaymentSummary paymentSummary;
+  final String cashierName;
 
   // ✅ ADD THESE
   final List<Map<String, dynamic>> loadedTables;
@@ -16,6 +20,7 @@ class Paymentsucess extends StatelessWidget {
   final String restaurantId;
   final String restaurantName;
   final int? zoneId;
+
 
   const Paymentsucess({
     Key? key,
@@ -30,6 +35,8 @@ class Paymentsucess extends StatelessWidget {
     required this.restaurantId,
     required this.restaurantName,
     this.zoneId,
+    required this.paymentSummary,
+    required this.cashierName,
   }) : super(key: key);
 
 
@@ -114,6 +121,8 @@ class Paymentsucess extends StatelessWidget {
                     label: 'Print',
                     color: Color(0xFF1BA672),
                     onTap: () {
+                      // Close PaymentSuccess dialog and tell parent to open PrintReceipt
+                      Navigator.pop(context, "print");
                       showDialog(
                         context: context,
                         barrierDismissible: false,
@@ -138,6 +147,8 @@ class Paymentsucess extends StatelessWidget {
                                     restaurantId: restaurantId,
                                     restaurantName: restaurantName,
                                     zoneId: zoneId,
+                                    paymentSummary: paymentSummary,
+                                    cashierName: cashierName,
                                   ),
 
                                 ),

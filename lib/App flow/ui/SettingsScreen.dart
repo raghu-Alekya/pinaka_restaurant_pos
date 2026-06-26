@@ -986,7 +986,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Image selection failed')));
+      ).showSnackBar(const SnackBar(content: Text('Image selection failed'),
+        duration: Duration(seconds: 1),));
     }
   }
 
@@ -1012,7 +1013,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await prefs.setString('orderTypeSelections', jsonEncode(_orderTypeSelections));
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Settings saved successfully')),
+      const SnackBar(content: Text('Settings saved successfully'),
+        duration: Duration(seconds: 1),),
     );
   }
 

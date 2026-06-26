@@ -95,6 +95,7 @@ class OrderItems {
       note: json['note']?.toString() ?? '',
       section: section,
       taxClass: taxClass,
+      hasOptions: json['hasOptions'] ?? false,
     );
   }
 
@@ -117,6 +118,7 @@ class OrderItems {
       'addOns': serializedAddOns,
       'note': note,
       'tax_class': taxClass,
+      'hasOptions': hasOptions,
       // 'section': section.toJson(),
       // ✅ SAFE: only include section if not null
       if (section != null) 'section': section!.toJson(),
@@ -135,6 +137,7 @@ class OrderItems {
     String? note,
     Category? section,
     String? taxClass,
+    bool? hasOptions,
 
   }) {
     return OrderItems(
@@ -149,6 +152,7 @@ class OrderItems {
       note: note ?? this.note,
       section: section ?? this.section,
         taxClass: taxClass ?? this.taxClass,
+      hasOptions: hasOptions ?? this.hasOptions,
     );
   }
 }

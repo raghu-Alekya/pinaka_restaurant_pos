@@ -619,6 +619,7 @@ Net Payable      : $netPayableTemp
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("No printer selected"),
+            duration: Duration(seconds: 1),
           ),
         );
         return;
@@ -726,12 +727,13 @@ Net Payable      : $netPayableTemp
   }
 
   Widget _row(
-    String label,
-    double value, {
-    bool isBold = false,
-    Color? color,
-    double fontSize = 14,
-  }) {
+      String label,
+      double value, {
+        bool isBold = false,
+        Color? color,
+        double fontSize = 14,
+        bool showNegative = false,
+      }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
@@ -746,7 +748,7 @@ Net Payable      : $netPayableTemp
             ),
           ),
           Text(
-            "${value <= 0 ? '-₹' : '₹'}${value.abs().toStringAsFixed(2)}",
+            "${showNegative || value < 0 ? '-₹' : '₹'}${value.abs().toStringAsFixed(2)}",
             style: TextStyle(
               fontSize: fontSize,
               fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
@@ -757,7 +759,6 @@ Net Payable      : $netPayableTemp
       ),
     );
   }
-
   @override
   Widget build(BuildContext context) {
     DateTime now = DateTime.now();
@@ -796,6 +797,7 @@ Net Payable      : $netPayableTemp
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text("Remove coupon first"),
+                                    duration: Duration(seconds: 1),
                                   ),
                                 );
                                 return;
@@ -804,6 +806,7 @@ Net Payable      : $netPayableTemp
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text("Remove discount first"),
+                                    duration: Duration(seconds: 1),
                                   ),
                                 );
                                 return;
@@ -963,6 +966,7 @@ Net Payable      : $netPayableTemp
                                         ).showSnackBar(
                                           SnackBar(
                                             content: Text(result!.message),
+                                            duration: Duration(seconds: 1),
                                           ),
                                         );
                                       }
@@ -1330,9 +1334,10 @@ Net Payable      : $netPayableTemp
                                       isBold: true,
                                     ),
                                     _row(
-                                      "Coupon / Discounts",
+                                      "Coupon",
                                       couponDiscount,
                                       color: Colors.green,
+                                      showNegative: couponDiscount >= 0, // Shows -₹ for 0.00 and positive values
                                     ),
 
                                     const DottedLine(),
@@ -1419,6 +1424,7 @@ Net Payable      : $netPayableTemp
                                       "Merchant Discount",
                                       merchantDiscount,
                                       color: Colors.blue,
+                                      showNegative: merchantDiscount >= 0,
                                     ),
                                     _row(
                                       "Service Charges (Optional)",

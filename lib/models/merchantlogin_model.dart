@@ -16,6 +16,7 @@ class MerchantLoginResponse {
   final String licenseKey;
   final String licenseStatus;
   final String storeLogo;
+  final String storeGstin;
 
   MerchantLoginResponse({
     required this.success,
@@ -35,6 +36,7 @@ class MerchantLoginResponse {
     required this.licenseKey,
     required this.licenseStatus,
     required this.storeLogo,
+    required this.storeGstin,
   });
 
   factory MerchantLoginResponse.fromJson(
@@ -53,6 +55,7 @@ class MerchantLoginResponse {
       deviceImeis: json['device_imeis'] ?? [],
       storeBaseUrl: json['store_base_url'] ?? '',
       storeAddress: json['store_address'] ?? '',
+      storeGstin: json['store_gstin'] ?? '',
       storePhone: json['store_phone'] ?? '',
       licenseKey: json['license_key'] ?? '',
       licenseStatus: json['license_status'] ?? '',

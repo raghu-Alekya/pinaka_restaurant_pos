@@ -114,6 +114,7 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
             modifiers: item.modifiers,
             addOns: item.addOns,
             amount: item.amount,
+            hasOptions: item.hasOptions,
           )).toList();
 
           final guestDetails = Guestcount(guestCount: existingOrder.guestCount);

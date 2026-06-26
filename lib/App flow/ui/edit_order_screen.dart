@@ -320,7 +320,8 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
     if (selectedReason == null || selectedReason!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select a reason")),
+        const SnackBar(content: Text("Please select a reason"),
+          duration: Duration(seconds: 1),),
       );
       return;
     }
@@ -348,7 +349,8 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       final items = _editedKotItems[_selectedKotId];
       if (items == null || items.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("⚠️ No items to update")),
+          const SnackBar(content: Text("⚠️ No items to update"),
+            duration: Duration(seconds: 1),),
         );
         return;
       }
@@ -374,7 +376,8 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
       if (lineItemsPayload.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("⚠️ No valid items to update")),
+          const SnackBar(content: Text("⚠️ No valid items to update"),
+            duration: Duration(seconds: 1),),
         );
         return;
       }
@@ -451,7 +454,8 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
     } catch (e) {
       print("❌ KOT Update Failed => $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("❌ Update failed: $e")),
+        SnackBar(content: Text("❌ Update failed: $e"),
+          duration: Duration(seconds: 1),),
       );
     }
   }

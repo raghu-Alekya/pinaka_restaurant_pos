@@ -316,7 +316,8 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
 
     if (kotId == 0 || restaurantId == 0 || zoneId == 0 || parentOrderId == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Unable to open Void Items for selected KOT")),
+        const SnackBar(content: Text("Unable to open Void Items for selected KOT"),
+            duration: Duration(seconds: 1),),
       );
       return;
     }
@@ -381,6 +382,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
           content: Text(
             "Failed to load KOT items: $e",
           ),
+          duration: Duration(seconds: 1),
         ),
       );
     }
@@ -413,7 +415,8 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         .toString();
     if (kotId == 0 || orderId == 0 || restaurantId == 0 || tableName.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Unable to transfer selected KOT")),
+        const SnackBar(content: Text("Unable to transfer selected KOT"),
+          duration: Duration(seconds: 1),),
       );
       return;
     }
@@ -470,7 +473,8 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
           fromTableId != 0 ? fromTableId : (tableIds[tableName] ?? 0);
       if (resolvedFromTableId == 0) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Unable to transfer selected KOT")),
+          const SnackBar(content: Text("Unable to transfer selected KOT"),
+            duration: Duration(seconds: 1),),
         );
         return;
       }
@@ -515,7 +519,8 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Transfer KOT failed: $e")),
+        SnackBar(content: Text("Transfer KOT failed: $e"),
+          duration: Duration(seconds: 1),),
       );
     }
   }

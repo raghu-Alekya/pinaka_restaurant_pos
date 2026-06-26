@@ -180,8 +180,14 @@ class OrderPanelList extends StatelessWidget {
                   // Modifier Button
                   IconButton(
                     padding: EdgeInsets.zero,
-                    icon: const Icon(Icons.add, color: Colors.red, size: 20),
-                    onPressed: () => _showModifierPopup(context, index),
+                    icon: Icon(
+                      Icons.add,
+                      color: item.hasOptions ? Colors.red : Colors.grey,
+                      size: 20,
+                    ),
+                    onPressed: item.hasOptions
+                        ? () => _showModifierPopup(context, index)
+                        : null,
                   ),
 
                   // Unit Price (fixed)

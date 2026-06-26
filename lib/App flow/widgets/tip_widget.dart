@@ -59,7 +59,8 @@ class _TipPopupState extends State<TipPopup> {
   Future<void> _applyTip() async {
     if (_tipController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter tip amount')),
+        const SnackBar(content: Text('Please enter tip amount'),
+          duration: Duration(seconds: 1)),
       );
       return;
     }
@@ -68,7 +69,8 @@ class _TipPopupState extends State<TipPopup> {
 
     if (amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid tip amount')),
+        const SnackBar(content: Text('Invalid tip amount'),
+          duration: Duration(seconds: 1)),
       );
       return;
     }
@@ -92,16 +94,19 @@ class _TipPopupState extends State<TipPopup> {
         Navigator.pop(context, amount);
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tip added successfully')),
+          const SnackBar(content: Text('Tip added successfully'),
+              duration: Duration(seconds: 1)),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to add tip')),
+          const SnackBar(content: Text('Failed to add tip'),
+            duration: Duration(seconds: 1)),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+        SnackBar(content: Text('Error: $e'),
+            duration: Duration(seconds: 1)),
       );
     } finally {
       if (mounted) {

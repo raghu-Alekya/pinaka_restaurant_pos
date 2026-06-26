@@ -29,6 +29,7 @@ import '../../models/order/order_items.dart';
 import '../../models/search/search_model.dart';
 import '../../models/sidebar/category_model_.dart';
 import '../../repositories/minisubcategory_repository.dart';
+import '../../repositories/modifier_repository.dart';
 import '../../repositories/product_repository.dart';
 import '../../repositories/variant_repository.dart';
 import '../../utils/SessionManager.dart';
@@ -310,7 +311,8 @@ class _DashboardScreenState extends State<DashboardScreen>
 
                               if (variants.isEmpty) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('No variants available')),
+                                  const SnackBar(content: Text('No variants available')
+                                  ,duration: Duration(seconds: 1),),
                                 );
                                 return;
                               }
@@ -344,7 +346,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                             } catch (e) {
                               Navigator.pop(context);
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Failed to load variants')),
+                                const SnackBar(content: Text('Failed to load variants'),
+                                  duration: Duration(seconds: 1),),
                               );
                             }
 
@@ -819,6 +822,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                                                     // 'https://merchantrestaurant.alektasolutions.com',
                                                     token: widget.token,
                                                   );
+                                                  final modifierRepo = ModifierRepository(
+                                                    token: widget.token,
+                                                  );
 
                                                   final subState = context.watch<SubCategoryBloc>().state;
 
@@ -833,6 +839,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                                         ? (subState.selectedSubCategory ?? -1)
                                                         : -1,
                                                     variantRepository: variantRepo,
+                                                    modifierRepository: modifierRepo,
                                                   );
                                                 } else if (miniState
                                                 is MiniSubCategoryError) {

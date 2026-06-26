@@ -84,12 +84,12 @@ class _AddVendorPayoutDialogState extends State<AddVendorPayoutDialog> {
 
   Future<void> _loadVendors() async {
     try {
-      final data = await _repository.getVendors(
+      final result = await _repository.getVendors(
         token: widget.token,
       );
 
       setState(() {
-        vendors = data;
+        vendors = List<Map<String, dynamic>>.from(result["vendors"]);
       });
     } catch (e) {
       print("Vendor Load Error: $e");

@@ -179,7 +179,8 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
     } catch (e) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.toString())));
+          .showSnackBar(SnackBar(content: Text(e.toString()),
+        duration: Duration(seconds: 1)));
     }
   }
   Widget comboItemsList(ComboProduct comboProduct) {
@@ -353,42 +354,62 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
 
 
   Future<void> _onItemTap(BuildContext context, Product item) async {
+    // ✅ Don't allow out-of-stock items
+    if (!item.inStock) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("${item.name} is out of stock"),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 1),
+        ),
+      );
+      return;
+    }
     final orderBloc = context.read<OrderBloc>();
 
-    // Fetch modifiers for this product
-    final modifiers = await widget.modifierRepository?.fetchModifiersByProductId(item.id) ?? [];
+    debugPrint("modifierRepository = ${widget.modifierRepository}");
 
-    // Determine if product has options
-    final hasOptions = (modifiers.isNotEmpty || (item.addOns?.isNotEmpty ?? false));
+    // Fetch modifiers/add-ons
+    final modifiers = await widget.modifierRepository!
+        .fetchModifiersByProductId(item.id);
 
-    // Create OrderItem
+    final hasOptions = modifiers.isNotEmpty;
+
+    debugPrint("Product: ${item.name}");
+    debugPrint("Modifiers fetched: ${modifiers.length}");
+    debugPrint("Has Options: $hasOptions");
+
     final orderItem = OrderItems(
+      productId: item.id,
+      variationId: null,
       name: item.name,
       price: item.price,
       quantity: 1,
-      modifiers: [],
-      addOns: {},
+      modifiers: const [],
+      addOns: const {},
       section: widget.section,
-      productId: item.id,
-      hasOptions: hasOptions,
-      variationId: null,
-      // ✅ base amount (only item price now)
-      amount: item.price * 1,
-      // variantId: null, // 🔹 now accurate
+      amount: item.price,
+      hasOptions: hasOptions, // ✅ Save this
     );
 
     try {
-      // Check for variants
-      final variants = await widget.variantRepository.fetchVariantsByProduct(item.id);
+      final variants =
+      await widget.variantRepository.fetchVariantsByProduct(item.id);
+
       if (variants.isNotEmpty) {
         final updatedProduct = item.copyWith(variants: variants);
-        _showVariantPopup(context, updatedProduct, orderBloc, widget.section);
+
+        _showVariantPopup(
+          context,
+          updatedProduct,
+          orderBloc,
+          widget.section,
+          hasOptions, // Pass it to the popup too
+        );
       } else {
         orderBloc.add(AddOrderItem(orderItem));
-        print("[Dashboard] Added to order: ${orderItem.name} with hasOptions=$hasOptions");
       }
     } catch (e) {
-      print("[Dashboard] Error fetching variants: $e");
       orderBloc.add(AddOrderItem(orderItem));
     }
   }
@@ -397,7 +418,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       BuildContext context,
       Product product,
       OrderBloc orderBloc,
-      Category section,
+      Category section, bool hasOptions,
       ) {
     showDialog(
       context: context,
@@ -411,16 +432,16 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
         },
         onSelected: (variant) {
           final orderItem = OrderItems(
+            productId: product.id,
+            variationId: variant.id,
             name: '${product.name} - ${variant.name}',
             price: variant.price,
             quantity: 1,
-            modifiers: [],
+            modifiers: const [],
+            addOns: const {},
             section: section,
-            productId: product.id,
-            variationId: variant.id,
-
-            // ✅ base amount (item total)
-            amount: variant.price * 1,
+            amount: variant.price,
+            hasOptions: hasOptions, // ✅ Important
           );
 
           orderBloc.add(AddOrderItem(orderItem));

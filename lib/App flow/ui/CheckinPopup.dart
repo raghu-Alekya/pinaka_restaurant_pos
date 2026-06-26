@@ -79,7 +79,7 @@ class _CheckinpopupState extends State<Checkinpopup> {
             const SnackBar(
               content: Text('Invalid PIN. Please try again.'),
               backgroundColor: Colors.red,
-              duration: Duration(seconds: 2),
+              duration: Duration(seconds: 1),
             ),
           );
         }

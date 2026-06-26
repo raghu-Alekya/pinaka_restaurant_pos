@@ -471,6 +471,7 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text("Select at least one item"),
+                      duration: Duration(seconds: 1),
                     ),
                   );
                   return;
@@ -526,7 +527,8 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
 
           if (state is KotTransferFailure) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.error)),
+              SnackBar(content: Text(state.error),
+                  duration: Duration(seconds: 1),),
             );
           }
         },

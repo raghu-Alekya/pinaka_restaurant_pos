@@ -59,13 +59,10 @@ class VendorPaymentRepository {
       rethrow;
     }
   }
-  Future<List<Map<String, dynamic>>> getVendors({
+  Future<Map<String, dynamic>> getVendors({
     required String token,
   }) async {
     try {
-      print("========== GET VENDORS ==========");
-      print("Token: $token");
-
       final response = await http.get(
         Uri.parse(
           "${AppConstants.baseApiPath}/vendor_payments/get-vendors",
@@ -76,28 +73,21 @@ class VendorPaymentRepository {
         },
       );
 
-      print("Status Code : ${response.statusCode}");
-      print("Response : ${response.body}");
-
       final data = jsonDecode(response.body);
 
-      if (response.statusCode == 200 &&
-          data["success"] == true) {
-        return List<Map<String, dynamic>>.from(
-          data["data"],
-        );
+      if (response.statusCode == 200 && data["success"] == true) {
+        return {
+          "vendor_count": data["vendor_count"] ?? 0,
+          "vendors": List<Map<String, dynamic>>.from(data["data"]),
+        };
       }
 
-      throw Exception(
-        data["message"] ?? "Failed to fetch vendors",
-      );
+      throw Exception(data["message"] ?? "Failed to fetch vendors");
     } catch (e) {
       print("Get Vendors Error: $e");
       rethrow;
     }
   }
-
-
   Future<List<VendorPaymentModel>> getVendorPayments({
     required String token,
   }) async {

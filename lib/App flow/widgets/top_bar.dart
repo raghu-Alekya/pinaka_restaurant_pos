@@ -206,6 +206,7 @@ class _TopBarState extends State<TopBar> {
               content: Text(message),
               backgroundColor: Colors.red,
               behavior: SnackBarBehavior.floating,
+              duration: Duration(seconds: 1),
             ),
           );
         }
@@ -293,7 +294,8 @@ class _TopBarState extends State<TopBar> {
           if (context.mounted) {
             Navigator.pop(context);
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Failed to load employees')),
+              const SnackBar(content: Text('Failed to load employees'),
+                duration: Duration(seconds: 1)),
             );
           }
         } finally {

@@ -10,6 +10,7 @@ class Product {
   // final List<ComboItem> subItems;
   // ✅ ADD THIS
   final bool isCombo;
+  final bool inStock;
 
 
   // ✅ New fields
@@ -33,6 +34,7 @@ class Product {
     List<String>? modifiers,
     List<String>? addOns,
     bool? hasOptions,
+    this.inStock = true,
     String? image,
     this.isVariantProduct = false,
   })  : images = images ?? [],
@@ -50,6 +52,7 @@ class Product {
     String? image,
     bool? isVeg,
     bool? isCombo,
+    bool? inStock,
     List<Variant>? variants,
     List<String>? modifiers,
     List<String>? addOns,
@@ -64,6 +67,7 @@ class Product {
       image: image ?? (images != null && images.isNotEmpty ? images.first : this.image),
       isVeg: isVeg ?? this.isVeg,
       isCombo: isCombo ?? this.isCombo,
+      inStock: inStock ?? this.inStock,
 
       variants: variants ?? this.variants,
       modifiers: modifiers ?? this.modifiers,
@@ -123,6 +127,7 @@ class Product {
       }
     }
 
+
     // Parse hasOptions safely
     final hasOptionsParsed = (modifiers.isNotEmpty || addOns.isNotEmpty) ||
         (json['hasOptions'] == true);
@@ -140,6 +145,7 @@ class Product {
       // subItems: parsedSubItems,
       isVeg: parsedIsVeg,
       isCombo: json['is_combo']?.toString().toLowerCase() == 'yes',
+      inStock: json['in_stock']?.toString().toLowerCase() == 'yes',
       variants: parsedVariants,
       image: json['image'] ??
           (images.isNotEmpty ? images.first : ''), // fallback image

@@ -265,6 +265,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                 : "✅ Order cancelled successfully",
           ),
           backgroundColor: Colors.green,
+          duration: Duration(seconds: 1),
         ),
       );
 
@@ -280,6 +281,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
         SnackBar(
           content: Text("❌ Failed to cancel order: $e"),
           backgroundColor: Colors.red,
+          duration: Duration(seconds: 1),
         ),
       );
     }
@@ -506,7 +508,9 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                 content: const Text(
                                                   'Order with Merchant Discount is not editable',
                                                   style: TextStyle(color: Colors.white),
+
                                                 ),
+                                                duration: Duration(seconds: 1),
                                                 backgroundColor: Colors.redAccent,
                                               ),
                                             );
@@ -517,7 +521,8 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                           if ((_userPermissions?.role ?? '').toLowerCase() != 'manager')
                                           {
                                             ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(content: Text('Only managers can edit orders')),
+                                              const SnackBar(content: Text('Only managers can edit orders'),
+                                                duration: Duration(seconds: 1),),
                                             );
                                             return;
                                           }
@@ -544,7 +549,8 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
                                           if (isCheckedIn != true) {
                                             ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(content: Text('PIN verification failed')),
+                                              const SnackBar(content: Text('PIN verification failed'),
+                                                duration: Duration(seconds: 1)),
                                             );
                                             return;
                                           }
@@ -552,7 +558,8 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                           // 3️ PIN-ENTERED USER MUST BE MANAGER
                                           if ((_permissions?.role ?? '').toLowerCase() != 'manager') {
                                             ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(content: Text('Invalid manager PIN')),
+                                              const SnackBar(content: Text('Invalid manager PIN'),
+                                                duration: Duration(seconds: 1),),
                                             );
                                             return;
                                           }
@@ -569,6 +576,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                 content: Text(
                                                   'Only the same manager who completed this order can edit it.',
                                                 ),
+                                                duration: Duration(seconds: 1),
                                               ),
                                             );
                                             return;
@@ -581,6 +589,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                 content: Text(
                                                   'PIN must belong to the logged-in manager.',
                                                 ),
+                                                duration: Duration(seconds: 1),
                                               ),
                                             );
                                             return;

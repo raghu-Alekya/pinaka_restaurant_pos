@@ -567,7 +567,9 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                                                       .showSnackBar(
                                                     SnackBar(
                                                       content: Text(
-                                                          "Cannot exceed actual quantity ($originalQty)"),
+                                                          "Cannot exceed actual quantity ($originalQty)",
+                                                         ),
+                                                      duration: Duration(seconds: 1),
                                                     ),
                                                   );
                                                   return;
@@ -711,7 +713,8 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
       listener: (context, state) {
         if (state is UpdatekotSuccess) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("KOT Updated Successfully")),
+            const SnackBar(content: Text("KOT Updated Successfully"),
+            duration: Duration(seconds: 1),),
           );
 
           /// ✅ Refresh KOT list using KotBloc
@@ -730,7 +733,9 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
 
         if (state is UpdatekotFailure) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message ?? "Update failed")),
+            SnackBar(content: Text(state.message ?? "Update failed"),
+              duration: Duration(seconds: 1),
+            ),
           );
         }
       },

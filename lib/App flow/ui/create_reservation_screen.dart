@@ -306,6 +306,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
         content: Text(message),
         backgroundColor: Colors.red,
         behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 1),
       ),
     );
   }
@@ -1559,6 +1560,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                                       content: Text(
                                         'Table ${updatedTable['table_name']} unmerged',
                                       ),
+                                      duration: Duration(seconds: 1),
                                     ),
                                   );
                                 },
@@ -1607,6 +1609,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                                       content: Text(
                                         'Table ${updatedTable['table_name']} merged',
                                       ),
+                                      duration: Duration(seconds: 1),
                                     ),
                                   );
                                 },

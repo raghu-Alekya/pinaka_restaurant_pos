@@ -197,6 +197,7 @@ class _MerchantOnboardingScreenState
                                             'store_logo',
                                             response.storeLogo,
                                           );
+                                          await prefs.setString('store_gstin', response.storeGstin);
 
                                           Navigator.pushReplacement(
                                             context,
@@ -212,7 +213,7 @@ class _MerchantOnboardingScreenState
                                           ScaffoldMessenger.of(context).showSnackBar(
                                             SnackBar(
                                               content: Text(response.message),
-                                              backgroundColor: Colors.red,
+                                              backgroundColor: Colors.red,duration: Duration(seconds: 1),
                                             ),
                                           );
                                         }

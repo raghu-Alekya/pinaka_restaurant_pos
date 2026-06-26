@@ -5,9 +5,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../blocs/Bloc Event/order_event.dart';
 import '../../blocs/Bloc Logic/order_bloc.dart';
+import '../../models/payment/payment_summary_model.dart';
+import '../../printer/printer_service.dart';
 import '../ui/tables_screen.dart';
 
 class PrintRecipt extends StatefulWidget {
+  final PaymentSummary paymentSummary;
+  final String cashierName;
   final String pin;
   final String token;
   final String restaurantId;
@@ -17,6 +21,8 @@ class PrintRecipt extends StatefulWidget {
 
   const PrintRecipt({
     Key? key,
+    required this.paymentSummary,
+    required this.cashierName,
     required this.pin,
     required this.token,
     required this.restaurantId,
@@ -42,7 +48,8 @@ class _PrintReciptState extends State<PrintRecipt> {
       final email = _emailController.text.trim();
       if (email.isEmpty || !email.contains("@")) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please enter a valid email address")),
+          const SnackBar(content: Text("Please enter a valid email address"),
+            duration: Duration(seconds: 1)),
         );
         return;
       }
@@ -52,9 +59,39 @@ class _PrintReciptState extends State<PrintRecipt> {
       final sms = _smsController.text.trim();
       if (sms.isEmpty || sms.length != 10) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please enter a valid phone number")),
+          const SnackBar(content: Text("Please enter a valid phone number"),
+            duration: Duration(seconds: 1)),
         );
         return;
+      }
+    }
+    // ✅ Print receipt when Printer is selected
+    if (_selectedOption == 'Printer') {
+      try {
+        await Printer.printBill(
+          context: context,
+          orderId: widget.paymentSummary.orderId.toString(),
+          tableName: widget.paymentSummary.tableName,
+          cashierName: widget.cashierName,
+          items: widget.paymentSummary.lineItems.map((item) {
+            return {
+              "name": item.name,
+              "qty": item.qty,
+              "price": item.price,
+              "amount": item.total,
+              "modifiers": item.modifiers,
+            };
+          }).toList(),
+          grossTotal: widget.paymentSummary.grossTotal,
+          couponDiscount: widget.paymentSummary.coupons,
+          merchantDiscount: widget.paymentSummary.discount,
+          tipAmount: widget.paymentSummary.tipAmount,
+          taxAmount: widget.paymentSummary.tax,
+          serviceCharge: widget.paymentSummary.serviceChargeValue,
+          netPayable: widget.paymentSummary.netTotal,
+        );
+      } catch (e) {
+        debugPrint("Print failed: $e");
       }
     }
 
