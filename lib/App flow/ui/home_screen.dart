@@ -144,20 +144,20 @@ class _HomeScreenState extends State<HomeScreen> {
       barrierDismissible: false,
       builder: (_) => BlocProvider(
         create: (_) => CheckInBloc(CheckInRepository()),
-        child: Checkinpopup(
-          token: widget.token,
-          onCheckIn: () {
-            Navigator.of(context).pop();
-          },
-          onCancel: () {
-            Navigator.of(context).pop();
-          },
-          onPermissionsReceived: (permissions) {
-            setState(() {
-              _userPermissions = permissions;
-            });
-          },
-        ),
+        // child: Checkinpopup(
+        //   token: widget.token,
+        //   onCheckIn: () {
+        //     Navigator.of(context).pop();
+        //   },
+        //   onCancel: () {
+        //     Navigator.of(context).pop();
+        //   },
+        //   onPermissionsReceived: (permissions) {
+        //     setState(() {
+        //       _userPermissions = permissions;
+        //     });
+        //   },
+        // ),
       ),
     );
   }
@@ -292,6 +292,7 @@ class _HomeScreenState extends State<HomeScreen> {
         token: widget.token,
         pin: widget.pin,
         userPermissions: _userPermissions,
+        isHomeScreen: true,
         onPermissionsReceived: (permissions) async {
           setState(() {
             _userPermissions = permissions;
@@ -304,13 +305,16 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
 
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+
+            body: Padding(
+              padding: const EdgeInsets.all(20),
+              child: SizedBox(
+                height: MediaQuery.of(context).size.height,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _greetingSection(),
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
 
             /// Stats Row
             Row(
@@ -362,7 +366,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
 
-            const SizedBox(height: 30),
+            const SizedBox(height: 10),
 
             Row(
               children: [
@@ -395,7 +399,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
 
             /// Quick Access
             Row(
@@ -450,7 +454,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
 
-            const SizedBox(height: 30),
+            const SizedBox(height: 10),
 
             _sectionTitle("Kitchen & Orders"),
 
@@ -552,7 +556,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
 
-            const SizedBox(height: 30),
+            const SizedBox(height: 10),
 
             _sectionTitle("Customer Management"),
 
@@ -636,7 +640,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-      ),
+              )),
     ));
   }
 
@@ -653,7 +657,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(
               "Welcome, $userName 👋",
               style: const TextStyle(
-                fontSize: 22,
+                fontSize: 20,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -662,7 +666,7 @@ class _HomeScreenState extends State<HomeScreen> {
               userRole,
               style: const TextStyle(
                 color: Colors.grey,
-                fontSize: 15,
+                fontSize: 12,
               ),
             ),
           ],
@@ -673,7 +677,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(
               _currentTime.toLowerCase(),
               style: const TextStyle(
-                fontSize: 26,
+                fontSize: 22,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF1F2937),
                 height: 1,
@@ -724,7 +728,7 @@ class _HomeScreenState extends State<HomeScreen> {
       Color color,
       ) {
     return Container(
-      height: 95,
+      height: 79,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -776,7 +780,7 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
       child: Container(
-        height: 170,
+        height: 135,
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: color,
@@ -823,7 +827,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
 
                     Container(
-                      width: 50,
+                      width: 55,
                       height: 40,
                       decoration: BoxDecoration(
                         color: Colors.white24,
@@ -892,8 +896,8 @@ class _HomeScreenState extends State<HomeScreen> {
               right: 0,
               bottom: 0,
               child: Container(
-                width: 54,
-                height: 54,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   color: Colors.white24,
                   shape: BoxShape.circle,
@@ -924,7 +928,7 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),
       child: Container(
-        height: 180,
+        height: 138,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -944,8 +948,8 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 42,
-                  height: 42,
+                  width: 32,
+                  height: 32,
                   decoration: BoxDecoration(
                     color: iconColor.withOpacity(.12),
                     borderRadius: BorderRadius.circular(12),
@@ -953,7 +957,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Icon(
                     icon,
                     color: iconColor,
-                    size: 22,
+                    size: 18,
                   ),
                 ),
 
@@ -967,7 +971,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TextStyle(
                         color: iconColor,
                         fontWeight: FontWeight.bold,
-                        fontSize: 30,
+                        fontSize: 20,
                       ),
                     ),
                     Text(
@@ -982,7 +986,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
 
-            const SizedBox(height: 14),
+            const SizedBox(height: 3),
 
             Text(
               title,
@@ -993,7 +997,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            const SizedBox(height: 6),
+            const SizedBox(height: 2),
 
             Expanded(
               child: Text(

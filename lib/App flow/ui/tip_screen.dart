@@ -114,6 +114,7 @@ class _TipsScreenState extends State<TipsScreen> {
         token: widget.token,
         pin: widget.pin,
         userPermissions: _userPermissions,
+        isHomeScreen: false,
         onPermissionsReceived: (permissions) {
           setState(() {
             _userPermissions = permissions;

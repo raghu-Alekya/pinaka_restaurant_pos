@@ -5,6 +5,8 @@ import 'package:pinaka_restaurant_pos/App%20flow/ui/tables_screen.dart';
 import '../../blocs/Bloc Logic/auth_bloc.dart';
 import '../../constants/constants.dart';
 import '../../local database/table_dao.dart';
+import '../../models/UserPermissions.dart';
+import '../../utils/SessionManager.dart';
 import '../widgets/number_pad.dart';
 import '../widgets/pin_input.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -142,6 +144,9 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
 
                 final tableDao = TableDao();
                 final tables = await tableDao.getTablesByManagerPin(state.pin);
+                final permissions = UserPermissions.fromJson(state.permissions);
+
+                await SessionManager.savePermissions(permissions);
 
                 Navigator.pushReplacement(
                   context,

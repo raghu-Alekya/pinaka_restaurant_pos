@@ -306,6 +306,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
           children: [
             TopBar(
               userPermissions: _userPermissions,
+              isHomeScreen: false,
               selectedUser: _selectedUser,
               token: widget.token,
               pin: widget.pin,

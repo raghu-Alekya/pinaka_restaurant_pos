@@ -7,6 +7,7 @@ import '../ui/CheckinPopup.dart';
 import '../ui/DailyAttendanceScreen.dart';
 import '../ui/SettingsScreen.dart';
 import '../ui/employee_login_page.dart';
+import '../ui/home_screen.dart';
 import 'LogoutConfirmationDialog.dart';
 
 class TopBar extends StatefulWidget implements PreferredSizeWidget {
@@ -14,6 +15,11 @@ class TopBar extends StatefulWidget implements PreferredSizeWidget {
   final String pin;
   final UserPermissions? userPermissions;
   final Function(UserPermissions)? onPermissionsReceived;
+  final bool isHomeScreen;
+  final bool isOrderPanel;
+  final bool showTablesIcon;
+  final VoidCallback? onTablesTap;
+
 
   const TopBar({
     Key? key,
@@ -21,6 +27,10 @@ class TopBar extends StatefulWidget implements PreferredSizeWidget {
     required this.pin,
     this.userPermissions,
     this.onPermissionsReceived, Map<String, dynamic>? selectedUser,
+    this.isHomeScreen = false, // default
+    this.isOrderPanel = false,
+    this.showTablesIcon = false,
+    this.onTablesTap,
   }) : super(key: key);
 
   @override
@@ -70,81 +80,136 @@ class _TopBarState extends State<TopBar> {
         ],
       ),
       child: AppBar(
-        backgroundColor: Colors.white,
-        toolbarHeight: 70,
-        automaticallyImplyLeading: false,
-        elevation: 0,
-        scrolledUnderElevation: 0.0,
-        titleSpacing: 0,
-        title:Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 15),
-          child: Row(
-            children: [
-              /// LEFT SIDE — Logo
-              Image.asset(
-                'assets/pinaka.png',
-                height: 40,
-                width: 100,
-                fit: BoxFit.contain,
-              ),
+          backgroundColor: Colors.white,
+          toolbarHeight: 70,
+          automaticallyImplyLeading: false,
+          elevation: 0,
+          scrolledUnderElevation: 0.0,
+          titleSpacing: 0,
+          title:Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 15),
+            child: Row(
+                children: [
+                  /// LEFT SIDE — Logo
+                  Image.asset(
+                    'assets/pinaka.png',
+                    height: 40,
+                    width: 100,
+                    fit: BoxFit.contain,
+                  ),
 
-              const SizedBox(width: 15),
+                  const SizedBox(width: 15),
 
-              /// (Optional) Search box here later 👈
+                  /// (Optional) Search box here later 👈
 
-              /// PUSH EVERYTHING ELSE TO RIGHT
-              const Spacer(),
+                  /// PUSH EVERYTHING ELSE TO RIGHT
+                  const Spacer(),
 
-              /// RIGHT SIDE — ACTIONS
-              // _buildExitIconButton(),
-              // const SizedBox(width: 10),
+                  /// RIGHT SIDE — ACTIONS
+                  // _buildExitIconButton(),
+                  // const SizedBox(width: 10),
 
-              if (widget.userPermissions?.canUpdateShiftAttendance ?? false) ...[
-                _buildAttendanceIconButton(context),
-                const SizedBox(width: 10),
-              ],
-              _buildExitIconButton(),
-              const SizedBox(width: 10),
+                  const Spacer(),
 
-              _buildNotificationIconButton(),
-              const SizedBox(width: 10),
+                  if (widget.isHomeScreen) ...[
+                    if (widget.userPermissions?.canUpdateShiftAttendance ?? false) ...[
+                      _buildAttendanceIconButton(context),
+                      const SizedBox(width: 10),
+                    ],
 
-              _buildIconButton(
-                label: "Settings",
-                color: const Color(0xFF4CAF50),
-                icon: Image.asset(
-                  'assets/setting.png', // 👈 your asset path
-                  width: 20,
-                  height: 20,
-                  color: const Color(0xFF4CAF50), // optional (remove if image already colored)
-                ),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => SettingsScreen(
-                        token: widget.token,
-                        pin: widget.pin,
-                        userId: widget.userPermissions?.userId ?? '',
-                        displayName: widget.userPermissions?.displayName ?? '',
-                        role: widget.userPermissions?.role ?? '',
-                      ),
-                    ),
-                  );
-                },
-              ),
+                    _buildNotificationIconButton(),
+                    const SizedBox(width: 10),
 
-              const SizedBox(width: 10),
+                    _buildSettingsButton(),
+                    const SizedBox(width: 10),
 
-    _buildIconButton(
-    label: "Logout",
-    color: const Color(0xFFFF9800),
-    icon: Image.asset(
-    'assets/logout.png',
-    width: 24,
-    height: 24,
-    color: const Color(0xFFFF9800),
-    ),
+                    _buildLogoutButton(),
+                    const SizedBox(width: 10),
+
+                    _buildProfileSection(),
+                  ] else ...[
+                    _buildHomeButton(),
+                    const SizedBox(width: 10),
+
+                    if (widget.showTablesIcon)
+                      _buildTablesButton(),
+
+                    if (widget.showTablesIcon)
+                      const SizedBox(width: 10),
+
+                    _buildNotificationIconButton(),
+                    const SizedBox(width: 10),
+                    _buildSettingsButton(),
+                    const SizedBox(width: 10),
+
+                    _buildProfileSection(),
+                  ],          ]
+            ),
+          )
+
+      ),
+    );
+  }
+  Widget _buildHomeButton() {
+    return _buildIconButton(
+      label: "Home",
+      color: const Color(0xFF4F7CFF),
+      icon: const Icon(
+        Icons.home_outlined,
+        color: Color(0xFF4F7CFF),
+        size: 22,
+      ),
+      onPressed: () {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (_) => HomeScreen(
+              token: widget.token,
+              pin: widget.pin,
+              restaurantId: '',       // pass your values
+              restaurantName: '',
+            ),
+          ),
+              (route) => false,
+        );
+      },
+    );
+  }
+  Widget _buildSettingsButton() {
+    return _buildIconButton(
+      label: "Settings",
+      color: const Color(0xFF4CAF50),
+      icon: Image.asset(
+        'assets/setting.png',
+        width: 20,
+        height: 20,
+        color: const Color(0xFF4CAF50),
+      ),
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => SettingsScreen(
+              token: widget.token,
+              pin: widget.pin,
+              userId: widget.userPermissions?.userId ?? '',
+              displayName: widget.userPermissions?.displayName ?? '',
+              role: widget.userPermissions?.role ?? '',
+            ),
+          ),
+        );
+      },
+    );
+  }Widget _buildLogoutButton() {
+    return _buildIconButton(
+      label: "Logout",
+      color: const Color(0xFFFF9800),
+      icon: Image.asset(
+        'assets/logout.png',
+        width: 24,
+        height: 24,
+        color: const Color(0xFFFF9800),
+      ),
       onPressed: () async {
         final result = await showDialog<bool>(
           context: context,
@@ -211,21 +276,9 @@ class _TopBarState extends State<TopBar> {
           );
         }
       },
-    ),
 
-
-    const SizedBox(width: 10),
-
-              /// PROFILE — LAST (Right aligned)
-              _buildProfileSection(),
-            ],
-          ),
-        )
-
-      ),
     );
   }
-
   Widget _buildAttendanceIconButton(BuildContext context) {
     return GestureDetector(
       onTap: () async {
@@ -295,7 +348,7 @@ class _TopBarState extends State<TopBar> {
             Navigator.pop(context);
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Failed to load employees'),
-                duration: Duration(seconds: 1)),
+                  duration: Duration(seconds: 1)),
             );
           }
         } finally {
@@ -322,43 +375,43 @@ class _TopBarState extends State<TopBar> {
   }
 
 
-  Widget _buildExitIconButton() {
-    return GestureDetector(
-      onTap: () {
-        showDialog(
-          context: context,
-          barrierDismissible: true,
-          builder: (context) => Checkinpopup(
-            token: widget.token,
-            onCheckIn: () {
-              Navigator.of(context).pop();
-              setState(() {
-                _isCheckInDone = true;
-              });
-            },
-            onCancel: () {
-              Navigator.of(context).pop();
-            },
-            onPermissionsReceived: (permissions) {
-              _handlePermissions(permissions);
-            },
-          ),
-        );
-      },
-
-      /// ✅ DASHBOARD TILE UI
-      child: _buildIconButton(
-        label: "CheckIn",
-        color: const Color(0xFFFF5A3C),
-        icon: Image.asset(
-          'assets/checkin.png', // or checkin icon if you have
-          width: 20,
-          height: 20,
-          color: const Color(0xFFFF5A3C),
-        ),
-      ),
-    );
-  }
+  // Widget _buildExitIconButton() {
+  //   return GestureDetector(
+  //     onTap: () {
+  //       showDialog(
+  //         context: context,
+  //         barrierDismissible: true,
+  //         builder: (context) => Checkinpopup(
+  //           token: widget.token,
+  //           onCheckIn: () {
+  //             Navigator.of(context).pop();
+  //             setState(() {
+  //               _isCheckInDone = true;
+  //             });
+  //           },
+  //           onCancel: () {
+  //             Navigator.of(context).pop();
+  //           },
+  //           onPermissionsReceived: (permissions) {
+  //             _handlePermissions(permissions);
+  //           },
+  //         ),
+  //       );
+  //     },
+  //
+  //     /// ✅ DASHBOARD TILE UI
+  //     child: _buildIconButton(
+  //       label: "CheckIn",
+  //       color: const Color(0xFFFF5A3C),
+  //       icon: Image.asset(
+  //         'assets/checkin.png', // or checkin icon if you have
+  //         width: 20,
+  //         height: 20,
+  //         color: const Color(0xFFFF5A3C),
+  //       ),
+  //     ),
+  //   );
+  // }
 
   // Widget _buildModeToggle() {
   //   return GestureDetector(
@@ -398,6 +451,18 @@ class _TopBarState extends State<TopBar> {
   //     ),
   //   );
   // }
+  Widget _buildTablesButton() {
+    return _buildIconButton(
+      label: "Tables",
+      color: const Color(0xFF4F7CFF),
+      icon: const Icon(
+        Icons.table_restaurant,
+        color: Color(0xFF4F7CFF),
+        size: 22,
+      ),
+      onPressed: widget.onTablesTap,
+    );
+  }
 
   Widget _buildNotificationIconButton({VoidCallback? onPressed}) {
     return _buildIconButton(

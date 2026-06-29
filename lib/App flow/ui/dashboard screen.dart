@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pinaka_restaurant_pos/App%20flow/ui/tables_screen.dart';
 import 'package:pinaka_restaurant_pos/repositories/variant_repository.dart';
 
 import '../../blocs/Bloc Event/category_event.dart';
@@ -719,10 +720,25 @@ class _DashboardScreenState extends State<DashboardScreen>
             token: widget.token,
             pin: widget.pin,
             userPermissions: _userPermissions,
-            onPermissionsReceived: (permissions) async {
+            isHomeScreen: false,
+            showTablesIcon: true,// Show Tables icon only on Dashboard
+            // onTablesTap: () {
+            //   Navigator.push(
+            //     context,
+            //     MaterialPageRoute(
+            //       builder: (_) => TablesScreen(
+            //         token: widget.token,
+            //         pin: widget.pin,
+            //         restaurantId: widget.restaurantId,
+            //         restaurantName: widget.restaurantName,
+            //         userPermissions: _userPermissions, loadedTables: [],
+            //       ),
+            //     ),
+            //   );
+            // },
+            onPermissionsReceived: (permissions) {
               setState(() {
                 _userPermissions = permissions;
-
               });
             },
           ),

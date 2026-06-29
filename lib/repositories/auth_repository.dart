@@ -44,11 +44,14 @@ class AuthRepository {
         final restaurantName =
         data["restaurant_name"].toString();
 
-        final permissions =
-        Map<String, dynamic>.from(
+        final permissions = Map<String, dynamic>.from(
           data["permissions"] ?? {},
         );
 
+        permissions["displayName"] = data["displayName"] ?? "";
+        permissions["role"] = data["role"] ?? "";
+        permissions["user_id"] = data["id"]?.toString() ?? "";
+        permissions["avatar"] = data["avatar"];
         final prefs =
         await SharedPreferences.getInstance();
 

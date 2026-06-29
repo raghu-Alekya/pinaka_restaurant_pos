@@ -540,6 +540,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         token: widget.token,
         pin: widget.pin,
         userPermissions: _userPermissions,
+        isHomeScreen: false,
         onPermissionsReceived: (permissions) async {
           setState(() {
             _userPermissions = permissions;

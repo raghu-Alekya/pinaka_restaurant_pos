@@ -220,6 +220,18 @@ class MarkKotRepeated extends OrderEvent {}
 /// ✅ Reset repeat flag for next KOT / next order
 class ResetKotRepeated extends OrderEvent {}
 
+class SetKotList extends OrderEvent {
+  final List<KotModel> kots;
+
+  SetKotList(this.kots);
+}
+
+class RefreshKotList extends OrderEvent {
+  final List<KotModel> kots;
+
+  RefreshKotList(this.kots);
+}
+
 
 
 

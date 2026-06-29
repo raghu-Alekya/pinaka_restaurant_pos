@@ -204,6 +204,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
         token: widget.token,
         pin: widget.pin,
         userPermissions: _userPermissions,
+        isHomeScreen: false,
         onPermissionsReceived: (permissions) {
           setState(() {
             _userPermissions = permissions;

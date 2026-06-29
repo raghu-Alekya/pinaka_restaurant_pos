@@ -1,4 +1,5 @@
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pinaka_restaurant_pos/models/mappers/repeat_kot_mapper.dart';
 import '../../models/order/KOT_model.dart';
@@ -268,6 +269,22 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
         ..add(event.kot);
       AppLogger.info("Added KOT: ${event.kot.kotId}");
       emit(state.copyWith(kotList: updatedKOTs));
+    });
+    on<SetKotList>((event, emit) {
+      emit(
+        state.copyWith(
+          kotList: event.kots,
+        ),
+      );
+    });
+
+    on<RefreshKotList>((event, emit) {
+      debugPrint("RefreshKotList: ${event.kots.length}");
+      emit(
+        state.copyWith(
+          kotList: event.kots,
+        ),
+      );
     });
 
     /// Create KOT via API

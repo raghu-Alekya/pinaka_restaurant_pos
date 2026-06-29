@@ -7,9 +7,6 @@ import '../../blocs/Bloc Logic/order_bloc.dart';
 import '../../blocs/Bloc Logic/payment_bloc.dart';
 import '../../blocs/Bloc Logic/tax_bloc.dart';
 import '../../blocs/Bloc State/payment_state.dart';
-// import '../../blocs/payment/payment_bloc.dart';
-// import '../../blocs/payment/payment_event.dart';
-// import '../../blocs/payment/payment_state.dart';
 import '../../local database/database_helper.dart';
 import '../../repositories/tax_repository.dart';
 import '../../utils/SessionManager.dart';
@@ -51,31 +48,33 @@ class _PaymentScreenState extends State<PaymentScreen> {
   double _couponAmount = 0.0;
   double? _grandTotal;
 
-
   @override
   void initState() {
     super.initState();
     _loadPermissions();
     _loadSessionData();
 
-    /// ✅ Load payment summary ONCE
+    // Background load
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final orderBloc = context.read<OrderBloc>();
+      final orderId = orderBloc.state.orderId;
 
-      context.read<PaymentBloc>().add(
-        LoadPaymentSummary(
-          restaurantId: widget.restaurantId,
-          orderId: orderBloc.state.orderId,
-          zoneId: orderBloc.state.zoneId, // can be null
-          orderType: "Dine In",
-          token: widget.token, // ✅ must pass token
-        ),
-      );
+      if (orderId != null) {
+        context.read<PaymentBloc>().add(
+          LoadPaymentSummary(
+            restaurantId: widget.restaurantId,
+            orderId: orderId,
+            zoneId: orderBloc.state.zoneId,
+            orderType: "Dine In",
+            token: widget.token,
+          ),
+        );
+      }
     });
   }
+
   Future<void> _loadSessionData() async {
     final db = DatabaseHelper();
-
     final user = await db.getLoggedInUser();
     final shift = await db.getCurrentShiftId();
 
@@ -85,7 +84,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
       shiftId = shift;
     });
   }
-
 
   Future<void> _loadPermissions() async {
     try {
@@ -109,129 +107,77 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Widget build(BuildContext context) {
     return BlocBuilder<PaymentBloc, PaymentState>(
       builder: (context, state) {
-        // 🔄 Loading
-        if (state is PaymentLoading || state is PaymentInitial) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
+        final paymentSummary = state is PaymentSummaryLoaded ? state.summary : null;
+        final merchantDiscount = state is PaymentSummaryLoaded ? state.merchantDiscount : 0.0;
+        final orderId = context.read<OrderBloc>().state.orderId ?? 0;
 
-        // ❌ Error
-        if (state is PaymentFailure) {
-          return Scaffold(
-            body: Center(
-              child: Text(
-                state.message,
-                style: const TextStyle(color: Colors.red),
-              ),
+        final hasCouponApplied = paymentSummary?.coupons != null && paymentSummary!.coupons > 0;
+        final hasDiscountApplied = merchantDiscount.abs() > 0;
+
+        return Scaffold(
+          appBar: PreferredSize(
+            preferredSize: const Size.fromHeight(60),
+            child: TopBar(
+              userPermissions: _userPermissions,
+              selectedUser: _selectedUser,
+              token: widget.token,
+              // isPaymentScreen: true,                    // ← Important
+              pin: widget.pin,
             ),
-          );
-        }
-        // debugPrint("🟦 Passing merchantDiscount to Sidebar = $merchantDiscount");
-
-
-        // ✅ Data Loaded
-        if (state is PaymentSummaryLoaded) {
-          final paymentSummary = state.summary;
-          final orderId = context.read<OrderBloc>().state.orderId; //
-          final merchantDiscount = state.merchantDiscount; // ✅ important
-          final hasCouponApplied = paymentSummary.coupons > 0;
-          final hasDiscountApplied = merchantDiscount.abs() > 0;
-          debugPrint("🔥 _couponAmount = $_couponAmount");
-          debugPrint(
-              "🔥 paymentSummary.coupons = ${paymentSummary.coupons}");
-          debugPrint(
-              "🚨 Passing coupon to sidebar = $_couponAmount");
-
-          return Scaffold(
-            appBar: PreferredSize(
-              preferredSize: const Size.fromHeight(60),
-              child: TopBar(
-                userPermissions: _userPermissions,
-                selectedUser: _selectedUser,
-                token: widget.token,
-                pin: widget.pin,
-              ),
-            ),
-            body: Row(
-              children: [
-
-                /// LEFT SIDEBAR
-                Expanded(
-                  flex: 25,
-                  child: BlocProvider(
-                    create: (context) => TaxBloc(TaxRepository())..add(LoadTaxesEvent()),
-
-
-
-
-
-                    child: Sidebarwidgets(
-                      userPermissions: _userPermissions,
-                      selectedUser: _selectedUser,
-                      merchantDiscount: merchantDiscount,
-                      tipAmount: _tipAmount,
-                      paymentSummary: paymentSummary,
-                      hasCouponApplied: hasCouponApplied,
-                      hasDiscountApplied: hasDiscountApplied,
-                      appliedCouponAmount: paymentSummary.coupons,
-                      token: widget.token,
-                      onNetPayableChanged: (double value) {
-                        setState(() {
-                          _grandTotal = value;
-                        });
-                      },
-                    ),
-
-                  ),
-                ),
-
-
-                /// NUMBER PAD
-                Expanded(
-                  flex: 50,
-
-                  child: paymentsummary(
-                    loadedTables: widget.loadedTables,
-                    pin: widget.pin,
+          ),
+          body: Row(
+            children: [
+              // LEFT SIDEBAR
+              Expanded(
+                flex: 25,
+                child: BlocProvider(
+                  create: (context) => TaxBloc(TaxRepository())..add(LoadTaxesEvent()),
+                  child: Sidebarwidgets(
+                    userPermissions: _userPermissions,
+                    selectedUser: _selectedUser,
+                    merchantDiscount: merchantDiscount,
+                    tipAmount: _tipAmount,
+                    paymentSummary: paymentSummary,           // ← No ! here
+                    hasCouponApplied: hasCouponApplied,
+                    hasDiscountApplied: hasDiscountApplied,
+                    appliedCouponAmount: paymentSummary?.coupons ?? 0.0,
                     token: widget.token,
-                    restaurantId: widget.restaurantId,
-                    restaurantName: widget.restaurantName,
-                    zoneId: widget.zoneId,
-                    PaymentSummary: paymentSummary,
-                    orderId: orderId,
-                    grandTotal: _grandTotal,
-                    onMerchantDiscountChanged: (double value) {
-                      context.read<PaymentBloc>().add(
-                        UpdateMerchantDiscount(value),
-                      );
-                    },
-
-                    onTipChanged: (double value) {
-                      setState(() {
-                        _tipAmount = value;
-                      });
-                    },
-                    onCouponAmountChanged: (double amount) {
-                      debugPrint("🎟 Coupon Amount Callback = $amount");
-
-                      setState(() {
-                        // Only use callback if > 0
-                        if (amount > 0) {
-                          _couponAmount = amount;
-                        }
-                      });
+                    onNetPayableChanged: (double value) {
+                      setState(() => _grandTotal = value);
                     },
                   ),
-
-
                 ),
-              ],
-            ),
-          );
-        }
+              ),
 
-        return const SizedBox();
+              // RIGHT - PAYMENT NUMPAD
+              Expanded(
+                flex: 50,
+                child: paymentsummary(
+                  loadedTables: widget.loadedTables,
+                  pin: widget.pin,
+                  token: widget.token,
+                  restaurantId: widget.restaurantId,
+                  restaurantName: widget.restaurantName,
+                  zoneId: widget.zoneId,
+                  PaymentSummary: paymentSummary,
+                  orderId: orderId,
+                  grandTotal: _grandTotal,
+                  onMerchantDiscountChanged: (double value) {
+                    context.read<PaymentBloc>().add(UpdateMerchantDiscount(value));
+                  },
+                  onTipChanged: (double value) {
+                    setState(() => _tipAmount = value);
+                  },
+                  onCouponAmountChanged: (double amount) {
+                    setState(() {
+                      if (amount > 0) _couponAmount = amount;
+                    });
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
       },
     );
   }

@@ -919,7 +919,10 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
             "Mobile Number *:",
             _contactController,
             keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(10),
+            ],
           ),
           const SizedBox(height: 10),
 

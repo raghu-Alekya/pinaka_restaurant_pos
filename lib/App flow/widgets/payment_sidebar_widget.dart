@@ -21,7 +21,7 @@ import '../../printer/printer_settings.dart';
 import '../../repositories/ordertype_payment.dart';
 
 class Sidebarwidgets extends StatefulWidget {
-  final PaymentSummary paymentSummary;
+  final PaymentSummary? paymentSummary;  // ✅ CHANGED: made nullable
   final double merchantDiscount;
   final bool hasCouponApplied;
   final bool hasDiscountApplied;
@@ -30,14 +30,16 @@ class Sidebarwidgets extends StatefulWidget {
   final String token;
   final ValueChanged<double>? onNetPayableChanged;
 
+  final dynamic userPermissions;
+
   const Sidebarwidgets({
     super.key,
-    required this.paymentSummary,
-    required userPermissions,
+    this.paymentSummary,
+    required this.userPermissions,
     Map<String, dynamic>? selectedUser,
     required this.merchantDiscount,
     required this.tipAmount,
-    required this.appliedCouponAmount, // 👈 ADD THIS
+    required this.appliedCouponAmount,
     this.hasCouponApplied = false,
     this.hasDiscountApplied = false,
     required this.token,
@@ -77,6 +79,13 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
   double serviceChargeAmount = 0.0;
   String? selectedServiceCharge;
 
+  // 👇 ADDED: placeholders for the "Tender Amount" / "Change" rows shown in
+  // the reference UI. There was no source for these values in the original
+  // code, so they default to 0.0 — wire them to your actual cash-tender
+  // entry flow (e.g. tenderAmount - calculatedNetPayable = changeAmount).
+  double tenderAmount = 0.0;
+  double changeAmount = 0.0;
+
   // until backend provides it
 
   @override
@@ -113,23 +122,25 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
   }
 
   void _calculateInitialPayable() {
-    final grossTotal = widget.paymentSummary.grossTotal;
+    if (widget.paymentSummary == null) return;  // ✅ ADDED: null check
+
+    final grossTotal = widget.paymentSummary!.grossTotal;
     final couponDiscount =
-        widget.paymentSummary.coupons > 0
-            ? widget.paymentSummary.coupons
-            : widget.appliedCouponAmount;
+    widget.paymentSummary!.coupons > 0
+        ? widget.paymentSummary!.coupons
+        : widget.appliedCouponAmount;
 
     final merchantDiscount = widget.merchantDiscount.abs();
 
     calculatedNetPayable =
         grossTotal -
-        couponDiscount -
-        merchantDiscount +
-        widget.paymentSummary.serviceChargeValue +
-        widget.tipAmount;
+            couponDiscount -
+            merchantDiscount +
+            widget.paymentSummary!.serviceChargeValue +
+            widget.tipAmount;
 
     debugPrint(
-      "Service Charge value : ${widget.paymentSummary.serviceChargeValue}",
+      "Service Charge value : ${widget.paymentSummary!.serviceChargeValue}",
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -147,53 +158,43 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
 
   String normalizeTaxClass(String? value) {
     return value
-            ?.toLowerCase()
-            .trim()
-            .replaceAll(' ', '')
-            .replaceAll('bewerages', 'beverages') // typo fix
-            ??
+        ?.toLowerCase()
+        .trim()
+        .replaceAll(' ', '')
+        .replaceAll('bewerages', 'beverages') // typo fix
+        ??
         '';
   }
 
-  // void _calculateNetPayableOnce() {
-  //   final grossTotal = widget.paymentSummary.grossTotal;
-  //   final couponDiscount = widget.paymentSummary.coupons;
-  //   final merchantDiscount = widget.merchantDiscount.abs();
-  //
-  //   final subTotal = grossTotal - couponDiscount;
-  //   final netTotal = subTotal + totalTax; // ✅ uses class totalTax
-  //
-  //   setState(() {
-  //     calculatedNetPayable = netTotal - merchantDiscount;
-  //   });
-  // }
   void _calculateTaxAndPayable(TaxLoaded state) {
+    if (widget.paymentSummary == null) return;  // ✅ ADDED: null check
+
     double foodCgstTemp = 0;
     double foodSgstTemp = 0;
     double beverageCgstTemp = 0;
     double beverageSgstTemp = 0;
 
-    for (final item in widget.paymentSummary.lineItems) {
+    for (final item in widget.paymentSummary!.lineItems) {
       final itemClass = normalizeTaxClass(item.taxClass);
 
       final tax = state.taxes.firstWhere(
-        (t) => normalizeTaxClass(t.taxClass) == itemClass,
+            (t) => normalizeTaxClass(t.taxClass) == itemClass,
         orElse:
             () => TaxModel(
-              id: 0,
-              rate: "0",
-              name: "",
-              taxClass: "",
-              compound: false,
-              shipping: false,
-            ),
+          id: 0,
+          rate: "0",
+          name: "",
+          taxClass: "",
+          compound: false,
+          shipping: false,
+        ),
       );
 
       final rate = double.tryParse(tax.rate) ?? 0;
       if (rate == 0) continue;
 
       final itemTax = item.calculatedTax(
-        modifiersTaxable: widget.paymentSummary.modifiersTaxable,
+        modifiersTaxable: widget.paymentSummary!.modifiersTaxable,
       );
 
       final halfTax = itemTax / 2;
@@ -209,14 +210,14 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
       }
     }
 
-    final grossTotal = widget.paymentSummary.grossTotal;
+    final grossTotal = widget.paymentSummary!.grossTotal;
     final couponDiscount =
-        widget.paymentSummary.coupons > 0
-            ? widget.paymentSummary.coupons
-            : widget.appliedCouponAmount;
+    widget.paymentSummary!.coupons > 0
+        ? widget.paymentSummary!.coupons
+        : widget.appliedCouponAmount;
     final merchantDiscount = widget.merchantDiscount.abs();
     final tipAmount = widget.tipAmount;
-    final serviceCharge = widget.paymentSummary.serviceChargeValue;
+    final serviceCharge = widget.paymentSummary!.serviceChargeValue;
 
     final subTotal = grossTotal - couponDiscount;
     final totalTaxTemp =
@@ -530,12 +531,12 @@ Net Payable      : $netPayableTemp
       }
 
 // Service Charge
-      if (widget.paymentSummary.serviceChargeValue > 0) {
+      if (widget.paymentSummary != null && widget.paymentSummary!.serviceChargeValue > 0) {  // ✅ ADDED: null check
         bytes += generator.row([
           PosColumn(width: 8, text: "Service Charge"),
           PosColumn(
             width: 4,
-            text: widget.paymentSummary.serviceChargeValue.toStringAsFixed(2),
+            text: widget.paymentSummary!.serviceChargeValue.toStringAsFixed(2),
             styles: const PosStyles(align: PosAlign.right),
           ),
         ]);
@@ -648,18 +649,19 @@ Net Payable      : $netPayableTemp
       begin: 60,
       end: 260,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-    selectedServiceCharge =
-        widget.paymentSummary.serviceChargePercentage.toString();
 
-    serviceChargeAmount = widget.paymentSummary.serviceChargeValue;
+    if (widget.paymentSummary != null) {  // ✅ ADDED: null check
+      selectedServiceCharge = widget.paymentSummary!.serviceChargePercentage.toString();
+      serviceChargeAmount = widget.paymentSummary!.serviceChargeValue;
 
-    debugPrint(
-      "Service Charge %: ${widget.paymentSummary.serviceChargePercentage}",
-    );
+      debugPrint(
+        "Service Charge %: ${widget.paymentSummary!.serviceChargePercentage}",
+      );
 
-    debugPrint(
-      "Service Charge Value: ${widget.paymentSummary.serviceChargeValue}",
-    );
+      debugPrint(
+        "Service Charge Value: ${widget.paymentSummary!.serviceChargeValue}",
+      );
+    }
 
     _calculateInitialPayable();
 
@@ -726,6 +728,10 @@ Net Payable      : $netPayableTemp
     );
   }
 
+  // 👇 UPDATED: added optional `labelColor`, `valueColor` and `icon` params so
+  // individual rows can be tinted/iconified to match the reference image
+  // (e.g. grey tax sub-rows, green coupon row with a tag icon) without
+  // touching any of the existing call sites that only pass `color`.
   Widget _row(
       String label,
       double value, {
@@ -733,26 +739,41 @@ Net Payable      : $netPayableTemp
         Color? color,
         double fontSize = 14,
         bool showNegative = false,
+        Color? labelColor,
+        Color? valueColor,
+        IconData? icon,
       }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: fontSize,
-              fontWeight: isBold ? FontWeight.w600 : FontWeight.normal,
-              color: color,
-            ),
+          Row(
+            children: [
+              if (icon != null) ...[
+                Icon(
+                  icon,
+                  size: fontSize + 2,
+                  color: labelColor ?? color ?? const Color(0xFF585A5C),
+                ),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: fontSize,
+                  fontWeight: isBold ? FontWeight.w600 : FontWeight.normal,
+                  color: labelColor ?? color,
+                ),
+              ),
+            ],
           ),
           Text(
             "${showNegative || value < 0 ? '-₹' : '₹'}${value.abs().toStringAsFixed(2)}",
             style: TextStyle(
               fontSize: fontSize,
               fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-              color: color,
+              color: valueColor ?? color,
             ),
           ),
         ],
@@ -761,8 +782,16 @@ Net Payable      : $netPayableTemp
   }
   @override
   Widget build(BuildContext context) {
+    if (widget.paymentSummary == null) {  // ✅ ADDED: null check guard
+      return const Scaffold(
+        backgroundColor: Color(0xFFF5F5F6),
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     DateTime now = DateTime.now();
-    String formattedDate = DateFormat("EEEE, dd MMM yyyy").format(now);
+    // 👇 UPDATED format to match the reference image: "16 December, 2025 | 05:00 PM"
+    String formattedDate = DateFormat("dd MMMM, yyyy").format(now);
     String formattedTime = DateFormat("hh:mm a").format(now);
     return BlocListener<TaxBloc, TaxState>(
       listener: (context, state) {
@@ -790,64 +819,79 @@ Net Payable      : $netPayableTemp
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           /// 🔙 Back Button (row 1)
-                          GestureDetector(
-                            onTap: () {
-                              if (!mounted) return;
-                              if (widget.hasCouponApplied) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text("Remove coupon first"),
-                                    duration: Duration(seconds: 1),
-                                  ),
-                                );
-                                return;
-                              }
-                              if (widget.hasDiscountApplied) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text("Remove discount first"),
-                                    duration: Duration(seconds: 1),
-                                  ),
-                                );
-                                return;
-                              }
-                              Navigator.pop(context);
-                            },
-                            child: Container(
-                              width: 90,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFDEE8FF),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Image.asset("assets/icon/-01.png", width: 18),
-                                  const SizedBox(width: 8),
-                                  const Text(
-                                    "Back",
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF585A5C),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 12),
+                          // GestureDetector(
+                          //   onTap: () {
+                          //     if (!mounted) return;
+                          //     if (widget.hasCouponApplied) {
+                          //       ScaffoldMessenger.of(context).showSnackBar(
+                          //         const SnackBar(
+                          //           content: Text("Remove coupon first"),
+                          //           duration: Duration(seconds: 1),
+                          //         ),
+                          //       );
+                          //       return;
+                          //     }
+                          //     if (widget.hasDiscountApplied) {
+                          //       ScaffoldMessenger.of(context).showSnackBar(
+                          //         const SnackBar(
+                          //           content: Text("Remove discount first"),
+                          //           duration: Duration(seconds: 1),
+                          //         ),
+                          //       );
+                          //       return;
+                          //     }
+                          //     Navigator.pop(context);
+                          //   },
+                          //   child: Container(
+                          //     width: 90,
+                          //     height: 36,
+                          //     decoration: BoxDecoration(
+                          //       color: const Color(0xFFDEE8FF),
+                          //       borderRadius: BorderRadius.circular(8),
+                          //     ),
+                          //     child: Row(
+                          //       mainAxisAlignment: MainAxisAlignment.center,
+                          //       children: [
+                          //         Image.asset("assets/icon/-01.png", width: 18),
+                          //         const SizedBox(width: 8),
+                          //         const Text(
+                          //           "Back",
+                          //           style: TextStyle(
+                          //             fontSize: 14,
+                          //             fontWeight: FontWeight.w600,
+                          //             color: Color(0xFF585A5C),
+                          //           ),
+                          //         ),
+                          //       ],
+                          //     ),
+                          //   ),
+                          // ),
+                          //
+                          // const SizedBox(height: 12),
 
                           /// 🧾 Order ID (row 2)
-                          Text(
-                            "Order ID #${widget.paymentSummary.orderId}",
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF111827),
-                            ),
+                          // 👇 UPDATED: split into "Order ID:" (dark) + order number (red)
+                          // to match the reference image.
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              const Text(
+                                "Order ID: ",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF111827),
+                                ),
+                              ),
+                              Text(
+                                "${widget.paymentSummary!.orderId}",
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFFE53935),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -856,130 +900,134 @@ Net Payable      : $netPayableTemp
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          /// 🖨️ Print Button (row 1)
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              /// Print Button Only
-                              InkWell(
-                                onTap: () async {
-                                  debugPrint("PRINT BUTTON TAPPED");
-
-                                  final printers =
-                                  await PrinterDBHelper().getPrinterFromDB();
-
-                                  debugPrint("Saved Printers => $printers");
-
-                                  final printItems = widget.paymentSummary.lineItems.map((item) {
-                                    return {
-                                      "name": item.name,
-                                      "qty": item.qty,
-                                      "price": item.price,
-                                      "amount": item.total.toStringAsFixed(2),
-                                      "modifiers": item.modifiers,
-                                    };
-                                  }).toList();
-
-                                  await printBill(
-                                    orderId: widget.paymentSummary.orderId.toString(),
-                                    tableName: widget.paymentSummary.tableName,
-                                    cashierName: "Admin",
-                                    items: printItems,
-                                    // modifiers: item.modifiers,
-                                    grossTotal: widget.paymentSummary.grossTotal,
-                                    couponDiscount: widget.paymentSummary.coupons,
-                                    merchantDiscount: widget.paymentSummary.discount,
-                                    tipAmount: widget.paymentSummary.tipAmount,
-                                    taxAmount: widget.paymentSummary.tax,
-                                    netPayable: widget.paymentSummary.netTotal,
-                                  );
-                                },
-                                child: Container(
-                                  width: 90,
-                                  height: 36,
-                                  alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    color: Colors.green,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: Colors.green),
-                                  ),
-                                  child: const Text(
-                                    "Print",
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ),
-
-                              const SizedBox(width: 10),
-
-                              /// Order Type Dropdown (No InkWell)
-                              Container(
-                                width: 165,
-                                height: 40,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF9FBFF),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: const Color(0xFFE6E6E6),
-                                    width: 1,
-                                  ),
-                                ),
-                                child: DropdownButtonHideUnderline(
-                                  child: DropdownButton<String>(
-                                    value: selectedOrderType,
-                                    isExpanded: true,
-                                    hint: const Text("Dine In"),
-                                    items:
-                                        orderTypes.map((type) {
-                                          return DropdownMenuItem<String>(
-                                            value: type,
-                                            child: Text(type),
-                                          );
-                                        }).toList(),
-                                    onChanged: (value) async {
-                                      if (value == null) return;
-
-                                      setState(() {
-                                        selectedOrderType = value;
-                                      });
-
-                                      final result =
-                                          await OrderTypesInPaymentScreenRepository()
-                                              .updateOrderType(
-                                                token: widget.token,
-                                                orderId:
-                                                    widget
-                                                        .paymentSummary
-                                                        .orderId,
-                                                orderType: value,
-                                              );
-
-                                      if (result?.success == true) {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          SnackBar(
-                                            content: Text(result!.message),
-                                            duration: Duration(seconds: 1),
-                                          ),
-                                        );
-                                      }
-                                    },
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 12),
+                          // /// 🖨️ Print Button (row 1)
+                          // Row(
+                          //   mainAxisSize: MainAxisSize.min,
+                          //   children: [
+                          //     /// Print Button Only
+                          //     InkWell(
+                          //       onTap: () async {
+                          //         debugPrint("PRINT BUTTON TAPPED");
+                          //
+                          //         final printers =
+                          //         await PrinterDBHelper().getPrinterFromDB();
+                          //
+                          //         debugPrint("Saved Printers => $printers");
+                          //
+                          //         final printItems = widget.paymentSummary!.lineItems.map((item) {
+                          //           return {
+                          //             "name": item.name,
+                          //             "qty": item.qty,
+                          //             "price": item.price,
+                          //             "amount": item.total.toStringAsFixed(2),
+                          //             "modifiers": item.modifiers,
+                          //           };
+                          //         }).toList();
+                          //
+                          //         await printBill(
+                          //           orderId: widget.paymentSummary!.orderId.toString(),
+                          //           tableName: widget.paymentSummary!.tableName,
+                          //           cashierName: "Admin",
+                          //           items: printItems,
+                          //           // modifiers: item.modifiers,
+                          //           grossTotal: widget.paymentSummary!.grossTotal,
+                          //           couponDiscount: widget.paymentSummary!.coupons,
+                          //           merchantDiscount: widget.paymentSummary!.discount,
+                          //           tipAmount: widget.paymentSummary!.tipAmount,
+                          //           taxAmount: widget.paymentSummary!.tax,
+                          //           netPayable: widget.paymentSummary!.netTotal,
+                          //         );
+                          //       },
+                          //       child: Container(
+                          //         width: 90,
+                          //         height: 36,
+                          //         alignment: Alignment.center,
+                          //         decoration: BoxDecoration(
+                          //           color: Colors.green,
+                          //           borderRadius: BorderRadius.circular(8),
+                          //           border: Border.all(color: Colors.green),
+                          //         ),
+                          //         child: const Text(
+                          //           "Print",
+                          //           style: TextStyle(
+                          //             fontWeight: FontWeight.w600,
+                          //             color: Colors.white,
+                          //           ),
+                          //         ),
+                          //       ),
+                          //     ),
+                          //
+                          //     const SizedBox(width: 10),
+                          //
+                          //     /// Order Type Dropdown (No InkWell)
+                          //     Container(
+                          //       width: 165,
+                          //       height: 40,
+                          //       padding: const EdgeInsets.symmetric(
+                          //         horizontal: 12,
+                          //       ),
+                          //       decoration: BoxDecoration(
+                          //         color: const Color(0xFFF9FBFF),
+                          //         borderRadius: BorderRadius.circular(10),
+                          //         border: Border.all(
+                          //           color: const Color(0xFFE6E6E6),
+                          //           width: 1,
+                          //         ),
+                          //       ),
+                          //       child: DropdownButtonHideUnderline(
+                          //         child: DropdownButton<String>(
+                          //           value: selectedOrderType,
+                          //           isExpanded: true,
+                          //           hint: const Text("Dine In"),
+                          //           items:
+                          //           orderTypes.map((type) {
+                          //             return DropdownMenuItem<String>(
+                          //               value: type,
+                          //               child: Text(type),
+                          //             );
+                          //           }).toList(),
+                          //           onChanged: (value) async {
+                          //             if (value == null) return;
+                          //
+                          //             setState(() {
+                          //               selectedOrderType = value;
+                          //             });
+                          //
+                          //             final result =
+                          //             await OrderTypesInPaymentScreenRepository()
+                          //                 .updateOrderType(
+                          //               token: widget.token,
+                          //               orderId:
+                          //               widget
+                          //                   .paymentSummary!
+                          //                   .orderId,
+                          //               orderType: value,
+                          //             );
+                          //
+                          //             if (result?.success == true) {
+                          //               ScaffoldMessenger.of(
+                          //                 context,
+                          //               ).showSnackBar(
+                          //                 SnackBar(
+                          //                   content: Text(result!.message),
+                          //                   duration: Duration(seconds: 1),
+                          //                 ),
+                          //               );
+                          //             }
+                          //           },
+                          //         ),
+                          //       ),
+                          //     ),
+                          //   ],
+                          // ),
+                          //
+                          // const SizedBox(height: 12),
 
                           /// 📅 Date & Time (row 2)
+                          // 👇 UPDATED: single calendar icon + combined
+                          // "date | time" string to match the reference image
+                          // (the separate clock icon was dropped — re-add it
+                          // below if you'd rather keep both icons).
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -989,17 +1037,7 @@ Net Payable      : $netPayableTemp
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                formattedDate,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF656161),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Image.asset("assets/icon/clock.png", width: 16),
-                              const SizedBox(width: 4),
-                              Text(
-                                formattedTime,
+                                "$formattedDate | $formattedTime",
                                 style: const TextStyle(
                                   fontSize: 12,
                                   color: Color(0xFF656161),
@@ -1042,8 +1080,21 @@ Net Payable      : $netPayableTemp
                                   topRight: Radius.circular(5),
                                 ),
                               ),
+                              // 👇 UPDATED columns: "#", "Item Name", "Units",
+                              // "Amount" — matches the reference image header.
                               child: Row(
                                 children: const [
+                                  SizedBox(
+                                    width: 30,
+                                    child: Text(
+                                      '#',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
                                   Expanded(
                                     child: Text(
                                       'Item Name',
@@ -1055,24 +1106,28 @@ Net Payable      : $netPayableTemp
                                     ),
                                   ),
                                   SizedBox(
-                                    width: 40, // column width
+                                    width: 70, // column width
                                     child: Text(
                                       'Units',
                                       textAlign: TextAlign.right,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         color: Colors.white,
                                         fontSize: 13,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                   ),
-                                  SizedBox(width: 58),
-                                  Text(
-                                    'Price',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
+                                  SizedBox(width: 10),
+                                  SizedBox(
+                                    width: 70,
+                                    child: Text(
+                                      'Amount',
+                                      textAlign: TextAlign.right,
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -1083,10 +1138,10 @@ Net Payable      : $netPayableTemp
                             Expanded(
                               child: ListView.builder(
                                 itemCount:
-                                    widget.paymentSummary.lineItems.length,
+                                widget.paymentSummary!.lineItems.length,
                                 itemBuilder: (context, index) {
                                   final item =
-                                      widget.paymentSummary.lineItems[index];
+                                  widget.paymentSummary!.lineItems[index];
 
                                   return Column(
                                     children: [
@@ -1095,29 +1150,53 @@ Net Payable      : $netPayableTemp
                                           horizontal: 12,
                                           vertical: 6,
                                         ),
+                                        // 👇 UPDATED row: added leading "#"
+                                        // column (currently index + 1 — swap
+                                        // for a real item code/id field if
+                                        // your model has one), and matched the
+                                        // column widths used in the header above.
                                         child: Row(
+                                          crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                           children: [
+                                            SizedBox(
+                                              width: 30,
+                                              child: Text(
+                                                '${index + 1}',
+                                                style: const TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Color(0xFF111827),
+                                                ),
+                                              ),
+                                            ),
                                             Expanded(
                                               child: Column(
                                                 crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
+                                                CrossAxisAlignment.start,
                                                 children: [
                                                   Text(
                                                     item.name,
                                                     overflow:
-                                                        TextOverflow.ellipsis,
+                                                    TextOverflow.ellipsis,
+                                                    style: const TextStyle(
+                                                      fontSize: 13,
+                                                      fontWeight:
+                                                      FontWeight.w600,
+                                                      color: Color(0xFF111827),
+                                                    ),
                                                   ),
                                                   if (item.modifiers.isNotEmpty)
                                                     Text(
                                                       "${item.modifiers.join(", ")}  (+₹${item.modifierAmount.toStringAsFixed(0)})",
                                                       style: const TextStyle(
                                                         fontSize: 10,
-                                                        color: Colors.red,
+                                                        color: Colors.blue,
                                                         fontWeight:
-                                                            FontWeight.w600,
+                                                        FontWeight.w600,
                                                       ),
                                                       overflow:
-                                                          TextOverflow.ellipsis,
+                                                      TextOverflow.ellipsis,
                                                     ),
                                                 ],
                                               ),
@@ -1125,24 +1204,29 @@ Net Payable      : $netPayableTemp
 
                                             // Qty × Rate
                                             SizedBox(
-                                              width: 80,
+                                              width: 70,
                                               child: Text(
                                                 '${item.qty} × ${((item.qty > 0 ? ((item.total - item.modifierAmount) / item.qty) : 0)).toStringAsFixed(0)}',
                                                 textAlign: TextAlign.right,
                                                 style: const TextStyle(
                                                   fontSize: 12,
+                                                  color: Color(0xFF656161),
                                                 ),
                                               ),
                                             ),
 
+                                            const SizedBox(width: 10),
+
                                             // Total
                                             SizedBox(
-                                              width: 80,
+                                              width: 70,
                                               child: Text(
                                                 item.total.toStringAsFixed(2),
                                                 textAlign: TextAlign.right,
                                                 style: const TextStyle(
-                                                  fontSize: 12,
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Color(0xFF111827),
                                                 ),
                                               ),
                                             ),
@@ -1197,278 +1281,247 @@ Net Payable      : $netPayableTemp
                       builder: (context, child) {
                         if (!_isExpanded) {
                           debugPrint('🔽 Tax panel collapsed');
-
-                          // return BlocBuilder<TaxBloc, TaxState>(
-                          //   builder: (context, state) {
-                          //     if (state is TaxLoaded) {
-                          //       final grossTotal = widget.paymentSummary.grossTotal;
-                          //       final couponDiscount = widget.paymentSummary.coupons;
-                          //       final merchantDiscount = widget.merchantDiscount.abs();
-                          //       final subTotal = grossTotal - couponDiscount;
-                          //
-                          //       double foodCgst = 0, foodSgst = 0, beverageCgst = 0, beverageSgst = 0;
-                          //
-                          //       for (final item in widget.paymentSummary.lineItems) {
-                          //         final itemClass = normalizeTaxClass(item.taxClass);
-                          //
-                          //         final tax = state.taxes.firstWhere(
-                          //               (t) => normalizeTaxClass(t.taxClass) == itemClass,
-                          //           orElse: () => TaxModel(
-                          //             id: 0,
-                          //             rate: "0",
-                          //             name: "",
-                          //             taxClass: "",
-                          //             compound: false,
-                          //             shipping: false,
-                          //           ),
-                          //         );
-                          //
-                          //         final rate = double.tryParse(tax.rate) ?? 0;
-                          //         if (rate == 0) continue;
-                          //
-                          //         final halfTax = (item.total * rate / 100) / 2;
-                          //
-                          //         if (itemClass == 'food') {
-                          //           foodCgst += halfTax;
-                          //           foodSgst += halfTax;
-                          //         } else if (itemClass == 'beverages') {
-                          //           beverageCgst += halfTax;
-                          //           beverageSgst += halfTax;
-                          //         }
-                          //       }
-                          //
-                          //       final newTotalTax = foodCgst + foodSgst + beverageCgst + beverageSgst;
-                          //       final netTotal = subTotal + newTotalTax;
-                          //       final tempPayable = netTotal - merchantDiscount;
-                          //
-                          //       // WidgetsBinding.instance.addPostFrameCallback((_) {
-                          //       //   if (!mounted) return;
-                          //       //   if (calculatedNetPayable != tempPayable) {
-                          //       //     setState(() {
-                          //       //       totalTax = newTotalTax;
-                          //       //       calculatedNetPayable = tempPayable;
-                          //       //     });
-                          //       //   }
-                          //       // });
-                          //     }
-                          //
-                          //     return const SizedBox.shrink();
-                          //   },
-                          // );
                           return const SizedBox.shrink();
                         }
 
                         debugPrint('🔼 Tax panel expanded');
                         debugPrint("💰 Sidebar Tip = ${widget.tipAmount}");
 
-                        return Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: BlocBuilder<TaxBloc, TaxState>(
-                            builder: (context, state) {
-                              debugPrint(
-                                '📦 BlocBuilder state = ${state.runtimeType}',
-                              );
+                        // 👇 ADDED: cap the breakdown to 40% of the screen
+                        // height. Anything taller scrolls inside this box
+                        // instead of growing the panel / pushing the layout.
+                        final double maxExpandedHeight =
+                            MediaQuery.of(context).size.height * 0.4;
 
-                              if (state is TaxLoading) {
-                                debugPrint('⏳ TaxLoading...');
-                                return const Center(
-                                  child: CircularProgressIndicator(),
-                                );
-                              }
-                              final grossTotal =
-                                  widget.paymentSummary.grossTotal;
-                              final couponDiscount =
-                                  widget.paymentSummary.coupons;
-                              // final merchantDiscount = widget.paymentSummary.discount ?? 0.0;
-                              // final merchantDiscount = widget.merchantDiscount;
-                              // double netPayable = widget.paymentSummary.netTotal;
-                              // final double merchantDiscount = context.select((PaymentBloc bloc) {
-                              //   return bloc.state is PaymentSummaryLoaded
-                              //       ? (bloc.state as PaymentSummaryLoaded).merchantDiscount
-                              //       : 0.0;
-                              // });
-                              final double merchantDiscount =
-                                  widget.merchantDiscount;
-
-                              final double backendNetPayable =
-                                  widget.paymentSummary.netTotal -
-                                  widget.merchantDiscount.abs();
-
-                              // backend not available yet
-
-                              final subTotal = grossTotal - couponDiscount;
-                              // final netPayable = subTotal + totalTax - merchantDiscount;
-                              // final netTotal = subTotal + totalTax;
-                              final bool modifiersTaxable =
-                                  widget.paymentSummary.modifiersTaxable;
-
-                              if (state is TaxLoaded) {
-                                WidgetsBinding.instance.addPostFrameCallback((
-                                  _,
-                                ) {
-                                  if (!mounted) return;
-                                  // _calculateTaxAndPayable(state);
-                                });
-                                final double appliedCouponAmount;
-
-                                final grossTotal =
-                                    widget.paymentSummary.grossTotal;
-                                final couponDiscount =
-                                    widget.paymentSummary.coupons > 0
-                                        ? widget.paymentSummary.coupons
-                                        : widget.appliedCouponAmount;
-                                final merchantDiscount =
-                                    widget.merchantDiscount.abs();
-                                final subTotal = grossTotal - couponDiscount;
-                                final netTotal = subTotal + totalTax;
+                        return ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxHeight: maxExpandedHeight,
+                          ),
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.all(12),
+                            child: BlocBuilder<TaxBloc, TaxState>(
+                              builder: (context, state) {
                                 debugPrint(
-                                  "Coupon Amount From Summary = ${widget.paymentSummary.coupons}",
+                                  '📦 BlocBuilder state = ${state.runtimeType}',
                                 );
 
-                                return Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    _row(
-                                      "Gross Total",
-                                      grossTotal,
-                                      isBold: true,
-                                    ),
-                                    _row(
-                                      "Coupon",
-                                      couponDiscount,
-                                      color: Colors.green,
-                                      showNegative: couponDiscount >= 0, // Shows -₹ for 0.00 and positive values
-                                    ),
+                                if (state is TaxLoading) {
+                                  debugPrint('⏳ TaxLoading...');
+                                  return const Center(
+                                    child: CircularProgressIndicator(),
+                                  );
+                                }
+                                final grossTotal =
+                                    widget.paymentSummary!.grossTotal;
+                                final couponDiscount =
+                                    widget.paymentSummary!.coupons;
+                                final double merchantDiscount =
+                                    widget.merchantDiscount;
 
-                                    const DottedLine(),
-                                    _row("Sub Total", subTotal, isBold: true),
+                                final double backendNetPayable =
+                                    widget.paymentSummary!.netTotal -
+                                        widget.merchantDiscount.abs();
 
-                                    if (foodRate != null &&
-                                        (foodCgst > 0 || foodSgst > 0)) ...[
-                                      const SizedBox(height: 6),
+                                final subTotal = grossTotal - couponDiscount;
+                                final bool modifiersTaxable =
+                                    widget.paymentSummary!.modifiersTaxable;
 
-                                      Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: Text(
-                                          "Tax @${foodRate!.toStringAsFixed(0)}% Food",
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
+                                if (state is TaxLoaded) {
+                                  WidgetsBinding.instance.addPostFrameCallback((
+                                      _,
+                                      ) {
+                                    if (!mounted) return;
+                                  });
+                                  final double appliedCouponAmount;
 
-                                      Padding(
-                                        padding: const EdgeInsets.only(
-                                          left: 12,
-                                        ),
-                                        child: Column(
-                                          children: [
-                                            _row(
-                                              "CGST ${(foodRate! / 2).toStringAsFixed(1)}%",
-                                              foodCgst,
-                                            ),
-                                            _row(
-                                              "SGST ${(foodRate! / 2).toStringAsFixed(1)}%",
-                                              foodSgst,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
+                                  final grossTotal =
+                                      widget.paymentSummary!.grossTotal;
+                                  final couponDiscount =
+                                  widget.paymentSummary!.coupons > 0
+                                      ? widget.paymentSummary!.coupons
+                                      : widget.appliedCouponAmount;
+                                  final merchantDiscount =
+                                  widget.merchantDiscount.abs();
+                                  final subTotal = grossTotal - couponDiscount;
+                                  final netTotal = subTotal + totalTax;
+                                  debugPrint(
+                                    "Coupon Amount From Summary = ${widget.paymentSummary!.coupons}",
+                                  );
 
-                                    if (beverageRate != null &&
-                                        (beverageCgst > 0 ||
-                                            beverageSgst > 0)) ...[
-                                      const SizedBox(height: 6),
-
-                                      Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: Text(
-                                          "Tax @${beverageRate!.toStringAsFixed(0)}% Beverages",
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-
-                                      Padding(
-                                        padding: const EdgeInsets.only(
-                                          left: 12,
-                                        ),
-                                        child: Column(
-                                          children: [
-                                            _row(
-                                              "CGST ${(beverageRate! / 2).toStringAsFixed(1)}%",
-                                              beverageCgst,
-                                            ),
-                                            _row(
-                                              "SGST ${(beverageRate! / 2).toStringAsFixed(1)}%",
-                                              beverageSgst,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                    _row(
-                                      "Tax Alcohol @Nil (Amt. inclusive of Excise Duty)",
-                                      0.00,
-                                    ),
-
-                                    halfDottedLine(width: 100),
-                                    _row("Total Tax", totalTax, isBold: true),
-                                    const DottedLine(),
-                                    _row("Net Total", netTotal, isBold: true),
-                                    _row(
-                                      "Merchant Discount",
-                                      merchantDiscount,
-                                      color: Colors.blue,
-                                      showNegative: merchantDiscount >= 0,
-                                    ),
-                                    _row(
-                                      "Service Charges (Optional)",
-                                      widget.paymentSummary.serviceChargeValue,
-                                      color: Colors.black,
-                                    ),
-
-                                    if (widget.tipAmount > 0)
+                                  return Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
                                       _row(
-                                        "Tip Amount",
-                                        widget.tipAmount,
+                                        "Gross Total",
+                                        grossTotal,
+                                        isBold: true,
+                                      ),
+                                      _row(
+                                        "Coupon",
+                                        couponDiscount,
                                         color: Colors.green,
+                                        icon: Icons.sell_outlined,
+                                        showNegative: couponDiscount >= 0, // Shows -₹ for 0.00 and positive values
                                       ),
 
-                                    const DottedLine(),
+                                      const DottedLine(),
+                                      _row("Sub Total", subTotal, isBold: true),
 
-                                    _row(
-                                      "Net Payable",
-                                      calculatedNetPayable.abs(),
-                                      isBold: true,
-                                      fontSize: 18,
-                                    ),
-                                    _row(
-                                      "Round Off",
-                                      calculatedNetPayable.round() -
-                                          calculatedNetPayable,
-                                      isBold: true,
-                                      fontSize: 14,
-                                    ),
-                                  ],
-                                );
-                              }
+                                      if (foodRate != null &&
+                                          (foodCgst > 0 || foodSgst > 0)) ...[
+                                        const SizedBox(height: 6),
 
-                              if (state is TaxError) {
-                                debugPrint('❌ TaxError → ${state.message}');
-                                return Text(
-                                  "Tax error: ${state.message}",
-                                  style: const TextStyle(color: Colors.red),
-                                );
-                              }
+                                        Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(
+                                            "Tax @${foodRate!.toStringAsFixed(0)}% Food",
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
 
-                              debugPrint('⚠️ Unknown state');
-                              return const SizedBox.shrink();
-                            },
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                            left: 12,
+                                          ),
+                                          child: Column(
+                                            children: [
+                                              _row(
+                                                "CGST ${(foodRate! / 2).toStringAsFixed(1)}%",
+                                                foodCgst,
+                                                color: const Color(0xFF8A8A8A),
+                                                fontSize: 13,
+                                              ),
+                                              _row(
+                                                "SGST ${(foodRate! / 2).toStringAsFixed(1)}%",
+                                                foodSgst,
+                                                color: const Color(0xFF8A8A8A),
+                                                fontSize: 13,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+
+                                      if (beverageRate != null &&
+                                          (beverageCgst > 0 ||
+                                              beverageSgst > 0)) ...[
+                                        const SizedBox(height: 6),
+
+                                        Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(
+                                            "Tax @${beverageRate!.toStringAsFixed(0)}% Beverages",
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                            left: 12,
+                                          ),
+                                          child: Column(
+                                            children: [
+                                              _row(
+                                                "CGST ${(beverageRate! / 2).toStringAsFixed(1)}%",
+                                                beverageCgst,
+                                                color: const Color(0xFF8A8A8A),
+                                                fontSize: 13,
+                                              ),
+                                              _row(
+                                                "SGST ${(beverageRate! / 2).toStringAsFixed(1)}%",
+                                                beverageSgst,
+                                                color: const Color(0xFF8A8A8A),
+                                                fontSize: 13,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                      _row(
+                                        "Tax Alcohol @Nill (Price inclusive of Excise Duty)",
+                                        0.00,
+                                        color: const Color(0xFF8A8A8A),
+                                        fontSize: 12,
+                                      ),
+
+                                      halfDottedLine(width: 100),
+                                      _row("Total Tax", totalTax, isBold: true),
+                                      const DottedLine(),
+                                      _row(
+                                        "Net Total",
+                                        netTotal,
+                                        isBold: true,
+                                        fontSize: 16,
+                                      ),
+                                      if (merchantDiscount != 0)
+                                        _row(
+                                          "Merchant Discount",
+                                          merchantDiscount,
+                                          color: Colors.blue,
+                                          showNegative: merchantDiscount >= 0,
+                                        ),
+                                      _row(
+                                        "Service Charges (Optional)",
+                                        widget.paymentSummary!.serviceChargeValue,
+                                        color: Colors.black,
+                                        icon: Icons.payments_outlined,
+                                      ),
+
+                                      if (widget.tipAmount > 0)
+                                        _row(
+                                          "Add Tip",
+                                          widget.tipAmount,
+                                          color: Colors.black,
+                                          icon: Icons.back_hand_outlined,
+                                        ),
+
+                                      const DottedLine(),
+
+                                      _row(
+                                        "Net Payable",
+                                        calculatedNetPayable.abs(),
+                                        isBold: true,
+                                        fontSize: 18,
+                                      ),
+                                      _row(
+                                        "Round Off",
+                                        calculatedNetPayable.round() -
+                                            calculatedNetPayable,
+                                        isBold: true,
+                                        fontSize: 14,
+                                      ),
+                                      _row(
+                                        "Tender Amount",
+                                        tenderAmount,
+                                        fontSize: 14,
+                                      ),
+                                      _row(
+                                        "Change",
+                                        changeAmount,
+                                        fontSize: 14,
+                                      ),
+                                    ],
+                                  );
+                                }
+
+                                if (state is TaxError) {
+                                  debugPrint('❌ TaxError → ${state.message}');
+                                  return Text(
+                                    "Tax error: ${state.message}",
+                                    style: const TextStyle(color: Colors.red),
+                                  );
+                                }
+
+                                debugPrint('⚠️ Unknown state');
+                                return const SizedBox.shrink();
+                              },
+                            ),
                           ),
                         );
                       },
@@ -1490,7 +1543,7 @@ Net Payable      : $netPayableTemp
                           children: [
                             /// TOTAL ITEMS
                             Text(
-                              "Total Items : ${widget.paymentSummary.lineItems.length}",
+                              "Total Items : ${widget.paymentSummary!.lineItems.length}",
                               style: const TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 13,
@@ -1502,7 +1555,7 @@ Net Payable      : $netPayableTemp
                             /// NET PAYABLE
                             /// NET PAYABLE (ROUNDED)
                             Text(
-                              "Grand Total : ${calculatedNetPayable.abs().roundToDouble().toStringAsFixed(2)}",
+                              "Net Payable : ₹${calculatedNetPayable.abs().roundToDouble().toStringAsFixed(2)}",
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,

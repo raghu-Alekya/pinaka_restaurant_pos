@@ -81,16 +81,16 @@ class AppConstants {
 
   // Employee Attendance
   static String get currentShiftEmployeesEndpoint =>
-      '$baseApiPath/employee-attendance/current-shift';
+      '$baseApiPath/attendance-all/current-shift';
 
   static String get employeeAttendanceEndpoint =>
-      '$baseApiPath/employee-attendance';
+      '$baseApiPath/attendance-all';
 
   static String get inventoryAlertsEndpoint =>
-      '$baseApiPath/employee-attendance/get-inventory-alerts';
+      '$baseApiPath/attendance-all/get-inventory-alerts';
 
   static String get completedOrdersEndpoint =>
-      '$baseApiPath/employee-attendance/get-all-completed-orders';
+      '$baseApiPath/attendance-all/get-all-completed-orders';
 
   // Shift Management
   static String get createShiftEndpoint =>

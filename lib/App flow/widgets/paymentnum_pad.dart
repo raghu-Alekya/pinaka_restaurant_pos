@@ -1,8 +1,6 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/widgets/paymentsucess.dart';
-import 'package:pinaka_restaurant_pos/App%20flow/widgets/splitpaymentpopup.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/widgets/tip_widget.dart';
 import 'package:pinaka_restaurant_pos/blocs/Bloc%20Event/order_event.dart';
 import '../../blocs/Bloc Event/create_payment_event.dart';
@@ -22,7 +20,6 @@ import '../../repositories/coupon_repository.dart';
 import '../../repositories/create_payment_repository.dart';
 import '../../repositories/discount_repository.dart';
 import '../../repositories/service_charge_repository.dart';
-import '../../services/app_database.dart';
 import '../../utils/SessionManager.dart';
 import 'coupon_widget.dart';
 import 'discount_screen.dart';
@@ -66,12 +63,13 @@ class _paymentsummaryState extends State<paymentsummary> {
   PaymentSummary? _paymentSummary;
   String _cashierName = "";
 
-  // double balanceAmount = AppDatabase.instance.totalamount ?? 0.0;
   double? calculatedChange;
   String selectedPaymentMode = "Cash";
   bool isCashSelected = true;
 
-  // ✅ Declare this variable
+  // Inline validation message
+  String? tenderAmountError;
+
   bool _isDiscountApplied = false;
   bool _isCouponApplied = false;
   bool _isTipApplied = false;
@@ -84,7 +82,7 @@ class _paymentsummaryState extends State<paymentsummary> {
   double merchantDiscount = 0.0;
   double _lastNetPayable = 0.0;
   bool _isNcDiscount = false;
-  bool _isPaying = false;
+
   double serviceChargeAmount = 0.0;
   int? selectedServiceCharge;
   final serviceChargeRepository = ServiceChargeRepository();
@@ -95,76 +93,75 @@ class _paymentsummaryState extends State<paymentsummary> {
 
   final TextEditingController discountController = TextEditingController();
   final TextEditingController couponController = TextEditingController();
-
   final TextEditingController tipController = TextEditingController();
-
   final TextEditingController splitPayController = TextEditingController();
 
-  // ✅ FIXED
-
-  // / Delete button enabled if any of the above are applied
   bool get isDeleteEnabled =>
       _isTipApplied || _isDiscountApplied || _isCouponApplied;
 
-  @override
+  // ── FIX: single place that decides "is this tender amount payable".
+  // Used by the Pay key (it previously only checked amount.isEmpty, so a
+  // "0"/"0.00" tender slipped through and reached _submitPayment).
+  bool get _isValidTenderAmount {
+    final double? parsed = double.tryParse(amount);
+    return parsed != null && parsed > 0;
+  }
+
   @override
   void initState() {
     super.initState();
-
+    // Initialize UI immediately - no loading state
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-
       final state = context.read<PaymentBloc>().state;
-
       if (state is PaymentSummaryLoaded) {
-        final summary = state.summary;
-
-        /// DISCOUNT
-        final discount = state.merchantDiscount;
-
-        discountController.text =
-            discount != 0 ? discount.abs().toStringAsFixed(2) : "";
-
-        /// COUPON
-        if (summary.couponDetails.isNotEmpty) {
-          _appliedCoupon = summary.couponDetails.first.code;
-          _couponAmount = summary.couponDetails.first.value;
-
-          couponController.text = _appliedCoupon;
-          _isCouponApplied = true;
-        }
-
-        /// TIP
-        if (summary.tipAmount > 0) {
-          _tipAmount = summary.tipAmount;
-
-          tipController.text = summary.tipAmount.toStringAsFixed(2);
-
-          _isTipApplied = true;
-        }
-
-        setState(() {
-          _isDiscountApplied = discount != 0;
-          merchantDiscount = discount;
-
-          final serviceCharge = state.summary.serviceChargePercentage ?? 0;
-
-          if (serviceCharge > 0) {
-            selectedServiceCharge = serviceCharge.toInt();
-            isServiceChargeApplied = true;
-          } else {
-            selectedServiceCharge = null;
-            isServiceChargeApplied = false;
-          }
-        });
-        _updateAmountField();
-
-        _updateAmountField();
-
-        debugPrint("Coupon = ${couponController.text}");
-        debugPrint("Tip = ${tipController.text}");
-        debugPrint("Discount = ${discountController.text}");
+        _syncFromState(state);
+      } else {
+        // Load summary in background without showing loading
+        _reloadSummary();
       }
+    });
+  }
+
+  void _syncFromState(PaymentSummaryLoaded state) {
+    final summary = state.summary;
+    final discount = state.merchantDiscount;
+
+    discountController.text =
+    discount != 0 ? discount.abs().toStringAsFixed(2) : "";
+
+    if (summary.couponDetails.isNotEmpty) {
+      _appliedCoupon = summary.couponDetails.first.code;
+      _couponAmount = summary.couponDetails.first.value;
+      couponController.text = _appliedCoupon;
+      _isCouponApplied = true;
+    }
+
+    if (summary.tipAmount > 0) {
+      _tipAmount = summary.tipAmount;
+      tipController.text = summary.tipAmount.toStringAsFixed(2);
+      _isTipApplied = true;
+    }
+
+    setState(() {
+      _isDiscountApplied = discount != 0;
+      merchantDiscount = discount;
+      _isNcDiscount = state.isNoCharge;
+      _paymentSummary = summary;
+
+      final serviceCharge = summary.serviceChargePercentage ?? 0;
+      if (serviceCharge > 0) {
+        selectedServiceCharge = serviceCharge.toInt();
+        isServiceChargeApplied = true;
+      } else {
+        selectedServiceCharge = null;
+        isServiceChargeApplied = false;
+      }
+
+      // ── FIX: this field was declared but never assigned, so the Svc
+      // Charges tile had no amount to show. Now it tracks the summary's
+      // computed service-charge value and updates whenever % changes.
+      serviceChargeAmount = summary.serviceChargeValue;
     });
   }
 
@@ -178,19 +175,19 @@ class _paymentsummaryState extends State<paymentsummary> {
   }
 
   void _updateAmountField() {
-    final state = context.read<PaymentBloc>().state;
-    if (state is! PaymentSummaryLoaded) return;
-    double payable = getGrandTotal(state);
-    debugPrint("💰 Updated Payable (not overwritten) = $payable");
+    // Just update the UI - no full rebuild
+    setState(() {});
   }
 
   double getGrandTotal(PaymentState state) {
     if (widget.grandTotal != null) {
       return widget.grandTotal!.abs().roundToDouble();
     }
-    if (state is! PaymentSummaryLoaded) return 0.0;
-    final summary = state.summary;
-    final couponDiscount = summary.coupons > 0 ? summary.coupons : _couponAmount;
+
+    final PaymentSummary? summary =
+    state is PaymentSummaryLoaded ? state.summary : _paymentSummary;
+    if (summary == null) return 0.0;
+
     final merchantDiscountAbs = merchantDiscount.abs();
     final serviceCharge = summary.serviceChargeValue;
 
@@ -199,7 +196,8 @@ class _paymentsummaryState extends State<paymentsummary> {
       basePayable -= _couponAmount;
     }
 
-    double calculatedPayable = basePayable - merchantDiscountAbs + _tipAmount + serviceCharge;
+    double calculatedPayable =
+        basePayable - merchantDiscountAbs + _tipAmount + serviceCharge;
     return calculatedPayable.abs().roundToDouble();
   }
 
@@ -209,24 +207,16 @@ class _paymentsummaryState extends State<paymentsummary> {
       orderId: widget.orderId,
       percentage: percentage,
     );
-
     if (response != null && response.success) {
       setState(() {
         selectedServiceCharge = response.serviceChargePercentage;
         isServiceChargeApplied = true;
       });
-
-      context.read<PaymentBloc>().add(
-        LoadPaymentSummary(
-          token: widget.token,
-          orderId: widget.orderId,
-          restaurantId: widget.restaurantId,
-          orderType: "Dine In",
-        ),
-      );
-
+      _reloadSummary();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Service charge applied successfully")),
+        const SnackBar(
+            content: Text("Service charge applied successfully"),
+            duration: Duration(seconds: 1)),
       );
     }
   }
@@ -236,89 +226,85 @@ class _paymentsummaryState extends State<paymentsummary> {
       token: widget.token,
       orderId: widget.orderId,
     );
-
     if (response != null && response.success) {
       setState(() {
         selectedServiceCharge = null;
         isServiceChargeApplied = false;
+        serviceChargeAmount = 0.0; // FIX: clear the displayed amount too
       });
-
-      context.read<PaymentBloc>().add(
-        LoadPaymentSummary(
-          token: widget.token,
-          orderId: widget.orderId,
-          restaurantId: widget.restaurantId,
-          orderType: "Dine In",
-        ),
-      );
-
+      _reloadSummary();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Service charge removed successfully")),
+        const SnackBar(
+            content: Text("Service charge removed successfully"),
+            duration: Duration(seconds: 1)),
       );
     }
   }
 
   Future<void> _submitPayment() async {
     debugPrint("🟡 SUBMIT PAYMENT CALLED");
-    // debugPrint("🟡 SUBMIT PAYMENT CALLED");
 
-    // // ✅ BLOCK PAYMENT WHEN NET PAYABLE IS ZERO
-    // final paymentState = context.read<PaymentBloc>().state;
-    // if (paymentState is PaymentSummaryLoaded &&
-    //     paymentState.summary.netTotal <= 0) {
-    //   debugPrint("⛔ Net payable is zero — payment not required");
-    //
-    //   ScaffoldMessenger.of(context).showSnackBar(
-    //     const SnackBar(content: Text("No payment required for this order")),
-    //   );
-    //   return;
-    // }
+    // Validate: must enter amount
+    if (amount.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please enter payment amount"),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    // Validate: amount must be greater than 0
+    final double enteredAmount = double.tryParse(amount) ?? 0.0;
+    if (enteredAmount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please enter a valid amount greater than 0"),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    // Validate: must select payment mode
+    if (selectedPaymentMode.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please select a payment method (Cash / Card / UPI)"),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
 
     final orderBloc = context.read<OrderBloc>();
-
-    // ---- DEBUG ALL REQUIRED VALUES ----
-    debugPrint("📦 OrderBloc State: ${orderBloc.state}");
-
     final orderId = orderBloc.state.orderId;
     final int? userId = await SessionManager.getUserId();
     final int? shiftId = await SessionManager.getShiftId();
 
-    debugPrint("➡️ orderId: $orderId");
-    debugPrint("➡️ userId: $userId");
-    debugPrint("➡️ shiftId: $shiftId");
-    debugPrint("➡️ amount: $amount");
-    debugPrint("➡️ paymentMode: $selectedPaymentMode");
+    debugPrint(
+        "➡️ orderId: $orderId | userId: $userId | shiftId: $shiftId | amount: $amount | mode: $selectedPaymentMode");
 
-    // ---------- VALIDATION ----------
     if (orderId == null) {
-      debugPrint("❌ ERROR: orderId is NULL");
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Order not created")));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("Order not created")));
       return;
     }
-
     if (userId == null) {
-      debugPrint("❌ ERROR: userId is NULL");
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("User not logged in")));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("User not logged in")));
       return;
     }
-
     if (shiftId == null) {
-      debugPrint("❌ ERROR: shiftId is NULL");
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Shift not started")));
-      return;
-    }
-
-    if (amount.isEmpty) {
-      debugPrint("❌ ERROR: amount is empty");
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Enter payment amount")));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("Shift not started")));
       return;
     }
 
@@ -342,102 +328,121 @@ class _paymentsummaryState extends State<paymentsummary> {
   }
 
   Future<void> handleKeyPress(String key) async {
-    final netPayable =
-        (context.read<PaymentBloc>().state is PaymentSummaryLoaded)
-            ? (context.read<PaymentBloc>().state as PaymentSummaryLoaded)
-                .summary
-                .netTotal
-            : 0.0;
+    final netPayable = _getCurrentNetPayable();
 
-    if (netPayable <= 0 && key != "Pay") {
-      return; // ⛔ block digits, allow Pay
-    }
 
-    // ✅ PAY BUTTON
-    // ✅ PAY BUTTON
+    final bool isSummaryReady = _paymentSummary != null ||
+        context.read<PaymentBloc>().state is PaymentSummaryLoaded;
+    if (isSummaryReady && netPayable <= 0 && key != "Pay") return;
+
     if (key == "Pay") {
-      if (_isPaying) return; // ⛔ prevent double tap
-
-      if (amount.isEmpty && netPayable > 0) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Please enter amount")));
+      // ── FIX: was only checking amount.isEmpty — a tender amount of "0"
+      // or "0.00" passed through and went straight to _submitPayment.
+      // Now uses the same _isValidTenderAmount check as everything else.
+      if (!_isValidTenderAmount) {
+        final String msg = amount.isEmpty
+            ? "Please enter the amount"
+            : "Amount must be greater than 0";
+        setState(() => tenderAmountError = msg);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(msg),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
         return;
       }
-
-      setState(() {
-        _isPaying = true; // 🔄 start loading
-      });
-
       await _submitPayment();
       return;
     }
 
-    // ✅ CLEAR
     if (key == "C") {
-      setState(() => amount = '');
+      setState(() {
+        amount = '';
+        tenderAmountError = null;
+      });
       return;
     }
-
-    // ✅ BACKSPACE
     if (key == "⌫") {
       if (amount.isNotEmpty) {
         setState(() {
           amount = amount.substring(0, amount.length - 1);
+          tenderAmountError = null;
         });
       }
       return;
     }
+    if (!RegExp(r'^[0-9.]+$').hasMatch(key)) return;
+    if (key == "." && amount.contains(".")) return;
 
-    // ❌ BLOCK NON-NUMERIC INPUT
-    if (!RegExp(r'^[0-9.]+$').hasMatch(key)) {
-      return;
-    }
-
-    // ✅ PREVENT MULTIPLE DOTS
-    if (key == "." && amount.contains(".")) {
-      return;
-    }
-
-    // ✅ ADD NUMBER
     setState(() {
       amount += key;
+      tenderAmountError = null;
     });
   }
 
+  double _getCurrentNetPayable() {
+    final state = context.read<PaymentBloc>().state;
+    return getGrandTotal(state);
+  }
+
+  Future<void> _onPaymentModeTap(String mode) async {
+    if (amount.isEmpty) {
+      setState(() {
+        selectedPaymentMode = mode;
+        isCashSelected = mode == "Cash";
+        tenderAmountError = "Please enter the amount";
+      });
+      return;
+    }
+
+    // Check if amount is 0
+    final double enteredAmount = double.tryParse(amount) ?? 0.0;
+    if (enteredAmount <= 0) {
+      setState(() {
+        selectedPaymentMode = mode;
+        isCashSelected = mode == "Cash";
+        tenderAmountError = "Please enter a valid amount";
+      });
+      return;
+    }
+
+    setState(() {
+      selectedPaymentMode = mode;
+      isCashSelected = mode == "Cash";
+      tenderAmountError = null;
+    });
+    await _submitPayment();
+  }
+
   void _onPresetAmountTap(String value) {
+    // Don't allow 0 amount
+    if (double.tryParse(value) == 0) return;
     setState(() {
       amount = value;
+      tenderAmountError = null;
     });
   }
 
   List<double> buildPresetAmounts(double total) {
     if (total <= 0) return [];
-
     final List<double> result = [];
     final Set<double> seen = {};
 
     void add(double value) {
-      if (seen.add(value)) {
-        result.add(value);
-      }
+      if (seen.add(value)) result.add(value);
     }
 
-    // 1) exact total
     add(total);
-
-    // 2) keep adding next rounded multiples until we have 4 values
     int step = 50;
     double current = total;
 
     while (result.length < 4) {
       final next = (current / step).ceil() * step;
-      if (next > total) {
-        add(next.toDouble());
-      }
-      current = next + 1; // move forward to avoid same rounding again
-
-      // after some iterations increase step to get bigger jumps
+      if (next > total) add(next.toDouble());
+      current = next + 1;
       if (result.length == 2) step = 100;
       if (result.length == 3) step = 200;
     }
@@ -446,28 +451,25 @@ class _paymentsummaryState extends State<paymentsummary> {
     return result;
   }
 
+  void _reloadSummary() {
+    context.read<PaymentBloc>().add(
+      LoadPaymentSummary(
+        token: widget.token,
+        orderId: widget.orderId,
+        restaurantId: widget.restaurantId,
+        orderType: "Dine In",
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
     debugPrint("🔥 paymentsummary build called");
-    final double totalAmount = context.select(
-      (PaymentBloc bloc) =>
-          bloc.state is PaymentSummaryLoaded
-              ? (bloc.state as PaymentSummaryLoaded).summary.grossTotal
-              : 0.0,
-    );
-    debugPrint("💰 grossTotal = ${context.read<OrderBloc>().state.grossTotal}");
-
-    final paymentState = context.watch<PaymentBloc>().state;
-
-    double netPayable = getGrandTotal(paymentState);
-    final bool isPaymentDisabled = netPayable <= 0;
-
-    // ✅ DEFINE HERE
-    final List<double> presetAmounts = buildPresetAmounts(netPayable);
 
     return MultiBlocListener(
       listeners: [
-        // ✅ ADD THIS LISTENER HERE (PaymentBloc)
+        // PaymentBloc: only sync local fields
         BlocListener<PaymentBloc, PaymentState>(
           listener: (context, state) {
             if (state is PaymentFailure) {
@@ -483,92 +485,20 @@ class _paymentsummaryState extends State<paymentsummary> {
             }
             if (state is PaymentSummaryLoaded) {
               _paymentSummary = state.summary;
-              final discount = state.merchantDiscount;
-
-              setState(() {
-                /// ===== DISCOUNT =====
-                _isDiscountApplied = discount != 0;
-                merchantDiscount = _isDiscountApplied ? discount : 0.0;
-
-                discountController.text =
-                    _isDiscountApplied ? discount.abs().toStringAsFixed(2) : "";
-
-                _isNcDiscount = state.isNoCharge;
-
-                /// ===== COUPON =====
-                if (state.summary.couponDetails.isNotEmpty) {
-                  final coupon = state.summary.couponDetails.first;
-
-                  _isCouponApplied = true;
-                  _appliedCoupon = coupon.code;
-                  _couponAmount = coupon.value;
-
-                  couponController.text = coupon.code;
-                }
-
-                /// ===== TIP =====
-                if (state.summary.tipAmount > 0) {
-                  _isTipApplied = true;
-                  _tipAmount = state.summary.tipAmount;
-
-                  tipController.text = state.summary.tipAmount.toStringAsFixed(
-                    2,
-                  );
-                }
-              });
-
-              final grossTotal = state.summary.grossTotal;
-
-              final couponAmount =
-                  state.summary.coupons > 0
-                      ? state.summary.coupons
-                      : _couponAmount;
-
-              double finalPayable =
-                  grossTotal -
-                  couponAmount -
-                  merchantDiscount.abs() +
-                  _tipAmount;
-
-              if (finalPayable < 0) {
-                finalPayable = 0;
-              }
-
-              setState(() {
-                // Keep amount empty initially or as typed by the user
-              });
-              debugPrint("TextField Amount  : $amount");
-
-              debugPrint("===== REBUILD =====");
-              debugPrint("_appliedCoupon = $_appliedCoupon");
-              debugPrint("_couponAmount = $_couponAmount");
-              debugPrint("_tipAmount = $_tipAmount");
-              debugPrint("couponController = ${couponController.text}");
-              debugPrint("tipController = ${tipController.text}");
+              _syncFromState(state);
             }
           },
         ),
 
-        /// ✅ PAYMENT LISTENER
+        // CreatePaymentBloc: result handling
         BlocListener<CreatePaymentBloc, CreatePaymentState>(
           listener: (context, state) async {
-            if (state is CreatePaymentLoading) {
-              setState(() {
-                _isPaying = true; // 🔄 keep loading
-              });
-              // Optional loader
-            }
-
             if (state is CreatePaymentSuccess) {
-              setState(() {
-                _isPaying = false; // ✅ stop loading
-              });
-              // ✅ Check before opening dialog
               final paymentBlocState = context.read<PaymentBloc>().state;
-
               if (paymentBlocState is! PaymentSummaryLoaded) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Payment summary not available")),
+                  const SnackBar(
+                      content: Text("Payment summary not available")),
                 );
                 return;
               }
@@ -578,30 +508,28 @@ class _paymentsummaryState extends State<paymentsummary> {
                 context: context,
                 barrierDismissible: false,
                 barrierColor: Colors.black.withOpacity(0.4),
-                builder: (_) {
-                  return Dialog(
-                    backgroundColor: Colors.transparent,
-                    insetPadding: EdgeInsets.zero,
-                    child: Center(
-                      child: Paymentsucess(
-                        amount: state.response.paidAmount.toString(),
-                        paymentMode: selectedPaymentMode,
-                        changeAmount: state.response.change.toStringAsFixed(2),
-                        paymentId: state.response.paymentId,
-                        orderId: state.response.orderId,
-                        loadedTables: widget.loadedTables,
-                        pin: widget.pin,
-                        token: widget.token,
-                        restaurantId: widget.restaurantId,
-                        zoneId: widget.zoneId,
-                        restaurantName: '',
-                        // ✅ Pass the actual values
-                        paymentSummary: summary,
-                        cashierName: _cashierName,
-                      ),
+                builder: (_) => Dialog(
+                  backgroundColor: Colors.transparent,
+                  insetPadding: EdgeInsets.zero,
+                  child: Center(
+                    child: Paymentsucess(
+                      amount: state.response.paidAmount.toString(),
+                      paymentMode: selectedPaymentMode,
+                      changeAmount:
+                      state.response.change.toStringAsFixed(2),
+                      paymentId: state.response.paymentId,
+                      orderId: state.response.orderId,
+                      loadedTables: widget.loadedTables,
+                      pin: widget.pin,
+                      token: widget.token,
+                      restaurantId: widget.restaurantId,
+                      zoneId: widget.zoneId,
+                      restaurantName: '',
+                      paymentSummary: summary,
+                      cashierName: _cashierName,
                     ),
-                  );
-                },
+                  ),
+                ),
               );
               if (!mounted) return;
 
@@ -612,57 +540,49 @@ class _paymentsummaryState extends State<paymentsummary> {
                     paymentId: state.response.paymentId,
                     orderId: state.response.orderId,
                   );
-
                   if (!mounted) return;
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text(message),
-                    duration: Duration(seconds: 1),)
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                        content: Text(message),
+                        duration: const Duration(seconds: 1)),
                   );
-
-                  context.read<PaymentBloc>().add(
-                    LoadPaymentSummary(
-                      token: widget.token,
-                      orderId: widget.orderId,
-                      restaurantId: widget.restaurantId,
-                      orderType: "Dine In",
-                    ),
-                  );
+                  setState(() {
+                    amount = '';
+                    tenderAmountError = null;
+                  });
+                  // _reloadSummary();
                 } catch (e) {
                   if (!mounted) return;
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text(e.toString()),
-                    duration: Duration(seconds: 1),),
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                        content: Text(e.toString()),
+                        duration: const Duration(seconds: 1)),
                   );
                 }
               } else {
-                /// 🔥 Reset order completely
                 context.read<OrderBloc>().add(ClearOrder());
               }
             }
 
             if (state is CreatePaymentFailure) {
-              setState(() {
-                _isPaying = false; // ❌ stop loading on error
-              });
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text(state.error),
-                duration: Duration(seconds: 1)));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                    content: Text(state.error),
+                    duration: const Duration(seconds: 1)),
+              );
             }
           },
         ),
 
-        /// ✅ REMOVE DISCOUNT LISTENER
+        // RemoveDiscountBloc
         BlocListener<RemoveDiscountBloc, RemoveDiscountState>(
           listener: (context, state) {
             if (state is RemoveDiscountSuccess) {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text(state.response.message),
-                duration: Duration(seconds: 1),));
-
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                    content: Text(state.response.message),
+                    duration: const Duration(seconds: 1)),
+              );
               setState(() {
                 _isDiscountApplied = false;
                 _isNcDiscount = false;
@@ -670,646 +590,1391 @@ class _paymentsummaryState extends State<paymentsummary> {
                 merchantDiscount = 0.0;
                 discountController.clear();
               });
-
               context.read<PaymentBloc>().add(UpdateMerchantDiscount(0.0));
-
               widget.onMerchantDiscountChanged(0.0);
-
               _updateAmountField();
-
-              // 🔥 MUST RELOAD SUMMARY
-              context.read<PaymentBloc>().add(
-                LoadPaymentSummary(
-                  token: widget.token,
-                  orderId: widget.orderId,
-                  restaurantId: widget.restaurantId,
-                  orderType: "Dine In",
-                ),
-              );
+              // _reloadSummary();
             }
-
             if (state is RemoveDiscountFailure) {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text(state.error),
-                duration: Duration(seconds: 1),));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                    content: Text(state.error),
+                    duration: const Duration(seconds: 1)),
+              );
             }
           },
         ),
       ],
+
       child: Scaffold(
-        backgroundColor: Color(0xFFF5F5F6),
-        body: Row(
-          children: [
-            Column(
+        backgroundColor: const Color(0xFFF5F5F6),
+        // UI is always visible - no loading state
+        body:
+        BlocBuilder<PaymentBloc, PaymentState>(
+          buildWhen: (prev, curr) {
+            // Only rebuild when we have data and values changed
+            if (curr is! PaymentSummaryLoaded) return false;
+            if (prev is PaymentSummaryLoaded) {
+              return curr.summary.netTotal != prev.summary.netTotal ||
+                  curr.summary.serviceChargeValue !=
+                      prev.summary.serviceChargeValue ||
+                  curr.merchantDiscount != prev.merchantDiscount;
+            }
+            return true;
+          },
+          builder: (context, payState) {
+            final double netPayableVal = getGrandTotal(payState);
+
+            final bool isSummaryReady =
+                payState is PaymentSummaryLoaded || _paymentSummary != null;
+            final bool payDisabled = isSummaryReady && netPayableVal <= 0;
+
+            final double tenderAmt =
+            amount.isNotEmpty ? double.tryParse(amount) ?? 0.0 : 0.0;
+            final double balAmt = tenderAmt < netPayableVal
+                ? (netPayableVal - tenderAmt)
+                : 0.0;
+
+            final List<double> presets = buildPresetAmounts(netPayableVal);
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Padding(
-                  padding: EdgeInsets.only(top: 15),
-                  child: Container(
-                    height: MediaQuery.of(context).size.height * 0.85,
-                    width: MediaQuery.of(context).size.width * 0.65,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      // border: Border.all(
-                      //   color: Colors.grey.withOpacity(0.5),
-                      //   width: 0.8,
-                      // ),
-                    ),
-                    child: Container(
-                      height: MediaQuery.of(context).size.height * 0.60,
-                      width: MediaQuery.of(context).size.width * 0.50,
-                      child: Row(
-                        children: [
-                          Padding(
-                            padding: EdgeInsets.only(left: 15),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                SizedBox(height: 5),
-                                _buildPaymentModeItem(
-                                  "Select Payment Mode",
-                                  context,
-                                  selectedPaymentMode,
-                                  (val) {
-                                    setState(() {
-                                      selectedPaymentMode = val;
-                                      isCashSelected = val == "Cash";
-                                    });
-                                  },
-                                ),
-                                SizedBox(height: 5),
-                                Container(
-                                  alignment: Alignment.center,
-                                  height:
-                                      MediaQuery.of(context).size.height * 0.68,
-                                  width:
-                                      MediaQuery.of(context).size.width * 0.40,
-                                  decoration: BoxDecoration(
-                                    color: Color(0xFFDEE8FF),
-                                    borderRadius: BorderRadius.circular(5),
-                                    border: Border.all(
-                                      color: Color(0xFFFFEBEB).withOpacity(1),
-                                      width: 0.8,
-                                    ),
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      // SizedBox(height: 8),
-                                      // Container(
-                                      //   height:
-                                      //       MediaQuery.of(context).size.height *
-                                      //       0.05,
-                                      //   width:
-                                      //       MediaQuery.of(context).size.width *
-                                      //       0.38,
-                                      //   decoration: BoxDecoration(
-                                      //     color: Color(0xFFFDF7F7),
-                                      //     borderRadius: BorderRadius.circular(
-                                      //       5,
-                                      //     ),
-                                      //     border: Border.all(
-                                      //       color: Colors.white.withOpacity(
-                                      //         0.5,
-                                      //       ),
-                                      //       width: 0.8,
-                                      //     ),
-                                      //   ),
-                                      //   child: Padding(
-                                      //     padding: EdgeInsets.symmetric(
-                                      //       horizontal: 12,
-                                      //     ),
-                                      //     child: Text(
-                                      //       "$selectedPaymentMode Payment",
-                                      //       style: TextStyle(
-                                      //         color: Color(0xFFFE6464),
-                                      //         fontSize: 15,
-                                      //         fontFamily: 'Inter',
-                                      //         fontWeight: FontWeight.w500,
-                                      //         decoration: TextDecoration.none,
-                                      //       ),
-                                      //     ),
-                                      //   ),
-                                      // ),
-                                      SizedBox(height: 8),
-                                      Container(
-                                        height:
-                                            MediaQuery.of(context).size.height *
-                                            0.07,
-                                        width:
-                                            MediaQuery.of(context).size.width *
-                                            0.38,
-                                        decoration: BoxDecoration(
-                                          color:
-                                              isPaymentDisabled
-                                                  ? Colors
-                                                      .grey
-                                                      .shade200 //disabled look
-                                                  : const Color(0xFFFFFDFD),
-                                          borderRadius: BorderRadius.circular(
-                                            5,
-                                          ),
-                                          border: Border.all(
-                                            color: const Color(
-                                              0xFFF2EEEE,
-                                            ).withOpacity(0.5),
-                                            width: 0.8,
-                                          ),
-                                        ),
-                                        child: Padding(
-                                          padding: const EdgeInsets.only(
-                                            right: 8.0,
-                                          ),
-                                          child: Align(
-                                            alignment: Alignment.centerRight,
-                                            child: Text(
-                                              isPaymentDisabled
-                                                  ? "0.00"
-                                                  : amount,
-                                              style: TextStyle(
-                                                color:
-                                                    isPaymentDisabled
-                                                        ? Colors.grey
-                                                        : const Color(
-                                                          0xFF4C5F7D,
-                                                        ),
-                                                fontSize: 15,
-                                                fontFamily: 'Inter',
-                                                fontWeight: FontWeight.w500,
-                                                decoration: TextDecoration.none,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
+                // LEFT — Numpad
+                Expanded(
+                  child: _buildNumpadColumn(
+                    context,
+                    netPayableVal: netPayableVal,
+                    payDisabled: payDisabled,
+                    presets: presets,
+                  ),
+                ),
 
-                                      SizedBox(height: 5),
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                        ),
-                                        child: BlocBuilder<
-                                          PaymentBloc,
-                                          PaymentState
-                                        >(
-                                          builder: (context, state) {
-                                            final currentGrandTotal = getGrandTotal(state);
-                                            final presetAmounts =
-                                                buildPresetAmounts(currentGrandTotal);
+                const SizedBox(width: 10),
 
-                                            return Wrap(
-                                              spacing: 22,
-                                              runSpacing: 10,
-                                              children:
-                                                  presetAmounts.map((value) {
-                                                    return GestureDetector(
-                                                      onTap:
-                                                          isPaymentDisabled
-                                                              ? null
-                                                              : () => _onPresetAmountTap(
-                                                                value
-                                                                    .toStringAsFixed(
-                                                                      2,
-                                                                    ),
-                                                              ),
+                // RIGHT — Amounts + Action tiles
+                _buildRightColumn(
+                  context,
+                  netPayableVal: netPayableVal,
+                  balAmt: balAmt,
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
 
-                                                      child: Container(
-                                                        height:
-                                                            MediaQuery.of(
-                                                              context,
-                                                            ).size.height *
-                                                            0.05,
-                                                        width:
-                                                            MediaQuery.of(
-                                                              context,
-                                                            ).size.width *
-                                                            0.08,
-                                                        decoration: BoxDecoration(
-                                                          color:
-                                                              isPaymentDisabled
-                                                                  ? Colors
-                                                                      .grey
-                                                                      .shade300
-                                                                  : amount ==
-                                                                      value
-                                                                          .toStringAsFixed(
-                                                                            0,
-                                                                          )
-                                                                  ? const Color(
-                                                                    0xFFDFF5E1,
-                                                                  )
-                                                                  : const Color(
-                                                                    0xFFE1F9DA,
-                                                                  ),
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                5,
-                                                              ),
-                                                          border: Border.all(
-                                                            color: const Color(
-                                                              0xFFF2EEEE,
-                                                            ).withOpacity(0.5),
-                                                            width: 0.8,
-                                                          ),
-                                                        ),
-                                                        child: Center(
-                                                          child: Text(
-                                                            "₹${value.toStringAsFixed(2)}",
-                                                            style: const TextStyle(
-                                                              color: Color(
-                                                                0xFF318616,
-                                                              ),
-                                                              fontSize: 15,
-                                                              fontFamily:
-                                                                  'Inter',
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w500,
-                                                              decoration:
-                                                                  TextDecoration
-                                                                      .none,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    );
-                                                  }).toList(),
-                                            );
-                                          },
-                                        ),
-                                      ),
-
-                                      Expanded(
-                                        flex: 1,
-                                        child: Padding(
-                                          padding: EdgeInsets.all(12),
-                                          child: NumberPad(
-                                            onKeyPressed: handleKeyPress,
-                                            selectedPaymentMode:
-                                                selectedPaymentMode,
-                                            isPaying: _isPaying,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
+  Widget _buildNumpadColumn(
+      BuildContext context, {
+        required double netPayableVal,
+        required bool payDisabled,
+        required List<double> presets,
+      }) {
+    return Container(
+      margin: const EdgeInsets.only(top: 12, bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.07),
+              blurRadius: 8,
+              offset: const Offset(0, 2))
+        ],
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8EEFC),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        "Tender Amount:",
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF3D5A9A),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Container(
+                          height: 48,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: tenderAmountError != null
+                                  ? const Color(0xFFE53935)
+                                  : const Color(0xFFB3C7FF),
+                              width: tenderAmountError != null ? 1.4 : 1,
+                            ),
+                            borderRadius: BorderRadius.circular(6),
+                            color: tenderAmountError != null
+                                ? const Color(0xFFFFF3F3)
+                                : Colors.white,
+                          ),
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              (amount.isEmpty || payDisabled) ? "0.00" : amount,
+                              style: TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.bold,
+                                color: payDisabled
+                                    ? Colors.grey
+                                    : const Color(0xFF212121),
+                              ),
                             ),
                           ),
-                          SizedBox(width: 15),
-                          SizedBox(height: 5),
-
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              buildPayment(
-                                context,
-                                amount,
-                                "Transaction Overview :",
-                                netPayable: netPayable,
-                              ),
-                              const SizedBox(height: 5),
-                              Text(
-                                "Action:",
-                                style: TextStyle(
-                                  color: Color(0xFF212121),
-                                  fontSize: 15,
-                                  fontFamily: 'Inter',
-                                  fontWeight: FontWeight.bold,
-                                  decoration: TextDecoration.none,
-                                ),
-                                textAlign: TextAlign.start,
-                              ),
-                              const SizedBox(height: 5),
-
-                              _buildPaymentDiscountItem(
-                                context,
-                                netPayable: netPayable,
-                                orderId: widget.orderId,
-                                token: widget.token,
-                                restaurantId: widget.restaurantId,
-
-                                // ✅ controller comes from parent
-                                discountController: discountController,
-                                couponController: couponController,
-                                tipController: tipController,
-                                splitPayController: splitPayController,
-
-                                // ===== STATE FLAGS =====
-                                isDiscountApplied: _isDiscountApplied,
-                                isCouponApplied: _isCouponApplied,
-                                isTipApplied: _isTipApplied,
-                                isSplitApplied: _isSplitApplied,
-                                // 👇 ADD THESE
-                                selectedServiceCharge: selectedServiceCharge,
-                                isServiceChargeApplied: isServiceChargeApplied,
-
-                                onServiceChargeApplied: (percentage) async {
-                                  await applyServiceCharge(percentage);
-                                },
-
-                                onServiceChargeDelete: () async {
-                                  await deleteServiceCharge();
-                                },
-
-                                appliedCoupon: _appliedCoupon,
-
-                                // ===== APPLY CALLBACKS =====
-                                onDiscountApplied: (double amount, bool isNc) {
-                                  debugPrint(
-                                    "🟠 onDiscountApplied amount=$amount isNc=$isNc",
-                                  );
-
-                                  // Only update the field visually for instant feedback
-                                  discountController.text = amount
-                                      .toStringAsFixed(2);
-
-                                  // DO NOT touch _isDiscountApplied, merchantDiscount or _isNcDiscount here
-
-                                  // Always refresh from backend so real NC + discount come from API
-                                  context.read<PaymentBloc>().add(
-                                    LoadPaymentSummary(
-                                      token: widget.token,
-                                      orderId: widget.orderId,
-                                      restaurantId: widget.restaurantId,
-                                      orderType: "Dine In",
-                                    ),
-                                  );
-                                },
-
-                                onCouponApplied: (coupon, amount) {
-                                  setState(() {
-                                    _isCouponApplied = true;
-                                    _appliedCoupon = coupon;
-                                    _couponAmount = amount;
-
-                                    couponController.text = coupon;
-                                  });
-
-                                  widget.onCouponAmountChanged?.call(amount);
-
-                                  _updateAmountField();
-
-                                  // 🔥 Refresh Payment Summary
-                                  context.read<PaymentBloc>().add(
-                                    LoadPaymentSummary(
-                                      token: widget.token,
-                                      orderId: widget.orderId,
-                                      restaurantId: widget.restaurantId,
-                                      orderType: "Dine In",
-                                    ),
-                                  );
-
-                                  debugPrint("Coupon Applied = $coupon");
-                                  debugPrint("Coupon Amount = $amount");
-                                  debugPrint("_couponAmount = $_couponAmount");
-                                },
-
-                                onTipApplied: (amount) {
-                                  setState(() {
-                                    _isTipApplied = true;
-                                    _tipAmount = amount;
-                                    tipController.text = amount.toStringAsFixed(
-                                      2,
-                                    );
-                                  });
-
-                                  widget.onTipChanged(amount);
-
-                                  context.read<PaymentBloc>().add(
-                                    LoadPaymentSummary(
-                                      token: widget.token,
-                                      orderId: widget.orderId,
-                                      restaurantId: widget.restaurantId,
-                                      orderType: "Dine In",
-                                    ),
-                                  );
-                                },
-
-                                onSplitApplied: (amount) {
-                                  setState(() {
-                                    _isSplitApplied = true;
-                                    _splitAmount = amount;
-                                    splitPayController.text = amount
-                                        .toStringAsFixed(2);
-                                  });
-                                },
-
-                                // ===== DELETE CALLBACKS =====
-                                onDiscountDelete: () {
-                                  final paymentState =
-                                      context.read<PaymentBloc>().state;
-
-                                  String isNcFlag = "no";
-
-                                  if (paymentState is PaymentSummaryLoaded) {
-                                    isNcFlag =
-                                        paymentState.isNoCharge ? "yes" : "no";
-                                  }
-
-                                  context.read<RemoveDiscountBloc>().add(
-                                    RemoveDiscountRequested(
-                                      orderId: widget.orderId,
-                                      isNc: isNcFlag,
-                                      token: widget.token,
-                                    ),
-                                  );
-                                },
-
-                                //   // reset local NC flag after sending request
-                                //   setState(() {
-                                //     _isNcDiscount = false;
-                                //   });
-                                // },
-                                onCouponDelete: () async {
-                                  final success = await _couponRepository
-                                      .removeCoupon(
-                                        token: widget.token,
-                                        orderId: widget.orderId,
-                                      );
-
-                                  if (success) {
-                                    setState(() {
-                                      _isCouponApplied = false;
-                                      _appliedCoupon = '';
-                                      _couponAmount = 0.0;
-                                      couponController.clear();
-                                    });
-
-                                    widget.onCouponAmountChanged?.call(0.0);
-
-                                    context.read<PaymentBloc>().add(
-                                      LoadPaymentSummary(
-                                        token: widget.token,
-                                        orderId: widget.orderId,
-                                        restaurantId: widget.restaurantId,
-                                        orderType: "Dine In",
-                                      ),
-                                    );
-
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          "Coupon removed successfully",
-                                        ),
-                                        duration: Duration(seconds: 1),
-                                      ),
-                                    );
-                                  }
-                                },
-                                onTipDelete: () async {
-                                  final success = await _tipRepository
-                                      .removeTip(
-                                        token: widget.token,
-                                        orderId: widget.orderId,
-                                      );
-
-                                  if (success) {
-                                    setState(() {
-                                      _isTipApplied = false;
-                                      _tipAmount = 0;
-                                      tipController.clear();
-                                    });
-
-                                    widget.onTipChanged(0);
-                                    _updateAmountField();
-
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Tip removed successfully',
-                                        ),
-                                        duration: Duration(seconds: 1),
-                                      ),
-                                    );
-                                  } else {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Failed to remove tip'),
-                                        duration: Duration(seconds: 1),
-                                      ),
-
-                                    );
-                                  }
-                                },
-
-                                onSplitDelete: () {
-                                  setState(() {
-                                    _isSplitApplied = false;
-                                    _splitAmount = 0;
-                                    splitPayController.clear();
-                                  });
-                                },
-                              ),
-                            ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (tenderAmountError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.error_outline,
+                            size: 14,
+                            color: Color(0xFFE53935),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            tenderAmountError!,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFFE53935),
+                            ),
                           ),
                         ],
                       ),
                     ),
+                ],
+              ),
+            ),
+          ),
+
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      children: [
+                        _numRow(["7", "8", "9"], payDisabled),
+                        _numRow(["4", "5", "6"], payDisabled),
+                        _numRow(["1", "2", "3"], payDisabled),
+                        _numRow(["00", "0", "⌫"], payDisabled),
+                      ],
+                    ),
                   ),
+                  Expanded(
+                    flex: 1,
+                    child: Column(
+                      children: [
+                        ...presets.take(3).map(
+                              (v) => _presetBtn(v, payDisabled),
+                        ),
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: GestureDetector(
+                              onTap: () => handleKeyPress("C"),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFEBEB),
+                                  borderRadius: BorderRadius.circular(10),
+                                  // ── ONLY CHANGE: blue-tinted shadow bottom+right ──
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Color(0xCCF0A0A0),
+                                      blurRadius: 0,
+                                      spreadRadius: 0,
+                                      offset: Offset(3, 3),
+                                    ),
+                                    BoxShadow(
+                                      color: Color(0x55DC6464),
+                                      blurRadius: 8,
+                                      offset: Offset(4, 4),
+                                    ),
+                                  ],
+                                ),
+                                alignment: Alignment.center,
+                                child: const Text("C",
+                                    style: TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFFE53935))),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8EEFC),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  _payModeBtn(
+                    "Cash",
+                    const Color.fromRGBO(156, 205, 123, 1),
+                    "assets/cash.png",
+                  ),
+                  const SizedBox(width: 10),
+                  _payModeBtn(
+                    "Card",
+                    const Color.fromRGBO(164, 132, 200, 1),
+                    "assets/card.png",
+                  ),
+                  const SizedBox(width: 10),
+                  _payModeBtn(
+                    "UPI",
+                    const Color.fromRGBO(204, 185, 133, 1),
+                    "assets/icon/upi.png",
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _numRow(List<String> keys, bool disabled) {
+    return Expanded(
+      child: Row(
+        children: keys.map((k) {
+          final bool isBackspace = k == "⌫";
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(6),
+              child: GestureDetector(
+                onTap: disabled ? null : () => handleKeyPress(k),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: disabled
+                        ? Colors.grey.shade100
+                        : isBackspace
+                        ? const Color(0xFFF0F0F0)
+                        : const Color(0xFFF2F5FF),
+                    borderRadius: BorderRadius.circular(10),
+                    // ── ONLY CHANGE: blue-tinted shadow bottom+right ──
+                    boxShadow: disabled
+                        ? []
+                        : [
+                      BoxShadow(
+                        color: isBackspace
+                            ? const Color(0xCCB4C8DC)
+                            : const Color(0xCCB4C8F0),
+                        blurRadius: 0,
+                        spreadRadius: 0,
+                        offset: const Offset(3, 3),
+                      ),
+                      BoxShadow(
+                        color: isBackspace
+                            ? const Color(0x5596B4D0)
+                            : const Color(0x5596B4E6),
+                        blurRadius: 8,
+                        offset: const Offset(4, 4),
+                      ),
+                    ],
+                  ),
+                  alignment: Alignment.center,
+                  child: isBackspace
+                      ? Icon(Icons.backspace_outlined,
+                      color: disabled
+                          ? Colors.grey
+                          : const Color(0xFF4C5F7D),
+                      size: 22)
+                      : Text(k,
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: disabled
+                            ? Colors.grey
+                            : const Color(0xFF4C5F7D),
+                      )),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _presetBtn(double value, bool disabled) {
+    if (value <= 0) return const SizedBox.shrink();
+
+    final bool isSelected = amount == value.toStringAsFixed(2);
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.all(6),
+        child: GestureDetector(
+          onTap: disabled ? null : () => _onPresetAmountTap(value.toStringAsFixed(2)),
+          child: Container(
+            decoration: BoxDecoration(
+              color: disabled
+                  ? Colors.grey.shade200
+                  : isSelected
+                  ? const Color(0xFFDFF5E1)
+                  : const Color(0xFFE6F9E0),
+              borderRadius: BorderRadius.circular(10),
+              // ── ONLY CHANGE: green-tinted shadow bottom+right ──
+              boxShadow: disabled
+                  ? []
+                  : const [
+                BoxShadow(
+                  color: Color(0xCC96D2A0),
+                  blurRadius: 0,
+                  spreadRadius: 0,
+                  offset: Offset(3, 3),
+                ),
+                BoxShadow(
+                  color: Color(0x5564B478),
+                  blurRadius: 8,
+                  offset: Offset(4, 4),
                 ),
               ],
             ),
+            alignment: Alignment.center,
+            child: Text(
+              "₹${value.toStringAsFixed(2)}",
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: disabled ? Colors.grey : const Color(0xFF318616)),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+
+
+  Widget _payModeBtn(String mode, Color color, String asset) {
+    final bool isSelected = selectedPaymentMode == mode;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _onPaymentModeTap(mode),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          height: 54,
+          decoration: BoxDecoration(
+            color: isSelected ? color : color.withOpacity(0.13),
+            borderRadius: BorderRadius.circular(10),
+            border: isSelected
+                ? Border.all(color: color, width: 2)
+                : Border.all(color: Colors.transparent),
+            boxShadow: isSelected
+                ? [
+              BoxShadow(
+                color: color.withOpacity(0.35),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              )
+            ]
+                : [],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                mode,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: isSelected ? Colors.white : color,
+                ),
+              ),
+              const SizedBox(width: 10),
+
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: Colors.white,
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Image.asset(
+                    asset,
+                    width: 18,
+                    height: 18,
+                    color: color, // icon color inside white circle
+                  ),
+                ),
+              ),
+
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // RIGHT COLUMN
+  // ═══════════════════════════════════════════════════════════════════════
+  Widget _buildRightColumn(
+      BuildContext context, {
+        required double netPayableVal,
+        required double balAmt,
+      }) {
+    final double screenW = MediaQuery.of(context).size.width;
+
+    return SizedBox(
+      width: screenW * 0.19,
+      child: Column(
+        children: [
+          const SizedBox(height: 12),
+
+          Expanded(
+            flex: 3,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.black.withOpacity(0.07),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2))
+                ],
+              ),
+              child: Column(
+                // children: [
+                //   _netAmountCard(netPayableVal),
+                //   const SizedBox(height: 10),
+                //   _balanceAmountCard(balAmt),
+                // ],
+                children: [
+                  const SizedBox(height: 12),
+
+                  // Each card is now its own white elevated card (matches image)
+                  _netAmountCard(netPayableVal),
+                  const SizedBox(height: 10),
+                  _balanceAmountCard(balAmt),
+
+                  const SizedBox(height: 14),
+
+                  Expanded(
+                    flex: 3,
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 5),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.07),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: _buildActionButtons(context, netPayableVal),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 14),
+
+          Expanded(
+            flex: 3,
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.black.withOpacity(0.07),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2))
+                ],
+              ),
+              child: _buildActionButtons(context, netPayableVal),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _netAmountCard(double value) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(7),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.09),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Net Amount",
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF7B7B8D),
+              letterSpacing: 0.2,
+            ),
+          ),
+          const SizedBox(height: 7),
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEEF5D6),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        value.toStringAsFixed(2),
+                        style: const TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF1A1A2E),
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ),
+                    // Custom Image for Net Amount
+                    SizedBox(
+                      width: 52,
+                      height: 50,
+                      child: Image.asset(
+                        "assets/net_amount.png",   // ← Your custom icon
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _balanceAmountCard(double value) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(7),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.09),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Balance Amount",
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF7B7B8D),
+              letterSpacing: 0.2,
+            ),
+          ),
+          const SizedBox(height: 7),
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF7EAF7),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        value.toStringAsFixed(2),
+                        style: const TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF1A1A2E),
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ),
+                    // Custom Image instead of _coinsWidget()
+                    SizedBox(
+                      width: 54,
+                      height: 50,
+                      child: Image.asset(
+                        "assets/balance_amount.png",
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }  // Shared builder: plain label above a soft gradient pill (value + icon).
+  Widget _gradientAmountCard({
+    required String label,
+    required String value,
+    required List<Color> gradientColors,
+    Widget? icon,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF555555),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: gradientColors,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(right: 30),
+                child: Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                ),
+              ),
+              if (icon != null)
+                Positioned(
+                  right: -2,
+                  bottom: -4,
+                  child: icon,
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _moneyBagWidget() {
+    return SizedBox(
+      width: 56,
+      height: 54,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            bottom: 0,
+            left: 8,
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                gradient: const RadialGradient(
+                  colors: [Color(0xFFC5D98C), Color(0xFF8DAD50)],
+                  center: Alignment(-0.3, -0.3),
+                ),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                      color: const Color(0xFF6B8A30).withOpacity(0.3),
+                      blurRadius: 6,
+                      offset: const Offset(0, 3)),
+                ],
+              ),
+              child: const Center(
+                child: Text(
+                  "₹",
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 4,
+            left: 18,
+            child: Container(
+              width: 20,
+              height: 12,
+              decoration: BoxDecoration(
+                color: const Color(0xFF7A9A42),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 14,
+            left: 16,
+            child: Container(
+              width: 24,
+              height: 5,
+              decoration: BoxDecoration(
+                color: const Color(0xFF5A7A2A),
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 12,
+            left: 20,
+            child: Column(
+              children: [
+                Container(
+                    width: 12,
+                    height: 2,
+                    decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(1))),
+                const SizedBox(height: 3),
+                Container(
+                    width: 8,
+                    height: 2,
+                    decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(1))),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _coinsWidget() {
+    return SizedBox(
+      width: 60,
+      height: 56,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            right: 2,
+            bottom: 2,
+            child: Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                gradient: const RadialGradient(
+                  colors: [Color(0xFFD8A8D0), Color(0xFFB070A8)],
+                  center: Alignment(-0.3, -0.3),
+                ),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFF9850A0), width: 1.5),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 2,
+            bottom: 2,
+            child: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                gradient: const RadialGradient(
+                  colors: [Color(0xFFC890C0), Color(0xFF9860A0)],
+                  center: Alignment(-0.3, -0.3),
+                ),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFF7840A0), width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                      color: const Color(0xFF9B59B6).withOpacity(0.4),
+                      blurRadius: 6,
+                      offset: const Offset(0, 3)),
+                ],
+              ),
+              child: const Center(
+                child: Text(
+                  "₹",
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white),
+                ),
+              ),
+            ),
+          ),
+          const Positioned(
+            top: 0,
+            right: 0,
+            child: Icon(Icons.auto_awesome,
+                size: 18, color: Color(0xFF9B59B6)),
+          ),
+          const Positioned(
+            top: 16,
+            right: 8,
+            child: Icon(Icons.lens, size: 5, color: Color(0xFFBB80C8)),
+          ),
+          const Positioned(
+            top: 8,
+            left: 20,
+            child:
+            Icon(Icons.lens, size: 4, color: Color(0xFFBB80C8)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Action buttons section
+  Widget _buildActionButtons(BuildContext context, double netPayable) {
+    return Column(
+      children: [
+        // Discounts
+        _actionTile(
+          label: "Discounts",
+          borderColor: const Color(0xFF1E88E5),
+          iconBg: const Color(0xFF2563EB),
+          // icon: Icons.discount_rounded,
+          iconWidget: Image.asset(  // ← Now correctly passed
+            "assets/discount_rounded.png",
+            width: 14,
+            height:12,
+            color: Colors.white,
+          ),
+          isApplied: _isDiscountApplied,
+          appliedText: discountController.text.isNotEmpty
+              ? "₹${discountController.text}"
+              : null,
+          onTap: _isDiscountApplied
+              ? null
+              : () async {
+            final result = await showDialog<Map<String, dynamic>>(
+              context: context,
+              barrierDismissible: false,
+              builder: (_) => MultiBlocProvider(
+                providers: [
+                  BlocProvider(
+                      create: (_) => DiscountReasonBloc(
+                          DiscountReasonRepository())),
+                  BlocProvider.value(
+                      value: context.read<DiscountBloc>()),
+                ],
+                child: DiscountPopup(
+                  netPayable: netPayable,
+                  orderId: widget.orderId,
+                ),
+              ),
+            );
+            if (result != null) {
+              final double applied =
+              (result["amount"] as double).abs();
+              discountController.text = applied.toStringAsFixed(2);
+              setState(() => _isDiscountApplied = true);
+              // _reloadSummary();
+            }
+          },
+          onDelete: _isDiscountApplied
+              ? () {
+            final paymentState = context.read<PaymentBloc>().state;
+            String isNcFlag = "no";
+            if (paymentState is PaymentSummaryLoaded) {
+              isNcFlag = paymentState.isNoCharge ? "yes" : "no";
+            }
+            context.read<RemoveDiscountBloc>().add(
+              RemoveDiscountRequested(
+                orderId: widget.orderId,
+                isNc: isNcFlag,
+                token: widget.token,
+              ),
+            );
+          }
+              : null,
+        ),
+
+        const SizedBox(height: 8),
+
+        // Coupons
+        _actionTile(
+          label: "Coupons",
+          borderColor: const Color(0xFFE65100),
+          iconBg: const Color(0xFFE65100),
+          // icon: Icons.local_offer_rounded,
+          iconWidget: Image.asset(  // ← Now correctly passed
+            "assets/Coupon_icon.png",
+            width: 22,
+            height: 22,
+            color: Colors.white,
+          ),
+          isApplied: _isCouponApplied,
+          appliedText: _appliedCoupon.isNotEmpty ? _appliedCoupon : null,
+          onTap: _isCouponApplied
+              ? null
+              : () {
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (_) => Couponscreen(
+                orderId: widget.orderId,
+                token: widget.token,
+                onCouponApplied: (coupon, amt) {
+                  setState(() {
+                    _isCouponApplied = true;
+                    _appliedCoupon = coupon;
+                    _couponAmount = amt;
+                    couponController.text = coupon;
+                  });
+                  widget.onCouponAmountChanged?.call(amt);
+                  // _reloadSummary();
+                },
+              ),
+            );
+          },
+          onDelete: _isCouponApplied
+              ? () async {
+            final success = await _couponRepository.removeCoupon(
+              token: widget.token,
+              orderId: widget.orderId,
+            );
+            if (success) {
+              setState(() {
+                _isCouponApplied = false;
+                _appliedCoupon = '';
+                _couponAmount = 0.0;
+                couponController.clear();
+              });
+              widget.onCouponAmountChanged?.call(0.0);
+              // _reloadSummary();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content: Text("Coupon removed successfully"),
+                    duration: Duration(seconds: 1)),
+              );
+            }
+          }
+              : null,
+        ),
+
+        const SizedBox(height: 8),
+
+        // Tips
+        _actionTile(
+          label: "Tips",
+          borderColor: const Color(0xFF2E7D32),
+          iconBg: const Color(0xFF2E7D32),
+          // icon: Icons.volunteer_activism_rounded,
+          iconWidget: Image.asset(  // ← Now correctly passed
+            "assets/Tips_icon.png",
+            width: 22,
+            height: 22,
+            color: Colors.white,
+          ),
+          isApplied: _isTipApplied,
+          appliedText:
+          _isTipApplied ? "₹${_tipAmount.toStringAsFixed(2)}" : null,
+          onTap: _isTipApplied
+              ? null
+              : () async {
+            final double? result = await showDialog<double>(
+              context: context,
+              barrierDismissible: false,
+              builder: (_) => TipPopup(
+                orderId: widget.orderId,
+                token: widget.token,
+                onTipApplied: (amt) {
+                  setState(() {
+                    _isTipApplied = true;
+                    _tipAmount = amt;
+                    tipController.text = amt.toStringAsFixed(2);
+                  });
+                  widget.onTipChanged(amt);
+                  // _reloadSummary();
+                },
+              ),
+            );
+            if (result != null && result > 0) {
+              setState(() {
+                _isTipApplied = true;
+                _tipAmount = result;
+                tipController.text = result.toStringAsFixed(2);
+              });
+              widget.onTipChanged(result);
+              // _reloadSummary();
+            }
+          },
+          onDelete: _isTipApplied
+              ? () async {
+            final success = await _tipRepository.removeTip(
+              token: widget.token,
+              orderId: widget.orderId,
+            );
+            if (success) {
+              setState(() {
+                _isTipApplied = false;
+                _tipAmount = 0;
+                tipController.clear();
+              });
+              widget.onTipChanged(0);
+              _updateAmountField();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content: Text('Tip removed successfully'),
+                    duration: Duration(seconds: 1)),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content: Text('Failed to remove tip'),
+                    duration: Duration(seconds: 1)),
+              );
+            }
+          }
+              : null,
+        ),
+
+        const SizedBox(height: 8),
+
+        // Svc Charges
+        _svcChargeTile(context),
+      ],
+    );
+  }
+
+  Widget _actionTile({
+    required String label,
+    required Color borderColor,
+    required Color iconBg,
+    IconData? icon,
+    Widget? iconWidget,
+    required bool isApplied,
+    String? appliedText,
+    VoidCallback? onTap,
+    VoidCallback? onDelete,
+  }) {
+    // ── Only change: gradient per tile color ──
+    LinearGradient _tileGradient(Color base) {
+      if (base == const Color(0xFF1E88E5)) {
+        return const LinearGradient(
+          colors: [Color(0xFF5B9EF0), Color(0xFF3A7BDB)],
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+        );
+      } else if (base == const Color(0xFFE65100)) {
+        return const LinearGradient(
+          colors: [Color(0xFF5CC96A), Color(0xFF2EA83C)],
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+        );
+      } else if (base == const Color(0xFF2E7D32)) {
+        return const LinearGradient(
+          colors: [Color(0xFFFFCC55), Color(0xFFF5950A)],
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+        );
+      }
+      return LinearGradient(colors: [base, base]);
+    }
+
+    final Color labelColor = isApplied ? Colors.white : borderColor;
+    final Color subColor = isApplied
+        ? Colors.white.withOpacity(0.9)
+        : borderColor.withOpacity(0.8);
+    final Color activeBorder = isApplied
+        ? iconBg
+        : borderColor.withOpacity(0.4);
+
+    return GestureDetector(
+      onTap: isApplied ? null : onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          // ── Only change: gradient when applied, white when not ──
+          gradient: isApplied ? _tileGradient(iconBg) : null,
+          color: isApplied ? null : Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+              color: activeBorder,
+              width: isApplied ? 0 : 1.2),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: labelColor,
+                    ),
+                  ),
+                  if (appliedText != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      appliedText,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: subColor,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (isApplied && onDelete != null)
+              GestureDetector(
+                onTap: onDelete,
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  // ── Only change: trash icon instead of close ──
+                  child: const Icon(Icons.delete_outline_rounded,
+                      size: 15, color: Colors.red),
+                ),
+              )
+            else
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: iconBg,
+                  shape: BoxShape.circle,
+                ),
+                // ── Only change: iconWidget wrapped in CircleAvatar ──
+                child: CircleAvatar(
+                  radius: 17,
+                  backgroundColor: Colors.transparent,
+                  child: iconWidget ??
+                      (icon != null
+                          ? Icon(icon, color: Colors.white, size: 18)
+                          : const Icon(Icons.help_outline,
+                          color: Colors.white, size: 18)),
+                ),
+              ),
           ],
         ),
       ),
     );
   }
-}
+  Widget _svcChargeTile(BuildContext context) {
+    final bool applied =
+        isServiceChargeApplied && selectedServiceCharge != null;
+    final Color base = const Color(0xFFC62828);
+    final Color labelColor =
+    applied ? Colors.white : const Color(0xFFC62828);
+    final Color subColor = Colors.white.withOpacity(0.9);
 
-@override
-Widget buildPayment(
-  BuildContext context,
-  String amount,
-  String label, {
-  required double netPayable,
-}) {
-  final double tenderAmount =
-      amount.isNotEmpty ? double.tryParse(amount) ?? 0.0 : 0.0;
-
-  final double balanceAmount =
-      tenderAmount < netPayable ? (netPayable - tenderAmount) : 0.0;
-
-  final bool isPartial = tenderAmount < netPayable;
-  final bool isOver = tenderAmount > netPayable;
-
-  final double changeAmount = isOver ? (tenderAmount - netPayable) : 0.0;
-
-  /// 🔍 DEBUG
-  print('💰 netPayable = $netPayable');
-  print('Tender Amount = $tenderAmount');
-
-  if (isPartial) {
-    print('Payment Type: PARTIAL PAYMENT');
-  } else if (isOver) {
-    print('Payment Type: OVER PAYMENT');
-  } else {
-    print('Payment Type: FULL PAYMENT');
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        // ── Only change: red gradient when applied ──
+        gradient: applied
+            ? const LinearGradient(
+          colors: [Color(0xFFFF7A7A), Color(0xFFE84040)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        )
+            : null,
+        color: applied ? null : Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: applied ? Colors.transparent : base.withOpacity(0.4),
+          width: applied ? 0 : 1.2,
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Svc Charges",
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: labelColor)),
+                if (applied) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    "${selectedServiceCharge}%",
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: subColor),
+                  ),
+                ],
+                if (!applied)
+                  SizedBox(
+                    height: 26,
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<int>(
+                        value: selectedServiceCharge,
+                        isDense: true,
+                        hint: const Text("Select %",
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF777777))),
+                        style: const TextStyle(
+                            fontSize: 11, color: Color(0xFF212121)),
+                        items: const [
+                          DropdownMenuItem(value: 1, child: Text("1%")),
+                          DropdownMenuItem(value: 2, child: Text("2%")),
+                          DropdownMenuItem(value: 3, child: Text("3%")),
+                          DropdownMenuItem(value: 4, child: Text("4%")),
+                          DropdownMenuItem(value: 5, child: Text("5%")),
+                        ],
+                        onChanged: (v) {
+                          if (v == null) return;
+                          applyServiceCharge(v);
+                        },
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (applied)
+            GestureDetector(
+              onTap: deleteServiceCharge,
+              child: Container(
+                width: 28,
+                height: 28,
+                decoration: const BoxDecoration(
+                    color: Colors.white, shape: BoxShape.circle),
+                // ── Only change: trash icon ──
+                child: const Icon(Icons.delete_outline_rounded,
+                    size: 15, color: Colors.red),
+              ),
+            )
+          else
+            Container(
+              width: 34,
+              height: 34,
+              decoration: const BoxDecoration(
+                  color: Color(0xFFC62828), shape: BoxShape.circle),
+              // ── Only change: icon wrapped in CircleAvatar ──
+              child: const CircleAvatar(
+                radius: 17,
+                backgroundColor: Colors.transparent,
+                child: Icon(Icons.receipt_long_rounded,
+                    color: Colors.white, size: 18),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
-  print('-----------------------------------------------');
-
-  return Column(
-    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      SizedBox(height: 5),
-      Text(
-        label,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: Color(0xFF212121),
-          fontSize: 14,
-          fontFamily: 'Inter',
-          fontWeight: FontWeight.bold,
-          height: 1.00,
-          decoration: TextDecoration.none,
-        ),
+  Widget _summaryRow(
+      String label,
+      String value, {
+        bool bold = false,
+        Color? labelColor,
+        Color? valueColor,
+      }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(label,
+                style: TextStyle(
+                  fontSize: bold ? 13 : 12,
+                  fontWeight: bold ? FontWeight.bold : FontWeight.w500,
+                  color: labelColor ?? const Color(0xFF444444),
+                )),
+          ),
+          Text(value,
+              style: TextStyle(
+                fontSize: bold ? 13 : 12,
+                fontWeight: bold ? FontWeight.bold : FontWeight.w500,
+                color: valueColor ?? const Color(0xFF212121),
+              )),
+        ],
       ),
-      SizedBox(height: 15),
-      Container(
-        alignment: Alignment.center,
-        height: MediaQuery.of(context).size.height * 0.30,
-        width: MediaQuery.of(context).size.width * 0.20,
-        decoration: BoxDecoration(
-          color: Color(0xFFDEE8FF),
-          borderRadius: BorderRadius.circular(5),
-          border: Border.all(color: Colors.white.withOpacity(0.5), width: 0.8),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            //SizedBox(height: 12),
-            _buildColumnItem(
-              "Balance Amount",
-              balanceAmount.toStringAsFixed(2),
-              context,
-              amount: balanceAmount,
-            ),
-            const SizedBox(height: 12),
-            //SizedBox(width: 20),
-            _buildColumnItem(
-              "Tender Amount",
-              tenderAmount.toStringAsFixed(2),
-              context,
-              amount: tenderAmount,
-            ),
-            const SizedBox(height: 12),
-            //SizedBox(height: 10),
-            _buildColumnItem(
-              "Change",
-              changeAmount.toStringAsFixed(2),
-              context,
-              amount: changeAmount,
-            ),
-          ],
-        ),
-      ),
-    ],
-  );
+    );
+  }
 }
 
+// ─── NumberPad ─────────────────────────────────────────────────────────
 class NumberPad extends StatelessWidget {
   final Function(String) onKeyPressed;
   final String selectedPaymentMode;
@@ -1326,7 +1991,6 @@ class NumberPad extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        // Left side 3x4 grid
         Expanded(
           flex: 3,
           child: Column(
@@ -1338,7 +2002,6 @@ class NumberPad extends StatelessWidget {
             ],
           ),
         ),
-        // Right side: Delete, Clear, Pay button stacked vertically
         Expanded(
           flex: 1,
           child: Column(
@@ -1348,49 +2011,33 @@ class NumberPad extends StatelessWidget {
               Expanded(
                 flex: 2,
                 child: Padding(
-                  padding: EdgeInsets.all(8.0),
+                  padding: const EdgeInsets.all(8.0),
                   child: GestureDetector(
-                    onTap: isPaying ? null : () => onKeyPressed("Pay"),
-
+                    onTap: () => onKeyPressed("Pay"),
                     child: Container(
                       decoration: BoxDecoration(
-                        color:
-                            selectedPaymentMode.isNotEmpty
-                                ? Color(0xFFFE6464)
-                                : Colors.white,
+                        color: selectedPaymentMode.isNotEmpty
+                            ? const Color(0xFFFE6464)
+                            : Colors.white,
                         borderRadius: BorderRadius.circular(10),
-                        boxShadow: [
+                        boxShadow: const [
                           BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 4,
-                            offset: Offset(0, 2),
-                          ),
+                              color: Colors.black12,
+                              blurRadius: 4,
+                              offset: Offset(0, 2))
                         ],
                       ),
                       alignment: Alignment.center,
-                      child:
-                          isPaying
-                              ? const SizedBox(
-                                height: 26,
-                                width: 26,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 3,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
-                                  ),
-                                ),
-                              )
-                              : Text(
-                                "PAY",
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color:
-                                      selectedPaymentMode.isNotEmpty
-                                          ? Colors.white
-                                          : const Color(0xFF4C5F7D),
-                                ),
-                              ),
+                      child: Text(
+                        "PAY",
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: selectedPaymentMode.isNotEmpty
+                              ? Colors.white
+                              : const Color(0xFF4C5F7D),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -1404,24 +2051,22 @@ class NumberPad extends StatelessWidget {
 
   Widget _buildRow(List<String> labels) {
     return Expanded(
-      child: Row(children: labels.map((label) => _buildButton(label)).toList()),
+      child: Row(
+          children: labels.map((label) => _buildButton(label)).toList()),
     );
   }
 
-  Widget _buildButton(
-    String label, {
-    int flex = 1,
-    Color? backgroundColor,
-    Color? textColor,
-    BoxBorder? border,
-    bool isPayButton = false,
-  }) {
+  Widget _buildButton(String label,
+      {int flex = 1,
+        Color? backgroundColor,
+        Color? textColor,
+        BoxBorder? border,
+        bool isPayButton = false}) {
     final bool isNumber = RegExp(r'^(\d+|00|\.)\$').hasMatch(label);
-
     return Expanded(
       flex: flex,
       child: Padding(
-        padding: EdgeInsets.all(8.0),
+        padding: const EdgeInsets.all(8.0),
         child: GestureDetector(
           onTap: () => onKeyPressed(label),
           child: Container(
@@ -1429,25 +2074,19 @@ class NumberPad extends StatelessWidget {
               color: backgroundColor ?? Colors.white,
               borderRadius: BorderRadius.circular(10),
               border: border,
-              boxShadow: [
+              boxShadow: const [
                 BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 4,
-                  offset: Offset(0, 2),
-                ),
+                    color: Colors.black12,
+                    blurRadius: 4,
+                    offset: Offset(0, 2))
               ],
             ),
             alignment: Alignment.center,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: isNumber ? 24 : 18,
-                fontWeight: FontWeight.bold,
-                color:
-                    textColor ??
-                    (isNumber ? Color(0xFF4C5F7D) : Color(0xFF4C5F7D)),
-              ),
-            ),
+            child: Text(label,
+                style: TextStyle(
+                    fontSize: isNumber ? 24 : 18,
+                    fontWeight: FontWeight.bold,
+                    color: textColor ?? const Color(0xFF4C5F7D))),
           ),
         ),
       ),
@@ -1457,30 +2096,26 @@ class NumberPad extends StatelessWidget {
   Widget _buildSideButton(String label) {
     return Expanded(
       child: Padding(
-        padding: EdgeInsets.all(8.0),
+        padding: const EdgeInsets.all(8.0),
         child: GestureDetector(
           onTap: () => onKeyPressed(label),
           child: Container(
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(10),
-              boxShadow: [
+              boxShadow: const [
                 BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 4,
-                  offset: Offset(0, 2),
-                ),
+                    color: Colors.black12,
+                    blurRadius: 4,
+                    offset: Offset(0, 2))
               ],
             ),
             alignment: Alignment.center,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF4C5F7D),
-              ),
-            ),
+            child: Text(label,
+                style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF4C5F7D))),
           ),
         ),
       ),
@@ -1488,320 +2123,7 @@ class NumberPad extends StatelessWidget {
   }
 }
 
-// bool isSplitApplied = false;
-// final TextEditingController splitPayController = TextEditingController();
-// final TextEditingController _discountController = TextEditingController();
-
-Widget _buildPaymentDiscountItem(
-  BuildContext context, {
-  required double netPayable,
-  required int orderId,
-
-  required TextEditingController discountController,
-  required TextEditingController couponController,
-  required TextEditingController tipController,
-  required TextEditingController splitPayController,
-
-  required bool isDiscountApplied,
-  required bool isCouponApplied,
-  required bool isTipApplied,
-  required bool isSplitApplied,
-
-  required void Function(double amount, bool isNc) onDiscountApplied,
-
-  required Function(String, double) onCouponApplied,
-  required ValueChanged<double> onTipApplied,
-  required ValueChanged<double> onSplitApplied,
-
-  required VoidCallback onDiscountDelete,
-  required VoidCallback onCouponDelete,
-  required VoidCallback onTipDelete,
-  required VoidCallback onSplitDelete,
-  required int? selectedServiceCharge,
-  required bool isServiceChargeApplied,
-  required ValueChanged<int> onServiceChargeApplied,
-  required VoidCallback onServiceChargeDelete,
-
-  String appliedCoupon = "",
-  required String token,
-  required String restaurantId,
-}) {
-  final screenWidth = MediaQuery.of(context).size.width;
-  final screenHeight = MediaQuery.of(context).size.height;
-
-  return Container(
-    height: screenHeight * 0.44,
-    width: screenWidth * 0.20,
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: const Color(0xFFDEE8FF),
-      borderRadius: BorderRadius.circular(6),
-      border: Border.all(color: Colors.white.withOpacity(0.5), width: 0.8),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        /// 🔻 DISCOUNT
-        const Text(
-          'Discount :',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            Expanded(
-              child: GestureDetector(
-                onTap:
-                    isDiscountApplied
-                        ? null
-                        : () async {
-                          final result = await showDialog<Map<String, dynamic>>(
-                            context: context,
-                            barrierDismissible: false,
-                            builder: (_) {
-                              return MultiBlocProvider(
-                                providers: [
-                                  BlocProvider(
-                                    create:
-                                        (_) => DiscountReasonBloc(
-                                          DiscountReasonRepository(),
-                                        ),
-                                  ),
-                                  BlocProvider.value(
-                                    value:
-                                        context
-                                            .read<
-                                              DiscountBloc
-                                            >(), // ✅ reuse same instance
-                                  ),
-                                ],
-                                child: DiscountPopup(
-                                  netPayable: netPayable,
-                                  orderId: orderId,
-                                ),
-                              );
-                            },
-                          );
-
-                          if (result != null) {
-                            final double applied =
-                                (result["amount"] as double).abs();
-                            final bool isNc = result["isNc"] == true;
-
-                            // update only the field UI here
-                            discountController.text = applied.toStringAsFixed(
-                              2,
-                            );
-
-                            // tell parent “a discount was applied”
-                            onDiscountApplied(applied, isNc);
-                          }
-                        },
-                child: AbsorbPointer(
-                  child: _inputField(
-                    controller: discountController,
-                    hint: '0.00',
-                    enabled: true,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 6),
-            if (isDiscountApplied)
-              _deleteButton(() {
-                debugPrint("🔥 Delete icon tapped");
-                // just inform parent to delete
-                onDiscountDelete();
-              }),
-          ],
-        ),
-
-        const SizedBox(height: 4),
-
-        /// 🔻 COUPON
-        const Text(
-          'Coupon :',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 6),
-        Row(
-          children: [
-            Expanded(
-              child: GestureDetector(
-                onTap:
-                    isCouponApplied
-                        ? null
-                        : () {
-                          showDialog(
-                            context: context,
-                            barrierDismissible: false,
-                            builder:
-                                (_) => Couponscreen(
-                                  orderId: orderId,
-                                  token: token,
-                                  onCouponApplied: (coupon, amount) {
-                                    onCouponApplied(coupon, amount);
-                                  },
-                                ),
-                          );
-                        },
-                child: AbsorbPointer(
-                  child: _inputField(
-                    hint: 'Enter your coupon code',
-                    enabled: !isCouponApplied,
-                    // initialValue: appliedCoupon,
-                    controller: couponController,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 6),
-            if (isCouponApplied) _deleteButton(onCouponDelete),
-          ],
-        ),
-
-        const SizedBox(height: 4),
-
-        /// 🔻 TIP
-        const Text(
-          'Tip :',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            Expanded(
-              child: GestureDetector(
-                onTap:
-                    isTipApplied
-                        ? null
-                        : () async {
-                          final double? result = await showDialog<double>(
-                            context: context,
-                            barrierDismissible: false,
-                            builder:
-                                (_) => TipPopup(
-                                  orderId: orderId,
-                                  token: token,
-                                  onTipApplied: onTipApplied,
-                                ),
-                          );
-
-                          if (result != null && result > 0) {
-                            onTipApplied(result);
-                          }
-                        },
-                child: AbsorbPointer(
-                  child: _inputField(
-                    hint: 'Enter tip amount',
-                    keyboardType: TextInputType.number,
-                    enabled: !isTipApplied,
-                    controller: tipController,
-                    // initialValue: '' ,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 4),
-            if (isTipApplied) _deleteButton(onTipDelete),
-          ],
-        ),
-
-        const SizedBox(height: 4),
-
-        /// 🔻 SPLIT PAY
-        // const Text('Split pay :',
-        //     style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-        // const SizedBox(height: 6),
-        // Row(
-        //   children: [
-        //     Expanded(
-        //       child: GestureDetector(
-        //         onTap: isSplitApplied
-        //             ? null
-        //             : () async {
-        //           final result = await showDialog<Map<String, dynamic>>(
-        //             context: context,
-        //             barrierDismissible: false,
-        //             builder: (_) => SplitPaymentPopup(netPayable: netPayable),
-        //           );
-        //
-        //           if (result != null) {
-        //             print(result['payable']);
-        //           }
-        //
-        //         },
-        //
-        //         child: AbsorbPointer(
-        //           child: _inputField(
-        //             hint: 'Enter split amount',
-        //             keyboardType: TextInputType.number,
-        //             enabled: !isSplitApplied,
-        //             controller:  splitPayController,
-        //           ),
-        //         ),
-        //       ),
-        //     ),
-        //     const SizedBox(width: 4),
-        //     if (isSplitApplied)
-        //       _deleteButton(onSplitDelete),
-        //   ],
-        // ),
-        /// 🔻 SERVICE CHARGES
-        const SizedBox(height: 4),
-
-        const Text(
-          'Service Charges :',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-        ),
-
-        // const SizedBox(height: 6),
-        Row(
-          children: [
-            Expanded(
-              child: Container(
-                height: 36,
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<int>(
-                    value: selectedServiceCharge,
-                    hint: const Text(
-                      "Select Service Charge",
-                      style: TextStyle(fontSize: 12),
-                    ),
-                    isExpanded: true,
-                    items: const [
-                      DropdownMenuItem(value: 1, child: Text("1%")),
-                      DropdownMenuItem(value: 2, child: Text("2%")),
-                      DropdownMenuItem(value: 3, child: Text("3%")),
-                      DropdownMenuItem(value: 4, child: Text("4%")),
-                      DropdownMenuItem(value: 5, child: Text("5%")),
-                    ],
-                    onChanged: (value) {
-                      if (value == null) return;
-
-                      onServiceChargeApplied(value);
-                    },
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(width: 4),
-
-            if (selectedServiceCharge != null)
-              _deleteButton(onServiceChargeDelete),
-          ],
-        ),
-      ],
-    ),
-  );
-}
-
+// ─── Standalone helper widgets ─────────────────────────────────────────
 Widget _inputField({
   required String hint,
   required TextEditingController controller,
@@ -1812,15 +2134,13 @@ Widget _inputField({
     height: 40,
     padding: const EdgeInsets.symmetric(horizontal: 12),
     decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(6),
-    ),
+        color: Colors.white, borderRadius: BorderRadius.circular(6)),
     child: TextFormField(
       controller: controller,
       readOnly: true,
-      // enabled: enabled,
       keyboardType: keyboardType,
-      decoration: InputDecoration(hintText: hint, border: InputBorder.none),
+      decoration:
+      InputDecoration(hintText: hint, border: InputBorder.none),
     ),
   );
 }
@@ -1832,283 +2152,9 @@ Widget _deleteButton(VoidCallback onTap) {
       height: 38,
       width: 38,
       decoration: BoxDecoration(
-        color: Colors.red.shade50,
-        borderRadius: BorderRadius.circular(8),
-      ),
+          color: Colors.red.shade50,
+          borderRadius: BorderRadius.circular(8)),
       child: const Icon(Icons.delete, size: 18, color: Colors.red),
-    ),
-  );
-}
-
-Widget _buildActionRow(
-  BuildContext context, {
-  required Color color,
-  required String ellipse,
-  required String icon,
-  required String label,
-  VoidCallback? onTap, // nullable for disabling main button
-  bool isDeleteEnabled = false, // new flag
-  VoidCallback? onDelete, // callback for delete action
-}) {
-  return Row(
-    children: [
-      Expanded(
-        child: InkWell(
-          onTap: onTap,
-          child: Container(
-            height: 70,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.shade300, width: 1),
-            ),
-            child: Row(
-              children: [
-                // Stack(
-                //   alignment: Alignment.center,
-                //   children: [
-                //     Image.asset(ellipse, width: 44, height: 44),
-                //     Image.asset(icon, width: 24, height: 24),
-                //   ],
-                // ),
-                const SizedBox(width: 18),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-      const SizedBox(width: 8),
-      InkWell(
-        onTap: isDeleteEnabled ? onDelete : null, // disable if false
-        child: Container(
-          height: 55,
-          width: 55,
-          decoration: BoxDecoration(
-            color: isDeleteEnabled ? Colors.white : Colors.grey.shade300,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.shade300),
-          ),
-          child: Center(
-            child: Image.asset(
-              "assets/icon/delete.png",
-              width: 25,
-              height: 25,
-              fit: BoxFit.contain,
-              color:
-                  isDeleteEnabled ? null : Colors.grey, // gray icon if disabled
-            ),
-          ),
-        ),
-      ),
-    ],
-  );
-}
-
-Widget _buildPaymentModeItem(
-  String label,
-  BuildContext context,
-  String selectedOption,
-  Function(String) onSelect,
-) {
-  final List<Map<String, dynamic>> options = [
-    {"label": "Cash", "image": "assets/cash.png", "enabled": true},
-    {
-      "label": "Card",
-      "image": "assets/card.png",
-      "enabled": true, // ❌ disabled
-    },
-    {
-      "label": "UPI",
-      "image": "assets/icon/upi.png",
-      "enabled": true, // ❌ disabled
-    },
-  ];
-
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      SizedBox(height: 5),
-      Text(
-        label,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: Color(0xFF152148),
-          fontSize: 12,
-          fontFamily: 'Inter',
-          fontWeight: FontWeight.bold,
-          height: 1.10,
-          decoration: TextDecoration.none,
-        ),
-      ),
-      SizedBox(height: 10),
-      Container(
-        alignment: Alignment.center,
-        height: MediaQuery.of(context).size.height * 0.10,
-        width: MediaQuery.of(context).size.width * 0.40,
-        decoration: BoxDecoration(
-          color: Color(0xFFDEE8FF),
-          borderRadius: BorderRadius.circular(5),
-          border: Border.all(color: Colors.white.withOpacity(0.5), width: 0.8),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children:
-              options.map((option) {
-                final bool isSelected = selectedOption == option['label'];
-                final bool isEnabled = option['enabled'] == true;
-
-                return GestureDetector(
-                  onTap: isEnabled ? () => onSelect(option['label']!) : null,
-                  child: Opacity(
-                    opacity: isEnabled ? 1.0 : 0.4, // 👈 disabled look
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(vertical: 5),
-                      height: 35,
-                      width: 120,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color:
-                            isSelected
-                                ? const Color(0xFFFCDFDC)
-                                : const Color(0xFFFFFFFF),
-                        borderRadius: BorderRadius.circular(0),
-                        border:
-                            isSelected
-                                ? Border.all(color: const Color(0xFFFE6464))
-                                : Border.all(color: Colors.grey.shade300),
-                        boxShadow: [
-                          BoxShadow(
-                            color:
-                                isEnabled
-                                    ? const Color(0x10000000)
-                                    : Colors.transparent,
-                            offset: const Offset(0, 1),
-                            blurRadius: 10,
-                            spreadRadius: 0,
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Image.asset(
-                            option['image']!,
-                            width: 30,
-                            height: 30,
-                            color:
-                                isEnabled ? null : Colors.grey, // 👈 grey icon
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            option['label']!,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color:
-                                  !isEnabled
-                                      ? Colors.grey
-                                      : isSelected
-                                      ? const Color(0xFFFE6464)
-                                      : const Color(0xFF4147D5),
-                              fontSize: 13,
-                              fontFamily: 'Montserrat',
-                              fontWeight: FontWeight.w500,
-                              height: 1.50,
-                              letterSpacing: 0.60,
-                              decoration: TextDecoration.none,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-        ),
-      ),
-    ],
-  );
-}
-
-Widget _buildColumnItem(
-  String label,
-  String insideText,
-  BuildContext context, {
-  num? amount,
-}) {
-  // Determine color based on the value
-  Color textColor;
-  if (amount != null) {
-    if (amount == (AppDatabase.instance.totalamount ?? 0.0)) {
-      textColor = Color(0xFFFE6464);
-    } else if (amount <= 2230.00) {
-      textColor = Color(0xFF373535);
-    } else {
-      textColor = Color(0xFF318616);
-    }
-  } else {
-    textColor = Color(0xFF373535);
-  }
-  return Padding(
-    padding: const EdgeInsets.only(left: 15), // 👈 shift whole column to right
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start, // 👈 align to start
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: Color(0xFF656161),
-            fontSize: 15,
-            fontFamily: 'Inter',
-            fontWeight: FontWeight.w500,
-            decoration: TextDecoration.none,
-          ),
-        ),
-        SizedBox(height: 7),
-        Container(
-          height: MediaQuery.of(context).size.height * 0.05,
-          width: MediaQuery.of(context).size.width * 0.17,
-          decoration: BoxDecoration(
-            color: Color(0xFFF5F5F6),
-            borderRadius: BorderRadius.circular(5),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.5),
-              width: 0.8,
-            ),
-          ),
-          alignment: Alignment.centerLeft, // 👈 text starts at left
-          padding: const EdgeInsets.symmetric(
-            horizontal: 8,
-          ), // small padding inside
-          child: Text(
-            insideText,
-            style: TextStyle(
-              color: textColor,
-              fontSize: 15,
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w500,
-              decoration: TextDecoration.none,
-            ),
-            textAlign: TextAlign.start,
-          ),
-        ),
-
-        // example extra widgets
-        Column(children: [Container()]),
-      ],
     ),
   );
 }
