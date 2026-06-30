@@ -2332,43 +2332,43 @@ class _TablesScreenState extends State<TablesScreen> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   // 🔙 BACK BUTTON
-                  InkWell(
-                    onTap: () {
-                      if (Navigator.canPop(context)) {
-                        Navigator.pop(context);
-                      } else {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => HomeScreen(
-                              token: widget.token,
-                              pin: widget.pin,
-                              restaurantId: widget.restaurantId,
-                              restaurantName: widget.restaurantName,
-                            ),
-                          ),
-                        );
-                      }
-                    },
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 4,
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.arrow_back,
-                        color: Color(0xFF0A1B4D),
-                      ),
-                    ),
-                  ),
+                  // InkWell(
+                  //   onTap: () {
+                  //     if (Navigator.canPop(context)) {
+                  //       Navigator.pop(context);
+                  //     } else {
+                  //       Navigator.pushReplacement(
+                  //         context,
+                  //         MaterialPageRoute(
+                  //           builder: (_) => HomeScreen(
+                  //             token: widget.token,
+                  //             pin: widget.pin,
+                  //             restaurantId: widget.restaurantId,
+                  //             restaurantName: widget.restaurantName,
+                  //           ),
+                  //         ),
+                  //       );
+                  //     }
+                  //   },
+                  //   child: Container(
+                  //     width: 40,
+                  //     height: 40,
+                  //     decoration: BoxDecoration(
+                  //       color: Colors.white,
+                  //       borderRadius: BorderRadius.circular(8),
+                  //       boxShadow: const [
+                  //         BoxShadow(
+                  //           color: Colors.black12,
+                  //           blurRadius: 4,
+                  //         ),
+                  //       ],
+                  //     ),
+                  //     child: const Icon(
+                  //       Icons.arrow_back,
+                  //       color: Color(0xFF0A1B4D),
+                  //     ),
+                  //   ),
+                  // ),
 
                   const SizedBox(width: 15),
                   if (!_showPopup)

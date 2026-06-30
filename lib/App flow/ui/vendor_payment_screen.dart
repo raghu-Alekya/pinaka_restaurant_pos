@@ -309,7 +309,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
               isHomeScreen: false,
               restaurantId: widget.restaurantId,
               restaurantName: widget.restaurantName,
-              selectedUser: _selectedUser,
+              // selectedUser: _selectedUser,
               token: widget.token,
               pin: widget.pin,
             ),
@@ -810,101 +810,111 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                       },
                                     )
                                 ),
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: Container(
-                                    margin: const EdgeInsets.only(
-                                      right: 5,
-                                      bottom: 5,
-                                      top: 5,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      border: Border.all(
-                                        color: const Color(0xFFEFEFEF),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        "Total Vendor Payments: ${vendorPayments.length}",
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.black87,
+                                        ),
                                       ),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        GestureDetector(
-                                          onTap: currentPage > 1
-                                              ? () {
-                                            setState(() {
-                                              currentPage--;
-                                            });
-                                          }
-                                              : null,
-                                          child: _paginationTextButton("Previous"),
+
+                                      Container(
+                                        margin: const EdgeInsets.only(right: 5),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          border: Border.all(
+                                            color: const Color(0xFFEFEFEF),
+                                          ),
+                                          borderRadius: BorderRadius.circular(4),
                                         ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            GestureDetector(
+                                              onTap: currentPage > 1
+                                                  ? () {
+                                                setState(() {
+                                                  currentPage--;
+                                                });
+                                              }
+                                                  : null,
+                                              child: _paginationTextButton("Previous"),
+                                            ),
 
-                                        GestureDetector(
-                                          onTap: () {
-                                            setState(() {
-                                              currentPage = 1;
-                                            });
-                                          },
-                                          child: _pageButton(
-                                            1,
-                                            selected: currentPage == 1,
-                                          ),
+                                            GestureDetector(
+                                              onTap: () {
+                                                setState(() {
+                                                  currentPage = 1;
+                                                });
+                                              },
+                                              child: _pageButton(
+                                                1,
+                                                selected: currentPage == 1,
+                                              ),
+                                            ),
+
+                                            if (totalPages >= 2)
+                                              GestureDetector(
+                                                onTap: () {
+                                                  setState(() {
+                                                    currentPage = 2;
+                                                  });
+                                                },
+                                                child: _pageButton(
+                                                  2,
+                                                  selected: currentPage == 2,
+                                                ),
+                                              ),
+
+                                            if (totalPages >= 3)
+                                              GestureDetector(
+                                                onTap: () {
+                                                  setState(() {
+                                                    currentPage = 3;
+                                                  });
+                                                },
+                                                child: _pageButton(
+                                                  3,
+                                                  selected: currentPage == 3,
+                                                ),
+                                              ),
+
+                                            if (totalPages > 4)
+                                              _paginationTextButton("..."),
+
+                                            if (totalPages > 4)
+                                              GestureDetector(
+                                                onTap: () {
+                                                  setState(() {
+                                                    currentPage = totalPages;
+                                                  });
+                                                },
+                                                child: _pageButton(
+                                                  totalPages,
+                                                  selected: currentPage == totalPages,
+                                                ),
+                                              ),
+
+                                            GestureDetector(
+                                              onTap: currentPage < totalPages
+                                                  ? () {
+                                                setState(() {
+                                                  currentPage++;
+                                                });
+                                              }
+                                                  : null,
+                                              child: _paginationTextButton("Next"),
+                                            ),
+                                          ],
                                         ),
-
-                                        if (totalPages >= 2)
-                                          GestureDetector(
-                                            onTap: () {
-                                              setState(() {
-                                                currentPage = 2;
-                                              });
-                                            },
-                                            child: _pageButton(
-                                              2,
-                                              selected: currentPage == 2,
-                                            ),
-                                          ),
-
-                                        if (totalPages >= 3)
-                                          GestureDetector(
-                                            onTap: () {
-                                              setState(() {
-                                                currentPage = 3;
-                                              });
-                                            },
-                                            child: _pageButton(
-                                              3,
-                                              selected: currentPage == 3,
-                                            ),
-                                          ),
-
-                                        if (totalPages > 4)
-                                          _paginationTextButton("..."),
-
-                                        if (totalPages > 4)
-                                          GestureDetector(
-                                            onTap: () {
-                                              setState(() {
-                                                currentPage = totalPages;
-                                              });
-                                            },
-                                            child: _pageButton(
-                                              totalPages,
-                                              selected: currentPage == totalPages,
-                                            ),
-                                          ),
-
-                                        GestureDetector(
-                                          onTap: currentPage < totalPages
-                                              ? () {
-                                            setState(() {
-                                              currentPage++;
-                                            });
-                                          }
-                                              : null,
-                                          child: _paginationTextButton("Next"),
-                                        ),
-                                      ],
-                                    ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],

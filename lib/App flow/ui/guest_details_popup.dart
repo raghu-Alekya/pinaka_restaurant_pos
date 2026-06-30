@@ -137,8 +137,9 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                         if (selectedGuests.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Please select number of guests'),
+                              content: Text('Please select number of guests', style: TextStyle(color: Colors.white),),
                               duration: Duration(seconds: 1),
+                              backgroundColor: Colors.red,
                             ),
                           );
                           return;

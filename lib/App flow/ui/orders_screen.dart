@@ -42,8 +42,6 @@ import '../../utils/logger.dart';
 import '../widgets/orderlist_widget.dart';
 import '../widgets/view_all_kots.dart';
 import 'guest_details_popup.dart';
-// import '../blocs/Bloc Event/order_event.dart' as order_evt;
-// import '../blocs/Bloc Event/kot_event.dart' as kot_evt;
 
 class OrderPanel extends StatefulWidget {
   final Function(int) onGuestSaved;
@@ -92,6 +90,7 @@ class OrderPanel extends StatefulWidget {
 class _OrderPanelState extends State<OrderPanel> {
   StreamSubscription? _mqttSubscription;
   bool _isRepeatingOrder = false;
+  bool _showKotList = false; // Track KOT dropdown expansion state
 
   @override
   void initState() {
@@ -265,8 +264,6 @@ class _OrderPanelState extends State<OrderPanel> {
           tableName: widget.tableName,
           zoneName: widget.zoneName,
           kotList: widget.existingKots ?? [],
-          // guests: [guestcount],
-          // orderItems: existingOrderItems ?? [],
           restaurantId: widget.restaurantId,
           guestDetails: widget.guestcount,
         ),
@@ -280,794 +277,798 @@ class _OrderPanelState extends State<OrderPanel> {
             (kotBloc.state as KotLoaded).kots.isEmpty)) {
       context.read<KotBloc>().add(SetExistingKots(kots: widget.existingKots!));
     }
+
     return BlocListener<KotBloc, KotState>(
-        listener: (context, kotState) {
-
-          if (kotState is KotLoaded) {
-            debugPrint("KotLoaded: ${kotState.kots.length}");
-            context.read<OrderBloc>().add(
-              RefreshKotList(kotState.kots),
-            );
-          }
-        },
-        child: BlocBuilder<OrderBloc, OrderState>(
-      builder: (context, state) {
-        // disable buttons
-        final bool hasCartItems = state.orderItems.isNotEmpty;
-
-        final activeKots =
-        state.kotList.where((kot) {
-          final status = (kot.status ?? '').toLowerCase();
-
-          return status != 'served' &&
-              status != 'voided' &&
-              status != 'transferred';
-        }).toList();
-
-        final bool hasActiveKot = activeKots.isNotEmpty;
-        debugPrint("========== KOTS ==========");
-        for (final kot in state.kotList) {
-          debugPrint("KOT: ${kot.kotNumber} | Status: ${kot.status}");
+      listener: (context, kotState) {
+        if (kotState is KotLoaded) {
+          debugPrint("KotLoaded: ${kotState.kots.length}");
+          context.read<OrderBloc>().add(
+            RefreshKotList(kotState.kots),
+          );
         }
+      },
+      child: BlocBuilder<OrderBloc, OrderState>(
+        builder: (context, state) {
+          // disable buttons
+          final bool hasCartItems = state.orderItems.isNotEmpty;
 
-        debugPrint("Total KOTs: ${state.kotList.length}");
-        debugPrint("Active KOTs: ${activeKots.length}");
+          final activeKots =
+          state.kotList.where((kot) {
+            final status = (kot.status ?? '').toLowerCase();
 
-        /// Repeat Order -> only if active KOT exists
-        final bool canRepeatOrder = hasActiveKot;
+            return status != 'served' &&
+                status != 'voided' &&
+                status != 'transferred';
+          }).toList();
 
-        /// KOT Print -> only if cart contains items
-        final bool canPrintKot = hasCartItems;
+          final bool hasActiveKot = activeKots.isNotEmpty;
+          debugPrint("========== KOTS ==========");
+          for (final kot in state.kotList) {
+            debugPrint("KOT: ${kot.kotNumber} | Status: ${kot.status}");
+          }
 
-        /// Pay -> only if active KOT exists
-        final bool canPay = hasActiveKot;
-        return Container(
-          width: 700,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              /// Header row with badges & actions
-              /// Header row with badges & actions (FIXED ALIGNMENT)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(.05),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+          debugPrint("Total KOTs: ${state.kotList.length}");
+          debugPrint("Active KOTs: ${activeKots.length}");
 
-                    /// LEFT SIDE
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+          /// Repeat Order -> only if active KOT exists
+          final bool canRepeatOrder = hasActiveKot;
 
-                          /// Order ID
-                          Row(
-                            children: [
-                              Image.asset(
-                                "assets/order.png",
-                                width: 18,
-                                height: 18,
-                              ),
-                              const SizedBox(width: 6),
+          /// KOT Print -> only if cart contains items
+          final bool canPrintKot = hasCartItems;
 
-                              Text(
-                                "Order Id #${state.orderId}",
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xff404040),
+          /// Pay -> only if active KOT exists
+          final bool canPay = hasActiveKot;
+
+          return Container(
+            width: 700,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                /// Header row with badges & actions
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(.05),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      /// LEFT SIDE
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            /// Order ID
+                            Row(
+                              children: [
+                                Image.asset(
+                                  "assets/order.png",
+                                  width: 18,
+                                  height: 18,
                                 ),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 8),
-
-                          /// Table + Guests
-                          Row(
-                            children: [
-
-                              Image.asset(
-                                "assets/dine.png",
-                                width: 25,
-                                height: 25,
-                              ),
-
-                              const SizedBox(width: 6),
-
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 3,
-                                ),
-
-                                child: Text(
-                                  "${state.zoneName}-${state.tableName}",
+                                const SizedBox(width: 6),
+                                Text(
+                                  "Order Id #${state.orderId}",
                                   style: const TextStyle(
-                                    color: Color(0xff002053),
-                                    fontSize: 13,
+                                    fontSize: 20,
                                     fontWeight: FontWeight.w600,
+                                    color: Color(0xff404040),
                                   ),
                                 ),
-                              ),
-
-                              const SizedBox(width: 10),
-
-                              const SizedBox(width: 10),
-
-                              const Icon(
-                                Icons.people,
-                                size: 18,
-                                color: Colors.black54,
-                              ),
-
-                              const SizedBox(width: 4),
-
-                              BlocBuilder<OrderBloc, OrderState>(
-                                builder: (context, state) {
-                                  return Text(
-                                    "${state.guestDetails.guestCount}",
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            /// Table + Guests
+                            Row(
+                              children: [
+                                Image.asset(
+                                  "assets/dine.png",
+                                  width: 25,
+                                  height: 25,
+                                ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  child: Text(
+                                    "${state.zoneName}-${state.tableName}",
                                     style: const TextStyle(
+                                      color: Color(0xff002053),
+                                      fontSize: 13,
                                       fontWeight: FontWeight.w600,
                                     ),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    /// RIGHT SIDE
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.calendar_today_outlined,
-                              size: 18,
-                              color: Colors.black54,
-                            ),
-
-                            const SizedBox(width: 6),
-
-                            Text(
-                              "${DateFormat('MMM dd, yyyy').format(DateTime.now())} | ${DateFormat('h:mm a').format(DateTime.now())}",
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                const SizedBox(width: 10),
+                                const Icon(
+                                  Icons.people,
+                                  size: 18,
+                                  color: Colors.black54,
+                                ),
+                                const SizedBox(width: 4),
+                                BlocBuilder<OrderBloc, OrderState>(
+                                  builder: (context, state) {
+                                    return Text(
+                                      "${state.guestDetails.guestCount}",
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
                             ),
                           ],
                         ),
-
-                        const SizedBox(height: 12),
-
-                        InkWell(
-                          onTap: () async {
-                            final currentOrderId = context.read<OrderBloc>().state.orderId;
-
-                            if (currentOrderId == 0) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  duration: Duration(seconds: 1),
-                                  content: Text("No active order to cancel"),
-                                ),
-                              );
-                              return;
-                            }
-
-                            AppLogger.info(
-                              "Cancel order clicked → Order ID: $currentOrderId",
-                            );
-
-                            showDialog(
-                              context: context,
-                              barrierDismissible: false,
-                              builder: (_) => const Center(
-                                child: CircularProgressIndicator(),
+                      ),
+                      /// RIGHT SIDE
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.calendar_today_outlined,
+                                size: 18,
+                                color: Colors.black54,
                               ),
-                            );
+                              const SizedBox(width: 6),
+                              Text(
+                                "${DateFormat('MMM dd, yyyy').format(DateTime.now())} | ${DateFormat('h:mm a').format(DateTime.now())}",
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          InkWell(
+                            onTap: () async {
+                              final currentOrderId = context.read<OrderBloc>().state.orderId;
 
-                            try {
-                              final orderRepo = OrderRepository(
-                                baseUrl: 'https://merchantrestaurant.alektasolutions.com',
-                              );
-
-                              final responseJson = await orderRepo.cancelOrder(
-                                parentOrderId: currentOrderId,
-                                token: widget.token,
-                                restaurantId: widget.restaurantId,
-                                zoneId: widget.zoneId,
-                              );
-
-                              if (context.mounted && Navigator.canPop(context)) {
-                                Navigator.pop(context);
-                              }
-
-                              if (responseJson['status'] == 'cancelled') {
-                                context.read<OrderBloc>().add(
-                                  CancelOrder(
-                                    parentOrderId: currentOrderId,
-                                    token: widget.token,
+                              if (currentOrderId == 0) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    duration: Duration(seconds: 1),
+                                    content: Text("No active order to cancel"),
                                   ),
                                 );
+                                return;
+                              }
+
+                              AppLogger.info(
+                                "Cancel order clicked → Order ID: $currentOrderId",
+                              );
+
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (_) => const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              );
+
+                              try {
+                                final orderRepo = OrderRepository(
+                                  baseUrl: 'https://merchantrestaurant.alektasolutions.com',
+                                );
+
+                                final responseJson = await orderRepo.cancelOrder(
+                                  parentOrderId: currentOrderId,
+                                  token: widget.token,
+                                  restaurantId: widget.restaurantId,
+                                  zoneId: widget.zoneId,
+                                );
+
+                                if (context.mounted && Navigator.canPop(context)) {
+                                  Navigator.pop(context);
+                                }
+
+                                if (responseJson['status'] == 'cancelled') {
+                                  context.read<OrderBloc>().add(
+                                    CancelOrder(
+                                      parentOrderId: currentOrderId,
+                                      token: widget.token,
+                                    ),
+                                  );
+
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      duration: const Duration(seconds: 1),
+                                      content: Text(
+                                        "Order ${responseJson['order_id']} cancelled successfully",
+                                      ),
+                                    ),
+                                  );
+
+                                  final tableDao = TableDao();
+                                  final tables =
+                                  await tableDao.getTablesByManagerPin(widget.pin);
+
+                                  if (!context.mounted) return;
+
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => TablesScreen(
+                                        loadedTables: tables,
+                                        pin: widget.pin,
+                                        token: widget.token,
+                                        restaurantId: widget.restaurantId,
+                                        restaurantName: widget.restaurantName,
+                                      ),
+                                    ),
+                                  );
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      duration: Duration(seconds: 1),
+                                      content: Text("Failed to cancel order"),
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted && Navigator.canPop(context)) {
+                                  Navigator.pop(context);
+                                }
+
+                                AppLogger.error("Cancel order API error: $e");
 
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     duration: const Duration(seconds: 1),
                                     content: Text(
-                                      "Order ${responseJson['order_id']} cancelled successfully",
+                                      e.toString().replaceFirst("Exception: ", ""),
                                     ),
-                                  ),
-                                );
-
-                                final tableDao = TableDao();
-                                final tables =
-                                await tableDao.getTablesByManagerPin(widget.pin);
-
-                                if (!context.mounted) return;
-
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => TablesScreen(
-                                      loadedTables: tables,
-                                      pin: widget.pin,
-                                      token: widget.token,
-                                      restaurantId: widget.restaurantId,
-                                      restaurantName: widget.restaurantName,
-                                    ),
-                                  ),
-                                );
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    duration: Duration(seconds: 1),
-                                    content: Text("Failed to cancel order"),
+                                    backgroundColor: Colors.red,
                                   ),
                                 );
                               }
-                            } catch (e) {
-                              if (context.mounted && Navigator.canPop(context)) {
-                                Navigator.pop(context);
-                              }
-
-                              AppLogger.error("Cancel order API error: $e");
-
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  duration: const Duration(seconds: 1),
-                                  content: Text(
-                                    e.toString().replaceFirst("Exception: ", ""),
-                                  ),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
-                          },
-                          borderRadius: BorderRadius.circular(8),
-                          child: Container(
-                            height: 36,
-                            width: 36,
-                            decoration: BoxDecoration(
-                              color: const Color(0xffF2F2F2),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Center(
-                              child: Image.asset(
-                                "assets/icon/delete.png",
-                                width: 18,
-                                height: 18,
-                                color: Colors.grey.shade700,
-                              ),
-                            ),
-                          ),
-                        )
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 4),
-
-              Expanded(
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    /// Base Layout
-                    Column(
-                      children: [
-                        const SizedBox(height: 36),
-
-                        // Header
-                        Container(
-                          height: 30,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF989292),
+                            },
                             borderRadius: BorderRadius.circular(8),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Row(
-                            children: [
-                              const SizedBox(width: 7),
-                              SizedBox(width: 40, child: headerText('#')),
-                              const SizedBox(width: 6),
-                              Expanded(child: headerText('Item Name')),
-                              const SizedBox(width: 40),
-                              headerText('Modifiers'),
-                              SizedBox(
-                                width: 70,
-                                child: headerText(
-                                  'Price',
-                                  align: TextAlign.right,
+                            child: Container(
+                              height: 25,
+                              width: 34,
+                              decoration: BoxDecoration(
+                                color: const Color(0xffF2F2F2),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Center(
+                                child: Image.asset(
+                                  "assets/icon/delete.png",
+                                  width: 28,
+                                  height: 38,
+                                  color: Colors.grey.shade700,
                                 ),
                               ),
-                              const SizedBox(width: 30),
-                              SizedBox(
-                                width: 80,
-                                child: headerText(
-                                  'Qty',
-                                  align: TextAlign.center,
-                                ),
+                            ),
+                          )
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 2),
+
+                /// Main Content Area
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      /// KOT Dropdown - Always shows the header bar
+                      if (state.kotList.isNotEmpty)
+                        MultiBlocProvider(
+                          providers: [
+                            BlocProvider<KotLineItemsBloc>(
+                              create: (_) => KotLineItemsBloc(
+                                repository: VoidItemRepository(),
                               ),
-                              const SizedBox(width: 5),
-                              SizedBox(
-                                width: 70,
-                                child: headerText(
-                                  'Amount',
-                                  align: TextAlign.right,
-                                ),
+                            ),
+                            BlocProvider<UpdatekotBloc>(
+                              create: (_) => UpdatekotBloc(
+                                repository: UpdatekotRepository(),
                               ),
-                            ],
+                            ),
+                            BlocProvider.value(
+                              value: context.read<KotBloc>(),
+                            ),
+                          ],
+                          child: ViewAllKOTDropdown(
+                            kots: state.kotList,
+                            parentOrderId: state.orderId,
+                            restaurantId: int.parse(widget.restaurantId),
+                            zoneId: state.zoneId,
+                            token: widget.token,
+                            tableNo: state.tableName,
+                            // onToggle: (isExpanded) {
+                            //   // Update state when dropdown expands/collapses
+                            //   setState(() {
+                            //     _showKotList = isExpanded;
+                            //   });
+                            // },
                           ),
                         ),
 
-                        const SizedBox(height: 2),
+                      if (state.kotList.isNotEmpty && !_showKotList)
+                        const SizedBox(height: 8),
 
-                        /// Order List
+                      /// Conditional Rendering:
+                      /// - If KOT view is expanded => show ONLY the KOT list.
+                      /// - Otherwise => show order header + order list + total.
+                      /// These two branches are mutually exclusive: only one
+                      /// is ever built into the widget tree at a time.
+                      if (_showKotList)
+                      /// ---------------- KOT-ONLY VIEW ----------------
                         Expanded(
                           child: Container(
                             color: const Color(0xFFF1F1F3),
-                            child: OrderPanelList(
-                              orderItems: state.orderItems,
-                              addonPrices: widget.addonPrices,
-                              onIncreaseQuantity: (index) {
-                                final item = state.orderItems[index];
-                                context.read<OrderBloc>().add(
-                                  UpdateOrderItemQuantity(index, item.quantity + 1),
-                                );
-                              },
-                              onDecreaseQuantity: (index) {
-                                final item = state.orderItems[index];
-                                if (item.quantity > 1) {
-                                  context.read<OrderBloc>().add(
-                                    UpdateOrderItemQuantity(index, item.quantity - 1),
-                                  );
-                                }
-                              },
-                              onModifiersChanged: (index, modifiers, addOns, note) {
-                                final fullAddOns = <String, Map<String, dynamic>>{};
-                                addOns.forEach((name, qty) {
-                                  fullAddOns[name] = {
-                                    'quantity': qty,
-                                    'price': widget.addonPrices[name] ?? 0,
-                                  };
-                                });
+                            padding: const EdgeInsets.all(16),
+                            child: ListView.builder(
+                              itemCount: state.kotList.length,
+                              itemBuilder: (context, index) {
+                                final kot = state.kotList[index];
+                                return Card(
 
-                                context.read<OrderBloc>().add(
-                                  UpdateOrderItemDetails(
-                                    index: index,
-                                    modifiers: modifiers,
-                                    addOns: fullAddOns,
-                                    note: note,
-                                  ),
                                 );
                               },
-                              onRemoveItem: (index) {
-                                context.read<OrderBloc>().add(RemoveOrderItem(index));
-                              },
-                              token: widget.token,
                             ),
                           ),
-                        ),
-
-                        /// TOTAL INSIDE STACK
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFE5BF),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        )
+                      else
+                      /// ---------------- ORDER VIEW ----------------
+                        Flexible(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Text(
-                                'Total Items: ${state.orderItems.length}',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
+                              /// Header
+                              Container(
+                                height: 30,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF989292),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
-                              ),
-                              Text(
-                                state.orderItems
-                                    .fold(
-                                  0.0,
-                                      (sum, item) => sum + item.totalWithAddons,
-                                )
-                                    .toStringAsFixed(2),
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    /// DROPDOWN OVERLAY
-                    if (state.kotList.isNotEmpty)
-                      Positioned(
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        child: Material(
-                          elevation: 30,
-                          color: Colors.transparent,
-                          child: MultiBlocProvider(
-                            providers: [
-                              BlocProvider<KotLineItemsBloc>(
-                                create: (_) => KotLineItemsBloc(
-                                  repository: VoidItemRepository(),
-                                ),
-                              ),
-                              BlocProvider<UpdatekotBloc>(
-                                create: (_) => UpdatekotBloc(
-                                  repository: UpdatekotRepository(),
-                                ),
-                              ),
-                              BlocProvider.value(
-                                value: context.read<KotBloc>(),
-                              ),
-                            ],
-                            child: ViewAllKOTDropdown(
-                              kots: state.kotList,
-                              parentOrderId: state.orderId,
-                              restaurantId: int.parse(widget.restaurantId),
-                              zoneId: state.zoneId,
-                              token: widget.token,
-                              tableNo: state.tableName,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 10),
-
-
-              /// Bottom action buttons
-        Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  Builder(
-                    builder: (scaffoldContext) {
-                      return BlocListener<OrderBloc, OrderState>(
-                        listenWhen: (prev, curr) => prev.error != curr.error,
-                        listener: (context, state) {
-                          if (state.error != null && state.error!.isNotEmpty) {
-                            ScaffoldMessenger.of(scaffoldContext)
-                              ..hideCurrentSnackBar()
-                              ..showSnackBar(
-                                SnackBar(
-                                  content: Text(state.error!),
-                                  duration: Duration(seconds: 1),
-                                ),
-                              );
-                          }
-                        },
-                        child: orderButton(
-                          'Repeat order',
-                          canRepeatOrder
-                              ? const Color(0xFF2563EB)
-                              : Colors.grey,
-                          isLoading: _isRepeatingOrder,
-                          onPressed:
-                          canRepeatOrder
-                              ? () {
-                            setState(() {
-                              _isRepeatingOrder = true;
-                            });
-
-                            final bloc = context.read<OrderBloc>();
-
-                            if (bloc.state.orderId == 0) {
-                              ScaffoldMessenger.of(
-                                scaffoldContext,
-                              ).showSnackBar(
-                                const SnackBar(
-                                  duration: Duration(seconds: 1),
-                                  content: Text("Order not found"),
-                                ),
-                              );
-                              setState(() {
-                                _isRepeatingOrder = false;
-                              });
-                              return;
-                            }
-
-                            bloc.add(
-                              RepeatKotOrder(
-                                orderId: bloc.state.orderId,
-                                restaurantId: int.parse(
-                                  bloc.state.restaurantId,
-                                ),
-                                zoneId: bloc.state.zoneId,
-                                token: widget.token,
-                              ),
-                            );
-
-                            Future.delayed(
-                              const Duration(seconds: 2),
-                                  () {
-                                if (mounted) {
-                                  setState(() {
-                                    _isRepeatingOrder = false;
-                                  });
-                                }
-                              },
-                            );
-                          }
-                              : null,
-                        ),
-                      );
-                    },
-                  ),
-
-                  orderButton(
-                    'KOT Print',
-                    canPrintKot ? const Color(0xFFF97316) : Colors.grey,
-                    onPressed:
-                    canPrintKot
-                        ? () async {
-                      final orderBloc = context.read<OrderBloc>();
-                      final kotBloc = context.read<KotBloc>();
-                      final orderRepo = OrderRepository(
-                        baseUrl:
-                        'https://merchantrestaurant.alektasolutions.com',
-                      );
-
-                      if (state.orderItems.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            duration: Duration(seconds: 1),
-                            content: Text('No items to create KOT!'),
-                          ),
-                        );
-                        return;
-                      }
-
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder:
-                            (_) => const Center(
-                          child: CircularProgressIndicator(),
-                        ),
-                      );
-
-                      try {
-                        final captainId = int.tryParse(
-                          this.widget.userId,
-                        );
-                        if (captainId == null || widget.token.isEmpty) {
-                          throw Exception(
-                            'Invalid user session. Please check in again.',
-                          );
-                        }
-
-                        final KotModel? kot = await orderRepo.createKOT(
-                          parentOrderId: state.orderId,
-                          kotId: "",
-                          items: state.orderItems,
-                          token: widget.token,
-                          restaurantId:
-                          orderBloc.state.restaurantId.toString(),
-                          zoneId: orderBloc.state.zoneId,
-                          captainId: captainId,
-                        );
-
-                        Navigator.of(context).pop();
-
-                        final permissions =
-                        await SessionManager.loadPermissions();
-                        final captainName =
-                            permissions?.displayName ?? '';
-                        if (kot != null) {
-                          await printKot(
-                            kotNo: kot.kotNumber ?? '',
-                            orderId: kot.parentOrderId.toString(),
-                            tableName: orderBloc.state.tableName,
-                            captainName: captainName,
-                            items:
-                            state.orderItems
-                                .map(
-                                  (e) => {
-                                "name": e.name,
-                                "qty": e.quantity,
-                                "modifiers":
-                                e.modifiers.toList(),
-                                "addons": e.addOns,
-                              },
-                            )
-                                .toList(),
-                            kot: kot,
-                          );
-                          await KdsMqttPublisher.notifyKotCreated(
-                            restaurantId:
-                            orderBloc.state.restaurantId.toString(),
-                            parentOrderId: state.orderId,
-                            zoneId: orderBloc.state.zoneId,
-                            zoneName: orderBloc.state.zoneName,
-                            orderType: 'Dine-In',
-                            kot: kot,
-                            tableName: orderBloc.state.tableName,
-                          );
-                          orderBloc.add(AddKOT(kot));
-                          kotBloc.add(AddKotToList(kot));
-                          orderBloc.add(ClearOrder());
-
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: SizedBox(
-                                width: 400,
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
                                 child: Row(
-                                  mainAxisAlignment:
-                                  MainAxisAlignment.center,
                                   children: [
-                                    const Icon(
-                                      Icons.check_circle,
-                                      color: Colors.white,
-                                      size: 20,
+                                    const SizedBox(width: 7),
+                                    SizedBox(width: 40, child: headerText('#')),
+                                    const SizedBox(width: 6),
+                                    Expanded(child: headerText('Item Name')),
+                                    const SizedBox(width: 40),
+                                    headerText('Modifiers'),
+                                    SizedBox(
+                                      width: 70,
+                                      child: headerText(
+                                        'Price',
+                                        align: TextAlign.right,
+                                      ),
                                     ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'KOT Created: ${kot.kotNumber}',
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w500,
-                                        color: Colors.white,
+                                    const SizedBox(width: 30),
+                                    SizedBox(
+                                      width: 80,
+                                      child: headerText(
+                                        'Qty',
+                                        align: TextAlign.center,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 5),
+                                    SizedBox(
+                                      width: 70,
+                                      child: headerText(
+                                        'Amount',
+                                        align: TextAlign.right,
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                              duration: const Duration(seconds: 4),
-                              behavior: SnackBarBehavior.floating,
-                              margin: EdgeInsets.only(
-                                left: 400,
-                                right: 400,
-                                bottom:
-                                MediaQuery.of(context).size.height *
-                                    0.90,
+                              const SizedBox(height: 2),
+
+                              /// Order List
+                              Expanded(
+                                child: Container(
+                                  color: const Color(0xFFF1F1F3),
+                                  child: OrderPanelList(
+                                    orderItems: state.orderItems,
+                                    addonPrices: widget.addonPrices,
+                                    onIncreaseQuantity: (index) {
+                                      final item = state.orderItems[index];
+                                      context.read<OrderBloc>().add(
+                                        UpdateOrderItemQuantity(index, item.quantity + 1),
+                                      );
+                                    },
+                                    onDecreaseQuantity: (index) {
+                                      final item = state.orderItems[index];
+                                      if (item.quantity > 1) {
+                                        context.read<OrderBloc>().add(
+                                          UpdateOrderItemQuantity(index, item.quantity - 1),
+                                        );
+                                      }
+                                    },
+                                    onModifiersChanged: (index, modifiers, addOns, note) {
+                                      final fullAddOns = <String, Map<String, dynamic>>{};
+                                      addOns.forEach((name, qty) {
+                                        fullAddOns[name] = {
+                                          'quantity': qty,
+                                          'price': widget.addonPrices[name] ?? 0,
+                                        };
+                                      });
+
+                                      context.read<OrderBloc>().add(
+                                        UpdateOrderItemDetails(
+                                          index: index,
+                                          modifiers: modifiers,
+                                          addOns: fullAddOns,
+                                          note: note,
+                                        ),
+                                      );
+                                    },
+                                    onRemoveItem: (index) {
+                                      context.read<OrderBloc>().add(RemoveOrderItem(index));
+                                    },
+                                    token: widget.token,
+                                  ),
+                                ),
                               ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+
+                              /// TOTAL
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFE5BF),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Total Items: ${state.orderItems.length}',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    Text(
+                                      state.orderItems
+                                          .fold(
+                                        0.0,
+                                            (sum, item) => sum + item.totalWithAddons,
+                                      )
+                                          .toStringAsFixed(2),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              backgroundColor: Colors.green,
-                              elevation: 6,
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 6),
+
+                /// Bottom action buttons
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      Builder(
+                        builder: (scaffoldContext) {
+                          return BlocListener<OrderBloc, OrderState>(
+                            listenWhen: (prev, curr) => prev.error != curr.error,
+                            listener: (context, state) {
+                              if (state.error != null && state.error!.isNotEmpty) {
+                                ScaffoldMessenger.of(scaffoldContext)
+                                  ..hideCurrentSnackBar()
+                                  ..showSnackBar(
+                                    SnackBar(
+                                      content: Text(state.error!),
+                                      duration: Duration(seconds: 1),
+                                    ),
+                                  );
+                              }
+                            },
+                            child: orderButton(
+                              'Repeat order',
+                              canRepeatOrder
+                                  ? const Color(0xFF2563EB)
+                                  : Colors.grey,
+                              isLoading: _isRepeatingOrder,
+                              onPressed:
+                              canRepeatOrder
+                                  ? () {
+                                setState(() {
+                                  _isRepeatingOrder = true;
+                                });
+
+                                final bloc = context.read<OrderBloc>();
+
+                                if (bloc.state.orderId == 0) {
+                                  ScaffoldMessenger.of(
+                                    scaffoldContext,
+                                  ).showSnackBar(
+                                    const SnackBar(
+                                      duration: Duration(seconds: 1),
+                                      content: Text("Order not found"),
+                                    ),
+                                  );
+                                  setState(() {
+                                    _isRepeatingOrder = false;
+                                  });
+                                  return;
+                                }
+
+                                bloc.add(
+                                  RepeatKotOrder(
+                                    orderId: bloc.state.orderId,
+                                    restaurantId: int.parse(
+                                      bloc.state.restaurantId,
+                                    ),
+                                    zoneId: bloc.state.zoneId,
+                                    token: widget.token,
+                                  ),
+                                );
+
+                                Future.delayed(
+                                  const Duration(seconds: 2),
+                                      () {
+                                    if (mounted) {
+                                      setState(() {
+                                        _isRepeatingOrder = false;
+                                      });
+                                    }
+                                  },
+                                );
+                              }
+                                  : null,
+                            ),
+                          );
+                        },
+                      ),
+
+                      orderButton(
+                        'KOT Print',
+                        canPrintKot ? const Color(0xFFF97316) : Colors.grey,
+                        onPressed:
+                        canPrintKot
+                            ? () async {
+                          final orderBloc = context.read<OrderBloc>();
+                          final kotBloc = context.read<KotBloc>();
+                          final orderRepo = OrderRepository(
+                            baseUrl:
+                            'https://merchantrestaurant.alektasolutions.com',
+                          );
+
+                          if (state.orderItems.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                duration: Duration(seconds: 1),
+                                content: Text('No items to create KOT!'),
+                              ),
+                            );
+                            return;
+                          }
+
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder:
+                                (_) => const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          );
+
+                          try {
+                            final captainId = int.tryParse(
+                              this.widget.userId,
+                            );
+                            if (captainId == null || widget.token.isEmpty) {
+                              throw Exception(
+                                'Invalid user session. Please check in again.',
+                              );
+                            }
+
+                            final KotModel? kot = await orderRepo.createKOT(
+                              parentOrderId: state.orderId,
+                              kotId: "",
+                              items: state.orderItems,
+                              token: widget.token,
+                              restaurantId:
+                              orderBloc.state.restaurantId.toString(),
+                              zoneId: orderBloc.state.zoneId,
+                              captainId: captainId,
+                            );
+
+                            Navigator.of(context).pop();
+
+                            final permissions =
+                            await SessionManager.loadPermissions();
+                            final captainName =
+                                permissions?.displayName ?? '';
+                            if (kot != null) {
+                              await printKot(
+                                kotNo: kot.kotNumber ?? '',
+                                orderId: kot.parentOrderId.toString(),
+                                tableName: orderBloc.state.tableName,
+                                captainName: captainName,
+                                items:
+                                state.orderItems
+                                    .map(
+                                      (e) => {
+                                    "name": e.name,
+                                    "qty": e.quantity,
+                                    "modifiers":
+                                    e.modifiers.toList(),
+                                    "addons": e.addOns,
+                                  },
+                                )
+                                    .toList(),
+                                kot: kot,
+                              );
+                              await KdsMqttPublisher.notifyKotCreated(
+                                restaurantId:
+                                orderBloc.state.restaurantId.toString(),
+                                parentOrderId: state.orderId,
+                                zoneId: orderBloc.state.zoneId,
+                                zoneName: orderBloc.state.zoneName,
+                                orderType: 'Dine-In',
+                                kot: kot,
+                                tableName: orderBloc.state.tableName,
+                              );
+                              orderBloc.add(AddKOT(kot));
+                              kotBloc.add(AddKotToList(kot));
+                              orderBloc.add(ClearOrder());
+
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: SizedBox(
+                                    width: 400,
+                                    child: Row(
+                                      mainAxisAlignment:
+                                      MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(
+                                          Icons.check_circle,
+                                          color: Colors.white,
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'KOT Created: ${kot.kotNumber}',
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  duration: const Duration(seconds: 4),
+                                  behavior: SnackBarBehavior.floating,
+                                  margin: EdgeInsets.only(
+                                    left: 400,
+                                    right: 400,
+                                    bottom:
+                                    MediaQuery.of(context).size.height *
+                                        0.90,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  backgroundColor: Colors.green,
+                                  elevation: 6,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (Navigator.of(
+                              context,
+                              rootNavigator: true,
+                            ).canPop()) {
+                              Navigator.of(
+                                context,
+                                rootNavigator: true,
+                              ).pop();
+                            }
+                            final message = e.toString().replaceFirst(
+                              "Exception: ",
+                              "",
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(message),
+                                backgroundColor: Colors.red,
+                                behavior: SnackBarBehavior.floating,
+                                duration: const Duration(seconds: 1),
+                              ),
+                            );
+                            AppLogger.error(message);
+                          }
+                        }
+                            : null,
+                      ),
+
+                      orderButton(
+                        'Checkout',
+                        canPay ? const Color(0xFF16A34A) : Colors.grey,
+                        onPressed:
+                        canPay
+                            ? () {
+                          AppLogger.info("Pay clicked");
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (_) => MultiBlocProvider(
+                                providers: [
+                                  BlocProvider.value(
+                                    value: context.read<OrderBloc>(),
+                                  ),
+                                  BlocProvider.value(
+                                    value: context.read<PaymentBloc>(),
+                                  ),
+                                  BlocProvider.value(
+                                    value:
+                                    context
+                                        .read<RemoveDiscountBloc>(),
+                                  ),
+                                ],
+                                child: PaymentScreen(
+                                  loadedTables: widget.loadedTables,
+                                  pin: widget.pin,
+                                  token: widget.token,
+                                  restaurantId: widget.restaurantId,
+                                  restaurantName: widget.restaurantName,
+                                  zoneId: widget.zoneId,
+                                ),
+                              ),
                             ),
                           );
                         }
-                      } catch (e) {
-                        if (Navigator.of(
-                          context,
-                          rootNavigator: true,
-                        ).canPop()) {
-                          Navigator.of(
-                            context,
-                            rootNavigator: true,
-                          ).pop();
-                        }
-                        final message = e.toString().replaceFirst(
-                          "Exception: ",
-                          "",
-                        );
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(message),
-                            backgroundColor: Colors.red,
-                            behavior: SnackBarBehavior.floating,
-                            duration: const Duration(seconds: 1),
-                          ),
-                        );
-                        AppLogger.error(message);
-                      }
-                    }
-                        : null,
+                            : null,
+                      ),
+                    ],
                   ),
-
-                  orderButton(
-                    'Pay',
-                    canPay ? const Color(0xFF16A34A) : Colors.grey,
-                    onPressed:
-                    canPay
-                        ? () {
-                      AppLogger.info("Pay clicked");
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder:
-                              (_) => MultiBlocProvider(
-                            providers: [
-                              BlocProvider.value(
-                                value: context.read<OrderBloc>(),
-                              ),
-                              BlocProvider.value(
-                                value: context.read<PaymentBloc>(),
-                              ),
-                              BlocProvider.value(
-                                value:
-                                context
-                                    .read<RemoveDiscountBloc>(),
-                              ),
-                            ],
-                            child: PaymentScreen(
-                              loadedTables: widget.loadedTables,
-                              pin: widget.pin,
-                              token: widget.token,
-                              restaurantId: widget.restaurantId,
-                              restaurantName: widget.restaurantName,
-                              zoneId: widget.zoneId,
-                            ),
-                          ),
-                        ),
-                      );
-                    }
-                        : null,
-                  ),
-                ],
-              ),
-        )],
-          ),
-        );
-
-
-      },
-    ));
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
+
   // ================= Widgets =================
 
   Widget headerBadgeRow(OrderState state) {
@@ -1080,7 +1081,7 @@ class _OrderPanelState extends State<OrderPanel> {
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
-            mainAxisSize: MainAxisSize.min, // ✅ shrink to content
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(
@@ -1159,7 +1160,7 @@ class _OrderPanelState extends State<OrderPanel> {
     children: [
       CircleAvatar(
         radius: 12,
-        backgroundColor: Colors.transparent, // ❌ no background
+        backgroundColor: Colors.transparent,
         foregroundImage: AssetImage(imagePath),
       ),
       const SizedBox(width: 4),
@@ -1186,19 +1187,28 @@ class _OrderPanelState extends State<OrderPanel> {
     child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2),
       child: SizedBox(
-        height: 55, // increased height
+        height: 55,
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(
             backgroundColor: onPressed == null ? Colors.grey : color,
             padding: const EdgeInsets.symmetric(
               vertical: 16,
-            ), // optional: increase padding too
+            ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
             ),
           ),
           onPressed: onPressed,
-          child: Text(
+          child: isLoading
+              ? const SizedBox(
+            height: 20,
+            width: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+          )
+              : Text(
             text,
             style: const TextStyle(
               color: Colors.white,

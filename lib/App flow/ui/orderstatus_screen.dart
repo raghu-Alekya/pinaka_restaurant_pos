@@ -315,6 +315,8 @@ class _OrdersListTableState extends State<OrdersListTable> {
                   final filtered = _filterOrders(orders);
                   final pageOrders = _currentPageOrders(filtered);
                   final totalPages = ((filtered.length - 1) ~/ _rowsPerPage) + 1;
+                  final int totalOrders = orders.length;
+                  final int displayedOrders = filtered.length;
 
 
                   /// 🔹 TABLE + PAGINATION CONTAINER
@@ -641,60 +643,74 @@ class _OrdersListTableState extends State<OrdersListTable> {
                         const SizedBox(height: 12),
 
                         /// PAGINATION
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              GestureDetector(
-                                onTap: _previousPage,
-                                child: _paginationButton(
-                                  text: "Previous",
-                                  borderRadius: const BorderRadius.only(
-                                    topLeft: Radius.circular(3),
-                                    bottomLeft: Radius.circular(3),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              displayedOrders == totalOrders
+                                  ? "Total Orders: $totalOrders"
+                                  : "Showing $displayedOrders of $totalOrders Orders",
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                            ),
+
+                            /// PAGINATION
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                GestureDetector(
+                                  onTap: _previousPage,
+                                  child: _paginationButton(
+                                    text: "Previous",
+                                    borderRadius: const BorderRadius.only(
+                                      topLeft: Radius.circular(3),
+                                      bottomLeft: Radius.circular(3),
+                                    ),
                                   ),
                                 ),
-                              ),
-                              Row(
-                                children: _visiblePages(totalPages).map((index) {
-                                  final isActive = index == _currentPage;
-                                  return GestureDetector(
-                                    onTap: () => setState(() => _currentPage = index),
-                                    child: Container(
-                                      width: 30,
-                                      height: 30,
-                                      margin: const EdgeInsets.symmetric(horizontal: 2),
-                                      decoration: BoxDecoration(
-                                        color: isActive ? Colors.red : Colors.white,
-                                        border: Border.all(color: const Color(0xFFEEEEEE)),
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          "${index + 1}",
-                                          style: TextStyle(
-                                            color: isActive ? Colors.white : const Color(0xFF727272),
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w500,
+                                Row(
+                                  children: _visiblePages(totalPages).map((index) {
+                                    final isActive = index == _currentPage;
+                                    return GestureDetector(
+                                      onTap: () => setState(() => _currentPage = index),
+                                      child: Container(
+                                        width: 30,
+                                        height: 30,
+                                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                                        decoration: BoxDecoration(
+                                          color: isActive ? Colors.red : Colors.white,
+                                          border: Border.all(color: const Color(0xFFEEEEEE)),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            "${index + 1}",
+                                            style: TextStyle(
+                                              color: isActive ? Colors.white : const Color(0xFF727272),
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w500,
+                                            ),
                                           ),
                                         ),
                                       ),
+                                    );
+                                  }).toList(),
+                                ),
+                                GestureDetector(
+                                  onTap: () => _nextPage(filtered.length),
+                                  child: _paginationButton(
+                                    text: "Next",
+                                    borderRadius: const BorderRadius.only(
+                                      topRight: Radius.circular(3),
+                                      bottomRight: Radius.circular(3),
                                     ),
-                                  );
-                                }).toList(),
-                              ),
-                              GestureDetector(
-                                onTap: () => _nextPage(filtered.length),
-                                child: _paginationButton(
-                                  text: "Next",
-                                  borderRadius: const BorderRadius.only(
-                                    topRight: Radius.circular(3),
-                                    bottomRight: Radius.circular(3),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
+                              ],
+                            ),
+                          ],
                         ),
                       ],
                     ),

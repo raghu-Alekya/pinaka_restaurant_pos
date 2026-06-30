@@ -626,34 +626,48 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
 
                       const SizedBox(height: 4),
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          SizedBox(
-                            width: 80,
-                            height: 40,
-                            child: OutlinedButton(
-                              onPressed: currentPage > 1 ? () => setState(() => currentPage--) : null,
-                              style: OutlinedButton.styleFrom(
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                                padding: EdgeInsets.zero,
-                              ),
-                              child: const Text("Previous", style: TextStyle(color: Colors.black)),
+                          Text(
+                            filteredReservations.length == _reservations.length
+                                ? "Total Reservations: ${_reservations.length}"
+                                : "Showing ${filteredReservations.length} of ${_reservations.length} Reservations",
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                          const SizedBox(width: 5),
-                          ..._buildPaginationButtons(totalPages),
-                          const SizedBox(width: 5),
-                          SizedBox(
-                            width: 80,
-                            height: 40,
-                            child: OutlinedButton(
-                              onPressed: currentPage < totalPages ? () => setState(() => currentPage++) : null,
-                              style: OutlinedButton.styleFrom(
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                                padding: EdgeInsets.zero,
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              SizedBox(
+                                width: 80,
+                                height: 40,
+                                child: OutlinedButton(
+                                  onPressed: currentPage > 1 ? () => setState(() => currentPage--) : null,
+                                  style: OutlinedButton.styleFrom(
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                    padding: EdgeInsets.zero,
+                                  ),
+                                  child: const Text("Previous", style: TextStyle(color: Colors.black)),
+                                ),
                               ),
-                              child: const Text("Next", style: TextStyle(color: Colors.black)),
-                            ),
+                              const SizedBox(width: 5),
+                              ..._buildPaginationButtons(totalPages),
+                              const SizedBox(width: 5),
+                              SizedBox(
+                                width: 80,
+                                height: 40,
+                                child: OutlinedButton(
+                                  onPressed: currentPage < totalPages ? () => setState(() => currentPage++) : null,
+                                  style: OutlinedButton.styleFrom(
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                    padding: EdgeInsets.zero,
+                                  ),
+                                  child: const Text("Next", style: TextStyle(color: Colors.black)),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),

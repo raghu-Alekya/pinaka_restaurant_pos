@@ -132,35 +132,35 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       } else if (shiftStatus == 'open' &&
           savedPermissions == null) {
-        _showCheckInPopupDirectly();
+        // _showCheckInPopupDirectly();
       }
     } catch (e) {
       debugPrint("Shift check failed: $e");
     }
   }
-  void _showCheckInPopupDirectly() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => BlocProvider(
-        create: (_) => CheckInBloc(CheckInRepository()),
-        // child: Checkinpopup(
-        //   token: widget.token,
-        //   onCheckIn: () {
-        //     Navigator.of(context).pop();
-        //   },
-        //   onCancel: () {
-        //     Navigator.of(context).pop();
-        //   },
-        //   onPermissionsReceived: (permissions) {
-        //     setState(() {
-        //       _userPermissions = permissions;
-        //     });
-        //   },
-        // ),
-      ),
-    );
-  }
+  // void _showCheckInPopupDirectly() {
+  //   showDialog(
+  //     context: context,
+  //     barrierDismissible: false,
+  //     builder: (_) => BlocProvider(
+  //       create: (_) => CheckInBloc(CheckInRepository()),
+  //       // child: Checkinpopup(
+  //       //   token: widget.token,
+  //       //   onCheckIn: () {
+  //       //     Navigator.of(context).pop();
+  //       //   },
+  //       //   onCancel: () {
+  //       //     Navigator.of(context).pop();
+  //       //   },
+  //       //   onPermissionsReceived: (permissions) {
+  //       //     setState(() {
+  //       //       _userPermissions = permissions;
+  //       //     });
+  //       //   },
+  //       // ),
+  //     ),
+  //   );
+  // }
 
 
   Future<void> _loadSavedPermissions() async {
@@ -279,7 +279,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 employees: state.employees,
                 token: widget.token,
                 onComplete: (String extractedStartTime) async {
-                  _showCheckInPopupDirectly();
+                  // _showCheckInPopupDirectly();
                 },
               ),
             );
@@ -316,7 +316,7 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _greetingSection(),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
 
             /// Stats Row
             Row(
@@ -368,7 +368,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 5),
 
             Row(
               children: [
@@ -401,12 +401,14 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 5),
 
             /// Quick Access
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
+                SizedBox(
+                  width: 250,
                   child: _moduleCard(
                     title: "Tables",
                     subtitle: "Floor Plan",
@@ -423,16 +425,19 @@ class _HomeScreenState extends State<HomeScreen> {
                             pin: widget.pin,
                             token: widget.token,
                             restaurantId: widget.restaurantId,
-                            restaurantName: widget.restaurantName, loadedTables: [],
-                            // loadedTables: widget.loadedTables,
+                            restaurantName: widget.restaurantName,
+                            loadedTables: [],
                           ),
                         ),
                       );
                     },
                   ),
                 ),
+
                 const SizedBox(width: 16),
-                Expanded(
+
+                SizedBox(
+                  width: 250,
                   child: _moduleCard(
                     title: "Take Aways",
                     subtitle: "Walk-in Orders",
@@ -442,8 +447,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     icon: Icons.inventory_2_outlined,
                   ),
                 ),
+
                 const SizedBox(width: 16),
-                Expanded(
+
+                SizedBox(
+                  width: 250,
                   child: _moduleCard(
                     title: "Online Orders",
                     subtitle: "Delivery",
@@ -460,20 +468,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
             _sectionTitle("Kitchen & Orders"),
 
-            const SizedBox(height: 15),
+            const SizedBox(height: 10),
 
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  flex: 2,
+                SizedBox(
+                  width: 250,
                   child: _whiteModuleCard(
                     title: "KOT Status",
                     count: "8",
                     countLabel: "in kitchen",
                     icon: Icons.restaurant_menu,
                     iconColor: Colors.red,
-                    description:
-                    "Monitor live kitchen order tickets and prep times",
+                    description: "Monitor live kitchen order tickets and prep times",
                     onTap: () {
                       Navigator.push(
                         context,
@@ -493,24 +501,22 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 const SizedBox(width: 16),
 
-                Expanded(
-                  flex: 2,
+                SizedBox(
+                  width: 250,
                   child: _whiteModuleCard(
                     title: "Orders",
                     count: activeOrdersCount.toString(),
                     countLabel: "total",
                     icon: Icons.receipt_long,
                     iconColor: Colors.blue,
-                    description:
-                    "View, modify and settle all active orders",
+                    description: "View, modify and settle all active orders",
                     onTap: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (_) => BlocProvider(
-                            create: (context) => OrderstatusBloc(
-                              OrderstatusRepository(),
-                            ),
+                            create: (context) =>
+                                OrderstatusBloc(OrderstatusRepository()),
                             child: OrdersListTable(
                               token: widget.token,
                               pin: widget.pin,
@@ -525,11 +531,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   ),
                 ),
-                const SizedBox(width: 16),
 
-                if (_userPermissions?.role.toLowerCase() == 'manager')
-                  Expanded(
-                    flex: 2,
+                if (_userPermissions?.role.toLowerCase() == 'manager') ...[
+                  const SizedBox(width: 16),
+
+                  SizedBox(
+                    width: 250,
                     child: _whiteModuleCard(
                       title: "Tips",
                       count: totalTipAmount.toStringAsFixed(2),
@@ -553,8 +560,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                     ),
                   ),
-
-                const Spacer(flex: 2),
+                ],
               ],
             ),
 
@@ -565,17 +571,17 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 15),
 
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  flex: 2,
+                SizedBox(
+                  width: 250,
                   child: _whiteModuleCard(
                     title: "Reservation",
                     count: upcomingReservations.toString(),
                     countLabel: "upcoming",
                     icon: Icons.calendar_today,
                     iconColor: Colors.blue,
-                    description:
-                    "Accept, confirm and seat table reservations",
+                    description: "Accept, confirm and seat table reservations",
                     onTap: () {
                       Navigator.push(
                         context,
@@ -594,32 +600,30 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 const SizedBox(width: 16),
 
-                Expanded(
-                  flex: 2,
+                SizedBox(
+                  width: 250,
                   child: _whiteModuleCard(
                     title: "Customers",
                     count: "248",
                     countLabel: "profiles",
                     icon: Icons.people_outline,
                     iconColor: Colors.purple,
-                    description:
-                    "Profiles, loyalty history and preferences",
+                    description: "Profiles, loyalty history and preferences",
                   ),
                 ),
 
                 if (_userPermissions?.role.toLowerCase() == 'manager') ...[
                   const SizedBox(width: 16),
 
-                  Expanded(
-                    flex: 2,
+                  SizedBox(
+                    width: 250,
                     child: _whiteModuleCard(
                       title: "Vendors",
                       count: vendorcount.toInt().toString(),
                       countLabel: "vendors",
                       icon: Icons.local_shipping_outlined,
                       iconColor: Colors.orange,
-                      description:
-                      "Manage supplier profiles, orders and deliveries",
+                      description: "Manage supplier profiles, orders and deliveries",
                       onTap: () {
                         Navigator.push(
                           context,
@@ -636,10 +640,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ],
-
-                const Spacer(flex: 2),
               ],
-            ),
+            )
           ],
         ),
               )),
@@ -659,18 +661,18 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(
               "Welcome, $userName 👋",
               style: const TextStyle(
-                fontSize: 20,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 4),
-            Text(
-              userRole,
-              style: const TextStyle(
-                color: Colors.grey,
-                fontSize: 12,
-              ),
-            ),
+            // Text(
+            //   userRole,
+            //   style: const TextStyle(
+            //     color: Colors.grey,
+            //     fontSize: 12,
+            //   ),
+            // ),
           ],
         ),
         Column(
@@ -679,7 +681,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(
               _currentTime.toLowerCase(),
               style: const TextStyle(
-                fontSize: 22,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF1F2937),
                 height: 1,
@@ -691,20 +693,20 @@ class _HomeScreenState extends State<HomeScreen> {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: const [
-                Icon(
-                  Icons.circle,
-                  color: Colors.green,
-                  size: 8,
-                ),
-                SizedBox(width: 4),
-                Text(
-                  "System Online",
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                // Icon(
+                //   Icons.circle,
+                //   color: Colors.green,
+                //   size: 8,
+                // ),
+                // SizedBox(width: 4),
+                // Text(
+                //   "System Online",
+                //   style: TextStyle(
+                //     fontSize: 12,
+                //     color: Colors.grey,
+                //     fontWeight: FontWeight.w500,
+                //   ),
+                // ),
               ],
             ),
           ],
@@ -730,7 +732,7 @@ class _HomeScreenState extends State<HomeScreen> {
       Color color,
       ) {
     return Container(
-      height: 79,
+      height: 74,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -756,7 +758,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 value,
                 style: const TextStyle(
-                  fontSize: 22,
+                  fontSize: 17,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -782,7 +784,8 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
       child: Container(
-        height: 135,
+        height: 95,
+        width: 170,
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: color,
@@ -812,7 +815,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             title,
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 22,
+                              fontSize: 14,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -821,7 +824,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             subtitle,
                             style: const TextStyle(
                               color: Colors.white70,
-                              fontSize: 13,
+                              fontSize: 10,
                             ),
                           ),
                         ],
@@ -829,7 +832,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
 
                     Container(
-                      width: 55,
+                      width: 45,
                       height: 40,
                       decoration: BoxDecoration(
                         color: Colors.white24,
@@ -843,14 +846,14 @@ class _HomeScreenState extends State<HomeScreen> {
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
-                              fontSize: 18,
+                              fontSize: 12,
                             ),
                           ),
                           Text(
                             countLabel,
                             style: const TextStyle(
                               color: Colors.white70,
-                              fontSize: 10,
+                              fontSize: 8,
                             ),
                           ),
                         ],
@@ -859,35 +862,35 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
 
-                const SizedBox(height: 12),
+                const SizedBox(height: 2),
 
-                if (isCurrent)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Text(
-                      "CURRENT",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
+                // if (isCurrent)
+                //   Container(
+                //     padding: const EdgeInsets.symmetric(
+                //       horizontal: 8,
+                //       vertical: 3,
+                //     ),
+                //     decoration: BoxDecoration(
+                //       color: Colors.white24,
+                //       borderRadius: BorderRadius.circular(8),
+                //     ),
+                //     // child: const Text(
+                //     //   "CURRENT",
+                //     //   style: TextStyle(
+                //     //     color: Colors.white,
+                //     //     fontSize: 9,
+                //     //     fontWeight: FontWeight.w600,
+                //     //   ),
+                //     // ),
+                //   ),
 
-                const Spacer(),
+                // const Spacer(),
 
                 const Text(
                   "Open module →",
                   style: TextStyle(
                     color: Colors.white70,
-                    fontSize: 14,
+                    fontSize: 10,
                   ),
                 ),
               ],
@@ -898,8 +901,8 @@ class _HomeScreenState extends State<HomeScreen> {
               right: 0,
               bottom: 0,
               child: Container(
-                width: 40,
-                height: 40,
+                width: 20,
+                height: 20,
                 decoration: BoxDecoration(
                   color: Colors.white24,
                   shape: BoxShape.circle,
@@ -907,7 +910,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Icon(
                   icon,
                   color: Colors.white,
-                  size: 28,
+                  size: 12,
                 ),
               ),
             ),
@@ -930,7 +933,7 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),
       child: Container(
-        height: 138,
+        height: 110,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -950,8 +953,8 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 32,
-                  height: 32,
+                  width: 28,
+                  height: 28,
                   decoration: BoxDecoration(
                     color: iconColor.withOpacity(.12),
                     borderRadius: BorderRadius.circular(12),
@@ -959,7 +962,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Icon(
                     icon,
                     color: iconColor,
-                    size: 18,
+                    size: 14,
                   ),
                 ),
 
@@ -973,7 +976,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TextStyle(
                         color: iconColor,
                         fontWeight: FontWeight.bold,
-                        fontSize: 20,
+                        fontSize: 14,
                       ),
                     ),
                     Text(
@@ -993,32 +996,32 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(
               title,
               style: const TextStyle(
-                fontSize: 18,
+                fontSize: 14,
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF23263A),
               ),
             ),
 
-            const SizedBox(height: 2),
+            // const SizedBox(height: 2),
 
-            Expanded(
-              child: Text(
-                description,
-                style: const TextStyle(
-                  color: Color(0xFF6B7280),
-                  fontSize: 13,
-                  height: 1.4,
-                ),
-              ),
-            ),
+            // Expanded(
+            //   child: Text(
+            //     description,
+            //     style: const TextStyle(
+            //       color: Color(0xFF6B7280),
+            //       fontSize: 13,
+            //       height: 1.4,
+            //     ),
+            //   ),
+            // ),
 
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
 
             const Text(
               "Open module →",
               style: TextStyle(
                 color: Color(0xFF9CA3AF),
-                fontSize: 12,
+                fontSize: 10,
                 fontWeight: FontWeight.w500,
               ),
             ),

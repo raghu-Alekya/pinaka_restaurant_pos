@@ -96,6 +96,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   List<String> breadcrumbNames = [];
   List<int> breadcrumbIds = [];
 
+
   late MiniSubCategoryRepository miniSubRepo;
   late ProductRepository productRepo;
   late VariantRepository variantRepository;
@@ -181,8 +182,16 @@ class _DashboardScreenState extends State<DashboardScreen>
       selectedSubCategoryId = subCategory.id;
       selectedFolder = null;
       currentSubCategories = [];
-      breadcrumbNames = [selectedCategoryName ?? "", subCategory.name];
-      breadcrumbIds = [-1, subCategory.id];
+
+      breadcrumbNames = [
+        selectedCategoryName!,
+        subCategory.name,
+      ];
+
+      breadcrumbIds = [
+        -1,
+        subCategory.id,
+      ];
     });
 
     context.read<SubCategoryBloc>().add(
@@ -313,7 +322,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                               if (variants.isEmpty) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(content: Text('No variants available')
-                                  ,duration: Duration(seconds: 1),),
+                                    ,duration: Duration(seconds: 1),),
                                 );
                                 return;
                               }
@@ -763,6 +772,16 @@ class _DashboardScreenState extends State<DashboardScreen>
                               child: SideBarWidgets(
                                 token: widget.token,
                                 restaurantId: widget.restaurantId,
+                                onCategorySelected: (category) {
+                                  setState(() {
+                                    selectedCategoryName = category.name;
+
+                                    breadcrumbNames = [category.name];
+                                    breadcrumbIds = [int.parse(category.id)];
+                                    selectedFolder = null;
+                                    currentSubCategories = [];
+                                  });
+                                },
                               ),
                             ),
                             const SizedBox(width: 5),
@@ -805,10 +824,12 @@ class _DashboardScreenState extends State<DashboardScreen>
                                                 subCategories: subState.subcategories,
                                                 selectedIndex: selectedIndex,
                                                 onTap: (index) {
+                                                  final subCategory = subState.subcategories[index];
+
+                                                  onSubCategoryTap(subCategory);
+
                                                   context.read<SubCategoryBloc>().add(
-                                                    SelectSubCategory(
-                                                      subCategory: subState.subcategories[index],
-                                                    ),
+                                                    SelectSubCategory(subCategory: subCategory),
                                                   );
                                                 },
                                               );

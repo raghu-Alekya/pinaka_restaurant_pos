@@ -19,6 +19,8 @@ class PaymentSummary {
   final double serviceChargeValue;
   final double roundOff;
 
+  var orderType;
+
 
 
   PaymentSummary({

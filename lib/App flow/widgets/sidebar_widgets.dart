@@ -17,11 +17,13 @@ import '../../models/sidebar/category_model_.dart';
 class SideBarWidgets extends StatefulWidget {
   final String token;
   final String restaurantId;
+  final ValueChanged<Category>? onCategorySelected;
 
   const SideBarWidgets({
     super.key,
     required this.token,
     required this.restaurantId,
+    this.onCategorySelected,
   });
 
   @override
@@ -60,6 +62,7 @@ class _SideBarWidgetsState extends State<SideBarWidgets> {
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
+          widget.onCategorySelected?.call(category);
           // Select clicked category
           final categoryBloc = context.read<CategoryBloc>();
           categoryBloc.add(SelectCategory(category.id));

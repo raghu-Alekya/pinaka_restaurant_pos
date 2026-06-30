@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pinaka_restaurant_pos/App%20flow/widgets/print_receipt.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/UserPermissions.dart';
 import '../../repositories/auth_repository.dart';
@@ -10,6 +11,13 @@ import '../ui/employee_login_page.dart';
 import '../ui/home_screen.dart';
 import '../ui/tables_screen.dart';
 import 'LogoutConfirmationDialog.dart';
+
+// Added for Payment Screen support
+import '../../models/payment/payment_summary_model.dart';
+import '../../repositories/ordertype_payment.dart';
+
+// Added for Print support
+import '../../printer/printer_service.dart';
 
 class TopBar extends StatefulWidget implements PreferredSizeWidget {
   final String token;
@@ -23,19 +31,40 @@ class TopBar extends StatefulWidget implements PreferredSizeWidget {
   final String restaurantId;
   final String restaurantName;
 
+  // ── Payment Screen parameters ──────────────────────────
+  final bool isPaymentScreen;
+  final PaymentSummary? paymentSummary;
+  final VoidCallback? onBackPressed;
+  final ValueChanged<String>? onOrderTypeChanged;
+  final ValueChanged<String>? onCustomerPhoneChanged;
+  final VoidCallback? onAddCustomer;
+
+  // ── Additional parameters for PrintRecipt ──────────────
+  final String cashierName;
+  final List<Map<String, dynamic>> loadedTables;
+  final int? zoneId;
 
   const TopBar({
     Key? key,
     required this.token,
     required this.pin,
     this.userPermissions,
-    this.onPermissionsReceived, Map<String, dynamic>? selectedUser,
-    this.isHomeScreen = false, // default
+    this.onPermissionsReceived,
+    this.isHomeScreen = false,
     this.isOrderPanel = false,
     this.showTablesIcon = false,
     this.onTablesTap,
     required this.restaurantId,
     required this.restaurantName,
+    this.isPaymentScreen = false,
+    this.paymentSummary,
+    this.onBackPressed,
+    this.onOrderTypeChanged,
+    this.onCustomerPhoneChanged,
+    this.onAddCustomer,
+    this.cashierName = '',
+    this.loadedTables = const [],
+    this.zoneId,
   }) : super(key: key);
 
   @override
@@ -47,14 +76,64 @@ class TopBar extends StatefulWidget implements PreferredSizeWidget {
 
 class _TopBarState extends State<TopBar> {
   bool isLightMode = true;
+  bool _isAttendanceDialogOpen = false;
+  bool _isCheckInDone = false;
+  UserPermissions? _permissions;
+
+  // ── Payment Screen state ───────────────────────────────
+  List<String> orderTypes = [];
+  String? selectedOrderType;
+  final TextEditingController _customerPhoneController = TextEditingController();
+
+  // Store payment summary locally
+  PaymentSummary? _localPaymentSummary;
+
+  @override
+  void initState() {
+    super.initState();
+    // Store initial payment summary
+    _localPaymentSummary = widget.paymentSummary;
+
+    // Debug: Log initial state
+    debugPrint("🔍 TopBar initState - Payment Summary: ${_localPaymentSummary != null ? 'Available' : 'NULL'}");
+    if (_localPaymentSummary != null) {
+      debugPrint("🔍 Order ID: ${_localPaymentSummary!.orderId}");
+      debugPrint("🔍 Table Name: ${_localPaymentSummary!.tableName}");
+      debugPrint("🔍 Net Total: ${_localPaymentSummary!.netTotal}");
+    }
+
+    if (widget.isPaymentScreen) {
+      _loadOrderTypes();
+    }
+  }
+
+  @override
+  void didUpdateWidget(TopBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Update local copy when widget receives new payment summary
+    if (widget.paymentSummary != oldWidget.paymentSummary) {
+      debugPrint("🔍 TopBar didUpdateWidget - Payment Summary updated");
+      setState(() {
+        _localPaymentSummary = widget.paymentSummary;
+      });
+      if (_localPaymentSummary != null) {
+        debugPrint("🔍 New Order ID: ${_localPaymentSummary!.orderId}");
+        debugPrint("🔍 New Net Total: ${_localPaymentSummary!.netTotal}");
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _customerPhoneController.dispose();
+    super.dispose();
+  }
 
   void toggleMode() {
     setState(() {
       isLightMode = !isLightMode;
     });
   }
-
-  bool _isAttendanceDialogOpen = false;
 
   void _handlePermissions(UserPermissions permissions) {
     setState(() {
@@ -63,15 +142,143 @@ class _TopBarState extends State<TopBar> {
     widget.onPermissionsReceived?.call(permissions);
   }
 
-  bool _isCheckInDone = false;
-  UserPermissions? _permissions;
+  Future<void> _loadOrderTypes() async {
+    try {
+      final repo = OrderTypesInPaymentScreenRepository();
+      final result = await repo.getOrderTypes(token: widget.token);
+      if (result != null && mounted) {
+        setState(() {
+          orderTypes = result.orderTypes;
+          selectedOrderType = widget.paymentSummary?.orderType ?? "Dine In";
+        });
+      }
+    } catch (e) {
+      debugPrint(" Order Types Error in TopBar: $e");
+    }
+  }
+
+  // ✅ Updated _printBill with better null handling
+  Future<void> _printBill() async {
+    debugPrint("🖨️ ========== PRINT BUTTON CLICKED ==========");
+    debugPrint("🖨️ Timestamp: ${DateTime.now()}");
+    debugPrint("🖨️ Is Payment Screen: ${widget.isPaymentScreen}");
+    debugPrint("🖨️ Payment Summary from widget: ${widget.paymentSummary != null ? 'Available' : 'NULL'}");
+    debugPrint("🖨️ Local Payment Summary: ${_localPaymentSummary != null ? 'Available' : 'NULL'}");
+
+    // Try to get payment summary from multiple sources
+    PaymentSummary? summaryToPrint = _localPaymentSummary ?? widget.paymentSummary;
+
+    // Check if payment summary is available
+    if (summaryToPrint == null) {
+      debugPrint("❌ ERROR: No payment summary available from any source!");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("No payment summary available. Please try again."),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      // 📝 Log Payment Summary Details
+      debugPrint("📋 ===== PAYMENT SUMMARY DETAILS ===== ");
+      debugPrint("📋 Order ID: ${summaryToPrint.orderId}");
+      debugPrint("📋 Table Name: ${summaryToPrint.tableName}");
+      debugPrint("📋 Order Type: ${summaryToPrint.orderType ?? 'N/A'}");
+      debugPrint("📋 Gross Total: ${summaryToPrint.grossTotal}");
+      debugPrint("📋 Net Total: ${summaryToPrint.netTotal}");
+      debugPrint("📋 Tax Amount: ${summaryToPrint.tax}");
+      debugPrint("📋 Coupon Discount: ${summaryToPrint.coupons}");
+      debugPrint("📋 Merchant Discount: ${summaryToPrint.discount}");
+      debugPrint("📋 Tip Amount: ${summaryToPrint.tipAmount}");
+      debugPrint("📋 Service Charge: ${summaryToPrint.serviceChargeValue}");
+      debugPrint("📋 Service Charge %: ${summaryToPrint.serviceChargePercentage}");
+      debugPrint("📋 Cashier: ${widget.cashierName.isNotEmpty ? widget.cashierName : widget.userPermissions?.displayName ?? 'Admin'}");
+
+      // 📝 Log Line Items
+      debugPrint("📋 ===== LINE ITEMS (${summaryToPrint.lineItems.length}) ===== ");
+      for (int i = 0; i < summaryToPrint.lineItems.length; i++) {
+        final item = summaryToPrint.lineItems[i];
+        debugPrint("📋 Item ${i+1}: ${item.name} | Qty: ${item.qty} | Price: ${item.price} | Total: ${item.total}");
+        if (item.modifiers.isNotEmpty) {
+          debugPrint("📋   Modifiers: ${item.modifiers.join(', ')}");
+        }
+      }
+
+      // 📝 Log JSON
+      try {
+        final jsonData = {
+          'orderId': summaryToPrint.orderId,
+          'tableName': summaryToPrint.tableName,
+          'orderType': summaryToPrint.orderType,
+          'grossTotal': summaryToPrint.grossTotal,
+          'netTotal': summaryToPrint.netTotal,
+          'tax': summaryToPrint.tax,
+          'coupons': summaryToPrint.coupons,
+          'discount': summaryToPrint.discount,
+          'tipAmount': summaryToPrint.tipAmount,
+          'serviceChargeValue': summaryToPrint.serviceChargeValue,
+          'serviceChargePercentage': summaryToPrint.serviceChargePercentage,
+        };
+        debugPrint("📋 Summary JSON: ${jsonData.toString()}");
+      } catch (e) {
+        debugPrint("⚠️ Could not convert to JSON: $e");
+      }
+
+      debugPrint("🖨️ ===== OPENING PRINT RECEIPT DIALOG ===== ");
+
+      // ✅ Fix: Cast to non-nullable using ! since we already checked null
+      final result = await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => PrintRecipt(
+          paymentSummary: summaryToPrint!, // Use ! since we know it's not null
+          cashierName: widget.cashierName.isNotEmpty
+              ? widget.cashierName
+              : widget.userPermissions?.displayName ?? 'Admin',
+          pin: widget.pin,
+          token: widget.token,
+          restaurantId: widget.restaurantId,
+          restaurantName: widget.restaurantName,
+          loadedTables: widget.loadedTables,
+          zoneId: widget.zoneId,
+        ),
+      );
+
+      debugPrint("🖨️ Print dialog closed with result: $result");
+      debugPrint("🖨️ ========== PRINT FLOW COMPLETED ==========");
+
+    } catch (e, stackTrace) {
+      debugPrint("❌ ===== PRINT ERROR =====");
+      debugPrint("❌ Error: $e");
+      debugPrint("❌ Stack Trace: $stackTrace");
+      debugPrint("❌ ==========================");
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Failed to open print dialog: ${e.toString().replaceFirst('Exception: ', '')}"),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Size get preferredSize => Size.fromHeight(70);
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
+    // Update local summary from widget on each build (safety net)
+    if (widget.paymentSummary != null && _localPaymentSummary != widget.paymentSummary) {
+      _localPaymentSummary = widget.paymentSummary;
+      debugPrint("🔍 Build - Updated local summary from widget");
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -85,95 +292,263 @@ class _TopBarState extends State<TopBar> {
         ],
       ),
       child: AppBar(
-          backgroundColor: Colors.white,
-          toolbarHeight: 70,
-          automaticallyImplyLeading: false,
-          elevation: 0,
-          scrolledUnderElevation: 0.0,
-          titleSpacing: 0,
-          title:Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 15),
-            child: Row(
-                children: [
-                  /// LEFT SIDE — Logo
-                  Image.asset(
-                    'assets/pinaka.png',
-                    height: 40,
-                    width: 100,
-                    fit: BoxFit.contain,
+        backgroundColor: Colors.white,
+        toolbarHeight: 70,
+        automaticallyImplyLeading: false,
+        elevation: 0,
+        scrolledUnderElevation: 0.0,
+        titleSpacing: 0,
+        title: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 15),
+          child: Row(
+            children: [
+              /// LEFT SIDE — Logo or Back button (Payment Screen)
+              if (widget.isPaymentScreen)
+                GestureDetector(
+                  onTap: widget.onBackPressed ?? () => Navigator.pop(context),
+                  child: Container(
+                    width: 84,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1A2B4A),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          color: Colors.white,
+                          size: 14,
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          "Back",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+                )
+              else
+                Image.asset(
+                  'assets/pinaka.png',
+                  height: 40,
+                  width: 100,
+                  fit: BoxFit.contain,
+                ),
 
-                  const SizedBox(width: 15),
+              const SizedBox(width: 15),
 
-                  /// (Optional) Search box here later 👈
+              /// ── PAYMENT SCREEN CENTER CONTROLS ──────────
+              if (widget.isPaymentScreen)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Text(
+                      "Customer :",
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF111827),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
 
-                  /// PUSH EVERYTHING ELSE TO RIGHT
-                  const Spacer(),
+                    SizedBox(
+                      width: 170,
+                      height: 38,
+                      child: TextField(
+                        controller: _customerPhoneController,
+                        keyboardType: TextInputType.phone,
+                        style: const TextStyle(fontSize: 13),
+                        onChanged: widget.onCustomerPhoneChanged,
+                        decoration: InputDecoration(
+                          hintText: "Mobile number",
+                          hintStyle: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFFAAAAAA),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFD1D5DB),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF4F7CFF),
+                              width: 1.5,
+                            ),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                        ),
+                      ),
+                    ),
 
-                  /// RIGHT SIDE — ACTIONS
-                  // _buildExitIconButton(),
-                  // const SizedBox(width: 10),
+                    const SizedBox(width: 8),
 
-                  const Spacer(),
+                    GestureDetector(
+                      onTap: widget.onAddCustomer,
+                      child: Container(
+                        height: 38,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1A2B4A),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(Icons.add, color: Colors.white, size: 16),
+                            SizedBox(width: 4),
+                            Text("Add",
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                )),
+                          ],
+                        ),
+                      ),
+                    ),
 
-                  if (widget.isHomeScreen) ...[
-                    // HOME SCREEN
-                    if (widget.userPermissions?.canUpdateShiftAttendance ?? false) ...[
-                      _buildAttendanceIconButton(context),
-                      const SizedBox(width: 10),
-                    ],
+                    const SizedBox(width: 14),
 
-                    _buildNotificationIconButton(),
-                    const SizedBox(width: 10),
+                    // ORDER TYPE
+                    Container(
+                      height: 38,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: const Color(0xFFD1D5DB),
+                        ),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: selectedOrderType,
+                          items: orderTypes.isNotEmpty
+                              ? orderTypes.map((type) {
+                            return DropdownMenuItem(
+                              value: type,
+                              child: Text(type),
+                            );
+                          }).toList()
+                              : null,
+                          onChanged: (value) async {
+                            if (value == null) return;
+                            setState(() => selectedOrderType = value);
+                            widget.onOrderTypeChanged?.call(value);
+                          },
+                        ),
+                      ),
+                    ),
 
-                    _buildSettingsButton(),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 14),
 
-                    _buildLogoutButton(),
-                    const SizedBox(width: 10),
+                    // PRINT - Updated to use _printBill
+                    GestureDetector(
+                      onTap: () {
+                        debugPrint("🖨️ PRINT BUTTON TAPPED - UI Interaction");
+                        _printBill();
+                      },
+                      child: Container(
+                        height: 38,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF22C55E),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(Icons.print_outlined,
+                                color: Colors.white, size: 16),
+                            SizedBox(width: 6),
+                            Text("Print",
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                )),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
 
-                    _buildProfileSection(),
-                  ]
+              /// PUSH EVERYTHING ELSE TO RIGHT
+              const Spacer(),
 
-                  else if (widget.isOrderPanel) ...[
-                    // ORDER PANEL SCREEN
-                    _buildTablesButton(),
-                    const SizedBox(width: 10),
+              if (widget.isHomeScreen) ...[
+                // HOME SCREEN
+                if (widget.userPermissions?.canUpdateShiftAttendance ?? false) ...[
+                  _buildAttendanceIconButton(context),
+                  const SizedBox(width: 10),
+                ],
 
-                    _buildHomeButton(),
-                    const SizedBox(width: 10),
+                _buildNotificationIconButton(),
+                const SizedBox(width: 10),
 
-                    _buildNotificationIconButton(),
+                _buildSettingsButton(),
+                const SizedBox(width: 10),
 
-                    const SizedBox(width: 10),
+                _buildLogoutButton(),
+                const SizedBox(width: 10),
 
-                    _buildSettingsButton(),
-                    const SizedBox(width: 10),
+                _buildProfileSection(),
+              ] else if (widget.isOrderPanel) ...[
+                // ORDER PANEL SCREEN
+                _buildTablesButton(),
+                const SizedBox(width: 10),
 
-                    _buildProfileSection(),
-                  ]
+                _buildHomeButton(),
+                const SizedBox(width: 10),
 
-                  else ...[
-                      // ALL OTHER SCREENS
-                      _buildHomeButton(),
-                      const SizedBox(width: 10),
+                _buildNotificationIconButton(),
+                const SizedBox(width: 10),
 
-                      _buildNotificationIconButton(),
-                      const SizedBox(width: 10),
+                _buildSettingsButton(),
+                const SizedBox(width: 10),
 
-                      _buildSettingsButton(),
-                      const SizedBox(width: 10),
+                _buildProfileSection(),
+              ] else ...[
+                // ALL OTHER SCREENS (including Payment Screen)
+                _buildHomeButton(),
+                const SizedBox(width: 10),
 
+                _buildNotificationIconButton(),
+                const SizedBox(width: 10),
 
+                _buildSettingsButton(),
+                const SizedBox(width: 10),
 
-                      _buildProfileSection(),
-                    ]     ]
-            ),
-          )
+                _buildLogoutButton(),
+                const SizedBox(width: 10),
 
+                _buildProfileSection(),
+              ]
+            ],
+          ),
+        ),
       ),
     );
   }
+
   Widget _buildHomeButton() {
     return _buildIconButton(
       label: "Home",
@@ -195,9 +570,11 @@ class _TopBarState extends State<TopBar> {
             ),
           ),
               (route) => false,
-        );      },
+        );
+      },
     );
   }
+
   Widget _buildTablesButton() {
     return _buildIconButton(
       label: "Tables",
@@ -224,6 +601,7 @@ class _TopBarState extends State<TopBar> {
       },
     );
   }
+
   Widget _buildSettingsButton() {
     return _buildIconButton(
       label: "Settings",
@@ -249,7 +627,9 @@ class _TopBarState extends State<TopBar> {
         );
       },
     );
-  }Widget _buildLogoutButton() {
+  }
+
+  Widget _buildLogoutButton() {
     return _buildIconButton(
       label: "Logout",
       color: const Color(0xFFFF9800),
@@ -312,8 +692,7 @@ class _TopBarState extends State<TopBar> {
             Navigator.pop(context); // Close loader
           }
 
-          final message =
-          e.toString().replaceFirst("Exception: ", "");
+          final message = e.toString().replaceFirst("Exception: ", "");
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -325,9 +704,9 @@ class _TopBarState extends State<TopBar> {
           );
         }
       },
-
     );
   }
+
   Widget _buildAttendanceIconButton(BuildContext context) {
     return GestureDetector(
       onTap: () async {
@@ -354,14 +733,11 @@ class _TopBarState extends State<TopBar> {
             );
           }).toList();
 
-          final currentShift =
-          await repository.getCurrentShift(widget.token);
+          final currentShift = await repository.getCurrentShift(widget.token);
 
           if (currentShift != null) {
-            final presentIds =
-            List<int>.from(currentShift['shift_emp'] ?? []);
-            final absentIds =
-            List<int>.from(currentShift['shift_absent_emp'] ?? []);
+            final presentIds = List<int>.from(currentShift['shift_emp'] ?? []);
+            final absentIds = List<int>.from(currentShift['shift_absent_emp'] ?? []);
 
             for (var emp in employees) {
               final empId = int.tryParse(emp.id);
@@ -378,8 +754,7 @@ class _TopBarState extends State<TopBar> {
           if (context.mounted) {
             Navigator.pop(context);
 
-            final shiftData =
-            await EmployeeRepository().getCurrentShift(widget.token);
+            final shiftData = await EmployeeRepository().getCurrentShift(widget.token);
 
             await showDialog(
               context: context,
@@ -396,8 +771,10 @@ class _TopBarState extends State<TopBar> {
           if (context.mounted) {
             Navigator.pop(context);
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Failed to load employees'),
-                  duration: Duration(seconds: 1)),
+              const SnackBar(
+                content: Text('Failed to load employees'),
+                duration: Duration(seconds: 1),
+              ),
             );
           }
         } finally {
@@ -408,8 +785,6 @@ class _TopBarState extends State<TopBar> {
           }
         }
       },
-
-      /// ✅ NEW DASHBOARD TILE UI
       child: _buildIconButton(
         label: "Attendance",
         color: const Color(0xFF4F7CFF),
@@ -423,95 +798,41 @@ class _TopBarState extends State<TopBar> {
     );
   }
 
-
-  // Widget _buildExitIconButton() {
-  //   return GestureDetector(
-  //     onTap: () {
-  //       showDialog(
-  //         context: context,
-  //         barrierDismissible: true,
-  //         builder: (context) => Checkinpopup(
-  //           token: widget.token,
-  //           onCheckIn: () {
-  //             Navigator.of(context).pop();
-  //             setState(() {
-  //               _isCheckInDone = true;
-  //             });
-  //           },
-  //           onCancel: () {
-  //             Navigator.of(context).pop();
-  //           },
-  //           onPermissionsReceived: (permissions) {
-  //             _handlePermissions(permissions);
-  //           },
-  //         ),
-  //       );
-  //     },
-  //
-  //     /// ✅ DASHBOARD TILE UI
-  //     child: _buildIconButton(
-  //       label: "CheckIn",
-  //       color: const Color(0xFFFF5A3C),
-  //       icon: Image.asset(
-  //         'assets/checkin.png', // or checkin icon if you have
-  //         width: 20,
-  //         height: 20,
-  //         color: const Color(0xFFFF5A3C),
-  //       ),
-  //     ),
-  //   );
-  // }
-
-  // Widget _buildModeToggle() {
-  //   return GestureDetector(
-  //     onTap: toggleMode,
-  //     child: Container(
-  //       width: 34,
-  //       height: 34,
-  //       decoration: BoxDecoration(
-  //         color: Colors.white,
-  //         shape: BoxShape.circle,
-  //         boxShadow: [
-  //           BoxShadow(color: Colors.grey.shade300, blurRadius: 5),
-  //         ],
-  //       ),
-  //       child: Center(
-  //         child: Row(
-  //           mainAxisSize: MainAxisSize.min,
-  //           children: [
-  //             CustomPaint(
-  //               size: Size(7, 14),
-  //               painter: TrianglePainter(
-  //                 isLeft: true,
-  //                 fillColor: isLightMode ? Colors.white : Colors.black,
-  //               ),
-  //             ),
-  //             SizedBox(width: 4),
-  //             CustomPaint(
-  //               size: Size(7, 14),
-  //               painter: TrianglePainter(
-  //                 isLeft: false,
-  //                 fillColor: isLightMode ? Colors.black : Colors.white,
-  //               ),
-  //             ),
-  //           ],
-  //         ),
-  //       ),
-  //     ),
-  //   );
-  // }
-  // Widget _buildTablesButton() {
-  //   return _buildIconButton(
-  //     label: "Tables",
-  //     color: const Color(0xFF4F7CFF),
-  //     icon: const Icon(
-  //       Icons.table_restaurant,
-  //       color: Color(0xFF4F7CFF),
-  //       size: 22,
-  //     ),
-  //     onPressed: widget.onTablesTap,
-  //   );
-  // }
+  Widget _buildExitIconButton() {
+    return GestureDetector(
+      onTap: () {
+        showDialog(
+          context: context,
+          barrierDismissible: true,
+          builder: (context) => Checkinpopup(
+            token: widget.token,
+            onCheckIn: () {
+              Navigator.of(context).pop();
+              setState(() {
+                _isCheckInDone = true;
+              });
+            },
+            onCancel: () {
+              Navigator.of(context).pop();
+            },
+            onPermissionsReceived: (permissions) {
+              _handlePermissions(permissions);
+            },
+          ),
+        );
+      },
+      child: _buildIconButton(
+        label: "CheckIn",
+        color: const Color(0xFFFF5A3C),
+        icon: Image.asset(
+          'assets/checkin.png',
+          width: 20,
+          height: 20,
+          color: const Color(0xFFFF5A3C),
+        ),
+      ),
+    );
+  }
 
   Widget _buildNotificationIconButton({VoidCallback? onPressed}) {
     return _buildIconButton(
@@ -526,7 +847,6 @@ class _TopBarState extends State<TopBar> {
             size: 24,
             color: Color(0xFFFFC107),
           ),
-
           /// 🔴 Notification Dot
           Positioned(
             top: -2,
@@ -546,7 +866,6 @@ class _TopBarState extends State<TopBar> {
     );
   }
 
-
   Widget _buildIconButton({
     required Widget icon,
     required String label,
@@ -556,16 +875,12 @@ class _TopBarState extends State<TopBar> {
     return GestureDetector(
       onTap: onPressed,
       child: Container(
-        width: 65, // ⬅ slightly wider like image
+        width: 65,
         height: 51,
-        margin: const EdgeInsets.only(right: 14,bottom: 5),
+        margin: const EdgeInsets.only(right: 14, bottom: 5),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
-          // border: Border.all(
-          //   color: color.withOpacity(0.35),
-          //   width: 1,
-          // ),
           boxShadow: [
             /// MAIN soft shadow
             BoxShadow(
@@ -573,7 +888,6 @@ class _TopBarState extends State<TopBar> {
               blurRadius: 10,
               offset: const Offset(0, 6),
             ),
-
             /// COLORED glow shadow (very subtle)
             BoxShadow(
               color: color.withOpacity(0.10),
@@ -602,16 +916,15 @@ class _TopBarState extends State<TopBar> {
     );
   }
 
-
   Widget _buildProfileSection() {
     final avatarUrl = widget.userPermissions?.avatar;
 
     return Container(
-      height: 55, // matches image height
+      height: 55,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14), // 🔥 rectangle with rounded corners
+        borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.08),
@@ -630,9 +943,7 @@ class _TopBarState extends State<TopBar> {
                 ? NetworkImage(avatarUrl)
                 : const AssetImage('assets/loginname.png') as ImageProvider,
           ),
-
           const SizedBox(width: 12),
-
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -659,11 +970,8 @@ class _TopBarState extends State<TopBar> {
       ),
     );
   }
-
-
-
-
 }
+
 class TrianglePainter extends CustomPainter {
   final bool isLeft;
   final Color fillColor;
