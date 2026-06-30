@@ -119,7 +119,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
             preferredSize: const Size.fromHeight(60),
             child: TopBar(
               userPermissions: _userPermissions,
-              selectedUser: _selectedUser,
+              selectedUser: _selectedUser,restaurantId: widget.restaurantId,
+              restaurantName: widget.restaurantName,
+
               token: widget.token,
               // isPaymentScreen: true,                    // ← Important
               pin: widget.pin,

@@ -307,6 +307,8 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
             TopBar(
               userPermissions: _userPermissions,
               isHomeScreen: false,
+              restaurantId: widget.restaurantId,
+              restaurantName: widget.restaurantName,
               selectedUser: _selectedUser,
               token: widget.token,
               pin: widget.pin,

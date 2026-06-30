@@ -291,6 +291,8 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: TopBar(
         token: widget.token,
         pin: widget.pin,
+        restaurantId: widget.restaurantId,
+        restaurantName: widget.restaurantName,
         userPermissions: _userPermissions,
         isHomeScreen: true,
         onPermissionsReceived: (permissions) async {

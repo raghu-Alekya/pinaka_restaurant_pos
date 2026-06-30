@@ -773,7 +773,13 @@ class _OrderPanelState extends State<OrderPanel> {
 
 
               /// Bottom action buttons
-              Row(
+        Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   Builder(
@@ -1054,9 +1060,11 @@ class _OrderPanelState extends State<OrderPanel> {
                   ),
                 ],
               ),
-            ],
+        )],
           ),
         );
+
+
       },
     ));
   }

@@ -1993,7 +1993,9 @@ class _TablesScreenState extends State<TablesScreen> {
 
         appBar: TopBar(
           token: widget.token,
-          pin: widget.pin,
+          pin: widget.pin,restaurantId: widget.restaurantId,
+          restaurantName: widget.restaurantName,
+
           userPermissions: _userPermissions,
           isHomeScreen: false,
           onPermissionsReceived: (permissions) {

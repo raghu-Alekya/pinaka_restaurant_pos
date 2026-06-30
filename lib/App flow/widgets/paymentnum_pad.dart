@@ -1085,16 +1085,16 @@ class _paymentsummaryState extends State<paymentsummary> {
 
                   // Each card is now its own white elevated card (matches image)
                   _netAmountCard(netPayableVal),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 15),
                   _balanceAmountCard(balAmt),
 
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 30),
 
                   Expanded(
                     flex: 3,
                     child: Container(
                       margin: const EdgeInsets.only(bottom: 5),
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
@@ -1114,26 +1114,6 @@ class _paymentsummaryState extends State<paymentsummary> {
             ),
           ),
 
-          const SizedBox(height: 14),
-
-          Expanded(
-            flex: 3,
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                      color: Colors.black.withOpacity(0.07),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2))
-                ],
-              ),
-              child: _buildActionButtons(context, netPayableVal),
-            ),
-          ),
         ],
       ),
     );
@@ -1280,7 +1260,8 @@ class _paymentsummaryState extends State<paymentsummary> {
         ],
       ),
     );
-  }  // Shared builder: plain label above a soft gradient pill (value + icon).
+  }
+
   Widget _gradientAmountCard({
     required String label,
     required String value,
@@ -1757,7 +1738,7 @@ class _paymentsummaryState extends State<paymentsummary> {
     return GestureDetector(
       onTap: isApplied ? null : onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
         decoration: BoxDecoration(
           // ── Only change: gradient when applied, white when not ──
           gradient: isApplied ? _tileGradient(iconBg) : null,

@@ -720,6 +720,9 @@ class _DashboardScreenState extends State<DashboardScreen>
             token: widget.token,
             pin: widget.pin,
             userPermissions: _userPermissions,
+            restaurantId: widget.restaurantId,
+            restaurantName: widget.restaurantName,
+            isOrderPanel: true,
             isHomeScreen: false,
             showTablesIcon: true,// Show Tables icon only on Dashboard
             // onTablesTap: () {

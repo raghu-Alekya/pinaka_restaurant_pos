@@ -633,6 +633,8 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       appBar: TopBar(
         token: widget.token,
         pin: widget.pin,
+        restaurantId: widget.restaurantId,
+        restaurantName: widget.restaurantName,
         userPermissions: _userPermissions,
         onPermissionsReceived: (permissions) {
           setState(() {

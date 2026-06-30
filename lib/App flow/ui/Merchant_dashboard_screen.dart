@@ -321,6 +321,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       appBar: TopBar(
         token: widget.token,
         pin: widget.pin,
+        restaurantId: widget.restaurantId,
+        restaurantName: widget.restaurantName,
         userPermissions: _userPermissions,
         onPermissionsReceived: (permissions) async {
           setState(() {

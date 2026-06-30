@@ -112,7 +112,9 @@ class _TipsScreenState extends State<TipsScreen> {
       backgroundColor: const Color(0xFFE4E9F9),
       appBar: TopBar(
         token: widget.token,
-        pin: widget.pin,
+        pin: widget.pin,restaurantId: widget.restaurantId,
+        restaurantName: widget.restaurantName,
+
         userPermissions: _userPermissions,
         isHomeScreen: false,
         onPermissionsReceived: (permissions) {

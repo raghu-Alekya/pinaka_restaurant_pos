@@ -8,6 +8,7 @@ import '../ui/DailyAttendanceScreen.dart';
 import '../ui/SettingsScreen.dart';
 import '../ui/employee_login_page.dart';
 import '../ui/home_screen.dart';
+import '../ui/tables_screen.dart';
 import 'LogoutConfirmationDialog.dart';
 
 class TopBar extends StatefulWidget implements PreferredSizeWidget {
@@ -19,6 +20,8 @@ class TopBar extends StatefulWidget implements PreferredSizeWidget {
   final bool isOrderPanel;
   final bool showTablesIcon;
   final VoidCallback? onTablesTap;
+  final String restaurantId;
+  final String restaurantName;
 
 
   const TopBar({
@@ -31,6 +34,8 @@ class TopBar extends StatefulWidget implements PreferredSizeWidget {
     this.isOrderPanel = false,
     this.showTablesIcon = false,
     this.onTablesTap,
+    required this.restaurantId,
+    required this.restaurantName,
   }) : super(key: key);
 
   @override
@@ -112,6 +117,7 @@ class _TopBarState extends State<TopBar> {
                   const Spacer(),
 
                   if (widget.isHomeScreen) ...[
+                    // HOME SCREEN
                     if (widget.userPermissions?.canUpdateShiftAttendance ?? false) ...[
                       _buildAttendanceIconButton(context),
                       const SizedBox(width: 10),
@@ -127,23 +133,41 @@ class _TopBarState extends State<TopBar> {
                     const SizedBox(width: 10),
 
                     _buildProfileSection(),
-                  ] else ...[
+                  ]
+
+                  else if (widget.isOrderPanel) ...[
+                    // ORDER PANEL SCREEN
+                    _buildTablesButton(),
+                    const SizedBox(width: 10),
+
                     _buildHomeButton(),
                     const SizedBox(width: 10),
 
-                    if (widget.showTablesIcon)
-                      _buildTablesButton(),
-
-                    if (widget.showTablesIcon)
-                      const SizedBox(width: 10),
-
                     _buildNotificationIconButton(),
+
                     const SizedBox(width: 10),
+
                     _buildSettingsButton(),
                     const SizedBox(width: 10),
 
                     _buildProfileSection(),
-                  ],          ]
+                  ]
+
+                  else ...[
+                      // ALL OTHER SCREENS
+                      _buildHomeButton(),
+                      const SizedBox(width: 10),
+
+                      _buildNotificationIconButton(),
+                      const SizedBox(width: 10),
+
+                      _buildSettingsButton(),
+                      const SizedBox(width: 10),
+
+
+
+                      _buildProfileSection(),
+                    ]     ]
             ),
           )
 
@@ -166,11 +190,36 @@ class _TopBarState extends State<TopBar> {
             builder: (_) => HomeScreen(
               token: widget.token,
               pin: widget.pin,
-              restaurantId: '',       // pass your values
-              restaurantName: '',
+              restaurantId: widget.restaurantId,
+              restaurantName: widget.restaurantName,
             ),
           ),
               (route) => false,
+        );      },
+    );
+  }
+  Widget _buildTablesButton() {
+    return _buildIconButton(
+      label: "Tables",
+      color: const Color(0xFF4F7CFF),
+      icon: const Icon(
+        Icons.table_restaurant,
+        color: Color(0xFF4F7CFF),
+        size: 22,
+      ),
+      onPressed: () {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => TablesScreen(
+              loadedTables: const [],
+              pin: widget.pin,
+              token: widget.token,
+              restaurantId: widget.restaurantId,
+              restaurantName: widget.restaurantName,
+              userPermissions: widget.userPermissions,
+            ),
+          ),
         );
       },
     );
@@ -451,18 +500,18 @@ class _TopBarState extends State<TopBar> {
   //     ),
   //   );
   // }
-  Widget _buildTablesButton() {
-    return _buildIconButton(
-      label: "Tables",
-      color: const Color(0xFF4F7CFF),
-      icon: const Icon(
-        Icons.table_restaurant,
-        color: Color(0xFF4F7CFF),
-        size: 22,
-      ),
-      onPressed: widget.onTablesTap,
-    );
-  }
+  // Widget _buildTablesButton() {
+  //   return _buildIconButton(
+  //     label: "Tables",
+  //     color: const Color(0xFF4F7CFF),
+  //     icon: const Icon(
+  //       Icons.table_restaurant,
+  //       color: Color(0xFF4F7CFF),
+  //       size: 22,
+  //     ),
+  //     onPressed: widget.onTablesTap,
+  //   );
+  // }
 
   Widget _buildNotificationIconButton({VoidCallback? onPressed}) {
     return _buildIconButton(

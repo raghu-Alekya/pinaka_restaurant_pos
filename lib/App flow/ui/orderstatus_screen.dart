@@ -203,6 +203,8 @@ class _OrdersListTableState extends State<OrdersListTable> {
       appBar: TopBar(
         token: widget.token,
         pin: widget.pin,
+        restaurantId: widget.restaurantId,
+        restaurantName: widget.restaurantName,
         userPermissions: _userPermissions,
         isHomeScreen: false,
         onPermissionsReceived: (permissions) {

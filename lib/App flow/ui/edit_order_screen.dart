@@ -530,6 +530,8 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         token: widget.token,
         pin: widget.pin,
         userPermissions: _userPermissions,
+          restaurantId: widget.restaurantId,
+          restaurantName: widget.restaurantName,
         onPermissionsReceived: (p) => setState(() => _userPermissions = p),
       ),
 

@@ -3,14 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../blocs/Bloc Logic/inventory_bloc.dart';
 import '../../local database/table_dao.dart';
 import '../../models/UserPermissions.dart';
-import '../../repositories/inventory_repository/beverage_iventory_repository.dart';
-// import '../App flow/ui/inventory_screen.dart';
-// import '../App flow/widgets/NavigationHelper.dart';
-// import '../App flow/widgets/bottom_nav_bar.dart';
-// import '../App flow/widgets/top_bar.dart';
-// import '../blocs/Bloc Logic/inventory_bloc.dart';
-// import '../models/UserPermissions.dart';
-// import '../repositories/beverage_inventory_repository.dart';
 import '../../utils/SessionManager.dart';
 import '../ui/tables_screen.dart';
 import '../widgets/NavigationHelper.dart';
@@ -64,7 +56,9 @@ class _DashboardState extends State<Dashboard> {
       backgroundColor: const Color(0xFFFFFFFF),
       appBar: TopBar(
         token: widget.token,
-        pin: widget.pin,
+        pin: widget.pin,restaurantId: widget.restaurantId,
+        restaurantName: widget.restaurantName,
+
         userPermissions: _userPermissions,
         onPermissionsReceived: (permissions) {
           setState(() {

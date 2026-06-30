@@ -355,7 +355,9 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
       // TOP BAR
       appBar: TopBar(
         token: widget.token,
-        pin: widget.pin,
+        pin: widget.pin,restaurantId: widget.restaurantId,
+        restaurantName: widget.restaurantName,
+
         userPermissions: _userPermissions,
         onPermissionsReceived: (permissions) {
           setState(() {
