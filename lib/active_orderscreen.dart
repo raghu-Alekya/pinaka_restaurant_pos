@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:kds_app/top_bar.dart';
-import 'package:kds_app/top_bar.dart';
 import 'package:kds_app/widgets/completed_orders.dart';
 import 'package:provider/provider.dart';
 
@@ -18,53 +17,39 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
   OrderTypeFilter selectedFilter = OrderTypeFilter.all;
   KotView selectedView = KotView.active;
 
-
-  List<Map<String, dynamic>> filterOrders(
-      List<Map<String, dynamic>> orders,
-      ) {
+  List<Map<String, dynamic>> filterOrders(List<Map<String, dynamic>> orders) {
     switch (selectedFilter) {
       case OrderTypeFilter.all:
         return orders;
 
       case OrderTypeFilter.dineIn:
         return orders.where((order) {
-          return order['type']
-              ?.toString()
-              .toLowerCase()
-              .contains('dine') ??
+          return order['type']?.toString().toLowerCase().contains('dine') ??
               false;
         }).toList();
 
       case OrderTypeFilter.takeaway:
         return orders.where((order) {
-          return order['type']
-              ?.toString()
-              .toLowerCase()
-              .contains('takeaway') ??
+          return order['type']?.toString().toLowerCase().contains('takeaway') ??
               false;
         }).toList();
 
       case OrderTypeFilter.online:
         return orders.where((order) {
-          return order['type']
-              ?.toString()
-              .toLowerCase()
-              .contains('online') ??
+          return order['type']?.toString().toLowerCase().contains('online') ??
               false;
         }).toList();
     }
   }
+
   @override
   Widget build(BuildContext context) {
     final orderProvider = context.watch<OrderProvider>();
-    final preparingOrders =
-    filterOrders(orderProvider.preparingOrders);
+    final preparingOrders = filterOrders(orderProvider.preparingOrders);
 
-    final readyOrders =
-    filterOrders(orderProvider.readyOrders);
+    final readyOrders = filterOrders(orderProvider.readyOrders);
 
-    final servedOrders =
-    filterOrders(orderProvider.servedOrders);
+    final servedOrders = filterOrders(orderProvider.servedOrders);
     return Scaffold(
       backgroundColor: const Color(0xffF5F5F5),
       body: SafeArea(
@@ -93,7 +78,7 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                 },
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 22),
 
               const SizedBox(height: 20),
               Expanded(
@@ -102,7 +87,8 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                     Expanded(
                       child: _buildSection(
                         title: "Preparing",
-                        color: const Color(0xffF59E0B),
+                        //color: const Color(0xffF59E0B), //
+                        color: const Color(0xFFFF0000),
                         child: DragTarget<Map<String, dynamic>>(
                           onAcceptWithDetails: (details) {
                             final orderId =
@@ -116,38 +102,40 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                           builder: (context, candidateData, rejectedData) {
                             return preparingOrders.isEmpty
                                 ? _buildEmptyState(
-                              color: Colors.orange,
-                              title: "Preparing",
-                            )
+                                  color: Colors.orange,
+                                  title: "Preparing...",
+                                )
                                 : ListView.builder(
-                              itemCount: preparingOrders.length,
-                              itemBuilder: (context, index) {
-                                final order = preparingOrders[index];
+                                  itemCount: preparingOrders.length,
+                                  itemBuilder: (context, index) {
+                                    final order = preparingOrders[index];
 
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
-                                  child: Draggable<Map<String, dynamic>>(
-                                    data: order,
-                                    feedback: Material(
-                                      child: SizedBox(
-                                        width: 250,
+                                    return Padding(
+                                      padding: const EdgeInsets.only(
+                                        bottom: 8,
+                                      ),
+                                      child: Draggable<Map<String, dynamic>>(
+                                        data: order,
+                                        feedback: Material(
+                                          child: SizedBox(
+                                            width: 250,
+                                            child: _buildOrderCard(order),
+                                          ),
+                                        ),
+                                        childWhenDragging: Opacity(
+                                          opacity: 0.3,
+                                          child: _buildOrderCard(order),
+                                        ),
                                         child: _buildOrderCard(order),
                                       ),
-                                    ),
-                                    childWhenDragging: Opacity(
-                                      opacity: 0.3,
-                                      child: _buildOrderCard(order),
-                                    ),
-                                    child: _buildOrderCard(order),
-                                  ),
+                                    );
+                                  },
                                 );
-                              },
-                            );
                           },
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: _buildSection(
                         title: "Ready",
@@ -167,11 +155,12 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                             }
 
                             return ListView.builder(
+                              padding: EdgeInsets.zero,
                               itemCount: readyOrders.length,
                               itemBuilder: (_, index) {
                                 final order = readyOrders[index];
                                 return Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
+                                  padding: const EdgeInsets.only(bottom: 8),
                                   child: Draggable<Map<String, dynamic>>(
                                     data: order,
                                     feedback: Material(
@@ -215,7 +204,10 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                             return ListView.builder(
                               itemCount: servedOrders.length,
                               itemBuilder: (_, index) {
-                                return _buildOrderCard(servedOrders[index]);
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: _buildOrderCard(servedOrders[index]),
+                                );
                               },
                             );
                           },
@@ -241,6 +233,14 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -250,8 +250,8 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
             decoration: BoxDecoration(
               color: color,
               borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(12),
-                topRight: Radius.circular(12),
+                topLeft: Radius.circular(11),
+                topRight: Radius.circular(11),
               ),
             ),
             child: Center(
@@ -260,8 +260,8 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                 children: [
                   Image.asset(
                     'assets/chef.png',
-                    width: 16,
-                    height: 16,
+                    width: 22,
+                    height: 22,
                     color: Colors.white,
                   ),
 
@@ -271,7 +271,7 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                     title,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 14,
+                      fontSize: 18,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -281,7 +281,7 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
           ),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               child: child,
             ),
           ),
@@ -292,7 +292,6 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
 
   Widget _buildOrderCard(Map<String, dynamic> order) {
     return _ExpandableActiveOrderCard(order: order);
-
   }
 
   Widget _filterChip(String title, bool selected) {
@@ -327,6 +326,7 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
     );
   }
 }
+
 class _ExpandableActiveOrderCard extends StatefulWidget {
   final Map<String, dynamic> order;
 
@@ -337,37 +337,45 @@ class _ExpandableActiveOrderCard extends StatefulWidget {
       _ExpandableActiveOrderCardState();
 }
 
-class _ExpandableActiveOrderCardState extends State<_ExpandableActiveOrderCard> {
+class _ExpandableActiveOrderCardState
+    extends State<_ExpandableActiveOrderCard> {
   bool _expanded = false;
 
   @override
   Widget build(BuildContext context) {
     final order = widget.order;
     final orderType = order['type']?.toString() ?? '';
+    final status = order['status']?.toString() ?? '';
 
     final Color headerColor;
 
-    if (orderType.toLowerCase().contains('dine')) {
-      headerColor = const Color(0xffEB5E28); // Dine-In
-    } else if (orderType.toLowerCase().contains('take')) {
-      headerColor = const Color(0xff0D3B66); // Takeaway
-    } else if (orderType.toLowerCase().contains('online')) {
-      headerColor = const Color(0xff16A34A); // Online
+    if (status == 'Ready') {
+      headerColor = const Color(0xFF60A5FA); // Blue
+    } else if (status == 'Served') {
+      headerColor = const Color(0xFF22C55E); // Green
     } else {
-      headerColor = const Color(0xff6C74B8);
+      if (orderType.toLowerCase().contains('dine')) {
+        headerColor = const Color(0xffF59E0B); // Dine-In (Amber)
+      } else if (orderType.toLowerCase().contains('take')) {
+        headerColor = const Color(0xff0D3B66); // Takeaway
+      } else if (orderType.toLowerCase().contains('online')) {
+        headerColor = const Color(0xff16A34A); // Online
+      } else {
+        headerColor = const Color(0xff6C74B8); // Default
+      }
     }
     final parentOrderId = order['parentOrderId']?.toString() ?? '';
     // final orderType = order['type']?.toString() ?? '';
     final kotNo = order['kotNo']?.toString() ?? '';
     final items = order['items'] as List<dynamic>? ?? [];
 
-    final kotTime = order['kotTime'] is DateTime
-        ? order['kotTime'] as DateTime
-        : DateTime.now();
+    final kotTime =
+        order['kotTime'] is DateTime
+            ? order['kotTime'] as DateTime
+            : DateTime.now();
 
     final timeLabel = DateFormat('HH:mm').format(kotTime);
-    final dateLabel =
-    DateFormat('EEE, MMM d, yyyy | hh:mm a').format(kotTime);
+    final dateLabel = DateFormat('EEE, MMM d, yyyy | hh:mm a').format(kotTime);
 
     return Material(
       color: Colors.transparent,
@@ -375,9 +383,7 @@ class _ExpandableActiveOrderCardState extends State<_ExpandableActiveOrderCard> 
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(10),
-          boxShadow: const [
-            BoxShadow(color: Colors.black12, blurRadius: 4),
-          ],
+          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -387,14 +393,14 @@ class _ExpandableActiveOrderCardState extends State<_ExpandableActiveOrderCard> 
               onTap: () => setState(() => _expanded = !_expanded),
               child: Container(
                 height: 48,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
                   color: headerColor,
                   borderRadius: BorderRadius.only(
-                    topLeft: const Radius.circular(10),
-                    topRight: const Radius.circular(10),
-                    bottomLeft: Radius.circular(_expanded ? 0 : 10),
-                    bottomRight: Radius.circular(_expanded ? 0 : 10),
+                    topLeft: const Radius.circular(4),
+                    topRight: const Radius.circular(4),
+                    bottomLeft: Radius.circular(_expanded ? 0 : 4),
+                    bottomRight: Radius.circular(_expanded ? 0 : 4),
                   ),
                 ),
                 child: Row(
@@ -420,13 +426,15 @@ class _ExpandableActiveOrderCardState extends State<_ExpandableActiveOrderCard> 
                         ),
                       ),
                     ),
-                    const Icon(Icons.access_time,
-                        color: Colors.white, size: 14),
+                    const Icon(
+                      Icons.access_time,
+                      color: Colors.white,
+                      size: 14,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       timeLabel,
-                      style: const TextStyle(
-                          color: Colors.white, fontSize: 13),
+                      style: const TextStyle(color: Colors.white, fontSize: 13),
                     ),
                     const SizedBox(width: 8),
                     Icon(
@@ -443,8 +451,10 @@ class _ExpandableActiveOrderCardState extends State<_ExpandableActiveOrderCard> 
             // ── Expanded body only ──
             if (_expanded) ...[
               Padding(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 child: Row(
                   children: [
                     Text(
@@ -467,8 +477,7 @@ class _ExpandableActiveOrderCardState extends State<_ExpandableActiveOrderCard> 
               ),
               const Divider(height: 1),
               ...items.asMap().entries.map((entry) {
-                final item =
-                Map<String, dynamic>.from(entry.value as Map);
+                final item = Map<String, dynamic>.from(entry.value as Map);
                 final name = item['name']?.toString() ?? '';
                 final qty = item['qty'] ?? 1;
                 final note = item['note']?.toString() ?? '';
@@ -535,18 +544,14 @@ class _ExpandableActiveOrderCardState extends State<_ExpandableActiveOrderCard> 
     );
   }
 }
-Widget _buildEmptyState({
-  required Color color,
-  required String title,
-}) {
+
+Widget _buildEmptyState({required Color color, required String title}) {
   return Container(
     width: double.infinity,
     decoration: BoxDecoration(
       color: color.withOpacity(.03),
       borderRadius: BorderRadius.circular(12),
-      border: Border.all(
-        color: color.withOpacity(.35),
-      ),
+      border: Border.all(color: color.withOpacity(.35)),
     ),
     child: Center(
       child: Column(
@@ -559,21 +564,14 @@ Widget _buildEmptyState({
               color: color.withOpacity(.12),
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              Icons.room_service_outlined,
-              color: color,
-              size: 42,
-            ),
+            child: Icon(Icons.room_service_outlined, color: color, size: 42),
           ),
 
           const SizedBox(height: 15),
 
           Text(
             "Drop here to move to",
-            style: TextStyle(
-              color: Colors.grey.shade500,
-              fontSize: 13,
-            ),
+            style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
           ),
 
           const SizedBox(height: 4),

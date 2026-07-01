@@ -184,18 +184,23 @@ class TopBarWidget extends StatelessWidget {
           const SizedBox(width: 20),
 
           ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const CompletedOrdersScreen(
-                    token: '',
-                  ),
-                ),
-              );
-            },
+            onPressed: selectedView == KotView.history
+                ? null
+                : () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const CompletedOrdersScreen(
+                          token: '',
+                        ),
+                      ),
+                    );
+                  },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+              disabledBackgroundColor: Colors.green.withOpacity(0.5),
+              disabledForegroundColor: Colors.white.withOpacity(0.6),
               elevation: 0,
               padding: const EdgeInsets.symmetric(
                 horizontal: 22,
@@ -209,14 +214,10 @@ class TopBarWidget extends StatelessWidget {
               children: [
                 Text(
                   "KOT's History",
-                  style: TextStyle(
-                    color: Colors.white,
-                  ),
                 ),
                 SizedBox(width: 8),
                 Icon(
                   Icons.arrow_forward,
-                  color: Colors.white,
                   size: 18,
                 )
               ],

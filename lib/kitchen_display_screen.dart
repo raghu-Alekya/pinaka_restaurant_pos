@@ -15,14 +15,12 @@ class KitchenDashboardScreen extends StatefulWidget {
   const KitchenDashboardScreen({super.key, this.onOpenSettings});
 
   @override
-  State<KitchenDashboardScreen> createState() =>
-      _KitchenDashboardScreenState();
+  State<KitchenDashboardScreen> createState() => _KitchenDashboardScreenState();
 }
 
 class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
   String selectedOrderType = "All";
-  OrderTypeFilter selectedFilter =
-      OrderTypeFilter.all;
+  OrderTypeFilter selectedFilter = OrderTypeFilter.all;
   String? selectedCancelKotId;
   // Add these here
   String? selectedCancelItemKotId;
@@ -32,8 +30,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
 
   final Map<String, List<bool>> selectedItemsMap = {};
 
-  KotView selectedView =
-      KotView.pending;
+  KotView selectedView = KotView.pending;
 
   @override
   Widget build(BuildContext context) {
@@ -46,25 +43,24 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
     final orders = orderProvider.pendingOrders;
     print('Displaying ${orders.length} pending orders');
 
-    final filteredOrders = orders.where((order) {
-      final type =
-          order['type']?.toString().toLowerCase() ?? '';
+    final filteredOrders =
+        orders.where((order) {
+          final type = order['type']?.toString().toLowerCase() ?? '';
 
-      switch (selectedFilter) {
-        case OrderTypeFilter.all:
-          return true;
+          switch (selectedFilter) {
+            case OrderTypeFilter.all:
+              return true;
 
-        case OrderTypeFilter.dineIn:
-          return type.contains('dine');
+            case OrderTypeFilter.dineIn:
+              return type.contains('dine');
 
-        case OrderTypeFilter.takeaway:
-          return type.contains('take');
+            case OrderTypeFilter.takeaway:
+              return type.contains('take');
 
-        case OrderTypeFilter.online:
-          return type.contains('online');
-      }
-    }).toList();
-
+            case OrderTypeFilter.online:
+              return type.contains('online');
+          }
+        }).toList();
 
     return Scaffold(
       backgroundColor: const Color(0xffF4F4F4),
@@ -177,44 +173,45 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                     // ),
                     const SizedBox(height: 20),
                     Expanded(
-                      child: filteredOrders.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.receipt_long,
-                                    size: 64,
-                                    color: Colors.grey.shade400,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    orderProvider.connectionState ==
-                                            KdsConnectionState.connected
-                                        ? 'Waiting for orders from POS...'
-                                        : 'Connecting to POS...',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      color: Colors.grey.shade600,
+                      child:
+                          filteredOrders.isEmpty
+                              ? Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.receipt_long,
+                                      size: 64,
+                                      color: Colors.grey.shade400,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      orderProvider.connectionState ==
+                                              KdsConnectionState.connected
+                                          ? 'Waiting for orders from POS...'
+                                          : 'Connecting to POS...',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                              : GridView.builder(
+                                itemCount: filteredOrders.length,
+                                gridDelegate:
+                                    const SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: 4,
+                                      crossAxisSpacing: 16,
+                                      mainAxisSpacing: 16,
+                                      childAspectRatio: 1.0,
+                                    ),
+                                itemBuilder: (context, index) {
+                                  final order = filteredOrders[index];
+                                  return _buildOrderCard(order, orderProvider);
+                                },
                               ),
-                            )
-                          : GridView.builder(
-                              itemCount: filteredOrders.length,
-                              gridDelegate:
-                                  const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 4,
-                                crossAxisSpacing: 16,
-                                mainAxisSpacing: 16,
-                                childAspectRatio: 1.0,
-                              ),
-                              itemBuilder: (context, index) {
-                                final order = filteredOrders[index];
-                                return _buildOrderCard(order, orderProvider);
-                              },
-                            ),
                     ),
                   ],
                 ),
@@ -226,44 +223,10 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
     );
   }
 
-  // Widget _connectionBadge(OrderProvider provider) {
-  //   final connected =
-  //       provider.connectionState == KdsConnectionState.connected;
-  //   return Container(
-  //     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-  //     decoration: BoxDecoration(
-  //       color: connected ? Colors.green.shade50 : Colors.red.shade50,
-  //       borderRadius: BorderRadius.circular(12),
-  //       border: Border.all(
-  //         color: connected ? Colors.green : Colors.red,
-  //       ),
-  //     ),
-  //     child: Row(
-  //       mainAxisSize: MainAxisSize.min,
-  //       children: [
-  //         Icon(
-  //           Icons.circle,
-  //           size: 10,
-  //           color: connected ? Colors.green : Colors.red,
-  //         ),
-  //         const SizedBox(width: 6),
-  //         Text(
-  //           connected ? 'POS Connected' : 'Disconnected',
-  //           style: TextStyle(
-  //             fontSize: 12,
-  //             color: connected ? Colors.green.shade800 : Colors.red.shade800,
-  //             fontWeight: FontWeight.w600,
-  //           ),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
-
   Widget _buildOrderCard(
-      Map<String, dynamic> order,
-      OrderProvider orderProvider,
-      ) {
+    Map<String, dynamic> order,
+    OrderProvider orderProvider,
+  ) {
     final kotId = order['id']?.toString() ?? '';
     final orderId = order['parentOrderId']?.toString() ?? '';
     final kotNo = order['kotNo']?.toString() ?? '';
@@ -272,25 +235,20 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
     final items = order['items'] as List<dynamic>? ?? [];
     selectedItemsMap.putIfAbsent(
       kotId,
-          () => List.generate(items.length, (_) => false),
+      () => List.generate(items.length, (_) => false),
     );
 
     final selected = selectedItemsMap[kotId]!;
 
-
     // String? selectedCancelItemKotId;
     // final Map<String, List<bool>> selectedItemsMap = {};
     final tableNo =
-        order['tableName']?.toString() ??
-            order['tableNo']?.toString() ??
-            '';
+        order['tableName']?.toString() ?? order['tableNo']?.toString() ?? '';
 
-    String zoneName =
-        order['zoneName']?.toString() ?? '';
+    String zoneName = order['zoneName']?.toString() ?? '';
 
     if (zoneName.isEmpty) {
-      final location =
-          order['locationLabel']?.toString() ?? '';
+      final location = order['locationLabel']?.toString() ?? '';
 
       if (location.contains(' - ')) {
         final parts = location.split(' - ');
@@ -299,8 +257,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
           zoneName = parts[1];
 
           if (zoneName.contains('-')) {
-            zoneName =
-                zoneName.substring(0, zoneName.lastIndexOf('-'));
+            zoneName = zoneName.substring(0, zoneName.lastIndexOf('-'));
           }
         }
       }
@@ -308,387 +265,374 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
 
     // final items = order['items'] as List<dynamic>? ?? [];
 
-    final isDineIn =
-    orderType.toLowerCase().contains('dine');
+    final isDineIn = orderType.toLowerCase().contains('dine');
 
     return Stack(
       children: [
-
-     Container(
-       height: 800,
-       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border(
-          left: BorderSide(
-            color: isDineIn
-                ? const Color(0xffF26B3A)
-                : const Color(0xff3B73B9),
-            width: 3,
-          ),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(.08),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment:
-          CrossAxisAlignment.start,
-          children: [
-
-            /// TOP ROW
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isDineIn
+        Container(
+          height: 800,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border(
+              left: BorderSide(
+                color:
+                    isDineIn
                         ? const Color(0xffF26B3A)
                         : const Color(0xff3B73B9),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    tableNo,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(width: 8),
-
-      Expanded(
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                zoneName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
+                width: 4,
               ),
             ),
-            const Spacer(),
-
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 8,
-                vertical: 4,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(.08),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
-              decoration: BoxDecoration(
-                color: isDineIn
-                    ? const Color(0xffFFE4D8)
-                    : const Color(0xffD9E9FF),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                orderType.toUpperCase(),
-                style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w600,
-                  color: isDineIn
-                      ? const Color(0xffF26B3A)
-                      : const Color(0xff3B73B9),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-
-
-      const SizedBox(width: 58),
-
-      const Icon(
-        Icons.access_time_outlined,
-        color: Colors.orange,
-        size: 15,
-      ),
-
-      const SizedBox(width: 2),
-
-      Text(
-        order['elapsedTime']?.toString() ?? '0:00',
-        style: const TextStyle(
-          color: Colors.orange,
-          fontWeight: FontWeight.w600,
-          fontSize: 12,
-        ),
-      ),
-              ],
-            ),
-            const SizedBox(height: 10),
-
-            /// KOT NO + TIME
-            Row(
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Text(
-                    "KOT #$kotNo",
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xff333333),
+                /// TOP ROW
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            isDineIn
+                                ? const Color(0xffF26B3A)
+                                : const Color(0xff3B73B9),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        tableNo,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
 
-                Text(
-                  "Feb 12, 2026 | 11:30 AM",
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ],
-            ),
+                    const SizedBox(width: 8),
 
-            const SizedBox(height: 4),
-
-            /// ORDER ID + ITEMS COUNT
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    "Order ID: #$orderId",
-                    style: const TextStyle(
-                      color: Color(0xffF26B3A),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-
-                Text(
-                  "${items.length} Items",
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xff333333),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 8),
-
-            const Divider(height: 1),
-
-            const SizedBox(height: 8),
-
-            Text(
-              "Qty × Items",
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontSize: 10,
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            Expanded(
-              child: Scrollbar(
-                child: ListView.builder(
-                  itemCount: items.length,
-                  itemBuilder: (_, index) {
-                    final item =
-                    items[index]
-                    as Map<String, dynamic>;
-
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
+                    Expanded(
                       child: Row(
                         children: [
-                          if (selectedCancelItemKotId == kotId)
-                            Checkbox(
-                              value: selected[index],
-                              onChanged: (value) {
-                                setState(() {
-                                  selected[index] = value ?? false;
-                                });
-                              },
-                            ),
                           Expanded(
-                            child:Text(
-                              "1 × ${item['name']}",
+                            child: Text(
+                              zoneName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          const Spacer(),
+
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color:
+                                  isDineIn
+                                      ? const Color(0xffFFE4D8)
+                                      : const Color(0xffD9E9FF),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              orderType.toUpperCase(),
                               style: TextStyle(
-                                fontSize: 14,
-                                color: selected[index]
-                                    ? Colors.red
-                                    : const Color(0xff444444),
-                                decoration: selected[index]
-                                    ? TextDecoration.lineThrough
-                                    : null,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w600,
+                                color:
+                                    isDineIn
+                                        ? const Color(0xffF26B3A)
+                                        : const Color(0xff3B73B9),
                               ),
                             ),
                           ),
                         ],
                       ),
-                    );
-                  },
-                ),
-              ),
-            ),
+                    ),
 
-            SizedBox(
-              width: double.infinity,
-              height: 38,
-              child: ElevatedButton.icon(
-                icon: const Icon(
-                  Icons.play_arrow,
-                  size: 16,
-                  color: Colors.white,
+                    const SizedBox(width: 58),
+
+                    const Icon(
+                      Icons.access_time_outlined,
+                      color: Colors.orange,
+                      size: 15,
+                    ),
+
+                    const SizedBox(width: 2),
+
+                    Text(
+                      order['elapsedTime']?.toString() ?? '0:00',
+                      style: const TextStyle(
+                        color: Colors.orange,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
-                label: const Text(
-                  "Start KOT",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
+                const SizedBox(height: 10),
+
+                /// KOT NO + TIME
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        "KOT #$kotNo",
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xff333333),
+                        ),
+                      ),
+                    ),
+
+                    Text(
+                      //"Feb 12, 2026 | 11:30 AM",
+                      DateFormat(
+                        "MMM dd, yyyy | hh:mm a",
+                      ).format(DateTime.now()),
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 4),
+
+                /// ORDER ID + ITEMS COUNT
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        "Order ID: #$orderId",
+                        style: const TextStyle(
+                          color: Color(0xffF26B3A),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+
+                    Text(
+                      "${items.length} Items",
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xff333333),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 8),
+
+                const Divider(height: 1),
+
+                const SizedBox(height: 8),
+
+                Text(
+                  "Qty × Items",
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 10),
+                ),
+
+                const SizedBox(height: 8),
+
+                Expanded(
+                  child: Scrollbar(
+                    child: ListView.builder(
+                      itemCount: items.length,
+                      itemBuilder: (_, index) {
+                        final item = items[index] as Map<String, dynamic>;
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Row(
+                            children: [
+                              if (selectedCancelItemKotId == kotId)
+                                Checkbox(
+                                  value: selected[index],
+                                  onChanged: (value) {
+                                    setState(() {
+                                      selected[index] = value ?? false;
+                                    });
+                                  },
+                                ),
+                              Expanded(
+                                child: Text(
+                                  "1 × ${item['name']}",
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color:
+                                        selected[index]
+                                            ? Colors.red
+                                            : const Color(0xff444444),
+                                    decoration:
+                                        selected[index]
+                                            ? TextDecoration.lineThrough
+                                            : null,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                  const Color(0xffFF6666),
-                  shape:
-                  RoundedRectangleBorder(
-                    borderRadius:
-                    BorderRadius.circular(5),
-                  ),
-                ),
-                onPressed: () async {
-                  final remainingItems = <Map<String, dynamic>>[];
 
-                  for (int i = 0; i < items.length; i++) {
-                    if (!selected[i]) {
-                      remainingItems.add(
-                        items[i] as Map<String, dynamic>,
+                SizedBox(
+                  width: double.infinity,
+                  height: 38,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(
+                      Icons.play_arrow,
+                      size: 16,
+                      color: Colors.white,
+                    ),
+                    label: const Text(
+                      "Start KOT",
+                      style: TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xffFF6666),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                    ),
+                    onPressed: () async {
+                      final remainingItems = <Map<String, dynamic>>[];
+
+                      for (int i = 0; i < items.length; i++) {
+                        if (!selected[i]) {
+                          remainingItems.add(items[i] as Map<String, dynamic>);
+                        }
+                      }
+
+                      print("Remaining Items: $remainingItems");
+
+                      await orderProvider.startOrder(kotId, remainingItems);
+
+                      if (!context.mounted) return;
+
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ActiveOrdersScreen(),
+                        ),
                       );
-                    }
-                  }
-
-                  print("Remaining Items: $remainingItems");
-
-                  await orderProvider.startOrder(
-                    kotId,
-                    remainingItems,
-                  );
-
-                  if (!context.mounted) return;
-
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const ActiveOrdersScreen(),
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 28,
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xff0C62D8),
-                        side: const BorderSide(
-                          color: Color(0xff0C62D8),
-                          width: 1,
-                        ),
-                        padding: EdgeInsets.zero,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                      icon: const Icon(
-                        Icons.remove_circle_outline,
-                        size: 12,
-                        color: Color(0xff0C62D8),
-                      ),
-                      label: const Text(
-                        "Cancel Item",
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Color(0xff0C62D8),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          if (selectedCancelItemKotId == kotId) {
-                            selectedCancelItemKotId = null;
-                          } else {
-                            selectedCancelItemKotId = kotId;
-                          }
-                        });
-                      },
-                    ),
+                    },
                   ),
                 ),
 
-                const SizedBox(width: 8),
+                const SizedBox(height: 8),
 
-                Expanded(
-                  child: SizedBox(
-                    height: 28,
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xffFA3633),
-                        side: const BorderSide(
-                          color: Color(0xffFA3633),
-                          width: 1,
-                        ),
-                        padding: EdgeInsets.zero,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 28,
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xff0C62D8),
+                            side: const BorderSide(
+                              color: Color(0xff0C62D8),
+                              width: 1,
+                            ),
+                            padding: EdgeInsets.zero,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          icon: const Icon(
+                            Icons.remove_circle_outline,
+                            size: 12,
+                            color: Color(0xff0C62D8),
+                          ),
+                          label: const Text(
+                            "Cancel Item",
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Color(0xff0C62D8),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              if (selectedCancelItemKotId == kotId) {
+                                selectedCancelItemKotId = null;
+                              } else {
+                                selectedCancelItemKotId = kotId;
+                              }
+                            });
+                          },
                         ),
                       ),
-                      icon: const Icon(
-                        Icons.cancel_outlined,
-                        size: 12,
-                        color: Color(0xffFA3633),
-                      ),
-                      label: const Text(
-                        "Cancel KOT",
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Color(0xffFA3633),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          selectedCancelKotId = kotId;
-                        });
-                      },
-
                     ),
-                  ),
+
+                    const SizedBox(width: 8),
+
+                    Expanded(
+                      child: SizedBox(
+                        height: 28,
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xffFA3633),
+                            side: const BorderSide(
+                              color: Color(0xffFA3633),
+                              width: 1,
+                            ),
+                            padding: EdgeInsets.zero,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          icon: const Icon(
+                            Icons.cancel_outlined,
+                            size: 12,
+                            color: Color(0xffFA3633),
+                          ),
+                          label: const Text(
+                            "Cancel KOT",
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Color(0xffFA3633),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              selectedCancelKotId = kotId;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
-      ),
-    ),
         // ADD THIS BLOCK HERE
         if (selectedCancelKotId == kotId)
           Positioned.fill(
@@ -701,7 +645,6 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-
                     const Text(
                       "Cancel KOT?",
                       style: TextStyle(
@@ -718,8 +661,9 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                       children: [
                         ElevatedButton(
                           onPressed: () async {
-                            final success =
-                            await orderProvider.cancelOrder(kotId);
+                            final success = await orderProvider.cancelOrder(
+                              kotId,
+                            );
 
                             if (success) {
                               setState(() {
@@ -747,8 +691,10 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
               ),
             ),
           ),
-      ]);
+      ],
+    );
   }
+
   Widget _filterChip(String title) {
     final isSelected = selectedOrderType == title;
     return GestureDetector(
