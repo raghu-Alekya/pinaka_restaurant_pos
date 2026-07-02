@@ -704,6 +704,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../blocs/Bloc Event/order_event.dart';
 import '../../blocs/Bloc Logic/order_bloc.dart';
+import '../../constants/constants.dart';
 import '../../models/category/items_model.dart';
 import '../../models/category/minisubcategory_model.dart';
 import '../../models/order/modifier_model.dart';
@@ -711,6 +712,7 @@ import '../../models/order/order_items.dart';
 import '../../models/sidebar/category_model_.dart';
 import '../../repositories/minisubcategory_repository.dart';
 import '../../repositories/modifier_repository.dart';
+import '../../repositories/order_repository.dart';
 import '../../repositories/variant_repository.dart';
 import '../widgets/variant_popup.dart';
 
@@ -725,6 +727,9 @@ class MiniSubCategoryWidget extends StatefulWidget {
 
   final void Function(MiniSubCategory folder)? onFolderSelected;
   final void Function(Product item)? onItemSelected;
+  final String token;
+  final String restaurantId;
+  final bool isTakeAway;
 
   const MiniSubCategoryWidget({
     super.key,
@@ -737,6 +742,9 @@ class MiniSubCategoryWidget extends StatefulWidget {
     this.onFolderSelected,
     this.onItemSelected,
     this.modifierRepository,
+    required this.token,
+    required this.restaurantId,
+    required this.isTakeAway,
   });
 
   @override
@@ -752,7 +760,8 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
   // same item is instant instead of re-hitting the repository every time.
   static final Map<int, List<Modifier>> _modifierCache = {};
   static final Map<int, List<Variant>> _variantCache = {};
-
+  late OrderRepository orderRepository;
+  bool _isCreatingTakeAwayOrder = false;
   final List<Color> tileColors = [
     const Color(0xFFF0FBFF),
     const Color(0xFFFEE8C2),
@@ -763,7 +772,9 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
   void initState() {
     super.initState();
     currentSubCategories = widget.subCategories;
-
+    orderRepository = OrderRepository(
+      baseUrl: AppConstants.baseDomain,
+    );
     // Auto-select folder or fetch direct products after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _autoSelectAndLoad();
@@ -790,7 +801,62 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       });
     }
   }
+  Future<void> _initializeTakeAwayOrder() async {
+    debugPrint("========== TAKEAWAY ORDER ==========");
 
+    if (!widget.isTakeAway) {
+      debugPrint("❌ Not a takeaway order. Skipping order creation.");
+      return;
+    }
+
+    // Prevent duplicate API calls
+    if (_isCreatingTakeAwayOrder) {
+      debugPrint("⏳ Takeaway order creation already in progress");
+      return;
+    }
+
+    final orderBloc = context.read<OrderBloc>();
+
+    // Already created
+    if ((orderBloc.state.orderId ?? 0) != 0) {
+      debugPrint("✅ Takeaway order already exists.");
+      return;
+    }
+
+    _isCreatingTakeAwayOrder = true;
+
+    try {
+      final response = await orderRepository.createTakeAwayOrder(
+        restaurantId: widget.restaurantId,
+        token: widget.token,
+      );
+
+      orderBloc.add(
+        SetTakeAwayOrder(
+          orderId: response.orderId,
+          restaurantId: response.restaurantId.toString(),
+        ),
+      );
+
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      debugPrint("✅ Takeaway order created: ${response.orderId}");
+    } catch (e, stackTrace) {
+      debugPrint("❌ TakeAway Order Creation Failed");
+      debugPrint("Error: $e");
+      debugPrint(stackTrace.toString());
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Failed to create takeaway order"),
+          duration: Duration(seconds: 1),
+        ),
+      );
+    } finally {
+      // Always release the lock
+      _isCreatingTakeAwayOrder = false;
+    }
+  }
   bool isComboItem(Product item) {
     return item.isCombo;
   }
@@ -1044,6 +1110,11 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
   }
 
   Future<void> _onItemTap(BuildContext context, Product item) async {
+    if (_isCreatingTakeAwayOrder) return;
+
+    if (widget.isTakeAway) {
+      await _initializeTakeAwayOrder();
+    }
     // ✅ Don't allow out-of-stock items
     if (!item.inStock) {
       ScaffoldMessenger.of(context).showSnackBar(

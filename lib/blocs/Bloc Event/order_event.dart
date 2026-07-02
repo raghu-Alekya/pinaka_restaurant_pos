@@ -75,6 +75,7 @@ class RemoveOrderItem extends OrderEvent {
 /// 4️⃣ Clear the entire order
 class ClearOrder extends OrderEvent {}
 class ClearOrderItemsOnly extends OrderEvent {}
+class ResetOrder extends OrderEvent {}
 
 
 /// 5️⃣ Cancel the order
@@ -98,6 +99,15 @@ class UpdateOrderItemQuantity extends OrderEvent {
   final int quantity;
 
   UpdateOrderItemQuantity(this.index, this.quantity);
+}
+class SetTakeAwayOrder extends OrderEvent {
+  final int orderId;
+  final String restaurantId;
+
+  SetTakeAwayOrder({
+    required this.orderId,
+    required this.restaurantId,
+  });
 }
 
 /// 8️⃣ Update only modifiers of an item
@@ -128,6 +138,11 @@ class UpdateOrderItemDetails extends OrderEvent {
     this.addOns = const {},
     this.note = '',
   });
+}
+class SetTakeAwayKotId extends OrderEvent {
+  final int? kotId;
+
+  SetTakeAwayKotId(this.kotId);
 }
 
 /// 🔟 Add a KOT entry

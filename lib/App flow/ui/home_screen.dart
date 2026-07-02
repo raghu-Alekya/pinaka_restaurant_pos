@@ -26,6 +26,7 @@ import '../widgets/top_bar.dart';
 import 'CheckinPopup.dart';
 import 'DailyAttendanceScreen.dart';
 import 'KitchenStatusScreen.dart';
+import 'dashboard screen.dart';
 import 'orderstatus_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -33,6 +34,7 @@ class HomeScreen extends StatefulWidget {
   final String pin;
   final String restaurantId;
   final String restaurantName;
+  final UserPermissions? userPermissions; // ✅ ADD THIS
   // final List<Map<String, dynamic>> loadedTables;
   const HomeScreen({
     super.key,
@@ -40,6 +42,7 @@ class HomeScreen extends StatefulWidget {
     required this.pin,
     required this.restaurantId,
     required this.restaurantName,
+    this.userPermissions, // ✅ STORE IT
     // required this.loadedTables,
   });
 
@@ -439,12 +442,27 @@ class _HomeScreenState extends State<HomeScreen> {
                 SizedBox(
                   width: 250,
                   child: _moduleCard(
-                    title: "Take Aways",
-                    subtitle: "Walk-in Orders",
-                    count: "0",
-                    countLabel: "active",
-                    color: const Color(0xff5FCB89),
-                    icon: Icons.inventory_2_outlined,
+                      title: "Take Aways",
+                      subtitle: "Walk-in Orders",
+                      count: "0",
+                      countLabel: "active",
+                      color: const Color(0xff5FCB89),
+                      icon: Icons.inventory_2_outlined,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => DashboardScreen(
+                              pin: widget.pin,
+                              token: widget.token,
+                              restaurantId: widget.restaurantId,
+                              restaurantName: widget.restaurantName,
+                              userPermissions: widget.userPermissions,
+                              isTakeAway: true,
+                            ),
+                          ),
+                        );
+                      }
                   ),
                 ),
 
@@ -532,7 +550,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
 
-                if (_userPermissions?.role.toLowerCase() == 'manager') ...[
+                if (_userPermissions?.canViewTips == true) ...[
                   const SizedBox(width: 16),
 
                   SizedBox(
@@ -612,8 +630,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
 
-                if (_userPermissions?.role.toLowerCase() == 'manager') ...[
+                if (_userPermissions?.canViewVendors == true) ...[
                   const SizedBox(width: 16),
+
 
                   SizedBox(
                     width: 250,

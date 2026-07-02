@@ -196,10 +196,49 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
       emit(state.copyWith(orderItems: updatedItems));
     });
 
+
+    // ✅ Register this event
+    on<SetTakeAwayOrder>((event, emit) {
+      debugPrint("========== SET TAKEAWAY ORDER ==========");
+      debugPrint("Received orderId: ${event.orderId}");
+      debugPrint("Received restaurantId: ${event.restaurantId}");
+
+      emit(
+        state.copyWith(
+          orderId: event.orderId,
+          restaurantId: event.restaurantId,
+        ),
+      );
+
+      debugPrint("State Updated -> orderId: ${event.orderId}");
+    });
+    on<SetTakeAwayKotId>((event, emit) {
+      emit(
+        state.copyWith(
+          takeAwayKotId: event.kotId,
+        ),
+      );
+    });
     /// Clear order
     on<ClearOrder>((event, emit) {
       AppLogger.info("🗑 Clearing all order items");
       emit(state.copyWith(orderItems: []));
+    });
+    on<ResetOrder>((event, emit) {
+      emit(OrderState(
+        orderItems: [],
+        kotList: [],
+        showKOTDropdown: true,
+        guestDetails: Guestcount(guestCount: 0),
+        orderId: 0,
+        tableId: 0,
+        zoneId: 0,
+        tableName: '',
+        zoneName: '',
+        restaurantId: '',
+        lastRepeatedKotIndex: -1,
+
+      ));
     });
 
     /// Cancel order

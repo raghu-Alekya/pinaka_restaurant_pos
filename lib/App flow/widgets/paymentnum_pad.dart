@@ -83,6 +83,9 @@ class _paymentsummaryState extends State<paymentsummary> {
   double _lastNetPayable = 0.0;
   bool _isNcDiscount = false;
 
+  bool _balanceRevealed = false;
+  double _confirmedTenderForBalance = 0.0;
+
   double serviceChargeAmount = 0.0;
   int? selectedServiceCharge;
   final serviceChargeRepository = ServiceChargeRepository();
@@ -99,9 +102,7 @@ class _paymentsummaryState extends State<paymentsummary> {
   bool get isDeleteEnabled =>
       _isTipApplied || _isDiscountApplied || _isCouponApplied;
 
-  // ── FIX: single place that decides "is this tender amount payable".
-  // Used by the Pay key (it previously only checked amount.isEmpty, so a
-  // "0"/"0.00" tender slipped through and reached _submitPayment).
+
   bool get _isValidTenderAmount {
     final double? parsed = double.tryParse(amount);
     return parsed != null && parsed > 0;
@@ -158,9 +159,6 @@ class _paymentsummaryState extends State<paymentsummary> {
         isServiceChargeApplied = false;
       }
 
-      // ── FIX: this field was declared but never assigned, so the Svc
-      // Charges tile had no amount to show. Now it tracks the summary's
-      // computed service-charge value and updates whenever % changes.
       serviceChargeAmount = summary.serviceChargeValue;
     });
   }
@@ -179,9 +177,14 @@ class _paymentsummaryState extends State<paymentsummary> {
     setState(() {});
   }
 
+  double _roundMoney(double value) {
+    final double fractional = value - value.floorToDouble();
+    return fractional >= 0.5 ? value.floorToDouble() + 1 : value.floorToDouble();
+  }
+
   double getGrandTotal(PaymentState state) {
     if (widget.grandTotal != null) {
-      return widget.grandTotal!.abs().roundToDouble();
+      return _roundMoney(widget.grandTotal!.abs());
     }
 
     final PaymentSummary? summary =
@@ -198,7 +201,10 @@ class _paymentsummaryState extends State<paymentsummary> {
 
     double calculatedPayable =
         basePayable - merchantDiscountAbs + _tipAmount + serviceCharge;
-    return calculatedPayable.abs().roundToDouble();
+    // ── FIX: was `.roundToDouble()`, replaced with the explicit
+    // "round .50+ up" helper so the displayed Net Amount always matches
+    // what the backend will settle as the order total.
+    return _roundMoney(calculatedPayable.abs());
   }
 
   Future<void> applyServiceCharge(int percentage) async {
@@ -362,6 +368,10 @@ class _paymentsummaryState extends State<paymentsummary> {
       setState(() {
         amount = '';
         tenderAmountError = null;
+        // ── NEW: clearing the tender amount also hides the Balance Amount
+        // again until a payment mode is tapped/confirmed afresh.
+        _balanceRevealed = false;
+        _confirmedTenderForBalance = 0.0;
       });
       return;
     }
@@ -370,6 +380,10 @@ class _paymentsummaryState extends State<paymentsummary> {
         setState(() {
           amount = amount.substring(0, amount.length - 1);
           tenderAmountError = null;
+          // ── NEW: editing the amount invalidates the previously
+          // confirmed balance until it's re-confirmed via payment mode tap.
+          _balanceRevealed = false;
+          _confirmedTenderForBalance = 0.0;
         });
       }
       return;
@@ -380,6 +394,10 @@ class _paymentsummaryState extends State<paymentsummary> {
     setState(() {
       amount += key;
       tenderAmountError = null;
+      // ── NEW: any digit typed resets the balance reveal — balance only
+      // comes back once a payment mode is tapped again for this amount.
+      _balanceRevealed = false;
+      _confirmedTenderForBalance = 0.0;
     });
   }
 
@@ -414,6 +432,18 @@ class _paymentsummaryState extends State<paymentsummary> {
       isCashSelected = mode == "Cash";
       tenderAmountError = null;
     });
+
+    // ── NEW: the Balance Amount is only allowed to reduce AFTER the
+    // cashier has actually tapped a payment mode (Cash/Card/UPI), and only
+    // after a short confirmation delay — not the instant the tender amount
+    // is typed on the numpad.
+    await Future.delayed(const Duration(milliseconds: 350));
+    if (!mounted) return;
+    setState(() {
+      _balanceRevealed = true;
+      _confirmedTenderForBalance = enteredAmount;
+    });
+
     await _submitPayment();
   }
 
@@ -423,6 +453,10 @@ class _paymentsummaryState extends State<paymentsummary> {
     setState(() {
       amount = value;
       tenderAmountError = null;
+      // ── NEW: tapping a preset amount is still just "typing" the amount —
+      // balance should not move until a payment mode is confirmed.
+      _balanceRevealed = false;
+      _confirmedTenderForBalance = 0.0;
     });
   }
 
@@ -549,6 +583,9 @@ class _paymentsummaryState extends State<paymentsummary> {
                   setState(() {
                     amount = '';
                     tenderAmountError = null;
+                    // ── NEW: void resets the confirmed balance too.
+                    _balanceRevealed = false;
+                    _confirmedTenderForBalance = 0.0;
                   });
                   // _reloadSummary();
                 } catch (e) {
@@ -560,11 +597,22 @@ class _paymentsummaryState extends State<paymentsummary> {
                   );
                 }
               } else {
+                setState(() {
+                  // ── NEW: order is being cleared — reset balance reveal.
+                  _balanceRevealed = false;
+                  _confirmedTenderForBalance = 0.0;
+                });
                 context.read<OrderBloc>().add(ClearOrder());
               }
             }
 
             if (state is CreatePaymentFailure) {
+              setState(() {
+                // ── NEW: a failed payment attempt should not leave a
+                // confirmed balance from the previous attempt on screen.
+                _balanceRevealed = false;
+                _confirmedTenderForBalance = 0.0;
+              });
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                     content: Text(state.error),
@@ -629,8 +677,11 @@ class _paymentsummaryState extends State<paymentsummary> {
                 payState is PaymentSummaryLoaded || _paymentSummary != null;
             final bool payDisabled = isSummaryReady && netPayableVal <= 0;
 
+            // ── CHANGED: Balance Amount stays at 0 until a payment mode is
+            // tapped and confirmed (see _onPaymentModeTap) — it no longer
+            // reacts to every keystroke on the tender amount.
             final double tenderAmt =
-            amount.isNotEmpty ? double.tryParse(amount) ?? 0.0 : 0.0;
+            _balanceRevealed ? _confirmedTenderForBalance : 0.0;
             final double balAmt = tenderAmt < netPayableVal
                 ? (netPayableVal - tenderAmt)
                 : 0.0;
@@ -887,26 +938,33 @@ class _paymentsummaryState extends State<paymentsummary> {
                         ? Colors.grey.shade100
                         : isBackspace
                         ? const Color(0xFFF0F0F0)
+                    // ── REVERTED: back to the original F2F5FF fill.
                         : const Color(0xFFF2F5FF),
                     borderRadius: BorderRadius.circular(10),
-                    // ── ONLY CHANGE: blue-tinted shadow bottom+right ──
+                    // ── ORIGINAL bottom-right shadow pair, PLUS a mirrored
+                    // top-left pair added (both are still normal OUTER
+                    // BoxShadows — Flutter has no true inset shadow — just
+                    // offset to the opposite corner so the glow appears on
+                    // both sides instead of only bottom-right).
                     boxShadow: disabled
                         ? []
                         : [
+                      // ── CHANGED: bottom-right shadow pair removed —
+                      // only the top-left glow remains now.
                       BoxShadow(
                         color: isBackspace
                             ? const Color(0xCCB4C8DC)
                             : const Color(0xCCB4C8F0),
                         blurRadius: 0,
                         spreadRadius: 0,
-                        offset: const Offset(3, 3),
+                        offset: const Offset(-3, -3),
                       ),
                       BoxShadow(
                         color: isBackspace
                             ? const Color(0x5596B4D0)
                             : const Color(0x5596B4E6),
                         blurRadius: 8,
-                        offset: const Offset(4, 4),
+                        offset: const Offset(-4, -4),
                       ),
                     ],
                   ),
@@ -994,30 +1052,34 @@ class _paymentsummaryState extends State<paymentsummary> {
           duration: const Duration(milliseconds: 200),
           height: 54,
           decoration: BoxDecoration(
-            color: isSelected ? color : color.withOpacity(0.13),
+            // ── FIX: always show the full, active color — the button no
+            // longer dulls to color.withOpacity(0.13) when unselected.
+            // Selection is now indicated by the white ring border + glow
+            // shadow instead of by fading the button's own color.
+            color: color,
             borderRadius: BorderRadius.circular(10),
             border: isSelected
-                ? Border.all(color: color, width: 2)
-                : Border.all(color: Colors.transparent),
-            boxShadow: isSelected
-                ? [
+                ? Border.all(color: Colors.white, width: 2)
+                : Border.all(color: Colors.transparent, width: 2),
+            boxShadow: [
               BoxShadow(
                 color: color.withOpacity(0.35),
                 blurRadius: 8,
                 offset: const Offset(0, 3),
               )
-            ]
-                : [],
+            ],
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
                 mode,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
-                  color: isSelected ? Colors.white : color,
+                  // ── FIX: text is always white now since the button
+                  // background is always the full bright color.
+                  color: Colors.white,
                 ),
               ),
               const SizedBox(width: 10),
@@ -1088,7 +1150,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                   const SizedBox(height: 15),
                   _balanceAmountCard(balAmt),
 
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 20),
 
                   Expanded(
                     flex: 3,
@@ -1138,7 +1200,7 @@ class _paymentsummaryState extends State<paymentsummary> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            "Net Amount",
+            "Net Payable",
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
@@ -1159,6 +1221,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                 ),
                 child: Row(
                   children: [
+
                     Expanded(
                       child: Text(
                         value.toStringAsFixed(2),
@@ -1172,7 +1235,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                     ),
                     // Custom Image for Net Amount
                     SizedBox(
-                      width: 52,
+                      width: 54,
                       height: 50,
                       child: Image.asset(
                         "assets/net_amount.png",   // ← Your custom icon
@@ -2104,7 +2167,7 @@ class NumberPad extends StatelessWidget {
   }
 }
 
-// ─── Standalone helper widgets ─────────────────────────────────────────
+
 Widget _inputField({
   required String hint,
   required TextEditingController controller,

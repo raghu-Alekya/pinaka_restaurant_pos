@@ -125,7 +125,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
               restaurantName: widget.restaurantName,
               // isPaymentScreen: true,                    // ← Important
               pin: widget.pin,
-              restaurantId:widget.restaurantId,
+              restaurantId: widget.restaurantId,
+
+              // ── FIX: this was never being passed, so TopBar's
+              // widget.paymentSummary was always null and _printBill()
+              // always hit the "No payment summary available" branch.
+              paymentSummary: paymentSummary,
+              loadedTables: widget.loadedTables,
+              zoneId: widget.zoneId,
+              cashierName: _selectedUser?['name'] ?? '',
             ),
           ),
           body: Row(

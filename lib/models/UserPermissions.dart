@@ -25,6 +25,8 @@ class UserPermissions {
   final String displayName;
   final String role;
   final String? avatar;
+  final bool canViewTips;
+  final bool canViewVendors;
 
   UserPermissions({
     required this.userId,
@@ -53,6 +55,8 @@ class UserPermissions {
     required this.displayName,
     required this.role,
     this.avatar,
+    required this.canViewTips,
+    required this.canViewVendors,
   });
 
   factory UserPermissions.fromJson(Map<String, dynamic> json) {
@@ -83,6 +87,8 @@ class UserPermissions {
       displayName: json['displayName'] ?? '',
       role: json['role'] ?? '',
       avatar: json['avatar'],
+      canViewTips: json['canViewTips'] ?? false,
+      canViewVendors: json['canViewVendors'] ?? false,
     );
   }
 
@@ -114,6 +120,8 @@ class UserPermissions {
       'displayName': displayName,
       'role': role,
       'avatar':avatar,
+      'canViewTips': canViewTips,
+      'canViewVendors': canViewVendors,
     };
   }
 }

@@ -7,6 +7,7 @@ import '../models/order/KOT_model.dart';
 import '../models/order/order_items.dart';
 import '../models/order/order_model.dart';
 import '../models/order/guest_details.dart';
+import '../models/takeawayorder_model.dart';
 import '../services/api_exception.dart';
 import '../utils/logger.dart';
 
@@ -378,6 +379,117 @@ class OrderRepository {
     }
 
     return null;
+  }
+  Future<TakeAwayOrderModel> createTakeAwayOrder({
+    required String restaurantId,
+    required String token,
+  }) async {
+    final url = Uri.parse(
+      '${AppConstants.baseDomain}/wp-json/pinaka-restaurant-pos/v1/orders',
+    );
+
+    final body = {
+      "flag_type": "parent_takeaway_order",
+      "restaurant_id": int.parse(restaurantId),
+      "created_via": "takeaway",
+    };
+
+    AppLogger.info("Take Away Request => ${jsonEncode(body)}");
+
+    final response = await ApiExceptionHandler.post(
+      url,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": token.startsWith("Bearer ")
+            ? token
+            : "Bearer $token",
+      },
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final data = jsonDecode(response.body);
+
+      return TakeAwayOrderModel(
+        orderId: data["order_id"],
+        restaurantId: data["restaurant_id"],
+        status: data["status"] ?? "",
+        orderType: data["order_type"] ?? "",
+      );
+    }
+
+    throw Exception(
+      ApiExceptionHandler.parseError(
+        response,
+        defaultMessage: "Failed to create Take Away order.",
+      ),
+    );
+  }
+//  update the order same kot
+  Future<void> updateTakeAwayKot({
+    required int kotId,
+    required int parentOrderId,
+    required int restaurantId,
+    required int captainId,
+    required List<OrderItems> items,
+    required String token,
+  }) async {
+    final body = {
+      "flag_type": "update_kot_order",
+      "parent_order_id": parentOrderId,
+      "restaurant_id": restaurantId,
+      "captain_id": captainId,
+      "line_items": items
+          .map((item) => _orderItemToLineItem(item))
+          .whereType<Map<String, dynamic>>()
+          .toList(),
+    };
+
+    await http.put(
+      Uri.parse(
+        "$baseUrl/wp-json/pinaka-restaurant-pos/v1/orders/$kotId",
+      ),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+      body: jsonEncode(body),
+    );
+  }
+  Future<void> cancelTakeAwayOrder({
+    required int parentOrderId,
+    required int restaurantId,
+    required String token,
+  }) async {
+    final url = Uri.parse(
+      '${AppConstants.baseDomain}/wp-json/pinaka-restaurant-pos/v1/orders/$parentOrderId',
+    );
+
+    final body = {
+      "flag_type": "cancel_takeaway_order",
+      "restaurant_id": restaurantId,
+    };
+
+    AppLogger.info("=== TAKEAWAY CANCEL DEBUG ===");
+    AppLogger.info("URL => $url");
+    AppLogger.info("ParentOrderId => $parentOrderId");
+    AppLogger.info("RestaurantId => $restaurantId");
+    AppLogger.info("Body => ${jsonEncode(body)}");
+    AppLogger.info("=============================");
+
+    final response = await http.put(
+      url,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": token.startsWith("Bearer ")
+            ? token
+            : "Bearer $token",
+      },
+      body: jsonEncode(body),
+    );
+
+    AppLogger.info("STATUS => ${response.statusCode}");
+    AppLogger.info("RESPONSE => ${response.body}");
   }
 
 

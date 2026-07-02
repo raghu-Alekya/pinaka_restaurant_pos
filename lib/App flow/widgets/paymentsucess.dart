@@ -149,6 +149,7 @@ class Paymentsucess extends StatelessWidget {
                                     zoneId: zoneId,
                                     paymentSummary: paymentSummary,
                                     cashierName: cashierName,
+                                    isTakeAway: true,
                                   ),
 
                                 ),

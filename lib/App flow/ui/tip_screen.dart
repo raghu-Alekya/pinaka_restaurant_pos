@@ -158,54 +158,53 @@ class _TipsScreenState extends State<TipsScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
-                    Container(
-                      width: 100,
-                      height: 40,
-                      padding: const EdgeInsets.only(left: 0),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF3B4259),
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x19000000),
-                            blurRadius: 4,
-                            offset: Offset(0, 1),
+                    InkWell(
+                      borderRadius: BorderRadius.circular(10),
+                      onTap: () {
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => HomeScreen(
+                              pin: widget.pin,
+                              token: widget.token,
+                              restaurantId: widget.restaurantId,
+                              restaurantName: widget.restaurantName,
+                            ),
                           ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          IconButton(
-                            onPressed: () {
-                              Navigator.pushAndRemoveUntil(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => HomeScreen(
-                                    pin: widget.pin,
-                                    token: widget.token,
-                                    restaurantId: widget.restaurantId,
-                                    restaurantName: widget.restaurantName,
-                                  ),
-                                ),
-                                    (route) => false,
-                              );
-                            },
-                            icon: const Icon(
+                              (route) => false,
+                        );
+                      },
+                      child: Container(
+                        width: 100,
+                        height: 40,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF3B4259),
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x19000000),
+                              blurRadius: 4,
+                              offset: Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: const [
+                            Icon(
                               Icons.arrow_back,
                               color: Colors.white,
                             ),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                          ),
-                          const SizedBox(width: 4),
-                          const Text(
-                            'Back',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w500,
+                            SizedBox(width: 8),
+                            Text(
+                              'Back',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(width: 20),

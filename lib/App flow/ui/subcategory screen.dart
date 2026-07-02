@@ -23,6 +23,9 @@ class SubCategoryScreen extends StatefulWidget {
   final MiniSubCategoryRepository miniSubRepo;
   final VariantRepository variantRepo;
   final Future<List<Product>> Function(int subCategoryId) fetchProducts;
+  final String restaurantId;
+  final bool isTakeAway;
+
 
   const SubCategoryScreen({
     super.key,
@@ -31,6 +34,8 @@ class SubCategoryScreen extends StatefulWidget {
     required this.miniSubRepo,
     required this.variantRepo,
     required this.fetchProducts,
+    required this.restaurantId,
+    required this.isTakeAway,
   });
 
   @override
@@ -110,6 +115,9 @@ class _SubCategoryScreenState extends State<SubCategoryScreen> {
                       return MiniSubCategoryWidget(
                         subCategories: miniState.miniSubCategories,
                         section: widget.section,
+                        token: widget.token,
+                        restaurantId: widget.restaurantId,
+                        isTakeAway: widget.isTakeAway,
                         repository: widget.miniSubRepo,
                         variantRepository: widget.variantRepo,
                         tappedSubCategoryId: subState.selectedSubCategory ??

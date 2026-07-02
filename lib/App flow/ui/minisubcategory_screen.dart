@@ -20,6 +20,9 @@ class MiniSubCategoryScreen extends StatelessWidget {
   final int subCategoryId;
   final ProductRepository productRepository;
   final VariantRepository variantRepository; // added
+  final String token;
+  final String restaurantId;
+  final bool isTakeAway;
 
   const MiniSubCategoryScreen({
     super.key,
@@ -27,6 +30,9 @@ class MiniSubCategoryScreen extends StatelessWidget {
     required this.subCategoryId,
     required this.productRepository,
     required this.variantRepository, // added
+    required this.token,
+    required this.restaurantId,
+    required this.isTakeAway,
   });
 
   @override
@@ -48,6 +54,9 @@ class MiniSubCategoryScreen extends StatelessWidget {
               section: section,
               repository: miniRepo,
               tappedSubCategoryId: subCategoryId,
+              token: token,
+              restaurantId: restaurantId,
+              isTakeAway: isTakeAway,
               fetchProducts: (int subCategoryId) async {
                 try {
                   final products =

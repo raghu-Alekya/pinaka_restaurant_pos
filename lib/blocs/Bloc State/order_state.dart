@@ -28,6 +28,8 @@ class OrderState {
 
 // ✅ add this
   final int lastRepeatedKotIndex;
+  // take away cancel flow
+  final int? takeAwayKotId;
 
 
 
@@ -51,6 +53,10 @@ class OrderState {
     this.repeatedOrderId = 0,
     // 🔽 ADD HERE
     required this.lastRepeatedKotIndex,
+
+    this.takeAwayKotId,
+
+
   });
 
   OrderState copyWith({
@@ -71,6 +77,7 @@ class OrderState {
     bool? isKotRepeated,
     int? repeatedOrderId,
     int? lastRepeatedKotIndex,
+    int? takeAwayKotId,
 
   }) {
     return OrderState(
@@ -95,6 +102,7 @@ class OrderState {
       // 🔽 ADD
       lastRepeatedKotIndex:
       lastRepeatedKotIndex ?? this.lastRepeatedKotIndex,
+      takeAwayKotId: takeAwayKotId ?? this.takeAwayKotId,
     );
   }
   /// ✅ Subtotal (price × quantity)

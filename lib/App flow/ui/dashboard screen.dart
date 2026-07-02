@@ -48,31 +48,42 @@ class DashboardScreen extends StatefulWidget {
   final String token;
   final String restaurantId;
   final String restaurantName;
-  final Guestcount guestDetails;
-  final int orderId;
-  final int tableId;
-  final String zoneName;
-  final String tableName;
+
+  final bool isTakeAway;
+
+  // Optional for Dine-In only
+  final Guestcount? guestDetails;
+  final int? orderId;
+  final int? tableId;
+  final int? zoneId;
+  final String? zoneName;
+  final String? tableName;
   final UserPermissions? userPermissions;
   final List<Map<String, dynamic>> loadedTables;
+  final Map<String, dynamic>? tableData;
+  final List<dynamic>? kotList;
+  final bool refresh;
 
   const DashboardScreen({
     super.key,
     required this.pin,
     required this.token,
     required this.restaurantId,
-    required this.guestDetails,
-    required this.orderId,
-    required this.tableId,
-    required this.zoneName,
-    required this.tableName,
     required this.restaurantName,
-    required this.userPermissions,
-    required Map<String, dynamic> tableData,
-    required int zoneId,
-    required kotList,
-    required this.loadedTables,
 
+    this.isTakeAway = false,
+
+    this.guestDetails,
+    this.orderId,
+    this.tableId,
+    this.zoneId,
+    this.zoneName,
+    this.tableName,
+    this.userPermissions,
+    this.tableData,
+    this.kotList,
+    this.loadedTables = const [],
+    this.refresh = false,
   });
 
 
@@ -132,6 +143,18 @@ class _DashboardScreenState extends State<DashboardScreen>
       setState(() {
         _searchEditable = false;
       });
+      _searchFocusNode.unfocus();
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final orderBloc = context.read<OrderBloc>();
+
+      if (widget.isTakeAway) {
+        // Start fresh only if there is no active takeaway order
+        if (orderBloc.state.orderId == 0) {
+          orderBloc.add(ResetOrder());
+        }
+      }
+
       _searchFocusNode.unfocus();
     });
 
@@ -733,6 +756,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             restaurantName: widget.restaurantName,
             isOrderPanel: true,
             isHomeScreen: false,
+            isTakeAway: widget.isTakeAway,
             showTablesIcon: true,// Show Tables icon only on Dashboard
             // onTablesTap: () {
             //   Navigator.push(
@@ -869,6 +893,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                                                   final subState = context.watch<SubCategoryBloc>().state;
 
                                                   return MiniSubCategoryWidget(
+                                                    token: widget.token,
+                                                    restaurantId: widget.restaurantId,
                                                     subCategories: currentSubCategories,
                                                     section: category,
                                                     onFolderSelected: onFolderSelected,
@@ -880,6 +906,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                                         : -1,
                                                     variantRepository: variantRepo,
                                                     modifierRepository: modifierRepo,
+                                                    isTakeAway: widget.isTakeAway,
                                                   );
                                                 } else if (miniState
                                                 is MiniSubCategoryError) {
@@ -933,7 +960,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                           restaurantId: widget.restaurantId,
                           guestcount: state.guestDetails,
 
-                          orderId: widget.orderId,
+                          orderId: widget.isTakeAway
+                              ? (state.orderId ?? 0)
+                              : (widget.orderId ?? state.orderId ?? 0),
                           addonPrices: state.addonPrices,
                           onGuestSaved: (int value) {},
                           tableId: state.tableId,
@@ -944,6 +973,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                           pin: widget.pin,
                           restaurantName: widget.restaurantName,
                           userId: _userPermissions?.userId ?? '',
+                          isTakeAway: widget.isTakeAway,
                         );
                       },
                     ),

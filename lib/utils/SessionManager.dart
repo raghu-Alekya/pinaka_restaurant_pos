@@ -36,6 +36,24 @@ class SessionManager {
 
     print("✅ Permissions saved");
     print("✅ User ID saved: ${permissions.userId}");
+
+  }
+  // take away order flow orderId and restore it when the Take Away screen opens.
+  static const String _activeTakeAwayOrderIdKey = 'active_takeaway_order_id';
+
+  static Future<void> saveActiveTakeAwayOrderId(int orderId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_activeTakeAwayOrderIdKey, orderId);
+  }
+
+  static Future<int?> getActiveTakeAwayOrderId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_activeTakeAwayOrderIdKey);
+  }
+
+  static Future<void> clearActiveTakeAwayOrderId() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_activeTakeAwayOrderIdKey);
   }
 
 

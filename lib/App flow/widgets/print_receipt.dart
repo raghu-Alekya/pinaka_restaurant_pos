@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../blocs/Bloc Event/order_event.dart';
 import '../../blocs/Bloc Logic/order_bloc.dart';
+import '../../models/UserPermissions.dart';
 import '../../models/payment/payment_summary_model.dart';
 import '../../printer/printer_service.dart';
 import '../ui/tables_screen.dart';
@@ -18,6 +19,8 @@ class PrintRecipt extends StatefulWidget {
   final String restaurantName;
   final List<Map<String, dynamic>> loadedTables;
   final int? zoneId;
+  final bool isTakeAway;
+  final UserPermissions? userPermissions;
 
   const PrintRecipt({
     Key? key,
@@ -29,6 +32,8 @@ class PrintRecipt extends StatefulWidget {
     required this.restaurantName,
     required this.loadedTables,
     this.zoneId,
+    this.isTakeAway = false,
+    this.userPermissions,
   }) : super(key: key);
 
   @override

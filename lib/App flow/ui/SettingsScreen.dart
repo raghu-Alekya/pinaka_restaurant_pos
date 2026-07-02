@@ -908,7 +908,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Map<String, bool> _otherSelections = {
     "Coupons": true,
     "Tips": true,
-    "Payouts": true,
+    // "Payouts": true,
   };
   Map<String, bool> _orderTypeSelections = {
     "Dine-in": true,
@@ -1193,7 +1193,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildTabs() {
-    final List<String> labels = ["General", "Advanced"];
+    final List<String> labels = ["General","Payment", "Advanced"];
 
     return Row(
       children:
@@ -1392,8 +1392,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           // ===== Tab Content =====
                           if (_selectedLabel == "General")
                             _buildGeneralSection(),
-                          // if (_selectedLabel == "Payment")
-                          //   _buildPaymentSection(),
+                          if (_selectedLabel == "Payment")
+                            _buildPaymentSection(),
                           if (_selectedLabel == "Advanced")
                             _buildAdvancedSection(),
                         ],
@@ -1581,119 +1581,119 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // Widget _buildPaymentSection() {
-  //   return Padding(
-  //     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
-  //     child: Column(
-  //       crossAxisAlignment: CrossAxisAlignment.start,
-  //       children: [
-  //         const Text(
-  //           "Payment Settings",
-  //           style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-  //         ),
-  //         const SizedBox(height: 24),
-  //
-  //         const Text(
-  //           "Default Payment Method",
-  //           style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-  //         ),
-  //         const SizedBox(height: 6),
-  //
-  //         DropdownButtonFormField<String>(
-  //           value: _selectedDefaultMethod != null &&
-  //               _paymentSelections.containsKey(_selectedDefaultMethod)
-  //               ? _selectedDefaultMethod
-  //               : null,
-  //           items: _paymentSelections.keys
-  //               .map((method) => DropdownMenuItem(
-  //             value: method,
-  //             child: Text(method),
-  //           ))
-  //               .toList(),
-  //           onChanged: (val) {
-  //             setState(() {
-  //               _selectedDefaultMethod = val;
-  //             });
-  //           },
-  //           decoration: InputDecoration(
-  //             hintText: "Select Payment Method",
-  //             filled: true,
-  //             fillColor: const Color(0xFFF4F6FB),
-  //             contentPadding:
-  //             const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-  //             border: OutlineInputBorder(
-  //               borderRadius: BorderRadius.circular(12),
-  //               borderSide: BorderSide.none,
-  //             ),
-  //             enabledBorder: OutlineInputBorder(
-  //               borderRadius: BorderRadius.circular(12),
-  //               borderSide: BorderSide.none,
-  //             ),
-  //             focusedBorder: OutlineInputBorder(
-  //               borderRadius: BorderRadius.circular(12),
-  //               borderSide: BorderSide.none,
-  //             ),
-  //           ),
-  //         ),
-  //
-  //         const SizedBox(height: 26),
-  //         const Text(
-  //           "Payment Methods",
-  //           style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-  //         ),
-  //         const SizedBox(height: 10),
-  //
-  //         Wrap(
-  //           spacing: 20,
-  //           runSpacing: 8,
-  //           children: [
-  //             for (var method in _paymentSelections.keys)
-  //               Row(
-  //                 mainAxisSize: MainAxisSize.min,
-  //                 children: [
-  //                   Checkbox(
-  //                     value: _paymentSelections[method],
-  //                     onChanged:
-  //                         (val) =>
-  //                         setState(() => _paymentSelections[method] = val!),
-  //                     activeColor: Colors.black,
-  //                   ),
-  //                   Text(method, style: const TextStyle(fontSize: 14)),
-  //                 ],
-  //               ),
-  //           ],
-  //         ),
-  //
-  //         const SizedBox(height: 30),
-  //         const Text(
-  //           "Other Options",
-  //           style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-  //         ),
-  //         const SizedBox(height: 10),
-  //
-  //         Wrap(
-  //           spacing: 20,
-  //           runSpacing: 8,
-  //           children: [
-  //             for (var opt in _otherSelections.keys)
-  //               Row(
-  //                 mainAxisSize: MainAxisSize.min,
-  //                 children: [
-  //                   Checkbox(
-  //                     value: _otherSelections[opt],
-  //                     onChanged:
-  //                         (val) => setState(() => _otherSelections[opt] = val!),
-  //                     activeColor: Colors.black,
-  //                   ),
-  //                   Text(opt, style: const TextStyle(fontSize: 14)),
-  //                 ],
-  //               ),
-  //           ],
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
+  Widget _buildPaymentSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Payment Settings",
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 24),
+
+          const Text(
+            "Default Payment Method",
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 6),
+
+          DropdownButtonFormField<String>(
+            value: _selectedDefaultMethod != null &&
+                _paymentSelections.containsKey(_selectedDefaultMethod)
+                ? _selectedDefaultMethod
+                : null,
+            items: _paymentSelections.keys
+                .map((method) => DropdownMenuItem(
+              value: method,
+              child: Text(method),
+            ))
+                .toList(),
+            onChanged: (val) {
+              setState(() {
+                _selectedDefaultMethod = val;
+              });
+            },
+            decoration: InputDecoration(
+              hintText: "Select Payment Method",
+              filled: true,
+              fillColor: const Color(0xFFF4F6FB),
+              contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 26),
+          const Text(
+            "Payment Methods",
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 10),
+
+          Wrap(
+            spacing: 20,
+            runSpacing: 8,
+            children: [
+              for (var method in _paymentSelections.keys)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Checkbox(
+                      value: _paymentSelections[method],
+                      onChanged:
+                          (val) =>
+                          setState(() => _paymentSelections[method] = val!),
+                      activeColor: Colors.black,
+                    ),
+                    Text(method, style: const TextStyle(fontSize: 14)),
+                  ],
+                ),
+            ],
+          ),
+
+          const SizedBox(height: 30),
+          const Text(
+            "Other Options",
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 10),
+
+          Wrap(
+            spacing: 20,
+            runSpacing: 8,
+            children: [
+              for (var opt in _otherSelections.keys)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Checkbox(
+                      value: _otherSelections[opt],
+                      onChanged:
+                          (val) => setState(() => _otherSelections[opt] = val!),
+                      activeColor: Colors.black,
+                    ),
+                    Text(opt, style: const TextStyle(fontSize: 14)),
+                  ],
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildAdvancedSection() {
     return Padding(

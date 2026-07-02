@@ -19,14 +19,14 @@ import 'EmployeeListScreen.dart';
 // import 'order_list_screen.dart';
 import 'orderstatus_screen.dart';
 
-class DashboardScreen extends StatefulWidget {
+class MercantDashboardScreen extends StatefulWidget {
   final String pin;
   final String token;
   final String restaurantId;
   final String restaurantName;
   final UserPermissions? userPermissions;
 
-  const DashboardScreen({
+  const MercantDashboardScreen({
     Key? key,
     required this.pin,
     required this.token,
@@ -36,7 +36,7 @@ class DashboardScreen extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
+  State<MercantDashboardScreen> createState() => _DashboardScreenState();
 }
 
 class DashboardStats {
@@ -57,7 +57,7 @@ class DashboardStats {
   });
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends State<MercantDashboardScreen> {
   UserPermissions? _userPermissions;
   Map<String, dynamic>? _selectedZone;
   String _selectedPeriod = "";
