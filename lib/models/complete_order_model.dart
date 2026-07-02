@@ -4,6 +4,7 @@ class CompletedOrderModel {
   final int orderId;
   final String orderType;
   final int tableId;
+  final int zoneId;
   final String tableName;
   final int kotOrderId;
   final String kotNumber;
@@ -18,6 +19,7 @@ class CompletedOrderModel {
     required this.orderId,
     required this.orderType,
     required this.tableId,
+    required this.zoneId,
     required this.tableName,
     required this.kotOrderId,
     required this.kotNumber,
@@ -52,6 +54,7 @@ class CompletedOrderModel {
       orderType: json['order_type'] ?? '',
       tableId: json['table_id'] ?? 0,
       tableName: json['table_name'] ?? '',
+      zoneId: json['zone_id'] ?? 0,
       kotOrderId: json['kot_order_id'] ?? 0,
       kotNumber: json['kot_number'] ?? '',
       finishedTime: json['finished_time'] ?? '',
@@ -68,6 +71,7 @@ class CompletedOrderModel {
       'order_id': orderId,
       'order_type': orderType,
       'table_id': tableId,
+      'zone_id': zoneId,
       'table_name': tableName,
       'kot_order_id': kotOrderId,
       'kot_number': kotNumber,

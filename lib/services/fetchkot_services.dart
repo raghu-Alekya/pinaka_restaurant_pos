@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../models/kitchen_order.dart';
+import '../utils/AppConstant.dart';
 import '../utils/kds_logger.dart';
 
 class KotOrderApiService {
@@ -20,12 +21,11 @@ class KotOrderApiService {
   }) async {
     try {
       final url = Uri.parse(
-        "$baseUrl/wp-json/pinaka-restaurant-pos/v1/kot/get-parent-kot-orders"
+        "${AppConstants.parentKotOrdersEndpoint}"
             "?parent_order_id=$parentOrderId"
             "&restaurant_id=$restaurantId"
             "&zone_id=$zoneId",
       );
-
       KdsDebugLog.info("Fetching KOTs: $url");
 
       final response = await http.get(

@@ -1,14 +1,16 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+import '../utils/AppConstant.dart';
+
 Future<List<dynamic>> getKitchenItemsCount({
   required String token,
   required int restaurantId,
 }) async {
-  final uri = Uri.https(
-    'merchantrestaurant.alektasolutions.com',
-    '/wp-json/pinaka-restaurant-pos/v1/kot/get-kitchen-items-count',
-    {
+  final uri = Uri.parse(
+    AppConstants.kitchenItemsCountEndpoint,
+  ).replace(
+    queryParameters: {
       'restaurant_id': restaurantId.toString(),
     },
   );

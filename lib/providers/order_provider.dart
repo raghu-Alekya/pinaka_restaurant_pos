@@ -273,6 +273,10 @@ class OrderProvider extends ChangeNotifier {
     try {
       print("Calling updateOrderStatus API...");
       await _apiService.updateOrderStatus(order, "preparing");
+      // Reload orders from API
+      await loadExistingOrders();
+
+      notifyListeners();
 
       _updateAndSave(() {
         order.isCancelled = false;
@@ -294,6 +298,11 @@ class OrderProvider extends ChangeNotifier {
 
       for (final json in apiOrders) {
         print('API Status = ${json['status']}');
+        print(
+          "KOT=${json['kot_number']} "
+              "Order=${json['order_id']} "
+              "Status=${json['status']}",
+        );
 
         final order = KitchenOrder.fromJson(
           Map<String, dynamic>.from(json),

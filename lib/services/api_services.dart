@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../models/kitchen_order.dart';
+import '../utils/AppConstant.dart';
 import '../utils/kds_logger.dart';
 
 class OrderApiException implements Exception {
@@ -56,14 +57,11 @@ class OrderApiService {
   OrderApiService({
     required this.getToken,
     this.restaurantId = 1,
-    this.baseUrl =
-    'https://merchantrestaurant.alektasolutions.com/wp-json/pinaka-restaurant-pos/v1',
     http.Client? client,
   }) : _client = client ?? http.Client();
-
   final Future<String?> Function() getToken;
   final int restaurantId;
-  final String baseUrl;
+  // final String baseUrl;
   final http.Client _client;
 
   static const _flagUpdateKotStatus = 'update_kot_order_status';
@@ -115,7 +113,9 @@ class OrderApiService {
   }) async {
     final token = await _requireToken();
 
-    final url = Uri.parse('$baseUrl/orders/$orderId');
+    final url = Uri.parse(
+      '${AppConstants.ordersEndpoint}/$orderId',
+    );
 
     final payload = {
       'flag_type': _flagUpdateKotStatus,
@@ -256,7 +256,7 @@ class OrderApiService {
     final token = await _requireToken();
 
     final url = Uri.parse(
-      '$baseUrl/kot/kitchen-display-orders?restaurant_id=$restaurantId',
+      '${AppConstants.kitchenDisplayOrdersEndpoint}?restaurant_id=$restaurantId',
     );
 
     KdsDebugLog.info('GET $url');

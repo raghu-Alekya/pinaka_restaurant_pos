@@ -682,30 +682,39 @@ class _CompletedOrdersScreenState
                                       DataCell(
                                         order.canRecall
                                             ? InkWell(
-                                          // onTap: () async {
-                                          //   final api = OrderApiService(
-                                          //     token: widget.token, getToken: () {  },
-                                          //   );
-                                          //
-                                          //   final success = await api.updateCompletedOrderStatus(
-                                          //     restaurantId: order.restaurantId,
-                                          //     zoneId: order.zoneId,
-                                          //     parentOrderId: order.orderId,
-                                          //     status: "preparing",
-                                          //   );
-                                          //
-                                          //   if (success && mounted) {
-                                          //     Navigator.pushReplacement(
-                                          //       context,
-                                          //       MaterialPageRoute(
-                                          //         builder: (_) => ActiveOrdersScreen(
-                                          //           token: widget.token,
-                                          //           restaurantId: widget.restaurantId,
-                                          //         ),
-                                          //       ),
-                                          //     );
-                                          //   }
-                                          // },
+                                          onTap: () async {
+                                            final api = OrderApiService(
+                                              getToken: () async => widget.token,
+                                              restaurantId: widget.restaurantId,
+                                            );
+
+                                            await api.updateKotOrderStatus(
+                                              orderId: order.kotOrderId,
+                                              parentId: order.orderId,
+                                              zoneId: order.zoneId, // <-- must exist
+                                              restaurantId: order.restaurantId,
+                                              status: "preparing",
+                                            );
+                                            debugPrint("Restaurant ID: ${order.restaurantId}");
+                                            debugPrint("Zone ID: ${order.zoneId}");
+                                            debugPrint("Order ID: ${order.orderId}");
+                                            // Refresh KDS orders
+                                            await context.read<OrderProvider>().loadExistingOrders();
+
+                                            // if (!mounted) return;
+
+                                            if (!mounted) return;
+
+                                            Navigator.pushReplacement(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) => ActiveOrdersScreen(
+                                                  token: widget.token,
+                                                  restaurantId: widget.restaurantId,
+                                                ),
+                                              ),
+                                            );
+                                          },
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: const [
