@@ -7,7 +7,16 @@ import 'package:provider/provider.dart';
 import 'providers/order_provider.dart';
 
 class ActiveOrdersScreen extends StatefulWidget {
-  const ActiveOrdersScreen({super.key});
+  final String token;
+  final int restaurantId;
+  final int? recalledOrderId;
+
+  const ActiveOrdersScreen({
+    super.key,
+    required this.token,
+    required this.restaurantId,
+    this.recalledOrderId,
+  });
 
   @override
   State<ActiveOrdersScreen> createState() => _ActiveOrdersScreenState();
@@ -58,6 +67,8 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
           child: Column(
             children: [
               TopBarWidget(
+                token: widget.token,
+                restaurantId: widget.restaurantId,
                 selectedFilter: selectedFilter,
                 selectedView: selectedView,
 

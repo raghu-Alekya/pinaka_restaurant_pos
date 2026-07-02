@@ -113,6 +113,8 @@ class OrderProvider extends ChangeNotifier {
     return null;
   }
 
+
+
   void _notifyPos(KitchenOrder order, String status,
       {bool isCancelled = false}) {
     final posStatus = KotApiStatus.fromLocal(status);
@@ -146,6 +148,25 @@ class OrderProvider extends ChangeNotifier {
     _persist();
     notifyListeners();
   }
+  // Future<bool> recallCompletedOrder({
+  //   required int restaurantId,
+  //   required int zoneId,
+  //   required int parentOrderId,
+  // }) async {
+  //   try {
+  //     await _apiService.updateCompletedOrderStatus(
+  //       restaurantId: restaurantId,
+  //       zoneId: zoneId,
+  //       parentOrderId: parentOrderId,
+  //       status: "preparing",
+  //     );
+  //
+  //     return true;
+  //   } catch (e) {
+  //     KdsDebugLog.error("Recall failed: $e");
+  //     return false;
+  //   }
+  // }
 
   Future<bool> startOrder(
       String orderId,
@@ -238,21 +259,30 @@ class OrderProvider extends ChangeNotifier {
     }
   }
   Future<bool> recallOrder(String orderId) async {
+    print("Recall called with: $orderId");
+
     final order = _findOrder(orderId);
-    if (order == null) return false;
+
+    print("Found order: ${order?.id}");
+
+    if (order == null) {
+      print("Order not found");
+      return false;
+    }
 
     try {
-      await _apiService.recallOrder(order);
+      print("Calling updateOrderStatus API...");
+      await _apiService.updateOrderStatus(order, "preparing");
 
       _updateAndSave(() {
         order.isCancelled = false;
-        order.status = 'Pending';
-        _notifyPos(order, 'yet to prepare');
+        order.status = "Preparing"; // UI value
+        _notifyPos(order, "Preparing");
       });
 
       return true;
     } catch (e, stack) {
-      KdsDebugLog.error('recallOrder failed: $e\n$stack');
+      KdsDebugLog.error("recallOrder failed: $e\n$stack");
       return false;
     }
   }

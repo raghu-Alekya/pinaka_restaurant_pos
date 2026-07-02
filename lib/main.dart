@@ -22,6 +22,7 @@ class _MyAppState extends State<MyApp> {
   KdsConfig? _config;
   OrderProvider? _orderProvider;
 
+
   @override
   void initState() {
     super.initState();
@@ -48,11 +49,8 @@ class _MyAppState extends State<MyApp> {
   }
 
   void _startWithConfig(KdsConfig config) {
-    KdsDebugLog.info(
-      'Starting with config restaurantId=${config.restaurantId}',
-    );
-
-    _orderProvider?.dispose();
+    const jwtToken =
+        'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvbWVyY2hhbnRyZXN0YXVyYW50LmFsZWt0YXNvbHV0aW9ucy5jb20iLCJpYXQiOjE3ODI4OTExNDEsIm5iZiI6MTc4Mjg5MTE0MSwiZXhwIjoxNzkwNjY3MTQxLCJkYXRhIjp7InVzZXIiOnsiaWQiOjE0LCJkZXZpY2UiOiIiLCJwYXNzIjoiNWRiYzgyNGNkNWY4YTAzN2MzNzRmMDJkNTA0ODlhYzIifX19.vZzBiQvE-8kkZ7oh5DCQ1D-lEgPXrOYKMO98tLqqQzI' ;// Your complete token
 
     final mqttService = KdsMqttService(
       brokerHost: config.brokerHost,
@@ -61,8 +59,7 @@ class _MyAppState extends State<MyApp> {
     );
 
     final apiService = OrderApiService(
-      getToken: () async =>
-      'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvbWVyY2hhbnRyZXN0YXVyYW50LmFsZWt0YXNvbHV0aW9ucy5jb20iLCJpYXQiOjE3ODEwODY0NjUsIm5iZiI6MTc4MTA4NjQ2NSwiZXhwIjoxNzgzNjc4NDY1LCJkYXRhIjp7InVzZXIiOnsiaWQiOjUsImRldmljZSI6IiIsInBhc3MiOiIyYjhlMjJlOTM2ZTY0N2JhNDRmOWJhMmY3Y2Q1ZmFjNiJ9fX0.uXAQqbZ1WZ_HvHNP_tA3BQ28ILdqVssmIWTOfrMr-1U',
+      getToken: () async => jwtToken,
       restaurantId: int.tryParse(config.restaurantId) ?? 1,
     );
 
@@ -80,7 +77,6 @@ class _MyAppState extends State<MyApp> {
       provider.initialize();
     });
   }
-
   @override
   void dispose() {
     _orderProvider?.dispose();
@@ -105,6 +101,8 @@ class _MyAppState extends State<MyApp> {
         ),
       );
     }
+    const jwtToken =
+        'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczpcL1wvbWVyY2hhbnRyZXN0YXVyYW50LmFsZWt0YXNvbHV0aW9ucy5jb20iLCJpYXQiOjE3ODI4OTExNDEsIm5iZiI6MTc4Mjg5MTE0MSwiZXhwIjoxNzkwNjY3MTQxLCJkYXRhIjp7InVzZXIiOnsiaWQiOjE0LCJkZXZpY2UiOiIiLCJwYXNzIjoiNWRiYzgyNGNkNWY4YTAzN2MzNzRmMDJkNTA0ODlhYzIifX19.vZzBiQvE-8kkZ7oh5DCQ1D-lEgPXrOYKMO98tLqqQzI';
 
     return ChangeNotifierProvider.value(
       value: _orderProvider!,
@@ -112,6 +110,8 @@ class _MyAppState extends State<MyApp> {
         debugShowCheckedModeBanner: false,
         title: 'Kitchen Dashboard',
         home: KitchenDashboardScreen(
+          token: jwtToken,
+          restaurantId: int.tryParse(_config!.restaurantId) ?? 1,
           onOpenSettings: () async {
             await KdsConfig.clear();
             _orderProvider?.dispose();

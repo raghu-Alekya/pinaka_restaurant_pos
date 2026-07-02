@@ -10,12 +10,20 @@ import 'services/kds_mqtt_service.dart';
 import 'widgets/debug_log_panel.dart';
 
 class KitchenDashboardScreen extends StatefulWidget {
+  final String token;
+  final int restaurantId;
   final VoidCallback? onOpenSettings;
 
-  const KitchenDashboardScreen({super.key, this.onOpenSettings});
+  const KitchenDashboardScreen({
+    super.key,
+    required this.token,
+    required this.restaurantId,
+    this.onOpenSettings,
+  });
 
   @override
-  State<KitchenDashboardScreen> createState() => _KitchenDashboardScreenState();
+  State<KitchenDashboardScreen> createState() =>
+      _KitchenDashboardScreenState();
 }
 
 class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
@@ -31,6 +39,12 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
   final Map<String, List<bool>> selectedItemsMap = {};
 
   KotView selectedView = KotView.pending;
+  @override
+  void initState() {
+    super.initState();
+
+    print("KitchenDashboardScreen received token: '${widget.token}'");
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,21 +83,22 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
         child: Column(
           children: [
             TopBarWidget(
+              token: widget.token,
+              restaurantId: widget.restaurantId,
               selectedFilter: selectedFilter,
               selectedView: selectedView,
-
               onFilterChanged: (filter) {
                 setState(() {
                   selectedFilter = filter;
                 });
               },
-
               onViewChanged: (view) {
                 setState(() {
                   selectedView = view;
                 });
               },
             ),
+
 
             const SizedBox(height: 10),
             // const DebugLogPanel(),
@@ -537,7 +552,10 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const ActiveOrdersScreen(),
+                          builder: (_) => ActiveOrdersScreen(
+                            token: widget.token,
+                            restaurantId: widget.restaurantId,
+                          ),
                         ),
                       );
                     },

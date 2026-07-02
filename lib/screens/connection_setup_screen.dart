@@ -35,19 +35,19 @@ class KdsConfig {
 
   static Future<KdsConfig> load() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    final rawHost = prefs.getString('mqtt_broker_host') ?? defaultBrokerHost;
+
+    final rawHost =
+        prefs.getString('mqtt_broker_host') ?? defaultBrokerHost;
     final host = _normalizeHost(rawHost);
 
     final config = KdsConfig(
       brokerHost: host,
       brokerPort: prefs.getInt('mqtt_broker_port') ?? defaultBrokerPort,
       restaurantId:
-          prefs.getString('restaurant_id') ?? defaultRestaurantId,
+      prefs.getString('restaurant_id') ?? defaultRestaurantId,
       apiToken: prefs.getString('api_token') ?? '',
     );
 
-    // Persist migration if host was corrected
     if (rawHost != host) {
       await config.save();
     }
@@ -57,6 +57,7 @@ class KdsConfig {
 
   Future<void> save() async {
     final prefs = await SharedPreferences.getInstance();
+    print("Saving API Token: '$apiToken'");
     await prefs.setString('mqtt_broker_host', brokerHost);
     await prefs.setInt('mqtt_broker_port', brokerPort);
     await prefs.setString('restaurant_id', restaurantId);

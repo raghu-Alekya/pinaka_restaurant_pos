@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:kds_app/widgets/completed_orders.dart';
+import 'package:kds_app/widgets/repeated_item.dart';
+// import 'package:kds_app/widgets/repeated_items.dart';
 
 import 'active_orderscreen.dart';
 import 'kitchen_display_screen.dart';
@@ -18,6 +20,9 @@ enum KotView {
 }
 
 class TopBarWidget extends StatelessWidget {
+  final String token;
+  final int restaurantId;
+
   final OrderTypeFilter selectedFilter;
   final KotView selectedView;
 
@@ -26,12 +31,13 @@ class TopBarWidget extends StatelessWidget {
 
   const TopBarWidget({
     super.key,
+    required this.token,
+    required this.restaurantId,
     required this.selectedFilter,
     required this.selectedView,
     required this.onFilterChanged,
     required this.onViewChanged,
   });
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -98,7 +104,52 @@ class TopBarWidget extends StatelessWidget {
             ),
           ),
 
+          // const Spacer(),
           const Spacer(),
+
+          ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => RepeatedItemsScreen(
+                    token: token,
+                    restaurantId: restaurantId,
+                  ),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xffF28C28),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 18,
+                vertical: 14,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "Repeated Items",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(width: 6),
+                Icon(
+                  Icons.receipt_long,
+                  size: 18,
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(width: 20),
 
           Container(
             height: 42,
@@ -115,7 +166,10 @@ class TopBarWidget extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const ActiveOrdersScreen(),
+                        builder: (_) => ActiveOrdersScreen(
+                          token: token,
+                          restaurantId: restaurantId,
+                        ),
                       ),
                     );
                   },
@@ -152,7 +206,10 @@ class TopBarWidget extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const KitchenDashboardScreen(),
+                        builder: (_) => KitchenDashboardScreen(
+                          token: token,
+                          restaurantId: restaurantId,
+                        ),
                       ),
                     );
                   },
@@ -184,23 +241,22 @@ class TopBarWidget extends StatelessWidget {
           const SizedBox(width: 20),
 
           ElevatedButton(
-            onPressed: selectedView == KotView.history
-                ? null
-                : () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const CompletedOrdersScreen(
-                          token: '',
-                        ),
-                      ),
-                    );
-                  },
+            onPressed: () {
+              print("TopBar Token: '$token'");
+              print("Restaurant ID: $restaurantId");
+
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CompletedOrdersScreen(
+                    token: token,
+                    restaurantId: restaurantId,
+                  ),
+                ),
+              );
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
-              disabledBackgroundColor: Colors.green.withOpacity(0.5),
-              disabledForegroundColor: Colors.white.withOpacity(0.6),
               elevation: 0,
               padding: const EdgeInsets.symmetric(
                 horizontal: 22,
@@ -214,15 +270,20 @@ class TopBarWidget extends StatelessWidget {
               children: [
                 Text(
                   "KOT's History",
+                  style: TextStyle(
+                    color: Colors.white,
+                  ),
                 ),
                 SizedBox(width: 8),
                 Icon(
                   Icons.arrow_forward,
+                  color: Colors.white,
                   size: 18,
                 )
               ],
             ),
           ),
+
 
           const SizedBox(width: 20),
 
