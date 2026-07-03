@@ -251,6 +251,1081 @@ class _OrderPanelState extends State<OrderPanel> {
   }
 
   @override
+  // Widget build(BuildContext context) {
+  //   // 1️⃣ Trigger KOT loading for existing order
+  //   final orderBloc = context.read<OrderBloc>();
+  //   final kotBloc = context.read<KotBloc>();
+  //
+  //   // ✅ Initialize OrderBloc with existing order items if not already loaded
+  //   if (widget.orderId != 0 && orderBloc.state.orderId != widget.orderId) {
+  //     orderBloc.add(
+  //       LoadExistingOrder(
+  //         orderId: widget.orderId,
+  //         tableId: widget.tableId,
+  //         zoneId: widget.zoneId,
+  //         tableName: widget.tableName,
+  //         zoneName: widget.zoneName,
+  //         kotList: widget.existingKots ?? [],
+  //         restaurantId: widget.restaurantId,
+  //         guestDetails: widget.guestcount,
+  //       ),
+  //     );
+  //   }
+  //
+  //   // ✅ Initialize KotBloc with existing KOTs if not already loaded
+  //   if (widget.orderId != 0 &&
+  //       widget.existingKots != null &&
+  //       (kotBloc.state is! KotLoaded ||
+  //           (kotBloc.state as KotLoaded).kots.isEmpty)) {
+  //     context.read<KotBloc>().add(SetExistingKots(kots: widget.existingKots!));
+  //   }
+  //
+  //   return BlocListener<KotBloc, KotState>(
+  //     listener: (context, kotState) {
+  //       if (kotState is KotLoaded) {
+  //         debugPrint("KotLoaded: ${kotState.kots.length}");
+  //         context.read<OrderBloc>().add(RefreshKotList(kotState.kots));
+  //       }
+  //     },
+  //     child: BlocBuilder<OrderBloc, OrderState>(
+  //       builder: (context, state) {
+  //         // take away order flow
+  //         final bool hasOrder = state.orderId > 0;
+  //         // disable buttons
+  //         final bool hasCartItems = state.orderItems.isNotEmpty;
+  //
+  //         final activeKots =
+  //         state.kotList.where((kot) {
+  //           final status = (kot.status ?? '').toLowerCase();
+  //
+  //           return status != 'served' &&
+  //               status != 'voided' &&
+  //               status != 'transferred';
+  //         }).toList();
+  //
+  //         final bool hasActiveKot = activeKots.isNotEmpty;
+  //         debugPrint("========== KOTS ==========");
+  //         for (final kot in state.kotList) {
+  //           debugPrint("KOT: ${kot.kotNumber} | Status: ${kot.status}");
+  //         }
+  //
+  //         debugPrint("Total KOTs: ${state.kotList.length}");
+  //         debugPrint("Active KOTs: ${activeKots.length}");
+  //
+  //         /// Repeat Order -> only if active KOT exists
+  //         final bool canRepeatOrder = hasActiveKot;
+  //
+  //         /// KOT Print -> only if cart contains items
+  //         final bool canPrintKot = hasCartItems;
+  //
+  //         /// Pay -> only if active KOT exists
+  //         final bool canPay = hasActiveKot;
+  //
+  //         return Container(
+  //           width: 700,
+  //           padding: const EdgeInsets.all(12),
+  //           decoration: BoxDecoration(
+  //             color: Colors.white,
+  //             borderRadius: BorderRadius.circular(16),
+  //           ),
+  //           child: Column(
+  //             crossAxisAlignment: CrossAxisAlignment.start,
+  //             children: [
+  //               /// Header row with badges & actions
+  //               Container(
+  //                 padding: const EdgeInsets.symmetric(
+  //                   horizontal: 16,
+  //                   vertical: 12,
+  //                 ),
+  //                 decoration: BoxDecoration(
+  //                   color: Colors.white,
+  //                   borderRadius: BorderRadius.circular(14),
+  //                   boxShadow: [
+  //                     BoxShadow(
+  //                       color: Colors.black.withOpacity(.05),
+  //                       blurRadius: 8,
+  //                       offset: const Offset(0, 2),
+  //                     ),
+  //                   ],
+  //                 ),
+  //                 child: Row(
+  //                   crossAxisAlignment: CrossAxisAlignment.start,
+  //                   children: [
+  //                     /// LEFT SIDE
+  //                     Expanded(
+  //                       child: Column(
+  //                         crossAxisAlignment: CrossAxisAlignment.start,
+  //                         children: [
+  //                           /// Order ID
+  //                           Row(
+  //                             children: [
+  //                               Image.asset(
+  //                                 "assets/order.png",
+  //                                 width: 18,
+  //                                 height: 18,
+  //                               ),
+  //                               const SizedBox(width: 6),
+  //                               Text(
+  //                                 widget.isTakeAway
+  //                                     ? (state.orderId > 0
+  //                                     ? "Order Id #${state.orderId}"
+  //                                     : "Order Id ----")
+  //                                     : "Order Id #${state.orderId}",
+  //                                 style: const TextStyle(
+  //                                   fontSize: 20,
+  //                                   fontWeight: FontWeight.w600,
+  //                                   color: Color(0xff404040),
+  //                                 ),
+  //                               ),
+  //                             ],
+  //                           ),
+  //                           // Text(
+  //                           //   state.orderId > 0
+  //                           //       ? "Order Id #${state.orderId}"
+  //                           //       : "Order Id ----",
+  //                           //   style: const TextStyle(
+  //                           //     fontSize: 20,
+  //                           //     fontWeight: FontWeight.w600,
+  //                           //     color: Color(0xff404040),
+  //                           //   ),
+  //                           // ),
+  //                           const SizedBox(height: 8),
+  //
+  //                           /// Table + Guests
+  //                           widget.isTakeAway
+  //                               ? Row(
+  //                             children: [
+  //                               const Icon(
+  //                                 Icons.shopping_bag_outlined,
+  //                                 color: Color(0xff002053),
+  //                                 size: 22,
+  //                               ),
+  //                               const SizedBox(width: 8),
+  //                               const Text(
+  //                                 "Take Away",
+  //                                 style: TextStyle(
+  //                                   color: Color(0xFF002053),
+  //                                   fontSize: 16,
+  //                                   fontWeight: FontWeight.w600,
+  //                                 ),
+  //                               ),
+  //                             ],
+  //                           )
+  //                               : Row(
+  //                             children: [
+  //                               Image.asset(
+  //                                 "assets/dine.png",
+  //                                 width: 25,
+  //                                 height: 25,
+  //                               ),
+  //                               const SizedBox(width: 6),
+  //                               Text(
+  //                                 "${state.zoneName}-${state.tableName}",
+  //                                 style: const TextStyle(
+  //                                   color: Color(0xff002053),
+  //                                   fontSize: 13,
+  //                                   fontWeight: FontWeight.w600,
+  //                                 ),
+  //                               ),
+  //                               const SizedBox(width: 10),
+  //                               const Icon(
+  //                                 Icons.people,
+  //                                 size: 18,
+  //                                 color: Colors.black54,
+  //                               ),
+  //                               const SizedBox(width: 4),
+  //                               Text(
+  //                                 "${state.guestDetails.guestCount}",
+  //                                 style: const TextStyle(
+  //                                   fontWeight: FontWeight.w600,
+  //                                 ),
+  //                               ),
+  //                             ],
+  //                           ),
+  //                         ],
+  //                       ),
+  //                     ),
+  //
+  //                     /// RIGHT SIDE
+  //                     Column(
+  //                       crossAxisAlignment: CrossAxisAlignment.end,
+  //                       children: [
+  //                         Row(
+  //                           children: [
+  //                             const Icon(
+  //                               Icons.calendar_today_outlined,
+  //                               size: 18,
+  //                               color: Colors.black54,
+  //                             ),
+  //                             const SizedBox(width: 6),
+  //                             Text(
+  //                               "${DateFormat('MMM dd, yyyy').format(DateTime.now())} | ${DateFormat('h:mm a').format(DateTime.now())}",
+  //                               style: const TextStyle(
+  //                                 fontSize: 14,
+  //                                 fontWeight: FontWeight.w500,
+  //                               ),
+  //                             ),
+  //                           ],
+  //                         ),
+  //                         const SizedBox(height: 12),
+  //                         InkWell(
+  //                           onTap: () async {
+  //                             final currentOrderId =
+  //                                 context.read<OrderBloc>().state.orderId;
+  //
+  //                             if (currentOrderId == 0) {
+  //                               ScaffoldMessenger.of(context).showSnackBar(
+  //                                 const SnackBar(
+  //                                   duration: Duration(seconds: 1),
+  //                                   content: Text("No active order to cancel"),
+  //                                 ),
+  //                               );
+  //                               return;
+  //                             }
+  //
+  //                             AppLogger.info(
+  //                               "Cancel order clicked → Order ID: $currentOrderId",
+  //                             );
+  //
+  //                             showDialog(
+  //                               context: context,
+  //                               barrierDismissible: false,
+  //                               builder:
+  //                                   (_) => const Center(
+  //                                 child: CircularProgressIndicator(),
+  //                               ),
+  //                             );
+  //
+  //                             try {
+  //                               final orderRepo = OrderRepository(
+  //                                 baseUrl:
+  //                                 'https://merchantrestaurant.alektasolutions.com',
+  //                               );
+  //
+  //                               final orderState =
+  //                                   context.read<OrderBloc>().state;
+  //
+  //                               final isTakeAway = widget.isTakeAway;
+  //
+  //                               Map<String, dynamic>? responseJson;
+  //
+  //                               // =====================
+  //                               // TAKEAWAY FLOW
+  //                               // =====================
+  //                               if (isTakeAway) {
+  //                                 AppLogger.info("TAKEAWAY CANCEL START");
+  //
+  //                                 await orderRepo.cancelTakeAwayOrder(
+  //                                   parentOrderId: currentOrderId,
+  //                                   restaurantId: int.parse(orderState.restaurantId),
+  //                                   token: widget.token,
+  //                                 );
+  //
+  //                                 AppLogger.info("TAKEAWAY CANCEL SUCCESS");
+  //
+  //                                 if (context.mounted && Navigator.canPop(context)) {
+  //                                   Navigator.pop(context);
+  //                                 }
+  //
+  //                                 context.read<OrderBloc>().add(
+  //                                   CancelOrder(
+  //                                     parentOrderId: currentOrderId,
+  //                                     token: widget.token,
+  //                                   ),
+  //                                 );
+  //                                 debugPrint(
+  //                                   "Using bloc => ${context.read<OrderBloc>().hashCode}",
+  //                                 );
+  //
+  //
+  //                                 ScaffoldMessenger.of(context).showSnackBar(
+  //                                   const SnackBar(
+  //                                     content: Text("Takeaway order cancelled successfully"),
+  //                                   ),
+  //                                 );
+  //
+  //                                 return;
+  //                               }
+  //                               // =====================
+  //                               // DINE-IN FLOW
+  //                               // =====================
+  //                               responseJson = await orderRepo.cancelOrder(
+  //                                 parentOrderId: currentOrderId,
+  //                                 token: widget.token,
+  //                                 restaurantId: widget.restaurantId,
+  //                                 zoneId: widget.zoneId,
+  //                               );
+  //
+  //                               if (context.mounted &&
+  //                                   Navigator.canPop(context)) {
+  //                                 Navigator.pop(context);
+  //                               }
+  //
+  //                               if (responseJson['status'] == 'cancelled') {
+  //                                 context.read<OrderBloc>().add(
+  //                                   CancelOrder(
+  //                                     parentOrderId: currentOrderId,
+  //                                     token: widget.token,
+  //                                   ),
+  //                                 );
+  //
+  //                                 ScaffoldMessenger.of(context).showSnackBar(
+  //                                   SnackBar(
+  //                                     duration: const Duration(seconds: 1),
+  //                                     content: Text(
+  //                                       "Order ${responseJson['order_id']} cancelled successfully",
+  //                                     ),
+  //                                   ),
+  //                                 );
+  //
+  //                                 final tableDao = TableDao();
+  //                                 final tables = await tableDao
+  //                                     .getTablesByManagerPin(widget.pin);
+  //
+  //                                 if (!context.mounted) return;
+  //
+  //                                 Navigator.pushReplacement(
+  //                                   context,
+  //                                   MaterialPageRoute(
+  //                                     builder:
+  //                                         (_) => TablesScreen(
+  //                                       loadedTables: tables,
+  //                                       pin: widget.pin,
+  //                                       token: widget.token,
+  //                                       restaurantId: widget.restaurantId,
+  //                                       restaurantName:
+  //                                       widget.restaurantName,
+  //                                     ),
+  //                                   ),
+  //                                 );
+  //                               } else {
+  //                                 ScaffoldMessenger.of(context).showSnackBar(
+  //                                   const SnackBar(
+  //                                     duration: Duration(seconds: 1),
+  //                                     content: Text("Failed to cancel order"),
+  //                                   ),
+  //                                 );
+  //                               }
+  //                             } catch (e) {
+  //                               if (context.mounted &&
+  //                                   Navigator.canPop(context)) {
+  //                                 Navigator.pop(context);
+  //                               }
+  //
+  //                               AppLogger.error("Cancel order API error: $e");
+  //
+  //                               ScaffoldMessenger.of(context).showSnackBar(
+  //                                 SnackBar(
+  //                                   duration: const Duration(seconds: 1),
+  //                                   content: Text(
+  //                                     e.toString().replaceFirst(
+  //                                       "Exception: ",
+  //                                       "",
+  //                                     ),
+  //                                   ),
+  //                                   backgroundColor: Colors.red,
+  //                                 ),
+  //                               );
+  //                             }
+  //                           },
+  //                           borderRadius: BorderRadius.circular(8),
+  //                           child: Container(
+  //                             height: 36,
+  //                             padding: const EdgeInsets.symmetric(
+  //                               horizontal: 12,
+  //                             ),
+  //                             decoration: BoxDecoration(
+  //                               color: const Color(0xFFF6F6F6),
+  //                               borderRadius: BorderRadius.circular(6),
+  //                               border: Border.all(
+  //                                 width: 1,
+  //                                 color:
+  //                                 hasOrder
+  //                                     ? const Color(0xFFFE2222)
+  //                                     : const Color(0x7FC0C0C0),
+  //                               ),
+  //                               boxShadow: [
+  //                                 BoxShadow(
+  //                                   color: Colors.black.withOpacity(0.08),
+  //                                   blurRadius: 6,
+  //                                   offset: const Offset(0, 2),
+  //                                 ),
+  //                               ],
+  //                             ),
+  //                             child: Row(
+  //                               mainAxisSize: MainAxisSize.min,
+  //                               children: [
+  //                                 Image.asset(
+  //                                   "assets/icon/delete.png",
+  //                                   width: 18,
+  //                                   height: 18,
+  //                                   color:
+  //                                   hasOrder
+  //                                       ? const Color(0xFFFE2222)
+  //                                       : Colors.grey.shade700,
+  //                                 ),
+  //                                 const SizedBox(width: 6),
+  //                                 Text(
+  //                                   "Cancel",
+  //                                   style: TextStyle(
+  //                                     color:
+  //                                     hasOrder
+  //                                         ? const Color(0xFFFE2222)
+  //                                         : Colors.grey.shade700,
+  //                                     fontSize: 13,
+  //                                     fontWeight: FontWeight.w600,
+  //                                   ),
+  //                                 ),
+  //                               ],
+  //                             ),
+  //                           ),
+  //                         ),
+  //                       ],
+  //                     ),
+  //                   ],
+  //                 ),
+  //               ),
+  //               const SizedBox(height: 2),
+  //
+  //               /// Main Content Area
+  //               Flexible(
+  //                 child: Column(
+  //                   crossAxisAlignment: CrossAxisAlignment.stretch,
+  //                   children: [
+  //                     /// KOT Dropdown - Always shows the header bar
+  //                     if (!widget.isTakeAway && state.kotList.isNotEmpty)
+  //                       MultiBlocProvider(
+  //                         providers: [
+  //                           BlocProvider<KotLineItemsBloc>(
+  //                             create:
+  //                                 (_) => KotLineItemsBloc(
+  //                               repository: VoidItemRepository(),
+  //                             ),
+  //                           ),
+  //                           BlocProvider<UpdatekotBloc>(
+  //                             create:
+  //                                 (_) => UpdatekotBloc(
+  //                               repository: UpdatekotRepository(),
+  //                             ),
+  //                           ),
+  //                           BlocProvider.value(value: context.read<KotBloc>()),
+  //                         ],
+  //                         child: ViewAllKOTDropdown(
+  //                           kots: state.kotList,
+  //                           parentOrderId: state.orderId,
+  //                           restaurantId: int.parse(widget.restaurantId),
+  //                           zoneId: state.zoneId,
+  //                           token: widget.token,
+  //                           tableNo: state.tableName,
+  //                           // onToggle: (isExpanded) {
+  //                           //   // Update state when dropdown expands/collapses
+  //                           //   setState(() {
+  //                           //     _showKotList = isExpanded;
+  //                           //   });
+  //                           // },
+  //                         ),
+  //                       ),
+  //
+  //                     /// Spacing only for Dine-In
+  //                     if (!widget.isTakeAway &&
+  //                         state.kotList.isNotEmpty &&
+  //                         !_showKotList)
+  //                       const SizedBox(height: 8),
+  //
+  //                     /// Conditional Rendering:
+  //                     /// - If KOT view is expanded => show ONLY the KOT list.
+  //                     /// - Otherwise => show order header + order list + total.
+  //                     /// These two branches are mutually exclusive: only one
+  //                     /// is ever built into the widget tree at a time.
+  //                     if (_showKotList)
+  //                     /// ---------------- KOT-ONLY VIEW ----------------
+  //                       Expanded(
+  //                         child: Container(
+  //                           color: const Color(0xFFF1F1F3),
+  //                           padding: const EdgeInsets.all(16),
+  //                           child: ListView.builder(
+  //                             itemCount: state.kotList.length,
+  //                             itemBuilder: (context, index) {
+  //                               final kot = state.kotList[index];
+  //                               return Card();
+  //                             },
+  //                           ),
+  //                         ),
+  //                       )
+  //                     else
+  //                     /// ---------------- ORDER VIEW ----------------
+  //                       Flexible(
+  //                         child: Column(
+  //                           crossAxisAlignment: CrossAxisAlignment.stretch,
+  //                           children: [
+  //                             /// Header
+  //                             Container(
+  //                               height: 30,
+  //                               decoration: BoxDecoration(
+  //                                 color: const Color(0xFF989292),
+  //                                 borderRadius: const BorderRadius.only(
+  //                                   topLeft: Radius.circular(6),
+  //                                   topRight: Radius.circular(6),
+  //                                 ),
+  //                               ),
+  //                               padding: const EdgeInsets.symmetric(
+  //                                 horizontal: 12,
+  //                               ),
+  //                               child: Row(
+  //                                 children: [
+  //                                   const SizedBox(width: 7),
+  //                                   SizedBox(width: 40, child: headerText('#')),
+  //                                   const SizedBox(width: 6),
+  //                                   Expanded(child: headerText('Item Name')),
+  //                                   const SizedBox(width: 40),
+  //                                   headerText('Modifiers'),
+  //                                   SizedBox(
+  //                                     width: 70,
+  //                                     child: headerText(
+  //                                       'Price',
+  //                                       align: TextAlign.right,
+  //                                     ),
+  //                                   ),
+  //                                   const SizedBox(width: 30),
+  //                                   SizedBox(
+  //                                     width: 80,
+  //                                     child: headerText(
+  //                                       'Qty',
+  //                                       align: TextAlign.center,
+  //                                     ),
+  //                                   ),
+  //                                   const SizedBox(width: 5),
+  //                                   SizedBox(
+  //                                     width: 70,
+  //                                     child: headerText(
+  //                                       'Amount',
+  //                                       align: TextAlign.right,
+  //                                     ),
+  //                                   ),
+  //                                 ],
+  //                               ),
+  //                             ),
+  //                             const SizedBox(height: 2),
+  //
+  //                             /// Order List
+  //                             Expanded(
+  //                               child: Container(
+  //                                 color: const Color(0xFFF1F1F3),
+  //                                 child:
+  //                                 state.orderItems.isEmpty
+  //                                     ? const Center(
+  //                                   child: Column(
+  //                                     mainAxisSize: MainAxisSize.min,
+  //                                     children: [
+  //                                       Text(
+  //                                         "No item Selected",
+  //                                         style: TextStyle(
+  //                                           fontSize: 16,
+  //                                           fontWeight: FontWeight.w600,
+  //                                           color: Color(0xFFB8B8B8),
+  //                                         ),
+  //                                       ),
+  //                                       SizedBox(height: 8),
+  //                                       Text(
+  //                                         "Please select item from Menu",
+  //                                         style: TextStyle(
+  //                                           fontSize: 16,
+  //                                           fontWeight: FontWeight.w600,
+  //                                           color: Color(0xFFB8B8B8),
+  //                                         ),
+  //                                       ),
+  //                                     ],
+  //                                   ),
+  //                                 )
+  //                                     : OrderPanelList(
+  //                                   orderItems: state.orderItems,
+  //                                   addonPrices: widget.addonPrices,
+  //                                   onIncreaseQuantity: (index) {
+  //                                     final item =
+  //                                     state.orderItems[index];
+  //                                     context.read<OrderBloc>().add(
+  //                                       UpdateOrderItemQuantity(
+  //                                         index,
+  //                                         item.quantity + 1,
+  //                                       ),
+  //                                     );
+  //                                   },
+  //                                   onDecreaseQuantity: (index) {
+  //                                     final item =
+  //                                     state.orderItems[index];
+  //                                     if (item.quantity > 1) {
+  //                                       context.read<OrderBloc>().add(
+  //                                         UpdateOrderItemQuantity(
+  //                                           index,
+  //                                           item.quantity - 1,
+  //                                         ),
+  //                                       );
+  //                                     }
+  //                                   },
+  //                                   onModifiersChanged: (
+  //                                       index,
+  //                                       modifiers,
+  //                                       addOns,
+  //                                       note,
+  //                                       ) {
+  //                                     final fullAddOns =
+  //                                     <
+  //                                         String,
+  //                                         Map<String, dynamic>
+  //                                     >{};
+  //                                     addOns.forEach((name, qty) {
+  //                                       fullAddOns[name] = {
+  //                                         'quantity': qty,
+  //                                         'price':
+  //                                         widget
+  //                                             .addonPrices[name] ??
+  //                                             0,
+  //                                       };
+  //                                     });
+  //
+  //                                     context.read<OrderBloc>().add(
+  //                                       UpdateOrderItemDetails(
+  //                                         index: index,
+  //                                         modifiers: modifiers,
+  //                                         addOns: fullAddOns,
+  //                                         note: note,
+  //                                       ),
+  //                                     );
+  //                                   },
+  //                                   onRemoveItem: (index) {
+  //                                     context.read<OrderBloc>().add(
+  //                                       RemoveOrderItem(index),
+  //                                     );
+  //                                   },
+  //                                   token: widget.token,
+  //                                 ),
+  //                               ),
+  //                             ),
+  //
+  //                             /// TOTAL
+  //                             Container(
+  //                               padding: const EdgeInsets.symmetric(
+  //                                 horizontal: 12,
+  //                                 vertical: 6,
+  //                               ),
+  //                               decoration: BoxDecoration(
+  //                                 color: const Color(0xFF152148),
+  //                                 borderRadius: const BorderRadius.only(
+  //                                   bottomLeft: Radius.circular(6),
+  //                                   bottomRight: Radius.circular(6),
+  //                                 ),
+  //                               ),
+  //                               child: Row(
+  //                                 mainAxisAlignment:
+  //                                 MainAxisAlignment.spaceBetween,
+  //                                 children: [
+  //                                   Text(
+  //                                     'Total Items: ${state.orderItems.length}',
+  //                                     style: const TextStyle(
+  //                                       fontSize: 14,
+  //                                       fontWeight: FontWeight.w600,
+  //                                       color: const Color(0xFFFAFAFA),
+  //                                     ),
+  //                                   ),
+  //                                   Text(
+  //                                     state.orderItems
+  //                                         .fold(
+  //                                       0.0,
+  //                                           (sum, item) =>
+  //                                       sum + item.totalWithAddons,
+  //                                     )
+  //                                         .toStringAsFixed(2),
+  //                                     style: const TextStyle(
+  //                                       fontSize: 12,
+  //                                       fontWeight: FontWeight.w600,
+  //                                       color: const Color(0xFFFAFAFA),
+  //                                     ),
+  //                                   ),
+  //                                 ],
+  //                               ),
+  //                             ),
+  //                           ],
+  //                         ),
+  //                       ),
+  //                   ],
+  //                 ),
+  //               ),
+  //
+  //               const SizedBox(height: 6),
+  //
+  //               /// Bottom action buttons
+  //               Container(
+  //                 padding: const EdgeInsets.all(2),
+  //                 decoration: BoxDecoration(
+  //                   color: Colors.white,
+  //                   borderRadius: BorderRadius.circular(12),
+  //                 ),
+  //                 child:
+  //                 widget.isTakeAway
+  //                     ? _takeAwayCheckoutButton(hasOrder)
+  //                     : Row(
+  //                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+  //                   children: [
+  //                     Builder(
+  //                       builder: (scaffoldContext) {
+  //                         return BlocListener<OrderBloc, OrderState>(
+  //                           listenWhen:
+  //                               (prev, curr) =>
+  //                           prev.error != curr.error,
+  //                           listener: (context, state) {
+  //                             if (state.error != null &&
+  //                                 state.error!.isNotEmpty) {
+  //                               ScaffoldMessenger.of(scaffoldContext)
+  //                                 ..hideCurrentSnackBar()
+  //                                 ..showSnackBar(
+  //                                   SnackBar(
+  //                                     content: Text(state.error!),
+  //                                     duration: Duration(seconds: 1),
+  //                                   ),
+  //                                 );
+  //                             }
+  //                           },
+  //                           child: orderButton(
+  //                             'Repeat order',
+  //                             canRepeatOrder
+  //                                 ? const Color(0xFF2563EB)
+  //                                 : Colors.grey,
+  //                             isLoading: _isRepeatingOrder,
+  //                             onPressed:
+  //                             canRepeatOrder
+  //                                 ? () {
+  //                               setState(() {
+  //                                 _isRepeatingOrder = true;
+  //                               });
+  //
+  //                               final bloc =
+  //                               context.read<OrderBloc>();
+  //
+  //                               if (bloc.state.orderId == 0) {
+  //                                 ScaffoldMessenger.of(
+  //                                   scaffoldContext,
+  //                                 ).showSnackBar(
+  //                                   const SnackBar(
+  //                                     duration: Duration(
+  //                                       seconds: 1,
+  //                                     ),
+  //                                     content: Text(
+  //                                       "Order not found",
+  //                                     ),
+  //                                   ),
+  //                                 );
+  //                                 setState(() {
+  //                                   _isRepeatingOrder = false;
+  //                                 });
+  //                                 return;
+  //                               }
+  //
+  //                               bloc.add(
+  //                                 RepeatKotOrder(
+  //                                   orderId: bloc.state.orderId,
+  //                                   restaurantId: int.parse(
+  //                                     bloc.state.restaurantId,
+  //                                   ),
+  //                                   zoneId: bloc.state.zoneId,
+  //                                   token: widget.token,
+  //                                 ),
+  //                               );
+  //
+  //                               Future.delayed(
+  //                                 const Duration(seconds: 2),
+  //                                     () {
+  //                                   if (mounted) {
+  //                                     setState(() {
+  //                                       _isRepeatingOrder =
+  //                                       false;
+  //                                     });
+  //                                   }
+  //                                 },
+  //                               );
+  //                             }
+  //                                 : null,
+  //                           ),
+  //                         );
+  //                       },
+  //                     ),
+  //
+  //                     orderButton(
+  //                       'KOT Print',
+  //                       canPrintKot
+  //                           ? const Color(0xFFF97316)
+  //                           : Colors.grey,
+  //                       onPressed:
+  //                       canPrintKot
+  //                           ? () async {
+  //                         final orderBloc =
+  //                         context.read<OrderBloc>();
+  //                         final kotBloc =
+  //                         context.read<KotBloc>();
+  //                         final orderRepo = OrderRepository(
+  //                           baseUrl:
+  //                           'https://merchantrestaurant.alektasolutions.com',
+  //                         );
+  //
+  //                         if (state.orderItems.isEmpty) {
+  //                           ScaffoldMessenger.of(
+  //                             context,
+  //                           ).showSnackBar(
+  //                             const SnackBar(
+  //                               duration: Duration(seconds: 1),
+  //                               content: Text(
+  //                                 'No items to create KOT!',
+  //                               ),
+  //                             ),
+  //                           );
+  //                           return;
+  //                         }
+  //
+  //                         showDialog(
+  //                           context: context,
+  //                           barrierDismissible: false,
+  //                           builder:
+  //                               (_) => const Center(
+  //                             child:
+  //                             CircularProgressIndicator(),
+  //                           ),
+  //                         );
+  //
+  //                         try {
+  //                           final captainId = int.tryParse(
+  //                             this.widget.userId,
+  //                           );
+  //                           if (captainId == null ||
+  //                               widget.token.isEmpty) {
+  //                             throw Exception(
+  //                               'Invalid user session. Please check in again.',
+  //                             );
+  //                           }
+  //
+  //                           final KotModel? kot =
+  //                           await orderRepo.createKOT(
+  //                             parentOrderId: state.orderId,
+  //                             kotId: "",
+  //                             items: state.orderItems,
+  //                             token: widget.token,
+  //                             restaurantId:
+  //                             orderBloc
+  //                                 .state
+  //                                 .restaurantId
+  //                                 .toString(),
+  //                             zoneId:
+  //                             orderBloc.state.zoneId,
+  //                             captainId: captainId,
+  //                           );
+  //
+  //                           Navigator.of(context).pop();
+  //
+  //                           final permissions =
+  //                           await SessionManager.loadPermissions();
+  //                           final captainName =
+  //                               permissions?.displayName ?? '';
+  //                           if (kot != null) {
+  //                             await printKot(
+  //                               kotNo: kot.kotNumber ?? '',
+  //                               orderId:
+  //                               kot.parentOrderId
+  //                                   .toString(),
+  //                               tableName:
+  //                               orderBloc.state.tableName,
+  //                               captainName: captainName,
+  //                               items:
+  //                               state.orderItems
+  //                                   .map(
+  //                                     (e) => {
+  //                                   "name": e.name,
+  //                                   "qty": e.quantity,
+  //                                   "modifiers":
+  //                                   e.modifiers
+  //                                       .toList(),
+  //                                   "addons": e.addOns,
+  //                                 },
+  //                               )
+  //                                   .toList(),
+  //                               kot: kot,
+  //                             );
+  //                             await KdsMqttPublisher.notifyKotCreated(
+  //                               restaurantId:
+  //                               orderBloc.state.restaurantId
+  //                                   .toString(),
+  //                               parentOrderId: state.orderId,
+  //                               zoneId: orderBloc.state.zoneId,
+  //                               zoneName:
+  //                               orderBloc.state.zoneName,
+  //                               orderType: 'Dine-In',
+  //                               kot: kot,
+  //                               tableName:
+  //                               orderBloc.state.tableName,
+  //                             );
+  //                             orderBloc.add(AddKOT(kot));
+  //                             kotBloc.add(AddKotToList(kot));
+  //                             orderBloc.add(ClearOrder());
+  //
+  //                             ScaffoldMessenger.of(
+  //                               context,
+  //                             ).showSnackBar(
+  //                               SnackBar(
+  //                                 content: SizedBox(
+  //                                   width: 400,
+  //                                   child: Row(
+  //                                     mainAxisAlignment:
+  //                                     MainAxisAlignment
+  //                                         .center,
+  //                                     children: [
+  //                                       const Icon(
+  //                                         Icons.check_circle,
+  //                                         color: Colors.white,
+  //                                         size: 20,
+  //                                       ),
+  //                                       const SizedBox(
+  //                                         width: 8,
+  //                                       ),
+  //                                       Text(
+  //                                         'KOT Created: ${kot.kotNumber}',
+  //                                         style:
+  //                                         const TextStyle(
+  //                                           fontSize: 16,
+  //                                           fontWeight:
+  //                                           FontWeight
+  //                                               .w500,
+  //                                           color:
+  //                                           Colors
+  //                                               .white,
+  //                                         ),
+  //                                       ),
+  //                                     ],
+  //                                   ),
+  //                                 ),
+  //                                 duration: const Duration(
+  //                                   seconds: 4,
+  //                                 ),
+  //                                 behavior:
+  //                                 SnackBarBehavior.floating,
+  //                                 margin: EdgeInsets.only(
+  //                                   left: 400,
+  //                                   right: 400,
+  //                                   bottom:
+  //                                   MediaQuery.of(
+  //                                     context,
+  //                                   ).size.height *
+  //                                       0.90,
+  //                                 ),
+  //                                 shape: RoundedRectangleBorder(
+  //                                   borderRadius:
+  //                                   BorderRadius.circular(
+  //                                     12,
+  //                                   ),
+  //                                 ),
+  //                                 backgroundColor: Colors.green,
+  //                                 elevation: 6,
+  //                               ),
+  //                             );
+  //                           }
+  //                         } catch (e) {
+  //                           if (Navigator.of(
+  //                             context,
+  //                             rootNavigator: true,
+  //                           ).canPop()) {
+  //                             Navigator.of(
+  //                               context,
+  //                               rootNavigator: true,
+  //                             ).pop();
+  //                           }
+  //                           final message = e
+  //                               .toString()
+  //                               .replaceFirst(
+  //                             "Exception: ",
+  //                             "",
+  //                           );
+  //                           ScaffoldMessenger.of(
+  //                             context,
+  //                           ).showSnackBar(
+  //                             SnackBar(
+  //                               content: Text(message),
+  //                               backgroundColor: Colors.red,
+  //                               behavior:
+  //                               SnackBarBehavior.floating,
+  //                               duration: const Duration(
+  //                                 seconds: 1,
+  //                               ),
+  //                             ),
+  //                           );
+  //                           AppLogger.error(message);
+  //                         }
+  //                       }
+  //                           : null,
+  //                     ),
+  //
+  //                     orderButton(
+  //                       'Checkout',
+  //                       canPay ? const Color(0xFF16A34A) : Colors.grey,
+  //                       onPressed:
+  //                       canPay
+  //                           ? () {
+  //                         AppLogger.info("Pay clicked - Dine In");
+  //                         debugPrint("💳 Navigating to PaymentScreen from Dine-In - isTakeAway: false");
+  //                         AppLogger.info("Pay clicked");
+  //                         Navigator.push(
+  //                           context,
+  //                           MaterialPageRoute(
+  //                             builder:
+  //                                 (_) => MultiBlocProvider(
+  //                               providers: [
+  //                                 BlocProvider.value(
+  //                                   value:
+  //                                   context
+  //                                       .read<
+  //                                       OrderBloc
+  //                                   >(),
+  //                                 ),
+  //                                 BlocProvider.value(
+  //                                   value:
+  //                                   context
+  //                                       .read<
+  //                                       PaymentBloc
+  //                                   >(),
+  //                                 ),
+  //                                 BlocProvider.value(
+  //                                   value:
+  //                                   context
+  //                                       .read<
+  //                                       RemoveDiscountBloc
+  //                                   >(),
+  //                                 ),
+  //                               ],
+  //                               child: PaymentScreen(
+  //                                 loadedTables:
+  //                                 widget.loadedTables,
+  //                                 pin: widget.pin,
+  //                                 token: widget.token,
+  //                                 restaurantId:
+  //                                 widget.restaurantId,
+  //                                 restaurantName:
+  //                                 widget.restaurantName,
+  //                                 zoneId: widget.zoneId,
+  //                                 isTakeAway: false,  // ✅ Explicitly false for Dine-In
+  //                               ),
+  //                             ),
+  //                           ),
+  //                         );
+  //                       }
+  //                           : null,
+  //                     ),
+  //                   ],
+  //                 ),
+  //               ),
+  //             ],
+  //           ),
+  //         );
+  //       },
+  //     ),
+  //   );
+  // }
+
+  @override
   Widget build(BuildContext context) {
     // 1️⃣ Trigger KOT loading for existing order
     final orderBloc = context.read<OrderBloc>();
@@ -294,39 +1369,39 @@ class _OrderPanelState extends State<OrderPanel> {
           // disable buttons
           final bool hasCartItems = state.orderItems.isNotEmpty;
 
-          final activeKots =
-          state.kotList.where((kot) {
+          // ✅ FIXED: Check for ANY KOT that is not voided or transferred
+          final bool hasAnyValidKot = state.kotList.any((kot) {
             final status = (kot.status ?? '').toLowerCase();
+            return status != 'voided' && status != 'transferred';
+          });
 
-            return status != 'served' &&
-                status != 'voided' &&
-                status != 'transferred';
-          }).toList();
-
-          final bool hasActiveKot = activeKots.isNotEmpty;
           debugPrint("========== KOTS ==========");
           for (final kot in state.kotList) {
             debugPrint("KOT: ${kot.kotNumber} | Status: ${kot.status}");
           }
 
           debugPrint("Total KOTs: ${state.kotList.length}");
-          debugPrint("Active KOTs: ${activeKots.length}");
+          debugPrint("Valid KOTs (not voided/transferred): ${state.kotList.where((k) => k.status?.toLowerCase() != 'voided' && k.status?.toLowerCase() != 'transferred').length}");
 
-          /// Repeat Order -> only if active KOT exists
-          final bool canRepeatOrder = hasActiveKot;
+          /// Repeat Order -> enabled if there's any valid KOT (not voided or transferred)
+          final bool canRepeatOrder = hasAnyValidKot;
 
           /// KOT Print -> only if cart contains items
           final bool canPrintKot = hasCartItems;
 
-          /// Pay -> only if active KOT exists
-          final bool canPay = hasActiveKot;
+          /// Pay -> enabled if there's any valid KOT (not voided or transferred)
+          final bool canPay = hasAnyValidKot;
 
           return Container(
             width: 700,
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: const Color(0xFFE0E0E0), // Border color
+                width: 1,                     // Border width
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -334,19 +1409,19 @@ class _OrderPanelState extends State<OrderPanel> {
                 /// Header row with badges & actions
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
+                    horizontal: 6,
                     vertical: 12,
                   ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(.05),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                    // boxShadow: [
+                    //   BoxShadow(
+                    //     color: Colors.black.withOpacity(.05),
+                    //     blurRadius: 8,
+                    //     offset: const Offset(0, 2),
+                    //   ),
+                    // ],
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -365,39 +1440,41 @@ class _OrderPanelState extends State<OrderPanel> {
                                   height: 18,
                                 ),
                                 const SizedBox(width: 6),
-                                Text(
-                                  widget.isTakeAway
-                                      ? (state.orderId > 0
-                                      ? "Order Id #${state.orderId}"
-                                      : "Order Id ----")
-                                      : "Order Id #${state.orderId}",
-                                  style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xff404040),
+                                RichText(
+                                  text: TextSpan(
+                                    children: [
+                                      const TextSpan(
+                                        text: "Order Id ",
+                                        style: TextStyle(
+                                          color: Color(0xFF656565),
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w400,
+                                        ),
+                                      ),
+                                      TextSpan(
+                                        text: widget.isTakeAway
+                                            ? (state.orderId > 0 ? "#${state.orderId}" : "----")
+                                            : "#${state.orderId}",
+                                        style: const TextStyle(
+                                          color: Color(0xFF152148),
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
                             ),
-                            // Text(
-                            //   state.orderId > 0
-                            //       ? "Order Id #${state.orderId}"
-                            //       : "Order Id ----",
-                            //   style: const TextStyle(
-                            //     fontSize: 20,
-                            //     fontWeight: FontWeight.w600,
-                            //     color: Color(0xff404040),
-                            //   ),
-                            // ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 16),
 
                             /// Table + Guests
                             widget.isTakeAway
                                 ? Row(
                               children: [
                                 const Icon(
-                                  Icons.shopping_bag_outlined,
-                                  color: Color(0xff002053),
+                                  Icons.calendar_month_outlined,
+                                  color: Color(0xff414141),
                                   size: 22,
                                 ),
                                 const SizedBox(width: 8),
@@ -461,8 +1538,9 @@ class _OrderPanelState extends State<OrderPanel> {
                               Text(
                                 "${DateFormat('MMM dd, yyyy').format(DateTime.now())} | ${DateFormat('h:mm a').format(DateTime.now())}",
                                 style: const TextStyle(
-                                  fontSize: 14,
+                                  fontSize: 16,
                                   fontWeight: FontWeight.w500,
+                                  color: Color(0xFF121212),
                                 ),
                               ),
                             ],
@@ -685,7 +1763,7 @@ class _OrderPanelState extends State<OrderPanel> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 2),
+                // const SizedBox(height: 2),
 
                 /// Main Content Area
                 Flexible(
@@ -909,7 +1987,7 @@ class _OrderPanelState extends State<OrderPanel> {
                                   vertical: 6,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF152148),
+                                  color: const Color(0xFFE9EAFC),
                                   borderRadius: const BorderRadius.only(
                                     bottomLeft: Radius.circular(6),
                                     bottomRight: Radius.circular(6),
@@ -924,7 +2002,7 @@ class _OrderPanelState extends State<OrderPanel> {
                                       style: const TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w600,
-                                        color: const Color(0xFFFAFAFA),
+                                        color: const Color(0xFF1A3C71),
                                       ),
                                     ),
                                     Text(
@@ -936,9 +2014,9 @@ class _OrderPanelState extends State<OrderPanel> {
                                       )
                                           .toStringAsFixed(2),
                                       style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: const Color(0xFFFAFAFA),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: const Color(0xFF1A3C71),
                                       ),
                                     ),
                                   ],
@@ -1265,6 +2343,8 @@ class _OrderPanelState extends State<OrderPanel> {
                         onPressed:
                         canPay
                             ? () {
+                          AppLogger.info("Pay clicked - Dine In");
+                          debugPrint("💳 Navigating to PaymentScreen from Dine-In - isTakeAway: false");
                           AppLogger.info("Pay clicked");
                           Navigator.push(
                             context,
@@ -1304,6 +2384,7 @@ class _OrderPanelState extends State<OrderPanel> {
                                   restaurantName:
                                   widget.restaurantName,
                                   zoneId: widget.zoneId,
+                                  isTakeAway: false,  // ✅ Explicitly false for Dine-In
                                 ),
                               ),
                             ),
@@ -1321,8 +2402,6 @@ class _OrderPanelState extends State<OrderPanel> {
       ),
     );
   }
-
-  // ================= Widgets =================
 
   Widget headerBadgeRow(OrderState state) {
     return BlocBuilder<OrderBloc, OrderState>(
@@ -1432,8 +2511,7 @@ class _OrderPanelState extends State<OrderPanel> {
   );
   Widget _takeAwayCheckoutButton(bool canPay) {
     return GestureDetector(
-      onTap:
-      canPay
+      onTap: canPay
           ? () async {
         final orderBloc = context.read<OrderBloc>();
         final state = orderBloc.state;
@@ -1445,8 +2523,7 @@ class _OrderPanelState extends State<OrderPanel> {
         showDialog(
           context: context,
           barrierDismissible: false,
-          builder:
-              (_) => const Center(child: CircularProgressIndicator()),
+          builder: (_) => const Center(child: CircularProgressIndicator()),
         );
 
         try {
@@ -1456,14 +2533,12 @@ class _OrderPanelState extends State<OrderPanel> {
             throw Exception("Invalid user session");
           }
 
-          final existingKotId =
-          state.kotList.isNotEmpty
+          final existingKotId = state.kotList.isNotEmpty
               ? state.kotList.first.kotId
               : null;
 
           if (existingKotId == null || existingKotId == 0) {
             // FIRST TIME -> CREATE KOT
-
             final kot = await orderRepo.createKOT(
               parentOrderId: state.orderId,
               kotId: "",
@@ -1479,12 +2554,9 @@ class _OrderPanelState extends State<OrderPanel> {
             }
 
             orderBloc.add(AddKOT(kot));
-
-            // Save KOT ID
             orderBloc.add(SetTakeAwayKotId(kot.kotId));
           } else {
             // SECOND TIME -> UPDATE SAME KOT
-
             await orderRepo.updateTakeAwayKot(
               kotId: existingKotId,
               parentOrderId: state.orderId,
@@ -1497,11 +2569,13 @@ class _OrderPanelState extends State<OrderPanel> {
 
           Navigator.pop(context);
 
+          // ✅ FIX: Pass isTakeAway: true here
+          debugPrint("💳 Navigating to PaymentScreen from Take Away - isTakeAway: true");
+
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder:
-                  (_) => MultiBlocProvider(
+              builder: (_) => MultiBlocProvider(
                 providers: [
                   BlocProvider.value(
                     value: context.read<OrderBloc>(),
@@ -1520,6 +2594,7 @@ class _OrderPanelState extends State<OrderPanel> {
                   restaurantId: widget.restaurantId,
                   restaurantName: widget.restaurantName,
                   zoneId: widget.zoneId,
+                  isTakeAway: true,  // ✅ CRITICAL: Pass true for Take Away
                 ),
               ),
             ),
@@ -1547,12 +2622,10 @@ class _OrderPanelState extends State<OrderPanel> {
         decoration: BoxDecoration(
           color: canPay ? const Color(0xFF086888) : const Color(0xFFDEDEDE),
           borderRadius: BorderRadius.circular(14),
-          border:
-          canPay
+          border: canPay
               ? null
               : Border.all(color: const Color(0xFFC0C0C0), width: 1),
-          boxShadow:
-          canPay
+          boxShadow: canPay
               ? [
             BoxShadow(
               color: Colors.black.withOpacity(0.15),
@@ -1574,46 +2647,49 @@ class _OrderPanelState extends State<OrderPanel> {
       ),
     );
   }
-
   Widget orderButton(
       String text,
       Color color, {
         VoidCallback? onPressed,
         bool isLoading = false,
-      }) => Expanded(
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2),
-      child: SizedBox(
-        height: 55,
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: onPressed == null ? Colors.grey : color,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-          onPressed: onPressed,
-          child:
-          isLoading
-              ? const SizedBox(
-            height: 20,
-            width: 20,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-            ),
-          )
-              : Text(
-            text,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w900,
+        Color? textColor,
+      }) =>
+      Expanded(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          child: SizedBox(
+            height: 55,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: onPressed == null ? Colors.grey : color,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              onPressed: onPressed,
+              child: isLoading
+                  ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+                  : Text(
+                text,
+                style: TextStyle(
+                  color: textColor ??
+                      (onPressed == null
+                          ? const Color(0xFF757575) // Disabled text
+                          : Colors.white), // Enabled text
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
             ),
           ),
         ),
-      ),
-    ),
-  );
+      );
 }

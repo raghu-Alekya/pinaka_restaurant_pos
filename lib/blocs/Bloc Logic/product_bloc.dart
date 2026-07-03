@@ -12,7 +12,10 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
   ProductBloc(this.repository) : super(ProductInitial()) {
     on<FetchProductsBySubCategory>(_onFetchProducts);
     on<UpdateVariantQuantity>(_onUpdateVariantQuantity);
-    on<ClearProducts>((event, emit) => emit(ProductInitial()));
+    on<ClearProducts>((event, emit) {
+      _cache.clear();                // ✅ ADD THIS
+      emit(ProductInitial());
+    });
   }
 
   Future<void> _onFetchProducts(

@@ -121,47 +121,47 @@ class _DashboardScreenState extends State<DashboardScreen>
   final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
   bool _searchEditable = false;
   final TextEditingController _searchController = TextEditingController();
-
-
-
+  int? _takeawayOrderId;
+  bool _isInitialized = false; // ✅ Add this flag
 
   @override
   void initState() {
     super.initState();
+    debugPrint("🏪 DashboardScreen init - isTakeAway: ${widget.isTakeAway}");
+    debugPrint("🏪 DashboardScreen init - restaurantId: ${widget.restaurantId}");
+
     miniSubRepo = MiniSubCategoryRepository();
+    productRepo = ProductRepository();
+    variantRepository = VariantRepository(token: widget.token);
 
-    productRepo = ProductRepository(
-      // baseUrl: AppConstants.baseDomain,
-    );
+    // ✅ CRITICAL FIX: Reset takeaway state on init
+    _resetTakeawayState();
 
-    variantRepository = VariantRepository(
-      // baseUrl: AppConstants.baseDomain,
-      token: widget.token,
-    );
-    // 🔥 Force keyboard to close when screen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      setState(() {
-        _searchEditable = false;
-      });
       _searchFocusNode.unfocus();
+      _isInitialized = true;
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final orderBloc = context.read<OrderBloc>();
-
-      if (widget.isTakeAway) {
-        // Start fresh only if there is no active takeaway order
-        if (orderBloc.state.orderId == 0) {
-          orderBloc.add(ResetOrder());
-        }
-      }
-
-      _searchFocusNode.unfocus();
-    });
-
-
 
     _loadCategories();
     _loadPermissions();
+  }
+
+  // ✅ New method to reset takeaway state
+  void _resetTakeawayState() {
+    if (widget.isTakeAway) {
+      debugPrint("🔄 Resetting takeaway state - Clearing old order ID");
+
+      // 1. Clear the stored order ID
+      _takeawayOrderId = null;
+
+      // 2. Clear the order in bloc
+      context.read<OrderBloc>().add(ClearOrder());
+
+      // 3. Force reset order ID to 0
+      context.read<OrderBloc>().add( ResetOrder());
+
+      debugPrint("✅ Takeaway state reset complete - orderId should be 0");
+    }
   }
 
   @override
@@ -169,8 +169,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     super.didChangeDependencies();
     routeObserver.subscribe(this as RouteAware, ModalRoute.of(context)! as PageRoute);
   }
-
-
 
   @override
   void dispose() {
@@ -180,16 +178,19 @@ class _DashboardScreenState extends State<DashboardScreen>
     _searchFocusNode.dispose();
     super.dispose();
   }
+
   @override
   void didPopNext() {
     debugPrint("🔥 Returned to Dashboard — closing keyboard");
-    // Called when returning to this screen
     _searchFocusNode.unfocus();
     FocusManager.instance.primaryFocus?.unfocus();
     _removeSearchOverlay();
+
+    // ✅ Reset takeaway state when returning to this screen
+    if (widget.isTakeAway) {
+      _resetTakeawayState();
+    }
   }
-
-
 
   void _loadCategories() {
     context.read<CategoryBloc>().add(
@@ -226,7 +227,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     setState(() {
       selectedFolder = folder;
 
-      // Add folder to breadcrumbs
       if (breadcrumbNames.length > 2) {
         breadcrumbNames[2] = folder.name;
         breadcrumbIds[2] = folder.id;
@@ -235,7 +235,6 @@ class _DashboardScreenState extends State<DashboardScreen>
         breadcrumbIds.add(folder.id);
       }
 
-      // Map folder products to MiniSubCategory list
       currentSubCategories = folder.products
           .map((p) => MiniSubCategory(
         id: p.id,
@@ -247,6 +246,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           .toList();
     });
   }
+
   void _showVariantPopup(
       BuildContext context,
       Product product,
@@ -285,7 +285,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-
   void _showSearchOverlay(List<Search_ProductModel> products) {
     _removeSearchOverlay();
 
@@ -301,7 +300,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               borderRadius: BorderRadius.circular(8),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(
-                  maxHeight: 300, // 🔽 DECREASE HEIGHT HERE
+                  maxHeight: 300,
                 ),
                 child: ListView.separated(
                   padding: EdgeInsets.zero,
@@ -317,7 +316,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                           product.name,
                           style: const TextStyle(fontSize: 14),
                         ),
-
                         onTap: () async {
                           setState(() {
                             _searchEditable = false;
@@ -327,9 +325,7 @@ class _DashboardScreenState extends State<DashboardScreen>
 
                           final orderBloc = context.read<OrderBloc>();
 
-                          // 🔵 VARIATION PRODUCT
                           if (product.type == 'variation' && product.parentId != null) {
-                            // 🔄 Show loader
                             showDialog(
                               context: context,
                               barrierDismissible: false,
@@ -340,17 +336,16 @@ class _DashboardScreenState extends State<DashboardScreen>
                               final variants =
                               await variantRepository.fetchVariantsByProduct(product.parentId!);
 
-                              Navigator.pop(context); // close loader
+                              Navigator.pop(context);
 
                               if (variants.isEmpty) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('No variants available')
-                                    ,duration: Duration(seconds: 1),),
+                                  const SnackBar(content: Text('No variants available'),
+                                    duration: Duration(seconds: 1),),
                                 );
                                 return;
                               }
 
-                              // ✅ Convert to Product (NOW variants exist)
                               final productForSelection = Product(
                                 id: product.parentId!,
                                 name: product.name,
@@ -364,7 +359,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                                 isVariantProduct: true,
                               );
 
-                              // 🔥 Reuse SAME logic
                               onItemSelected(
                                 productForSelection,
                                 Category(
@@ -389,7 +383,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                             return;
                           }
 
-                          // 🟢 SIMPLE PRODUCT
                           final simpleProduct = Product(
                             id: product.id,
                             name: product.name,
@@ -417,10 +410,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                           _removeSearchOverlay();
                           context.read<SearchProductBloc>().add(SearchClearProducts());
                         }
-
-
-
-                    );},
+                    );
+                  },
                 ),
               ),
             ),
@@ -429,6 +420,7 @@ class _DashboardScreenState extends State<DashboardScreen>
 
     Overlay.of(context).insert(_searchOverlay!);
   }
+
   void _showNoProductsOverlay() {
     _removeSearchOverlay();
     _removeOverlayOnly();
@@ -461,6 +453,7 @@ class _DashboardScreenState extends State<DashboardScreen>
 
     Overlay.of(context).insert(_searchOverlay!);
   }
+
   void _removeOverlayOnly() {
     _searchOverlay?.remove();
     _searchOverlay = null;
@@ -468,7 +461,7 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   void _removeSearchOverlay() {
     setState(() {
-      _searchEditable = false; // 🔒 lock input
+      _searchEditable = false;
     });
 
     _searchFocusNode.unfocus();
@@ -477,35 +470,31 @@ class _DashboardScreenState extends State<DashboardScreen>
     _searchOverlay?.remove();
     _searchOverlay = null;
   }
-  void _clearSearchField() {
-    // 1️⃣ Clear text
-    _searchController.clear();
 
-    // 2️⃣ Reset flags
+  void _clearSearchField() {
+    _searchController.clear();
     _isSearchActive = false;
     _searchEditable = false;
-
-    // 3️⃣ Remove overlay
     _removeSearchOverlay();
-
-    // 4️⃣ Clear search bloc results
     context.read<SearchProductBloc>().add(SearchClearProducts());
-
-    // 5️⃣ Remove keyboard focus
     FocusScope.of(context).unfocus();
   }
-
-
-
 
   void onItemSelected(Product product, Category section) {
     final orderBloc = context.read<OrderBloc>();
 
-    print("Tapped product: ${product.name}, variants: ${product.variants.length}");
+    debugPrint("🛒 Tapped product: ${product.name}, variants: ${product.variants.length}");
+    debugPrint("🛒 Current order state - orderId: ${orderBloc.state.orderId}, isTakeAway: ${widget.isTakeAway}");
+
+    // ✅ Ensure we're using the correct order for takeaway
+    if (widget.isTakeAway) {
+      // If orderId is 0, the AddOrderItem event will trigger order creation
+      debugPrint("📦 Adding item to takeaway order - current orderId: ${orderBloc.state.orderId}");
+    }
 
     if (product.variants.isNotEmpty) {
       showDialog(
-        context: context, // use parent context, not dialog builder context
+        context: context,
         barrierDismissible: false,
         builder: (dialogContext) {
           return VariantPopupContent(
@@ -525,18 +514,14 @@ class _DashboardScreenState extends State<DashboardScreen>
                     section: section,
                     productId: product.id,
                     variationId: variant.id,
-
-                    // ✅ base amount (item total)
                     amount: variant.price * 1,
                   ),
                 ),
               );
-
               Navigator.pop(dialogContext);
             },
-            onVariantSelected: (variant) {}, // optional
+            onVariantSelected: (variant) {},
           );
-
         },
       );
     } else {
@@ -550,23 +535,18 @@ class _DashboardScreenState extends State<DashboardScreen>
             section: section,
             productId: product.id,
             variationId: null,
-
-            // ✅ base amount
             amount: (double.tryParse(product.price.toString()) ?? 0.0) * 1,
           ),
         ),
-
       );
     }
   }
-
 
   Widget _buildBreadcrumbs() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          // LEFT: Scrollable Breadcrumbs
           Expanded(
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -602,10 +582,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               ),
             ),
           ),
-
           const SizedBox(width: 3),
-
-          // RIGHT: Search Bar (Fixed Position)
           Align(
             alignment: Alignment.centerRight,
             child: CompositedTransformTarget(
@@ -627,32 +604,24 @@ class _DashboardScreenState extends State<DashboardScreen>
                 child: TextField(
                   controller: _searchController,
                   focusNode: _searchFocusNode,
-
                   autofocus: false,
-
-                  // 🔐 KEY LINE
                   readOnly: !_searchEditable,
-
                   decoration: const InputDecoration(
                     hintText: "Search item",
                     prefixIcon: Icon(Icons.search, size: 18),
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.symmetric(vertical: 10),
                   ),
-
                   onTap: () {
                     if (!_searchEditable) {
                       setState(() {
-                        _searchEditable = true; // 🔓 unlock typing
+                        _searchEditable = true;
                       });
-
-                      // delay ensures Flutter updates readOnly before focus
                       Future.microtask(() {
                         FocusScope.of(context).requestFocus(_searchFocusNode);
                       });
                     }
                   },
-
                   onChanged: (value) {
                     final query = value.trim();
                     _isSearchActive = query.isNotEmpty;
@@ -673,16 +642,10 @@ class _DashboardScreenState extends State<DashboardScreen>
               ),
             ),
           ),
-
-
-
-
-
         ],
       ),
     );
   }
-
 
   void _onBreadcrumbTap(int index) {
     setState(() {
@@ -690,7 +653,6 @@ class _DashboardScreenState extends State<DashboardScreen>
       breadcrumbIds = breadcrumbIds.sublist(0, index + 1);
 
       if (index == 0) {
-        // Reset selection if clicked root
         selectedSubCategoryId = null;
         selectedFolder = null;
         currentSubCategories = [];
@@ -709,20 +671,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     FocusManager.instance.primaryFocus?.unfocus();
     final permissions =
         widget.userPermissions ?? await SessionManager.loadPermissions();
-    // 🔍 DEBUG LINE — ADD IT HERE
     debugPrint("BOTTOM NAV PERMS: ${permissions?.displayName}");
-
-
-    // NavigationHelper.handleNavigation(
-    //   context,
-    //   _bottomNavIndex,
-    //   index,
-    //   widget.pin,
-    //   widget.token,
-    //   widget.restaurantId,
-    //   widget.restaurantName,
-    //   permissions, // ✅ NEVER NULL NOW
-    // );
   }
 
   Future<void> _loadPermissions() async {
@@ -757,21 +706,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             isOrderPanel: true,
             isHomeScreen: false,
             isTakeAway: widget.isTakeAway,
-            showTablesIcon: true,// Show Tables icon only on Dashboard
-            // onTablesTap: () {
-            //   Navigator.push(
-            //     context,
-            //     MaterialPageRoute(
-            //       builder: (_) => TablesScreen(
-            //         token: widget.token,
-            //         pin: widget.pin,
-            //         restaurantId: widget.restaurantId,
-            //         restaurantName: widget.restaurantName,
-            //         userPermissions: _userPermissions, loadedTables: [],
-            //       ),
-            //     ),
-            //   );
-            // },
+            showTablesIcon: true,
             onPermissionsReceived: (permissions) {
               setState(() {
                 _userPermissions = permissions;
@@ -787,7 +722,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                   flex: 63,
                   child: Column(
                     children: [
-                      // Sidebar + SubCategory
                       Expanded(
                         child: Row(
                           children: [
@@ -799,7 +733,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                                 onCategorySelected: (category) {
                                   setState(() {
                                     selectedCategoryName = category.name;
-
                                     breadcrumbNames = [category.name];
                                     breadcrumbIds = [int.parse(category.id)];
                                     selectedFolder = null;
@@ -813,7 +746,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                               flex: 55,
                               child: Padding(
                                 padding: const EdgeInsets.fromLTRB(2, 8, 2, 8),
-
                                 child: BlocBuilder<CategoryBloc, CategoryState>(
                                   builder: (context, catState) {
                                     if (catState is CategoryLoading) {
@@ -847,43 +779,34 @@ class _DashboardScreenState extends State<DashboardScreen>
                                               return SubCategoryTabWidget(
                                                 subCategories: subState.subcategories,
                                                 selectedIndex: selectedIndex,
+                                                // onTap: (index) {
+                                                //   final subCategory = subState.subcategories[index];
+                                                //   onSubCategoryTap(subCategory);
+                                                //   context.read<SubCategoryBloc>().add(
+                                                //     SelectSubCategory(subCategory: subCategory),
+                                                //   );
+                                                // },
                                                 onTap: (index) {
                                                   final subCategory = subState.subcategories[index];
-
-                                                  onSubCategoryTap(subCategory);
-
-                                                  context.read<SubCategoryBloc>().add(
-                                                    SelectSubCategory(subCategory: subCategory),
-                                                  );
+                                                  onSubCategoryTap(subCategory); // already dispatches SelectSubCategory internally
                                                 },
                                               );
                                             },
                                           ),
-
                                           const SizedBox(height: 6),
-                                          // if (breadcrumbNames.isNotEmpty) ...[
-                                          //   _buildBreadcrumbs(),
-                                          //   const SizedBox(height: 8),
-                                          // ],
                                           Expanded(
                                             child: BlocBuilder<
                                                 MiniSubCategoryBloc,
                                                 MiniSubCategoryState>(
                                               builder: (context, miniState) {
-                                                if (miniState
-                                                is MiniSubCategoryLoading) {
+                                                if (miniState is MiniSubCategoryLoading) {
                                                   return const Center(
-                                                      child:
-                                                      CircularProgressIndicator());
-                                                } else if (miniState
-                                                is MiniSubCategoryLoaded) {
+                                                      child: CircularProgressIndicator());
+                                                } else if (miniState is MiniSubCategoryLoaded) {
                                                   currentSubCategories =
                                                       miniState.miniSubCategories;
 
-                                                  final variantRepo =
-                                                  VariantRepository(
-                                                    // baseUrl:
-                                                    // 'https://merchantrestaurant.alektasolutions.com',
+                                                  final variantRepo = VariantRepository(
                                                     token: widget.token,
                                                   );
                                                   final modifierRepo = ModifierRepository(
@@ -908,15 +831,12 @@ class _DashboardScreenState extends State<DashboardScreen>
                                                     modifierRepository: modifierRepo,
                                                     isTakeAway: widget.isTakeAway,
                                                   );
-                                                } else if (miniState
-                                                is MiniSubCategoryError) {
+                                                } else if (miniState is MiniSubCategoryError) {
                                                   return Center(
-                                                      child:
-                                                      Text(miniState.message));
+                                                      child: Text(miniState.message));
                                                 } else {
                                                   return const Center(
-                                                      child: Text(
-                                                          'No mini subcategories available'));
+                                                      child: Text('No mini subcategories available'));
                                                 }
                                               },
                                             ),
@@ -933,16 +853,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                           ],
                         ),
                       ),
-
-                      // Bottom Navigation
-                      // SizedBox(
-                      //   height: 55,
-                      //   child: BottomNavBar(
-                      //     selectedIndex: _bottomNavIndex,
-                      //     onItemTapped: _onNavItemTapped,
-                      //     userPermissions: _userPermissions,
-                      //   ),
-                      // ),
                     ],
                   ),
                 ),
@@ -954,15 +864,42 @@ class _DashboardScreenState extends State<DashboardScreen>
                     padding: const EdgeInsets.fromLTRB(6, 12, 12, 12),
                     child: BlocBuilder<OrderBloc, OrderState>(
                       builder: (context, state) {
+                        debugPrint("📊 OrderBloc State - orderId: ${state.orderId}, items count: ${state.orderItems.length}");
+                        debugPrint("📊 widget.isTakeAway: ${widget.isTakeAway}");
+
+                        // ✅ CRITICAL FIX: Handle order ID for takeaway
+                        int orderId;
+                        if (widget.isTakeAway) {
+                          // For takeaway: ALWAYS use state.orderId, never use _takeawayOrderId
+                          // because we want the fresh order ID from the bloc
+                          orderId = state.orderId;
+
+                          debugPrint("📦 Takeaway order ID from state: $orderId");
+
+                          // ✅ FIXED: Use state.orderItems instead of state.items
+                          if (orderId == 0 && state.orderItems.isNotEmpty) {
+                            debugPrint("⚠️ Order has items (${state.orderItems.length}) but orderId is 0 - this should trigger order creation");
+                          }
+
+                          // Update stored takeaway ID from state (for reference only)
+                          if (state.orderId > 0) {
+                            _takeawayOrderId = state.orderId;
+                            debugPrint("✅ Updated stored takeaway order ID: $_takeawayOrderId");
+                          }
+                        } else {
+                          // Dine-in: use widget.orderId or state.orderId
+                          orderId = widget.orderId ?? state.orderId;
+                          debugPrint("🍽️ Dine-in order ID: $orderId");
+                        }
+
+                        debugPrint("📤 Passing to OrderPanel - orderId: $orderId, isTakeAway: ${widget.isTakeAway}");
+
                         return OrderPanel(
                           token: widget.token,
                           loadedTables: widget.loadedTables,
                           restaurantId: widget.restaurantId,
                           guestcount: state.guestDetails,
-
-                          orderId: widget.isTakeAway
-                              ? (state.orderId ?? 0)
-                              : (widget.orderId ?? state.orderId ?? 0),
+                          orderId: orderId,  // ✅ Pass the calculated orderId
                           addonPrices: state.addonPrices,
                           onGuestSaved: (int value) {},
                           tableId: state.tableId,
@@ -979,7 +916,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                     ),
                   ),
                 ),
-                // ✅ ADD THIS BLOCK (ONLY ONCE)
+                // Search Listener
                 BlocListener<SearchProductBloc, SearchProductState>(
                   listener: (context, state) {
                     debugPrint("🧠 Search State Changed → $state");
@@ -989,16 +926,11 @@ class _DashboardScreenState extends State<DashboardScreen>
                     }
 
                     if (state is SearchProductLoaded) {
-                      debugPrint(
-                          "📥 Overlay showing ${state.products.length} items");
+                      debugPrint("📥 Overlay showing ${state.products.length} items");
                       _showSearchOverlay(state.products);
-                    }
-
-                    else if (state is SearchProductEmpty) {
-                      _showNoProductsOverlay(); // 👈 SHOW MESSAGE
-                    }
-
-                    else if (state is SearchProductInitial ||
+                    } else if (state is SearchProductEmpty) {
+                      _showNoProductsOverlay();
+                    } else if (state is SearchProductInitial ||
                         state is SearchProductError) {
                       _removeSearchOverlay();
                     }

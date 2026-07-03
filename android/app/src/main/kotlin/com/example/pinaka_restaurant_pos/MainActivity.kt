@@ -1,4 +1,4 @@
-package com.example.pinaka_restaurant_pos
+package com.pinaka.restaurant
 
 import io.flutter.embedding.android.FlutterActivity
 

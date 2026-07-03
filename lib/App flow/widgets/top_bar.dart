@@ -19,6 +19,13 @@ import '../../repositories/ordertype_payment.dart';
 
 // Added for Print support
 import '../../printer/printer_service.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../blocs/Bloc Event/subcategory_event.dart';
+import '../../blocs/Bloc Event/minisubcategory_event.dart';
+import '../../blocs/Bloc Event/product_event.dart';
+import '../../blocs/Bloc Logic/subcategory_bloc.dart';
+import '../../blocs/Bloc Logic/minisubcategory_bloc.dart';
+import '../../blocs/Bloc Logic/product_bloc.dart';
 
 class TopBar extends StatefulWidget implements PreferredSizeWidget {
   final String token;
@@ -119,6 +126,14 @@ class _TopBarState extends State<TopBar> {
     super.dispose();
   }
 
+  List<String> get _filteredOrderTypes {
+    if (widget.isTakeAway) {
+      return orderTypes.where((t) => t.toLowerCase().contains("takeaway")).toList();
+    } else {
+      return orderTypes.where((t) => t.toLowerCase().contains("dine in")).toList();
+    }
+  }
+
   Future<void> _loadOrderTypes() async {
     try {
       final repo = OrderTypesInPaymentScreenRepository();
@@ -126,7 +141,15 @@ class _TopBarState extends State<TopBar> {
       if (result != null && mounted) {
         setState(() {
           orderTypes = result.orderTypes;
-          selectedOrderType = widget.paymentSummary?.orderType ?? "Dine In";
+
+          final filtered = widget.isTakeAway
+              ? orderTypes.where((t) => t.toLowerCase().contains("takeaway")).toList()
+              : orderTypes.where((t) => t.toLowerCase().contains("dine in")).toList();
+
+          selectedOrderType = widget.paymentSummary?.orderType != null &&
+              filtered.contains(widget.paymentSummary?.orderType)
+              ? widget.paymentSummary?.orderType
+              : (filtered.isNotEmpty ? filtered.first : null);
         });
       }
     } catch (e) {
@@ -134,10 +157,6 @@ class _TopBarState extends State<TopBar> {
     }
   }
 
-  // ── FIX: _printBill now prints DIRECTLY using Printer.printBill
-  // (printer_service.dart) instead of opening the PrintRecipt popup.
-  // No dialog is shown anymore — tapping Print sends the job straight
-  // to the printer using the same data mapping PrintRecipt used to do.
   Future<void> _printBill() async {
     PaymentSummary? summaryToPrint = _localPaymentSummary ?? widget.paymentSummary;
 
@@ -236,21 +255,24 @@ class _TopBarState extends State<TopBar> {
           BoxShadow(
             color: Colors.grey.withAlpha((0.3 * 255).toInt()),
             spreadRadius: 0,
-            blurRadius: 4,
-            offset: const Offset(0, 3),
+            blurRadius: 2,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: AppBar(
         backgroundColor: Colors.white,
-        toolbarHeight: 70,
+        toolbarHeight: 60,
         automaticallyImplyLeading: false,
         elevation: 0,
         titleSpacing: 0,
-        title: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 15),
-          child: Row(
-            children: [
+        title: SizedBox(
+          height: 60,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 15),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
               // LEFT SIDE
               if (widget.isPaymentScreen)
                 GestureDetector(
@@ -273,7 +295,7 @@ class _TopBarState extends State<TopBar> {
                   ),
                 )
               else
-                Image.asset('assets/pinaka.png', height: 40, width: 100, fit: BoxFit.contain),
+                Image.asset('assets/pinaka.png', height: 50, width: 100, fit: BoxFit.contain),
 
               const SizedBox(width: 15),
 
@@ -334,9 +356,28 @@ class _TopBarState extends State<TopBar> {
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
-                          value: selectedOrderType,
-                          items: orderTypes.isNotEmpty
-                              ? orderTypes.map((type) => DropdownMenuItem(value: type, child: Text(type))).toList()
+                          // value: _filteredOrderTypes.contains(selectedOrderType) ? selectedOrderType : null,
+                          // items: _filteredOrderTypes.isNotEmpty
+                          //     ? _filteredOrderTypes.map((type) => DropdownMenuItem(value: type, child: Text(type))).toList()
+                          //     : null,
+                          // onChanged: (value) {
+                          //   if (value == null) return;
+                          //   setState(() => selectedOrderType = value);
+                          //   widget.onOrderTypeChanged?.call(value);
+                          // },
+                          // value: _filteredOrderTypes.contains(selectedOrderType) ? selectedOrderType : null,
+                          // items: _filteredOrderTypes.isNotEmpty
+                          //     ? _filteredOrderTypes.map((type) => DropdownMenuItem(value: type, child: Text(type))).toList()
+                          //     : null,
+                          // onChanged: (value) {
+                          //   if (value == null) return;
+                          //   setState(() => selectedOrderType = value);
+                          //   widget.onOrderTypeChanged?.call(value);
+                          // },
+
+                          value: _filteredOrderTypes.contains(selectedOrderType) ? selectedOrderType : null,
+                          items: _filteredOrderTypes.isNotEmpty
+                              ? _filteredOrderTypes.map((type) => DropdownMenuItem(value: type, child: Text(type))).toList()
                               : null,
                           onChanged: (value) {
                             if (value == null) return;
@@ -346,6 +387,7 @@ class _TopBarState extends State<TopBar> {
                         ),
                       ),
                     ),
+
                     const SizedBox(width: 14),
 
                     // Print Button
@@ -397,12 +439,13 @@ class _TopBarState extends State<TopBar> {
                   const SizedBox(width: 10),
                   _buildProfileSection(),
                 ] else if (widget.isOrderPanel) ...[
+                  _buildHomeButton(),
+                  const SizedBox(width: 10),
                   if (!widget.isTakeAway) ...[
                     _buildTablesButton(),
                     const SizedBox(width: 10),
                   ],
-                  _buildHomeButton(),
-                  const SizedBox(width: 10),
+
                   _buildNotificationIconButton(),
                   const SizedBox(width: 10),
                   _buildSettingsButton(),
@@ -424,32 +467,70 @@ class _TopBarState extends State<TopBar> {
           ),
         ),
       ),
+      )
     );
   }
 
   // ==================== ALL HELPER METHODS (UNCHANGED) ====================
 
   Widget _buildHomeButton() {
-    return _buildIconButton(
-      label: "Home",
-      color: const Color(0xFF4F7CFF),
-      icon: const Icon(Icons.home_outlined, color: Color(0xFF4F7CFF), size: 22),
-      onPressed: () {
+    return GestureDetector(
+      onTap: () {
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (_) => HomeScreen(token: widget.token, pin: widget.pin, restaurantId: widget.restaurantId, restaurantName: widget.restaurantName)),
+          MaterialPageRoute(
+            builder: (_) => HomeScreen(
+              token: widget.token,
+              pin: widget.pin,
+              restaurantId: widget.restaurantId,
+              restaurantName: widget.restaurantName,
+            ),
+          ),
               (route) => false,
         );
       },
+      child: Container(
+        width: 55,
+        height: 55,
+        decoration: BoxDecoration(
+          color: const Color(0xFF7B4597),
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x667B4597),
+              blurRadius: 4,
+              offset: Offset(0, 0),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            Icon(
+              Icons.home_outlined,
+              color: Colors.white,
+              size: 24,
+            ),
+            SizedBox(height: 4),
+            Text(
+              "Home",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 9,
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   Widget _buildTablesButton() {
-    return _buildIconButton(
-      label: "Tables",
-      color: const Color(0xFF4F7CFF),
-      icon: const Icon(Icons.table_restaurant, color: Color(0xFF4F7CFF), size: 22),
-      onPressed: () {
+    return GestureDetector(
+      onTap: () {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -464,15 +545,48 @@ class _TopBarState extends State<TopBar> {
           ),
         );
       },
+      child: Container(
+        width: 55,
+        height: 55,
+        decoration: BoxDecoration(
+          color: const Color(0xFF048DCB),
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x4C048ECC),
+              blurRadius: 4,
+              offset: Offset(0, 0),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            Icon(
+              Icons.table_restaurant,
+              color: Colors.white,
+              size: 24,
+            ),
+            SizedBox(height: 3),
+            Text(
+              "Tables",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 9,
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   Widget _buildSettingsButton() {
-    return _buildIconButton(
-      label: "Settings",
-      color: const Color(0xFF4CAF50),
-      icon: Image.asset('assets/setting.png', width: 20, height: 20, color: const Color(0xFF4CAF50)),
-      onPressed: () {
+    return GestureDetector(
+      onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -486,15 +600,48 @@ class _TopBarState extends State<TopBar> {
           ),
         );
       },
+      child: Container(
+        width: 55,
+        height: 55,
+        decoration: BoxDecoration(
+          color: const Color(0xFF4CAF50),
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x664CAF50),
+              blurRadius: 4,
+              offset: Offset(0, 0),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset(
+              'assets/setting.png',
+              width: 22,
+              height: 22,
+              color: Colors.white,
+            ),
+            const SizedBox(height: 3),
+            const Text(
+              "Settings",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 9,
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
-
   Widget _buildLogoutButton() {
-    return _buildIconButton(
-      label: "Logout",
-      color: const Color(0xFFFF9800),
-      icon: Image.asset('assets/logout.png', width: 24, height: 24, color: const Color(0xFFFF9800)),
-      onPressed: () async {
+    return GestureDetector(
+      onTap: () async {
         final result = await showDialog<bool>(
           context: context,
           barrierDismissible: false,
@@ -511,54 +658,335 @@ class _TopBarState extends State<TopBar> {
 
         final authRepository = AuthRepository();
 
-        showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => const Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
 
         try {
           final success = await authRepository.logout(token);
-          if (context.mounted && Navigator.canPop(context)) Navigator.pop(context);
 
+          if (context.mounted && Navigator.canPop(context)) {
+            Navigator.pop(context);
+          }
           if (success && context.mounted) {
+            // ✅ ADD — purge stale category/subcategory/product state & caches
+            // so the next login doesn't show leftover data from this session.
+            // Guarded with try/catch since TopBar is reused on screens where
+            // these Blocs may not be provided above it in the tree.
+            try {
+              context.read<SubCategoryBloc>().add(ResetSubCategory());
+              context.read<MiniSubCategoryBloc>().add(ResetMiniSubCategory());
+              context.read<ProductBloc>().add(ClearProducts());
+            } catch (_) {
+              // Blocs not available on this screen — safe to ignore.
+            }
+
             Navigator.pushAndRemoveUntil(
               context,
               MaterialPageRoute(builder: (_) => const EmployeeLoginPage(storeBaseUrl: '', storeName: '', storeId: '')),
                   (route) => false,
             );
           }
+          // if (success && context.mounted) {
+          //   Navigator.pushAndRemoveUntil(
+          //     context,
+          //     MaterialPageRoute(
+          //       builder: (_) => const EmployeeLoginPage(
+          //         storeBaseUrl: '',
+          //         storeName: '',
+          //         storeId: '',
+          //       ),
+          //     ),
+          //         (route) => false,
+          //   );
+          // }
         } catch (e) {
-          if (context.mounted && Navigator.canPop(context)) Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst("Exception: ", "")), backgroundColor: Colors.red));
+          if (context.mounted && Navigator.canPop(context)) {
+            Navigator.pop(context);
+          }
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                e.toString().replaceFirst("Exception: ", ""),
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
         }
       },
+      child: Container(
+        width: 55,
+        height: 55,
+        decoration: BoxDecoration(
+          color: const Color(0xFFFF9800),
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x66FF9800),
+              blurRadius: 4,
+              offset: Offset(0, 0),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.logout,
+              color: Colors.white,
+              size: 22,
+            ),
+            const SizedBox(height: 3),
+            const Text(
+              "Logout",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 9,
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
+  // Widget _buildLogoutButton() {
+  //   return _buildIconButton(
+  //     label: "Logout",
+  //     color: const Color(0xFFFF9800),
+  //     icon: Image.asset('assets/logout.png', width: 24, height: 24, color: const Color(0xFFFF9800)),
+  //     onPressed: () async {
+  //       final result = await showDialog<bool>(
+  //         context: context,
+  //         barrierDismissible: false,
+  //         builder: (_) => LogoutConfirmationDialog(
+  //           onCancel: () => Navigator.pop(context, false),
+  //           onConfirm: () => Navigator.pop(context, true),
+  //         ),
+  //       );
+  //
+  //       if (result != true) return;
+  //
+  //       final prefs = await SharedPreferences.getInstance();
+  //       final token = prefs.getString('token') ?? "";
+  //
+  //       final authRepository = AuthRepository();
+  //
+  //       showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
+  //
+  //       try {
+  //         final success = await authRepository.logout(token);
+  //         if (context.mounted && Navigator.canPop(context)) Navigator.pop(context);
+  //
+  //         if (success && context.mounted) {
+  //           // ✅ ADD — purge stale category/subcategory/product state & caches
+  //           // so the next login doesn't show leftover data from this session.
+  //           // Guarded with try/catch since TopBar is reused on screens where
+  //           // these Blocs may not be provided above it in the tree.
+  //           try {
+  //             context.read<SubCategoryBloc>().add(ResetSubCategory());
+  //             context.read<MiniSubCategoryBloc>().add(ResetMiniSubCategory());
+  //             context.read<ProductBloc>().add(ClearProducts());
+  //           } catch (_) {
+  //             // Blocs not available on this screen — safe to ignore.
+  //           }
+  //
+  //           Navigator.pushAndRemoveUntil(
+  //             context,
+  //             MaterialPageRoute(builder: (_) => const EmployeeLoginPage(storeBaseUrl: '', storeName: '', storeId: '')),
+  //                 (route) => false,
+  //           );
+  //         }
+  //       } catch (e) {
+  //         if (context.mounted && Navigator.canPop(context)) Navigator.pop(context);
+  //         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst("Exception: ", "")), backgroundColor: Colors.red));
+  //       }
+  //     },
+  //   );
+  // }
 
   Widget _buildAttendanceIconButton(BuildContext context) {
-    // ... (keeping your original attendance logic unchanged)
     return GestureDetector(
-      onTap: () async { /* Your original attendance code */ },
-      child: _buildIconButton(
-        label: "Attendance",
-        color: const Color(0xFF4F7CFF),
-        icon: Image.asset('assets/attendance.png', width: 20, height: 20, color: const Color(0xFF4F7CFF)),
+      onTap: () async {
+        if (_isAttendanceDialogOpen) return;
+
+        setState(() {
+          _isAttendanceDialogOpen = true;
+        });
+
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => const Center(child: CircularProgressIndicator()),
+        );
+
+        try {
+          final repository = EmployeeRepository();
+          final response = await repository.getAllEmployees(widget.token);
+
+          final List<Employee> employees = response.map((e) {
+            return Employee(
+              id: e['ID'].toString(),
+              name: e['name'].toString(),
+            );
+          }).toList();
+
+          final currentShift =
+          await repository.getCurrentShift(widget.token);
+
+          if (currentShift != null) {
+            final presentIds =
+            List<int>.from(currentShift['shift_emp'] ?? []);
+            final absentIds =
+            List<int>.from(currentShift['shift_absent_emp'] ?? []);
+
+            for (var emp in employees) {
+              final empId = int.tryParse(emp.id);
+              if (presentIds.contains(empId)) {
+                emp.status = 'Present';
+              } else if (absentIds.contains(empId)) {
+                emp.status = 'Absent';
+              } else {
+                emp.status = '';
+              }
+            }
+          }
+
+          if (context.mounted) {
+            Navigator.pop(context);
+
+            final shiftData =
+            await EmployeeRepository().getCurrentShift(widget.token);
+
+            await showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (_) => AttendancePopup(
+                token: widget.token,
+                employees: employees,
+                isUpdateMode: true,
+                currentShiftData: shiftData,
+              ),
+            );
+          }
+        } catch (e) {
+          if (context.mounted) {
+            Navigator.pop(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Failed to load employees')),
+            );
+          }
+        } finally {
+          if (mounted) {
+            setState(() {
+              _isAttendanceDialogOpen = false;
+            });
+          }
+        }
+      },
+      child: Container(
+        width: 55,
+        height: 55,
+        decoration: BoxDecoration(
+          color: const Color(0xFF4F7CFF),
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x664F7CFF),
+              blurRadius: 4,
+              offset: Offset(0, 0), // Horizontal shadow only
+            ),
+
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset(
+              'assets/attendance.png',
+              width: 22,
+              height: 22,
+              color: Colors.white,
+            ),
+            const SizedBox(height: 3),
+            const Text(
+              "Attendance",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 9,
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildNotificationIconButton({VoidCallback? onPressed}) {
-    return _buildIconButton(
-      label: "Notification",
-      color: const Color(0xFFFFC107),
-      onPressed: onPressed,
-      icon: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          const Icon(Icons.notifications_none_outlined, size: 24, color: Color(0xFFFFC107)),
-          Positioned(
-            top: -2,
-            right: -2,
-            child: Container(width: 7, height: 7, decoration: BoxDecoration(color: Colors.red, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 1.5))),
-          ),
-        ],
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          color: const Color(0xFFEACA00),
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x66D8C300),
+              blurRadius: 4,
+              offset: Offset(0, 0),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(
+                  Icons.notifications_none_outlined,
+                  color: Colors.white,
+                  size: 24,
+                ),
+                Positioned(
+                  top: 1,
+                  right: -1,
+                  child: Container(
+                    width: 5,
+                    height: 5,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFF0303),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 3),
+            const Text(
+              "Alerts",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 9,
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -597,10 +1025,19 @@ class _TopBarState extends State<TopBar> {
     return Container(
       height: 55,
       padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, 4))],
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        shadows: [
+          BoxShadow(
+            color: Color(0x26000000),
+            blurRadius: 4,
+            offset: Offset(0, 0),
+            spreadRadius: 0,
+          )
+        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -619,7 +1056,8 @@ class _TopBarState extends State<TopBar> {
             children: [
               Text(
                 widget.userPermissions?.displayName ?? "username",
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87),
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(
+                    0xFF2C2B2B)),
               ),
               const SizedBox(height: 2),
               Text(

@@ -36,7 +36,7 @@ class CreatePaymentRepository {
 
       if (kDebugMode) {
         print("📥 STATUS CODE: ${response.statusCode}");
-        print("📥 RESPONSE BODY: ${response.body}");
+        print("📥 RESPONSE BODYttttttt: ${response.body}");
       }
 
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -91,7 +91,7 @@ class CreatePaymentRepository {
 
       if (kDebugMode) {
         print("📥 STATUS CODE: ${response.statusCode}");
-        print("📥 RESPONSE BODY: ${response.body}");
+        print("📥 RESPONSE BODYyyyyyyyyy: ${response.body}");
       }
 
       final decoded = jsonDecode(response.body);

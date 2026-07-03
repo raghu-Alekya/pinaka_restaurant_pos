@@ -1,4 +1,5 @@
 import 'package:bloc/bloc.dart';
+import '../../models/category/items_model.dart';
 import '../../models/category/minisubcategory_model.dart';
 // import '../../repositories/minisubcategory_repository.dart';
 import '../../repositories/minisubcategory_repository.dart';
@@ -14,7 +15,9 @@ class MiniSubCategoryBloc
     extends Bloc<MiniSubCategoryEvent, MiniSubCategoryState> {
   final MiniSubCategoryRepository repository;
   Set<int> expandedFolderIds = {};
-  final Map<int, List<MiniSubCategory>> _cache = {};
+  final Map<int, List<MiniSubCategory>> _cache = {};   // MiniSubCategoryBloc
+  // final Map<int, List<Product>> _cache = {};            // ProductBloc         // ProductBloc
+
 
   MiniSubCategoryBloc({required this.repository})
       : super(MiniSubCategoryInitial()) {
@@ -24,6 +27,7 @@ class MiniSubCategoryBloc
     // ✅ Reset event
     on<ResetMiniSubCategory>((event, emit) {
       expandedFolderIds.clear();
+      _cache.clear();               // ✅ ADD THIS — purge stale session data
       emit(MiniSubCategoryInitial());
     });
 

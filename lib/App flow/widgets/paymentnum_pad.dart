@@ -21,6 +21,7 @@ import '../../repositories/create_payment_repository.dart';
 import '../../repositories/discount_repository.dart';
 import '../../repositories/service_charge_repository.dart';
 import '../../utils/SessionManager.dart';
+import '../ui/dashboard screen.dart';
 import 'coupon_widget.dart';
 import 'discount_screen.dart';
 
@@ -32,6 +33,7 @@ class paymentsummary extends StatefulWidget {
   final String restaurantName;
   final int? zoneId;
   final int orderId;
+  final bool isTakeAway; // ➕ NEW — defaults to false so no existing call breaks
   final ValueChanged<double> onMerchantDiscountChanged;
   final ValueChanged<double> onTipChanged;
   final Function(double)? onCouponAmountChanged;
@@ -45,6 +47,7 @@ class paymentsummary extends StatefulWidget {
     required this.restaurantId,
     required this.restaurantName,
     this.zoneId,
+    this.isTakeAway = false, // ➕ NEW
     required PaymentSummary,
     required this.orderId,
     required this.onMerchantDiscountChanged,
@@ -524,20 +527,24 @@ class _paymentsummaryState extends State<paymentsummary> {
           },
         ),
 
-        // CreatePaymentBloc: result handling
+        // In the BlocListener for CreatePaymentBloc, update the success handler:
+
+// In the BlocListener for CreatePaymentBloc, update the success handler:
+
         BlocListener<CreatePaymentBloc, CreatePaymentState>(
           listener: (context, state) async {
             if (state is CreatePaymentSuccess) {
               final paymentBlocState = context.read<PaymentBloc>().state;
               if (paymentBlocState is! PaymentSummaryLoaded) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text("Payment summary not available")),
+                  const SnackBar(content: Text("Payment summary not available")),
                 );
                 return;
               }
 
               final summary = paymentBlocState.summary;
+
+              // Show payment success dialog with receipt
               final action = await showDialog<String>(
                 context: context,
                 barrierDismissible: false,
@@ -549,8 +556,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                     child: Paymentsucess(
                       amount: state.response.paidAmount.toString(),
                       paymentMode: selectedPaymentMode,
-                      changeAmount:
-                      state.response.change.toStringAsFixed(2),
+                      changeAmount: state.response.change.toStringAsFixed(2),
                       paymentId: state.response.paymentId,
                       orderId: state.response.orderId,
                       loadedTables: widget.loadedTables,
@@ -558,15 +564,18 @@ class _paymentsummaryState extends State<paymentsummary> {
                       token: widget.token,
                       restaurantId: widget.restaurantId,
                       zoneId: widget.zoneId,
-                      restaurantName: '',
+                      restaurantName: widget.restaurantName,
                       paymentSummary: summary,
                       cashierName: _cashierName,
+                      isTakeAway: widget.isTakeAway,
                     ),
                   ),
                 ),
               );
+
               if (!mounted) return;
 
+              // Handle void action only - navigation is handled inside Paymentsucess/PrintRecipt
               if (action == "void") {
                 try {
                   final message = await _paymentRepository.voidPayment(
@@ -577,46 +586,50 @@ class _paymentsummaryState extends State<paymentsummary> {
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                        content: Text(message),
-                        duration: const Duration(seconds: 1)),
+                      content: Text(message),
+                      duration: const Duration(seconds: 1),
+                    ),
                   );
                   setState(() {
                     amount = '';
                     tenderAmountError = null;
-                    // ── NEW: void resets the confirmed balance too.
                     _balanceRevealed = false;
                     _confirmedTenderForBalance = 0.0;
                   });
-                  // _reloadSummary();
                 } catch (e) {
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                        content: Text(e.toString()),
-                        duration: const Duration(seconds: 1)),
+                      content: Text(e.toString()),
+                      duration: const Duration(seconds: 1),
+                    ),
                   );
                 }
               } else {
+                // ✅ IMPORTANT: Just clean up local state, don't navigate here
+                // Navigation is handled inside Paymentsucess -> PrintRecipt
                 setState(() {
-                  // ── NEW: order is being cleared — reset balance reveal.
                   _balanceRevealed = false;
                   _confirmedTenderForBalance = 0.0;
                 });
-                context.read<OrderBloc>().add(ClearOrder());
+
+
+
+                // DO NOT navigate here - let Paymentsucess handle it
+                // The navigation will happen inside PrintRecipt's _onDonePressed
               }
             }
 
             if (state is CreatePaymentFailure) {
               setState(() {
-                // ── NEW: a failed payment attempt should not leave a
-                // confirmed balance from the previous attempt on screen.
                 _balanceRevealed = false;
                 _confirmedTenderForBalance = 0.0;
               });
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                    content: Text(state.error),
-                    duration: const Duration(seconds: 1)),
+                  content: Text(state.error),
+                  duration: const Duration(seconds: 1),
+                ),
               );
             }
           },
@@ -641,7 +654,7 @@ class _paymentsummaryState extends State<paymentsummary> {
               context.read<PaymentBloc>().add(UpdateMerchantDiscount(0.0));
               widget.onMerchantDiscountChanged(0.0);
               _updateAmountField();
-              // _reloadSummary();
+
             }
             if (state is RemoveDiscountFailure) {
               ScaffoldMessenger.of(context).showSnackBar(

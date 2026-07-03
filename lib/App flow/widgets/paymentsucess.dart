@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/widgets/print_receipt.dart';
+import 'package:pinaka_restaurant_pos/blocs/Bloc%20Event/order_event.dart';
+import 'package:pinaka_restaurant_pos/blocs/Bloc%20Logic/order_bloc.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../models/payment/payment_summary_model.dart';
-// import 'Print_recipt.dart';
 
 class Paymentsucess extends StatelessWidget {
   final String? amount;
@@ -13,14 +15,13 @@ class Paymentsucess extends StatelessWidget {
   final PaymentSummary paymentSummary;
   final String cashierName;
 
-  // ✅ ADD THESE
   final List<Map<String, dynamic>> loadedTables;
   final String pin;
   final String token;
   final String restaurantId;
   final String restaurantName;
   final int? zoneId;
-
+  final bool isTakeAway;
 
   const Paymentsucess({
     Key? key,
@@ -37,20 +38,14 @@ class Paymentsucess extends StatelessWidget {
     this.zoneId,
     required this.paymentSummary,
     required this.cashierName,
+    this.isTakeAway = false,
   }) : super(key: key);
-
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: MediaQuery
-          .of(context)
-          .size
-          .width * 0.45,
-      height: MediaQuery
-          .of(context)
-          .size
-          .height * 0.60,
+      width: MediaQuery.of(context).size.width * 0.45,
+      height: MediaQuery.of(context).size.height * 0.60,
       decoration: ShapeDecoration(
         color: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -121,44 +116,41 @@ class Paymentsucess extends StatelessWidget {
                     label: 'Print',
                     color: Color(0xFF1BA672),
                     onTap: () {
-                      // Close PaymentSuccess dialog and tell parent to open PrintReceipt
-                      Navigator.pop(context, "print");
+                      // Close this dialog and open PrintReceipt
+                      Navigator.pop(context);
+
+                      // Show PrintReceipt dialog
                       showDialog(
                         context: context,
                         barrierDismissible: false,
-                        builder:
-                            (context) =>
-                            Dialog(
-                              backgroundColor: Colors.transparent,
-                              insetPadding:
-                              EdgeInsets.zero, // Remove default margin
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: Padding(
-                                  padding: const EdgeInsets.only(
-                                    left: 330,
-                                    top: 60,
-                                    bottom: 60,
-                                  ),
-                                  child: PrintRecipt(
-                                    loadedTables: loadedTables,
-                                    pin: pin,
-                                    token: token,
-                                    restaurantId: restaurantId,
-                                    restaurantName: restaurantName,
-                                    zoneId: zoneId,
-                                    paymentSummary: paymentSummary,
-                                    cashierName: cashierName,
-                                    isTakeAway: true,
-                                  ),
-
-                                ),
+                        builder: (context) => Dialog(
+                          backgroundColor: Colors.transparent,
+                          insetPadding: EdgeInsets.zero,
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Padding(
+                              padding: const EdgeInsets.only(
+                                left: 330,
+                                top: 60,
+                                bottom: 60,
+                              ),
+                              child: PrintRecipt(
+                                loadedTables: loadedTables,
+                                pin: pin,
+                                token: token,
+                                restaurantId: restaurantId,
+                                restaurantName: restaurantName,
+                                zoneId: zoneId,
+                                paymentSummary: paymentSummary,
+                                cashierName: cashierName,
+                                isTakeAway: isTakeAway,
                               ),
                             ),
+                          ),
+                        ),
                       );
                     },
                   ),
-
                 ],
               ),
             ],
@@ -170,14 +162,8 @@ class Paymentsucess extends StatelessWidget {
 
   Widget _buildInfoRow(BuildContext context, String? mode, String? amount) {
     return Container(
-      height: MediaQuery
-          .of(context)
-          .size
-          .height * 0.07,
-      width: MediaQuery
-          .of(context)
-          .size
-          .width * 0.38,
+      height: MediaQuery.of(context).size.height * 0.07,
+      width: MediaQuery.of(context).size.width * 0.38,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(5),
@@ -219,17 +205,10 @@ class Paymentsucess extends StatelessWidget {
     debugPrint("🟢 Change received in UI = $change");
 
     final double changeAmount = double.tryParse(change ?? '') ?? 0.0;
-    // final double changeAmount = double.tryParse(change ?? '') ?? 0.0;
 
     return Container(
-      height: MediaQuery
-          .of(context)
-          .size
-          .height * 0.07,
-      width: MediaQuery
-          .of(context)
-          .size
-          .width * 0.38,
+      height: MediaQuery.of(context).size.height * 0.07,
+      width: MediaQuery.of(context).size.width * 0.38,
       decoration: BoxDecoration(
         color: Color(0x101BA672),
         borderRadius: BorderRadius.circular(5),
@@ -255,8 +234,7 @@ class Paymentsucess extends StatelessWidget {
             ),
           ),
           Text(
-            "₹${(double.tryParse(change ?? '0.00')?.abs() ?? 0.00)
-                .toStringAsFixed(2)}",
+            "₹${(double.tryParse(change ?? '0.00')?.abs() ?? 0.00).toStringAsFixed(2)}",
             style: TextStyle(
               fontWeight: FontWeight.w500,
               fontSize: 20,
@@ -305,32 +283,27 @@ class Paymentsucess extends StatelessWidget {
   }
 
   Future<bool?> _showVoidConfirmation(BuildContext context) {
-    final isDark = Theme
-        .of(context)
-        .brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
-        return Center( // ✅ controls width
+        return Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(
-              maxWidth: 400, // 👈 reduced width
+              maxWidth: 400,
             ),
             child: Dialog(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
-              backgroundColor:
-              isDark ? const Color(0xFF1E1E2E) : Colors.white,
+              backgroundColor: isDark ? const Color(0xFF1E1E2E) : Colors.white,
               child: Padding(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // 🔴 Icon
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
@@ -343,10 +316,7 @@ class Paymentsucess extends StatelessWidget {
                         size: 24,
                       ),
                     ),
-
                     const SizedBox(height: 10),
-
-                    // Title
                     Text(
                       "Void Payment",
                       style: TextStyle(
@@ -355,10 +325,7 @@ class Paymentsucess extends StatelessWidget {
                         color: isDark ? Colors.white : Colors.black,
                       ),
                     ),
-
                     const SizedBox(height: 6),
-
-                    // Message
                     Text(
                       "Do you want to void this payment?",
                       textAlign: TextAlign.center,
@@ -367,10 +334,7 @@ class Paymentsucess extends StatelessWidget {
                         color: isDark ? Colors.white70 : Colors.black54,
                       ),
                     ),
-
                     const SizedBox(height: 16),
-
-                    // Buttons
                     Row(
                       children: [
                         Expanded(
@@ -381,8 +345,7 @@ class Paymentsucess extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                             ),
-                            onPressed: () =>
-                                Navigator.pop(dialogContext, false),
+                            onPressed: () => Navigator.pop(dialogContext, false),
                             child: const Text("Cancel"),
                           ),
                         ),
@@ -396,12 +359,10 @@ class Paymentsucess extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                             ),
-                            onPressed: () =>
-                                Navigator.pop(dialogContext, true),
+                            onPressed: () => Navigator.pop(dialogContext, true),
                             child: const Text(
                               "Void",
-                              style: TextStyle(
-                                  color: Colors.white), // ✅ white text
+                              style: TextStyle(color: Colors.white),
                             ),
                           ),
                         ),

@@ -8,6 +8,7 @@ import '../../blocs/Bloc Logic/order_bloc.dart';
 import '../../models/UserPermissions.dart';
 import '../../models/payment/payment_summary_model.dart';
 import '../../printer/printer_service.dart';
+import '../ui/dashboard screen.dart';
 import '../ui/tables_screen.dart';
 
 class PrintRecipt extends StatefulWidget {
@@ -40,7 +41,6 @@ class PrintRecipt extends StatefulWidget {
   State<PrintRecipt> createState() => _PrintReciptState();
 }
 
-
 class _PrintReciptState extends State<PrintRecipt> {
   String _selectedOption = '';
   final TextEditingController _emailController = TextEditingController();
@@ -53,8 +53,10 @@ class _PrintReciptState extends State<PrintRecipt> {
       final email = _emailController.text.trim();
       if (email.isEmpty || !email.contains("@")) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please enter a valid email address"),
-            duration: Duration(seconds: 1)),
+          const SnackBar(
+            content: Text("Please enter a valid email address"),
+            duration: Duration(seconds: 1),
+          ),
         );
         return;
       }
@@ -64,12 +66,15 @@ class _PrintReciptState extends State<PrintRecipt> {
       final sms = _smsController.text.trim();
       if (sms.isEmpty || sms.length != 10) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please enter a valid phone number"),
-            duration: Duration(seconds: 1)),
+          const SnackBar(
+            content: Text("Please enter a valid phone number"),
+            duration: Duration(seconds: 1),
+          ),
         );
         return;
       }
     }
+
     // ✅ Print receipt when Printer is selected
     if (_selectedOption == 'Printer') {
       try {
@@ -100,32 +105,50 @@ class _PrintReciptState extends State<PrintRecipt> {
       }
     }
 
-    // ✅ STEP 1: CLOSE THE SUCCESS DIALOG
+    // ✅ STEP 1: CLOSE THE PRINT DIALOG
     Navigator.of(context).pop();
 
-    // ✅ STEP 2: CLEAR ORDER STATE (CRITICAL)
+    // ✅ STEP 2: CLEAR ORDER STATE
     context.read<OrderBloc>().add(ClearOrder());
 
     // ⏳ Small delay ensures Bloc processes event before navigation
     await Future.delayed(const Duration(milliseconds: 100));
 
-    // ✅ STEP 3: NAVIGATE TO TABLE SCREEN (FRESH STATE)
-    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (_) => TablesScreen(
-          loadedTables: widget.loadedTables,
-          pin: widget.pin,
-          token: widget.token,
-          restaurantId: widget.restaurantId,
-          restaurantName: widget.restaurantName,
-          zoneId: widget.zoneId,
+    if (!mounted) return;
+
+    // ✅ STEP 3: NAVIGATE BASED ON ORDER TYPE
+    if (widget.isTakeAway) {
+      // For Takeaway: Navigate to DashboardScreen with takeaway mode
+      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => DashboardScreen(
+            pin: widget.pin,
+            token: widget.token,
+            restaurantId: widget.restaurantId,
+            restaurantName: widget.restaurantName,
+            userPermissions: widget.userPermissions,
+            isTakeAway: true,
+          ),
         ),
-      ),
-          (route) => false,
-    );
+            (route) => false,
+      );
+    } else {
+      // For Dine-in: Navigate to TablesScreen
+      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => TablesScreen(
+            loadedTables: widget.loadedTables,
+            pin: widget.pin,
+            token: widget.token,
+            restaurantId: widget.restaurantId,
+            restaurantName: widget.restaurantName,
+            zoneId: widget.zoneId,
+          ),
+        ),
+            (route) => false,
+      );
+    }
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -172,8 +195,7 @@ class _PrintReciptState extends State<PrintRecipt> {
               spacing: 12,
               runSpacing: 10,
               alignment: WrapAlignment.center,
-              children:
-              options.map((option) {
+              children: options.map((option) {
                 return GestureDetector(
                   onTap: () {
                     setState(() {
@@ -186,13 +208,11 @@ class _PrintReciptState extends State<PrintRecipt> {
                       vertical: 10,
                     ),
                     decoration: BoxDecoration(
-                      color:
-                      _selectedOption == option
+                      color: _selectedOption == option
                           ? Colors.red.shade50
                           : Colors.white,
                       border: Border.all(
-                        color:
-                        _selectedOption == option
+                        color: _selectedOption == option
                             ? Colors.redAccent
                             : Color(0xFFE7E2E2),
                         width: 1.5,
@@ -227,14 +247,12 @@ class _PrintReciptState extends State<PrintRecipt> {
                 );
               }).toList(),
             ),
-
             SizedBox(height: 10),
             SizedBox(
               height: 70,
               child: AnimatedSwitcher(
                 duration: Duration(milliseconds: 300),
-                child:
-                _selectedOption == 'Email'
+                child: _selectedOption == 'Email'
                     ? _buildTextField(
                   hintText: 'Enter Email Address',
                   controller: _emailController,
@@ -250,31 +268,29 @@ class _PrintReciptState extends State<PrintRecipt> {
               ),
             ),
             SizedBox(height: 15),
-      Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _buildDialogButton(
-            label: 'No Receipt',
-            color: const Color(0xFFECEEF2),
-            textColor: const Color(0xFF4C5F7D),
-            onTap: _onDonePressed, // ✅ same navigation as Done
-          ),
-          const SizedBox(width: 20),
-          _buildDialogButton(
-            label: 'Done',
-            color: const Color(0xFF1BA672),
-            textColor: Colors.white,
-            onTap: _onDonePressed,
-          ),
-        ],
-      ),
-
-      ],
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildDialogButton(
+                  label: 'No Receipt',
+                  color: const Color(0xFFECEEF2),
+                  textColor: const Color(0xFF4C5F7D),
+                  onTap: _onDonePressed,
+                ),
+                const SizedBox(width: 20),
+                _buildDialogButton(
+                  label: 'Done',
+                  color: const Color(0xFF1BA672),
+                  textColor: Colors.white,
+                  onTap: _onDonePressed,
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
-
 
   Widget _buildTextField({
     required String hintText,
@@ -358,5 +374,3 @@ class _PrintReciptState extends State<PrintRecipt> {
     );
   }
 }
-
-

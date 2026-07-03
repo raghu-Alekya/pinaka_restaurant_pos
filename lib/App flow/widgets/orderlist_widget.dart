@@ -84,165 +84,170 @@ class OrderPanelList extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 0),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),// inner padding
-              decoration: BoxDecoration(
-                color: Colors.white, // white background
-                borderRadius: BorderRadius.circular(6), // rounded corners
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 1,
-                    offset: Offset(1, 1),
-                  ),
-                ],
-              ),
-              child:Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const SizedBox(width: 7),
-
-                  // Serial #
-                  SizedBox(
-                    width: 40, // fixed is OK
-                    child: Text(
-                      '${item.variationId ?? item.productId}',
-                      style: const TextStyle(fontSize: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),// inner padding
+                decoration: BoxDecoration(
+                  color: Colors.white, // white background
+                  borderRadius: index == orderItems.length - 1
+                      ? const BorderRadius.only(
+                    bottomLeft: Radius.circular(12),
+                    bottomRight: Radius.circular(12),
+                  )
+                      : BorderRadius.zero,
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 1,
+                      offset: Offset(1, 1),
                     ),
-                  ),
+                  ],
+                ),
+                child:Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const SizedBox(width: 7),
 
-                  const SizedBox(width: 6),
+                    // Serial #
+                    SizedBox(
+                      width: 40, // fixed is OK
+                      child: Text(
+                        '${item.variationId ?? item.productId}',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
 
-                  // ✅ Item name + modifiers → TAKE AVAILABLE SPACE
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item.name,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
+                    const SizedBox(width: 6),
+
+                    // ✅ Item name + modifiers → TAKE AVAILABLE SPACE
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.name,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+
+                          if (item.modifiers.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                _formatModifierList(item.modifiers.cast<String>()),
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.w500,
+                                  decoration: TextDecoration.underline,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+
+                          if (item.addOns.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                _formatAddOnsList(item.addOns),
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.blue,
+                                  fontWeight: FontWeight.w500,
+                                  decoration: TextDecoration.underline,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+
+                          if (item.note.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                'Note: ${item.note}',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontStyle: FontStyle.italic,
+                                  color: Colors.black54,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+
+                    // Modifier Button
+                    IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: Icon(
+                        Icons.add,
+                        color: item.hasOptions ? Colors.red : Colors.grey,
+                        size: 20,
+                      ),
+                      onPressed: item.hasOptions
+                          ? () => _showModifierPopup(context, index)
+                          : null,
+                    ),
+
+                    // Unit Price (fixed)
+                    SizedBox(
+                      width: 70,
+                      child: Text(
+                        '₹${item.price.toStringAsFixed(2)}',
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+
+                    const SizedBox(width: 30),
+
+                    // Quantity Controls (fixed)
+                    Row(
+                      children: [
+                        _quantityButton(
+                          Icons.remove,
+                              () => onDecreaseQuantity(index),
                         ),
 
-                        if (item.modifiers.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(
-                              _formatModifierList(item.modifiers.cast<String>()),
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: Colors.red,
-                                fontWeight: FontWeight.w500,
-                                decoration: TextDecoration.underline,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
+                        const SizedBox(width: 3), // ✅ space between - and qty
 
-                        if (item.addOns.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(
-                              _formatAddOnsList(item.addOns),
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: Colors.blue,
-                                fontWeight: FontWeight.w500,
-                                decoration: TextDecoration.underline,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          child: Text(
+                            '${item.quantity}',
+                            style: const TextStyle(fontSize: 14),
                           ),
+                        ),
 
-                        if (item.note.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(
-                              'Note: ${item.note}',
-                              style: const TextStyle(
-                                fontSize: 10,
-                                fontStyle: FontStyle.italic,
-                                color: Colors.black54,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
+                        const SizedBox(width: 3), // ✅ space between qty and +
+
+                        _quantityButton(
+                          Icons.add,
+                              () => onIncreaseQuantity(index),
+                        ),
                       ],
                     ),
-                  ),
 
-                  // Modifier Button
-                  IconButton(
-                    padding: EdgeInsets.zero,
-                    icon: Icon(
-                      Icons.add,
-                      color: item.hasOptions ? Colors.red : Colors.grey,
-                      size: 20,
-                    ),
-                    onPressed: item.hasOptions
-                        ? () => _showModifierPopup(context, index)
-                        : null,
-                  ),
 
-                  // Unit Price (fixed)
-                  SizedBox(
-                    width: 70,
-                    child: Text(
-                      '₹${item.price.toStringAsFixed(2)}',
-                      textAlign: TextAlign.right,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-                    ),
-                  ),
+                    const SizedBox(width: 5),
 
-                  const SizedBox(width: 30),
-
-                  // Quantity Controls (fixed)
-                  Row(
-                    children: [
-                      _quantityButton(
-                        Icons.remove,
-                            () => onDecreaseQuantity(index),
+                    // Amount (fixed)
+                    SizedBox(
+                      width: 70,
+                      child: Text(
+                        '₹${item.totalWithAddons.toStringAsFixed(2)}',
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                       ),
-
-                      const SizedBox(width: 3), // ✅ space between - and qty
-
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 6),
-                        child: Text(
-                          '${item.quantity}',
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                      ),
-
-                      const SizedBox(width: 3), // ✅ space between qty and +
-
-                      _quantityButton(
-                        Icons.add,
-                            () => onIncreaseQuantity(index),
-                      ),
-                    ],
-                  ),
-
-
-                  const SizedBox(width: 5),
-
-                  // Amount (fixed)
-                  SizedBox(
-                    width: 70,
-                    child: Text(
-                      '₹${item.totalWithAddons.toStringAsFixed(2)}',
-                      textAlign: TextAlign.right,
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                     ),
-                  ),
-                ],
-              )
+                  ],
+                )
 
             ),
           ),

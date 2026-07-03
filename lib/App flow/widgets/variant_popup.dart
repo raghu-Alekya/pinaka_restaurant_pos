@@ -101,9 +101,10 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
+      backgroundColor: const Color(0xFFF0F4FF),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Container(
-        width: 620,
+        width: 600,
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -140,86 +141,129 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
             const SizedBox(height: 25),
 
             /// VARIANTS LIST
-            SizedBox(
-              height: 260,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: widget.product.variants.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
-                itemBuilder: (context, index) {
-                  final variant = widget.product.variants[index];
-                  final quantity =
-                      _quantityMap[variant.variationId] ?? 0;
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFFFF), // Background for variants section
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x1A000000), // Black with ~10% opacity
+                    blurRadius: 12,
+                    spreadRadius: 0,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+                border: Border.all(
+                  color: const Color(0xFFFFFFFF),
+                  width: 1,
+                ),
+              ),
+              child: SizedBox(
+                height: 220,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: widget.product.variants.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (context, index) {
+                    final variant = widget.product.variants[index];
+                    final quantity =
+                        _quantityMap[variant.variationId] ?? 0;
 
-                  return Container(
-                    width: 180,
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: Column(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.network(
-                            variant.image.isNotEmpty
-                                ? variant.image
-                                : 'https://via.placeholder.com/100',
-                            width: 120,
-                            height: 90,
-                            fit: BoxFit.cover,
+                    return Container(
+                      width: 170,
+                      padding: const EdgeInsets.only(top: 10),
+                      decoration: ShapeDecoration(
+                        color: Colors.white,
+
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          side: const BorderSide(
+                            color: Color(0xFFE1E1E1), // Border color
+                            width: 1.5,               // Border width
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        // Text(widget.product.name,
-                        //     textAlign: TextAlign.center),
-                        Text(
-                          variant.name.length > 12
-                              ? '${variant.name.substring(0, 12)}...'
-                              : variant.name,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                          textAlign: TextAlign.center,
-                        ),
-                        Text(
-                          'Rs.${variant.price.toStringAsFixed(0)}/-',
-                          style: const TextStyle(color: Colors.grey),
-                        ),
-                        const SizedBox(height: 10),
 
-                        quantity == 0
-                            ? ElevatedButton(
-                          onPressed: () => _increment(variant),
-                          style: ElevatedButton.styleFrom(
-                            minimumSize:
-                            const Size(150, 40),
+                      ),
+                      child: Column(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              variant.image.isNotEmpty
+                                  ? variant.image
+                                  : 'https://via.placeholder.com/100',
+                              width: 150,
+                              height: 100,
+                              fit: BoxFit.cover,
+                            ),
                           ),
-                          child: const Text('+ ADD'),
-                        )
-                            : Row(
-                          mainAxisAlignment:
-                          MainAxisAlignment.spaceBetween,
-                          children: [
-                            _qtyButton(
-                              icon: Icons.remove,
-                              onTap: () => _decrement(variant),
+                          const SizedBox(height: 8),
+                          // Text(widget.product.name,
+                          //     textAlign: TextAlign.center),
+                          Text(
+                            variant.name.length > 12
+                                ? '${variant.name.substring(0, 12)}...'
+                                : variant.name,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                            textAlign: TextAlign.center,
+                          ),
+                          Text(
+                            'Rs.${variant.price.toStringAsFixed(0)}/-',
+                            style: const TextStyle(color: Colors.black),
+                          ),
+                          const SizedBox(height: 6),
+
+                          quantity == 0
+                              ? ElevatedButton(
+                            onPressed: () => _increment(variant),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF4C5F7D),
+                              foregroundColor: Colors.white,
+                              minimumSize: const Size(150, 40),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
                             ),
-                            Text(
-                              '$quantity',
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold),
+                            child: const Text('+ ADD'),
+                          )
+                              : Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF4C5F7D),
+                              borderRadius: BorderRadius.circular(8),
+                              // border: Border.all(
+                              // color: const Color(0xFF386EDA),
+                              // ),
                             ),
-                            _qtyButton(
-                              icon: Icons.add,
-                              onTap: () => _increment(variant),
+                            child: Row(
+                              mainAxisAlignment:
+                              MainAxisAlignment.spaceBetween,
+                              children: [
+                                _qtyButton(
+                                  icon: Icons.remove,
+                                  onTap: () => _decrement(variant),
+                                ),
+                                Text(
+                                  '$quantity',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFFFFFFFF)
+                                  ),
+                                ),
+                                _qtyButton(
+                                  icon: Icons.add,
+                                  onTap: () => _increment(variant),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  );
-                },
+                          )
+                        ],
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
 
@@ -245,6 +289,7 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
                 ),
               ),
             ),
+
           ],
         ),
       ),
@@ -257,15 +302,15 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
     required VoidCallback onTap,
   }) {
     return Container(
-      width: 40,
+      width: 50,
       height: 40,
       decoration: BoxDecoration(
-        color: Colors.blue.shade100,
-        border: Border.all(color: Colors.blue),
+        color: Colors.white,
+        // border: Border.all(color: Colors.blue),
         borderRadius: BorderRadius.circular(4),
       ),
       child: IconButton(
-        icon: Icon(icon, size: 16, color: Colors.blue),
+        icon: Icon(icon, size: 20, color: Color(0xFF4C5F7D)),
         padding: EdgeInsets.zero,
         constraints: const BoxConstraints(),
         onPressed: onTap,
@@ -273,4 +318,3 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
     );
   }
 }
-

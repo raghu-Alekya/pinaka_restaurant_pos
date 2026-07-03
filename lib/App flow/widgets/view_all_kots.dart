@@ -268,7 +268,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
               // exactly as small as the header bar — no item rows are
               // ever shown unless that specific KOT row is tapped open.
               // ─────────────────────────────────────────────────────────
-              if (_expanded) const SizedBox(height: 6),
+              if (_expanded) const SizedBox(height: 16),
               if (_expanded)
                 ConstrainedBox(
                   constraints: const BoxConstraints(

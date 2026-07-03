@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.pinaka_restaurant_pos">
+    package="com.pinaka.restaurant">
 
     <!-- ✅ REQUIRED FOR HTTP CALLS -->
     <uses-permission android:name="android.permission.INTERNET"/>

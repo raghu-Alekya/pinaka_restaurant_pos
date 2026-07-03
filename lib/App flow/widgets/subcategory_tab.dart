@@ -80,10 +80,10 @@ class _SubCategoryTabWidgetState extends State<SubCategoryTabWidget> {
 
     return Container(
       margin: const EdgeInsets.all(1),
-      padding: const EdgeInsets.all(3),
+      padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
-        color: Color(0XFFDEE8FF),
-        border: Border.all(color: Color(0xFFFFFFFF), width: 1),
+        color: Color(0XFFFFFFFF),
+        border: Border.all(color: Color(0xFFE0E0E0), width: 1),
         borderRadius: BorderRadius.circular(12),
         // boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 0, offset: Offset(1, 2))],
         boxShadow: const [
@@ -110,42 +110,84 @@ class _SubCategoryTabWidgetState extends State<SubCategoryTabWidget> {
                     widget.onTap?.call(index); // triggers mini-subcategory load
                   },
                   child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-                    padding: const EdgeInsets.all(6),
-                    width: 75,
-                    height: 100,
+                    width: 80,
+                    height: 80,
+                    margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                     decoration: BoxDecoration(
-                      color: isSelected ? const Color(0xFFFCDFDC) : const Color(0xFFF2F2F7),
+                      color: isSelected
+                          ? const Color(0xFFFFE5E8)
+                          : Colors.white,
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                        color: isSelected ? Colors.deepOrange : Colors.grey.shade300,
+                        color: isSelected
+                            ? const Color(0xFFFF364C)
+                            : const Color(0xFFC4C7D1),
+                        width: 1,
                       ),
-                      boxShadow: isSelected
-                          ? const [BoxShadow(color: Colors.black26, blurRadius: 2, offset: Offset(1, 1))]
-                          : null,
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x19000000),
+                          blurRadius: 10,
+                          offset: Offset(0, 1),
+                        ),
+                      ],
                     ),
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        category.imagePath != null && category.imagePath!.isNotEmpty
-                            ? Image.network(
-                          category.imagePath!,
-                          height: 55,
-                          width: 45,
-                          errorBuilder: (context, error, stackTrace) =>
-                          const Icon(Icons.image_not_supported, size: 30),
-                        )
-                            : const Icon(Icons.image, size: 28),
-                        const SizedBox(height: 2),
-                        Flexible(
+                        const SizedBox(height: 10),
+
+                        // Image
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: category.imagePath != null &&
+                              category.imagePath!.isNotEmpty
+                              ? Image.network(
+                            category.imagePath!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              color: const Color(0xFFD9D9D9),
+                              alignment: Alignment.center,
+                              child: const Icon(
+                                Icons.image_not_supported,
+                                color: Colors.grey,
+                                size: 28,
+                              ),
+                            ),
+                          )
+                              : Container(
+                            color: const Color(0xFFD9D9D9),
+                            alignment: Alignment.center,
+                            child: const Icon(
+                              Icons.image,
+                              color: Colors.grey,
+                              size: 28,
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
                           child: Text(
                             category.name,
                             textAlign: TextAlign.center,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
+                              color: isSelected
+                                  ? const Color(0xFFFF364C)
+                                  : const Color(0xFF4C5F7D),
                               fontSize: 12,
-                              color: isSelected ? Colors.deepOrange : Colors.black,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              fontWeight:
+                              isSelected ? FontWeight.w600 : FontWeight.w500,
+                              letterSpacing: 0.6,
+                              height: 1.3,
                             ),
                           ),
                         ),
@@ -156,65 +198,65 @@ class _SubCategoryTabWidgetState extends State<SubCategoryTabWidget> {
               },
             ),
           ),
-          Positioned(
-            left: 0,
-            top: 0,
-            bottom: 0,
-            child: Center(
-              child: Container(
-                width: 32, // circular size
-                height: 32,
-                decoration: BoxDecoration(
-                  color: Colors.white, // background color of the circle
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black26,
-                      blurRadius: 4,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: IconButton(
-                  padding: EdgeInsets.zero, // remove default padding
-                  icon: const Icon(Icons.arrow_back_ios, size: 16),
-                  onPressed: _scrollLeft,
-                  color: Colors.black,
-                  splashRadius: 20,
-                ),
-              ),
-            ),
-          ),
-
-          Positioned(
-            right: 0,
-            top: 0,
-            bottom: 0,
-            child: Center(
-              child: Container(
-                width: 32, // circular size
-                height: 32,
-                decoration: BoxDecoration(
-                  color: Colors.white, // background color of the circle
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black26,
-                      blurRadius: 4,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: IconButton(
-                  padding: EdgeInsets.zero, // remove default padding
-                  icon: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onPressed: _scrollRight,
-                  color: Colors.black,
-                  splashRadius: 20,
-                ),
-              ),
-            ),
-          ),
+          // Positioned(
+          //   left: 0,
+          //   top: 0,
+          //   bottom: 0,
+          //   child: Center(
+          //     child: Container(
+          //       width: 32, // circular size
+          //       height: 32,
+          //       decoration: BoxDecoration(
+          //         color: Colors.white, // background color of the circle
+          //         shape: BoxShape.circle,
+          //         boxShadow: [
+          //           BoxShadow(
+          //             color: Colors.black26,
+          //             blurRadius: 4,
+          //             offset: Offset(0, 2),
+          //           ),
+          //         ],
+          //       ),
+          //       child: IconButton(
+          //         padding: EdgeInsets.zero, // remove default padding
+          //         icon: const Icon(Icons.arrow_back_ios, size: 16),
+          //         onPressed: _scrollLeft,
+          //         color: Colors.black,
+          //         splashRadius: 20,
+          //       ),
+          //     ),
+          //   ),
+          // ),
+          //
+          // Positioned(
+          //   right: 0,
+          //   top: 0,
+          //   bottom: 0,
+          //   child: Center(
+          //     child: Container(
+          //       width: 32, // circular size
+          //       height: 32,
+          //       decoration: BoxDecoration(
+          //         color: Colors.white, // background color of the circle
+          //         shape: BoxShape.circle,
+          //         boxShadow: [
+          //           BoxShadow(
+          //             color: Colors.black26,
+          //             blurRadius: 4,
+          //             offset: Offset(0, 2),
+          //           ),
+          //         ],
+          //       ),
+          //       child: IconButton(
+          //         padding: EdgeInsets.zero, // remove default padding
+          //         icon: const Icon(Icons.arrow_forward_ios, size: 16),
+          //         onPressed: _scrollRight,
+          //         color: Colors.black,
+          //         splashRadius: 20,
+          //       ),
+          //     ),
+          //   ),
+          // ),
 
         ],
       ),
