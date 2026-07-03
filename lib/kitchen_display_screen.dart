@@ -4,12 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:kds_app/top_bar.dart';
 import 'package:kds_app/widgets/completed_orders.dart';
+import 'package:kds_app/widgets/repeated_item.dart';
 import 'package:provider/provider.dart';
 
 import 'active_orderscreen.dart';
 import 'providers/order_provider.dart';
 import 'services/kds_mqtt_service.dart';
-import 'widgets/debug_log_panel.dart';
+import 'services/repeateditem_apiservices.dart';
 
 class KitchenDashboardScreen extends StatefulWidget {
   final String token;
@@ -33,30 +34,48 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
   OrderTypeFilter selectedFilter = OrderTypeFilter.all;
   String? selectedCancelKotId;
   Timer? _refreshTimer;
-  // Add these here
   String? selectedCancelItemKotId;
   final Set<String> selectedItems = {};
-  // String? selectedCancelKotId;
-  // String? selectedCancelItemKotId;
 
   final Map<String, List<bool>> selectedItemsMap = {};
 
   KotView selectedView = KotView.pending;
+  int _repeatedItemsCount = 0;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<OrderProvider>().loadExistingOrders();
     });
+    _fetchRepeatedItemsCount();
     _refreshTimer = Timer.periodic(
       const Duration(seconds: 5),
-          (_) {
+      (_) {
         context.read<OrderProvider>().loadExistingOrders();
+        _fetchRepeatedItemsCount();
       },
     );
 
-    print("KitchenDashboardScreen received token: '${widget.token}'");
+    _fetchRepeatedItemsCount();
   }
+
+  Future<void> _fetchRepeatedItemsCount() async {
+    try {
+      final response = await getKitchenItemsCount(
+        token: widget.token,
+        restaurantId: widget.restaurantId,
+      );
+      if (mounted) {
+        setState(() {
+          _repeatedItemsCount = response.length;
+        });
+      }
+    } catch (e) {
+      debugPrint("Failed to fetch repeated items count: $e");
+    }
+  }
+
   @override
   void dispose() {
     _refreshTimer?.cancel();
@@ -65,14 +84,9 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    print('KitchenDashboardScreen rebuild');
     final orderProvider = context.watch<OrderProvider>();
-    print('ui Total Orders: ${orderProvider.orders.length}');
-    print('ui Pending Orders: ${orderProvider.pendingOrders.length}');
-    print('ui Preparing Orders: ${orderProvider.preparingOrders.length}');
 
     final orders = orderProvider.pendingOrders;
-    print('Displaying ${orders.length} pending orders');
 
     final filteredOrders =
         orders.where((order) {
@@ -93,6 +107,39 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
           }
         }).toList();
 
+    Widget bodyWidget;
+    switch (selectedView) {
+      case KotView.pending:
+        bodyWidget = _buildPendingBody(filteredOrders, orderProvider);
+        break;
+      case KotView.active:
+        bodyWidget = ActiveOrdersScreen(
+          token: widget.token,
+          restaurantId: widget.restaurantId,
+          isEmbedded: true,
+        );
+        break;
+      case KotView.repeated:
+        bodyWidget = RepeatedItemsScreen(
+          token: widget.token,
+          restaurantId: widget.restaurantId,
+          isEmbedded: true,
+        );
+        break;
+      case KotView.history:
+        bodyWidget = CompletedOrdersScreen(
+          token: widget.token,
+          restaurantId: widget.restaurantId,
+          isEmbedded: true,
+          onRecallSuccess: () {
+            setState(() {
+              selectedView = KotView.active;
+            });
+          },
+        );
+        break;
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xffF4F4F4),
       body: Padding(
@@ -102,151 +149,210 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
             TopBarWidget(
               token: widget.token,
               restaurantId: widget.restaurantId,
-              selectedFilter: selectedFilter,
               selectedView: selectedView,
-              onFilterChanged: (filter) {
-                setState(() {
-                  selectedFilter = filter;
-                });
-              },
               onViewChanged: (view) {
                 setState(() {
                   selectedView = view;
                 });
               },
+              onLogout: widget.onOpenSettings,
+              pendingCount: orderProvider.pendingOrders.length,
+              activeCount: orderProvider.preparingOrders.length + orderProvider.readyOrders.length,
+              repeatedCount: _repeatedItemsCount,
             ),
-
-
             const SizedBox(height: 10),
-            // const DebugLogPanel(),
-            // const SizedBox(height: 8),
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(15),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.blue, width: 2),
+            Expanded(child: bodyWidget),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPendingBody(
+    List<Map<String, dynamic>> filteredOrders,
+    OrderProvider orderProvider,
+  ) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Row(
+            children: [
+              const Text(
+                "Pending KOTs",
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xff1E293B),
                 ),
-                child: Column(
-                  children: [
-                    // Row(
-                    //   children: [
-                    //     Container(
-                    //       height: 45,
-                    //       padding: const EdgeInsets.all(4),
-                    //       decoration: BoxDecoration(
-                    //         color: Colors.white,
-                    //         borderRadius: BorderRadius.circular(30),
-                    //       ),
-                    //       child: Row(
-                    //         children: [
-                    //           _filterChip("All"),
-                    //           _filterChip("Dine-In"),
-                    //           _filterChip("Takeaway"),
-                    //           _filterChip("Online"),
-                    //         ],
-                    //       ),
-                    //     ),
-                    //     const Spacer(),
-                    //     Container(
-                    //       height: 45,
-                    //       decoration: BoxDecoration(
-                    //         border: Border.all(color: const Color(0xff6C74B8)),
-                    //         borderRadius: BorderRadius.circular(30),
-                    //       ),
-                    //       child: Row(
-                    //         children: [
-                    //           GestureDetector(
-                    //             onTap: () {
-                    //               Navigator.push(
-                    //                 context,
-                    //                 MaterialPageRoute(
-                    //                   builder: (_) =>
-                    //                       const ActiveOrdersScreen(),
-                    //                 ),
-                    //               );
-                    //             },
-                    //             child: _statusTab("Active Orders", false),
-                    //           ),
-                    //           _statusTab("Pending Orders", true),
-                    //         ],
-                    //       ),
-                    //     ),
-                    //     const SizedBox(width: 20),
-                    //     ElevatedButton(
-                    //       style: ElevatedButton.styleFrom(
-                    //         backgroundColor: const Color(0xffFF5B4F),
-                    //         padding: const EdgeInsets.symmetric(
-                    //           horizontal: 25,
-                    //           vertical: 15,
-                    //         ),
-                    //         shape: RoundedRectangleBorder(
-                    //           borderRadius: BorderRadius.circular(25),
-                    //         ),
-                    //       ),
-                    //       onPressed: () {
-                    //         print("Navigating to Completed Orders");
-                    //         Navigator.push(
-                    //           context,
-                    //           MaterialPageRoute(
-                    //             builder: (_) => const CompletedOrdersScreen(token: '',),
-                    //           ),
-                    //         );
-                    //       },
-                    //       child: const Text(
-                    //         "Completed Orders →",
-                    //         style: TextStyle(
-                    //           color: Colors.white,
-                    //           fontSize: 14,
-                    //           fontWeight: FontWeight.w600,
-                    //         ),
-                    //       ),
-                    //     )
-                    //   ],
-                    // ),
-                    const SizedBox(height: 20),
-                    Expanded(
-                      child:
-                          filteredOrders.isEmpty
-                              ? Center(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.receipt_long,
-                                      size: 64,
-                                      color: Colors.grey.shade400,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      orderProvider.connectionState ==
-                                              KdsConnectionState.connected
-                                          ? 'Waiting for orders from POS...'
-                                          : 'Connecting to POS...',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        color: Colors.grey.shade600,
-                                      ),
-                                    ),
-                                  ],
+              ),
+              const Spacer(),
+              _filterButtonGroup(),
+            ],
+          ),
+        ),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(15),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xffE2E8F0)),
+            ),
+            child: Column(
+              children: [
+                const SizedBox(height: 10),
+                Expanded(
+                  child:
+                      filteredOrders.isEmpty
+                          ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.receipt_long,
+                                  size: 64,
+                                  color: Colors.grey.shade400,
                                 ),
-                              )
-                              : GridView.builder(
-                                itemCount: filteredOrders.length,
-                                gridDelegate:
-                                    const SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: 4,
-                                      crossAxisSpacing: 16,
-                                      mainAxisSpacing: 16,
-                                      childAspectRatio: 1.0,
-                                    ),
-                                itemBuilder: (context, index) {
-                                  final order = filteredOrders[index];
-                                  return _buildOrderCard(order, orderProvider);
-                                },
-                              ),
-                    ),
-                  ],
+                                const SizedBox(height: 12),
+                                Text(
+                                  orderProvider.connectionState ==
+                                          KdsConnectionState.connected
+                                      ? 'Waiting for orders from POS...'
+                                      : 'Connecting to POS...',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                          : GridView.builder(
+                            itemCount: filteredOrders.length,
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 4,
+                                  crossAxisSpacing: 16,
+                                  mainAxisSpacing: 16,
+                                  childAspectRatio: 1.0,
+                                ),
+                            itemBuilder: (context, index) {
+                              final order = filteredOrders[index];
+                              return _buildOrderCard(order, orderProvider);
+                            },
+                          ),
                 ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _filterButtonGroup() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.04),
+            blurRadius: 4,
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _filterButton(
+            title: "All",
+            selected: selectedFilter == OrderTypeFilter.all,
+            onTap: () {
+              setState(() {
+                selectedFilter = OrderTypeFilter.all;
+              });
+            },
+          ),
+          _filterButton(
+            title: "Dine-In",
+            selected: selectedFilter == OrderTypeFilter.dineIn,
+            icon: Icons.restaurant,
+            iconColor: Colors.orange,
+            onTap: () {
+              setState(() {
+                selectedFilter = OrderTypeFilter.dineIn;
+              });
+            },
+          ),
+          _filterButton(
+            title: "Takeaways",
+            selected: selectedFilter == OrderTypeFilter.takeaway,
+            icon: Icons.shopping_bag_outlined,
+            iconColor: Colors.blueGrey,
+            onTap: () {
+              setState(() {
+                selectedFilter = OrderTypeFilter.takeaway;
+              });
+            },
+          ),
+          _filterButton(
+            title: "Online Orders",
+            selected: selectedFilter == OrderTypeFilter.online,
+            icon: Icons.delivery_dining,
+            iconColor: Colors.green,
+            onTap: () {
+              setState(() {
+                selectedFilter = OrderTypeFilter.online;
+              });
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _filterButton({
+    required String title,
+    required bool selected,
+    required VoidCallback onTap,
+    IconData? icon,
+    Color? iconColor,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 18,
+          vertical: 10,
+        ),
+        decoration: BoxDecoration(
+          color: selected
+              ? const Color(0xff2F4376)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null)
+              Icon(
+                icon,
+                size: 16,
+                color: selected ? Colors.white : iconColor,
+              ),
+            if (icon != null)
+              const SizedBox(width: 4),
+            Text(
+              title,
+              style: TextStyle(
+                color: selected
+                    ? Colors.white
+                    : Colors.black87,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ],
@@ -254,6 +360,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
       ),
     );
   }
+
 
   Widget _buildOrderCard(
     Map<String, dynamic> order,
@@ -263,7 +370,6 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
     final orderId = order['parentOrderId']?.toString() ?? '';
     final kotNo = order['kotNo']?.toString() ?? '';
     final orderType = order['type']?.toString() ?? '';
-    final location = order['locationLabel']?.toString() ?? '';
     final items = order['items'] as List<dynamic>? ?? [];
     selectedItemsMap.putIfAbsent(
       kotId,
@@ -491,9 +597,41 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                 Expanded(
                   child: Scrollbar(
                     child: ListView.builder(
-                      itemCount: items.length,
+                      itemCount: items.length + (selectedCancelItemKotId == kotId ? 1 : 0),
                       itemBuilder: (_, index) {
-                        final item = items[index] as Map<String, dynamic>;
+                        if (selectedCancelItemKotId == kotId && index == 0) {
+                          final allChecked = selected.every((val) => val);
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: Row(
+                              children: [
+                                Checkbox(
+                                  value: allChecked,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      for (int i = 0; i < selected.length; i++) {
+                                        selected[i] = value ?? false;
+                                      }
+                                    });
+                                  },
+                                ),
+                                const Expanded(
+                                  child: Text(
+                                    "All",
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xff444444),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        final itemIndex = selectedCancelItemKotId == kotId ? index - 1 : index;
+                        final item = items[itemIndex] as Map<String, dynamic>;
 
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 10),
@@ -501,10 +639,10 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                             children: [
                               if (selectedCancelItemKotId == kotId)
                                 Checkbox(
-                                  value: selected[index],
+                                  value: selected[itemIndex],
                                   onChanged: (value) {
                                     setState(() {
-                                      selected[index] = value ?? false;
+                                      selected[itemIndex] = value ?? false;
                                     });
                                   },
                                 ),
@@ -513,14 +651,12 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                   "1 × ${item['name']}",
                                   style: TextStyle(
                                     fontSize: 14,
-                                    color:
-                                        selected[index]
-                                            ? Colors.red
-                                            : const Color(0xff444444),
-                                    decoration:
-                                        selected[index]
-                                            ? TextDecoration.lineThrough
-                                            : null,
+                                    color: selected[itemIndex]
+                                        ? Colors.red
+                                        : const Color(0xff444444),
+                                    decoration: selected[itemIndex]
+                                        ? TextDecoration.lineThrough
+                                        : null,
                                   ),
                                 ),
                               ),
@@ -532,90 +668,45 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                   ),
                 ),
 
-                SizedBox(
-                  width: double.infinity,
-                  height: 38,
-                  child: ElevatedButton.icon(
-                    icon: const Icon(
-                      Icons.play_arrow,
-                      size: 16,
-                      color: Colors.white,
-                    ),
-                    label: const Text(
-                      "Start KOT",
-                      style: TextStyle(color: Colors.white, fontSize: 14),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xffFF6666),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(5),
-                      ),
-                    ),
-                    onPressed: () async {
-                      final remainingItems = <Map<String, dynamic>>[];
-
-                      for (int i = 0; i < items.length; i++) {
-                        if (!selected[i]) {
-                          remainingItems.add(items[i] as Map<String, dynamic>);
-                        }
-                      }
-
-                      print("Remaining Items: $remainingItems");
-
-                      await orderProvider.startOrder(kotId, remainingItems);
-
-                      if (!context.mounted) return;
-
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ActiveOrdersScreen(
-                            token: widget.token,
-                            restaurantId: widget.restaurantId,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
 
                 Row(
                   children: [
+                    // Left button: Cancel or Revoke
                     Expanded(
                       child: SizedBox(
-                        height: 28,
+                        height: 38,
                         child: OutlinedButton.icon(
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xff0C62D8),
-                            side: const BorderSide(
-                              color: Color(0xff0C62D8),
-                              width: 1,
+                            foregroundColor: isDineIn ? const Color(0xffF26B3A) : const Color(0xff3B73B9),
+                            side: BorderSide(
+                              color: isDineIn ? const Color(0xffF26B3A) : const Color(0xff3B73B9),
+                              width: 1.5,
                             ),
-                            padding: EdgeInsets.zero,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(5),
                             ),
                           ),
-                          icon: const Icon(
-                            Icons.remove_circle_outline,
-                            size: 12,
-                            color: Color(0xff0C62D8),
+                          icon: Icon(
+                            selectedCancelItemKotId == kotId
+                                ? Icons.undo
+                                : Icons.cancel_outlined,
+                            size: 16,
                           ),
-                          label: const Text(
-                            "Cancel Item",
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Color(0xff0C62D8),
-                              fontWeight: FontWeight.w500,
-                            ),
+                          label: Text(
+                            selectedCancelItemKotId == kotId ? "Revoke" : "Cancel",
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                           ),
                           onPressed: () {
                             setState(() {
                               if (selectedCancelItemKotId == kotId) {
+                                // Revoke: uncheck all and exit cancel mode
+                                for (int i = 0; i < selected.length; i++) {
+                                  selected[i] = false;
+                                }
                                 selectedCancelItemKotId = null;
                               } else {
+                                // Cancel: enter cancel mode
                                 selectedCancelItemKotId = kotId;
                               }
                             });
@@ -623,41 +714,61 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                         ),
                       ),
                     ),
-
                     const SizedBox(width: 8),
 
+                    // Right button: Start KOT or Cancel KOT
                     Expanded(
                       child: SizedBox(
-                        height: 28,
-                        child: OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xffFA3633),
-                            side: const BorderSide(
-                              color: Color(0xffFA3633),
-                              width: 1,
-                            ),
-                            padding: EdgeInsets.zero,
+                        height: 38,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: selected.every((val) => val)
+                                ? const Color(0xffFA3633) // Cancel KOT background
+                                : (isDineIn ? const Color(0xffF26B3A) : const Color(0xff3B73B9)), // Start KOT background
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(5),
                             ),
                           ),
-                          icon: const Icon(
-                            Icons.cancel_outlined,
-                            size: 12,
-                            color: Color(0xffFA3633),
+                          icon: Icon(
+                            selected.every((val) => val)
+                                ? Icons.cancel_outlined
+                                : Icons.play_arrow,
+                            size: 16,
+                            color: Colors.white,
                           ),
-                          label: const Text(
-                            "Cancel KOT",
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Color(0xffFA3633),
-                              fontWeight: FontWeight.w500,
-                            ),
+                          label: Text(
+                            selected.every((val) => val) ? "Cancel KOT" : "Start KOT",
+                            style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
                           ),
-                          onPressed: () {
-                            setState(() {
-                              selectedCancelKotId = kotId;
-                            });
+                          onPressed: () async {
+                            if (selected.every((val) => val)) {
+                              // Cancel entire order
+                              final success = await orderProvider.cancelOrder(kotId);
+                              if (success) {
+                                setState(() {
+                                  selectedCancelItemKotId = null;
+                                });
+                              }
+                            } else {
+                              // Start KOT with remaining items
+                              final remainingItems = <Map<String, dynamic>>[];
+                              for (int i = 0; i < items.length; i++) {
+                                if (!selected[i]) {
+                                  remainingItems.add(items[i] as Map<String, dynamic>);
+                                }
+                              }
+                              await orderProvider.startOrder(kotId, remainingItems);
+                              
+                              // Clear checkboxes and exit cancel mode after starting KOT
+                              setState(() {
+                                for (int i = 0; i < selected.length; i++) {
+                                  selected[i] = false;
+                                }
+                                if (selectedCancelItemKotId == kotId) {
+                                  selectedCancelItemKotId = null;
+                                }
+                              });
+                            }
                           },
                         ),
                       ),
@@ -668,100 +779,8 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
             ),
           ),
         ),
-        // ADD THIS BLOCK HERE
-        if (selectedCancelKotId == kotId)
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.75),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      "Cancel KOT?",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ElevatedButton(
-                          onPressed: () async {
-                            final success = await orderProvider.cancelOrder(
-                              kotId,
-                            );
-
-                            if (success) {
-                              setState(() {
-                                selectedCancelKotId = null;
-                              });
-                            }
-                          },
-                          child: const Text("Yes"),
-                        ),
-
-                        const SizedBox(width: 10),
-
-                        ElevatedButton(
-                          onPressed: () {
-                            setState(() {
-                              selectedCancelKotId = null;
-                            });
-                          },
-                          child: const Text("No"),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
       ],
     );
   }
 
-  Widget _filterChip(String title) {
-    final isSelected = selectedOrderType == title;
-    return GestureDetector(
-      onTap: () => setState(() => selectedOrderType = title),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 3),
-        padding: const EdgeInsets.symmetric(horizontal: 15),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xffFFF2ED) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: isSelected ? Border.all(color: Colors.orange) : null,
-        ),
-        alignment: Alignment.center,
-        child: Text(title),
-      ),
-    );
   }
-
-  Widget _statusTab(String title, bool selected) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18),
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: selected ? const Color(0xff6C74B8) : Colors.white,
-        borderRadius: BorderRadius.circular(25),
-      ),
-      child: Text(
-        title,
-        style: TextStyle(
-          color: selected ? Colors.white : const Color(0xff6C74B8),
-        ),
-      ),
-    );
-  }
-}

@@ -11,13 +11,14 @@ import '../utils/kds_logger.dart';
 class OrderProvider extends ChangeNotifier {
 
   Timer? _servedCleanupTimer;
+  final Map<String, _OptimisticStatus> _optimisticStatuses = {};
 
   OrderProvider(this._mqttService, this._apiService) {
     KdsDebugLog.info('OrderProvider created');
     // _init();
 
     _servedCleanupTimer =
-        Timer.periodic(const Duration(seconds: 30), (_) {
+        Timer.periodic(const Duration(seconds: 5), (_) {
           _clearServedOrders();
         });
   }
@@ -60,7 +61,11 @@ class OrderProvider extends ChangeNotifier {
       .toList();
 
   List<Map<String, dynamic>> get servedOrders => _orders
-      .where((o) => o.status == 'Served')
+      .where((o) {
+        if (o.status != 'Served') return false;
+        if (o.servedAt == null) return false;
+        return DateTime.now().difference(o.servedAt!).inSeconds < 15;
+      })
       .map((o) => o.toUiMap())
       .toList();
   Future<void> _init() async {
@@ -138,11 +143,18 @@ class OrderProvider extends ChangeNotifier {
     );
   }
   void _clearServedOrders() {
-    _orders.removeWhere(
-          (o) => o.status.toLowerCase() == 'served',
-    );
-
-    notifyListeners();
+    final beforeCount = _orders.length;
+    _orders.removeWhere((o) {
+      if (o.status.toLowerCase() == 'served') {
+        if (o.servedAt == null) return true;
+        return DateTime.now().difference(o.servedAt!).inSeconds >= 15;
+      }
+      return false;
+    });
+    if (_orders.length != beforeCount) {
+      _persist();
+      notifyListeners();
+    }
   }
 
   void _updateAndSave(void Function() update) {
@@ -181,14 +193,19 @@ class OrderProvider extends ChangeNotifier {
 
       _updateAndSave(() {
 
-        // Keep only unchecked items
-        order.items.removeWhere((item) {
-          return !remainingItems.any(
-                (r) => r['name'] == item.name,
+        // Set checked (cancelled) items status to 'cancelled'
+        for (final item in order.items) {
+          final isRemaining = remainingItems.any(
+            (r) => r['name'] == item.name,
           );
-        });
+          if (!isRemaining) {
+            item.status = 'cancelled';
+          }
+        }
 
         order.status = 'Preparing';
+        order.servedAt = null;
+        _optimisticStatuses[orderId] = _OptimisticStatus('Preparing', DateTime.now());
         order.isCancelled = false;
 
         _notifyPos(order, 'Preparing');
@@ -214,6 +231,8 @@ class OrderProvider extends ChangeNotifier {
         _orders.removeWhere(
               (o) => o.id.toString() == orderId,
         );
+
+        _optimisticStatuses[orderId] = _OptimisticStatus('Cancelled', DateTime.now());
 
         // Remove from pending list if present
         pendingOrders.removeWhere(
@@ -283,6 +302,8 @@ class OrderProvider extends ChangeNotifier {
       _updateAndSave(() {
         order.isCancelled = false;
         order.status = "Preparing"; // UI value
+        order.servedAt = null;
+        _optimisticStatuses[orderId] = _OptimisticStatus('Preparing', DateTime.now());
         _notifyPos(order, "Preparing");
       });
 
@@ -296,38 +317,71 @@ class OrderProvider extends ChangeNotifier {
     try {
       final apiOrders = await _apiService.getKitchenDisplayOrders();
 
-      _orders.clear();
+      // Keep locally served orders so they don't disappear prematurely
+      final servedLocal = _orders.where((o) => o.status.toLowerCase() == 'served').toList();
+
+      final List<KitchenOrder> loadedOrders = [];
 
       for (final json in apiOrders) {
-        print("=======================================");
-        print("KOT Number  : ${json['kot_number']}");
-        print("Order ID    : ${json['order_id']}");
-        print("Order Type  : ${json['order_type']}");
-        print("Status      : ${json['status']}");
-        print("KOT Status  : ${json['kot_status']}");
-        print("Table       : ${json['table_name']}");
-        print("Full JSON   : $json");
-        print("=======================================");
+        try {
+          final order = KitchenOrder.fromJson(
+            Map<String, dynamic>.from(json),
+          );
 
-        final kotStatus =
-            json['kot_status']?.toString().trim().toLowerCase() ?? '';
+          // Restore locally cancelled items status
+          KitchenOrder? existingOrder;
+          for (final o in _orders) {
+            if (o.id == order.id) {
+              existingOrder = o;
+              break;
+            }
+          }
+          if (existingOrder != null) {
+            for (final parsedItem in order.items) {
+              for (final existingItem in existingOrder.items) {
+                if (existingItem.name == parsedItem.name) {
+                  if (existingItem.status.toLowerCase() == 'cancelled') {
+                    parsedItem.status = 'cancelled';
+                  }
+                  break;
+                }
+              }
+            }
+          }
 
-        // Skip On Hold KOTs
-        // if (kotStatus == 'on hold') {
-        //   print("Skipping On Hold KOT : ${json['kot_number']}");
-        //   continue;
-        // }
+          // Apply optimistic status if it's recent (e.g. within 15 seconds)
+          final optimistic = _optimisticStatuses[order.id];
+          if (optimistic != null) {
+            if (DateTime.now().difference(optimistic.timestamp).inSeconds < 15) {
+              order.status = optimistic.status;
+            } else {
+              _optimisticStatuses.remove(order.id);
+            }
+          }
 
-        final order = KitchenOrder.fromJson(
-          Map<String, dynamic>.from(json),
-        );
+          // If it was cancelled optimistically, skip loading it
+          if (order.status == 'Cancelled' || order.status.toLowerCase() == 'cancelled') {
+            continue;
+          }
 
-        _orders.add(order);
+          // If this order is already marked as served locally, do not overwrite it with old status from API
+          if (servedLocal.any((o) => o.id == order.id)) {
+            continue;
+          }
 
-        KdsDebugLog.info(
-          'Loaded ${order.id} status=${order.status}',
-        );
+          loadedOrders.add(order);
+
+          KdsDebugLog.info(
+            'Loaded ${order.id} status=${order.status}',
+          );
+        } catch (e, stack) {
+          KdsDebugLog.error('Failed to parse order JSON in loadExistingOrders: $e\n$stack');
+        }
       }
+
+      _orders.clear();
+      _orders.addAll(loadedOrders);
+      _orders.addAll(servedLocal);
 
       print('Total Orders Loaded 1: ${_orders.length}');
       print('Pending Count 2: ${pendingOrders.length}');
@@ -352,6 +406,12 @@ class OrderProvider extends ChangeNotifier {
     // Update UI immediately
     _updateAndSave(() {
       order.status = status;
+      if (status.toLowerCase() == 'served') {
+        order.servedAt = DateTime.now();
+      } else {
+        order.servedAt = null;
+      }
+      _optimisticStatuses[orderId] = _OptimisticStatus(status, DateTime.now());
       _notifyPos(order, status);
     });
 
@@ -362,6 +422,12 @@ class OrderProvider extends ChangeNotifier {
       // Roll back if API fails
       _updateAndSave(() {
         order.status = oldStatus;
+        if (oldStatus.toLowerCase() == 'served') {
+          // Revert servedAt
+        } else {
+          order.servedAt = null;
+        }
+        _optimisticStatuses.remove(orderId);
       });
 
       KdsDebugLog.error('updateOrderStatus failed: $e\n$stack');
@@ -380,4 +446,10 @@ class OrderProvider extends ChangeNotifier {
 
     super.dispose();
   }
+}
+
+class _OptimisticStatus {
+  final String status;
+  final DateTime timestamp;
+  _OptimisticStatus(this.status, this.timestamp);
 }

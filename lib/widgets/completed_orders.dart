@@ -13,19 +13,21 @@ import '../top_bar.dart';
 class CompletedOrdersScreen extends StatefulWidget {
   final String token;
   final int restaurantId;
+  final bool isEmbedded;
+  final VoidCallback? onRecallSuccess;
 
   const CompletedOrdersScreen({
     super.key,
     required this.token,
     required this.restaurantId,
+    this.isEmbedded = false,
+    this.onRecallSuccess,
   });
 
   @override
   State<CompletedOrdersScreen> createState() => _CompletedOrdersScreenState();
-
-
-
 }
+
 class _CompletedOrdersScreenState
     extends State<CompletedOrdersScreen> {
   List<CompletedOrderModel> allOrders = [];
@@ -88,18 +90,19 @@ class _CompletedOrdersScreenState
   }
 
   Future<void> loadOrders() async {
+    if (!mounted) return;
     setState(() {
       isLoading = true;
     });
 
     try {
-      allOrders = await getCompletedOrders(
+      final fetched = await getCompletedOrders(
         token: widget.token,
         restaurantId: widget.restaurantId,
         page: currentPage,
         perPage: rowsPerPage,
 
-        // Default: first day of current month
+        // Default: today
         fromDate: selectedDate != null
             ? DateTime(
           selectedDate!.year,
@@ -109,7 +112,7 @@ class _CompletedOrdersScreenState
             : DateTime(
           DateTime.now().year,
           DateTime.now().month,
-          1,
+          DateTime.now().day,
         ),
 
         // Default: today
@@ -125,13 +128,17 @@ class _CompletedOrdersScreenState
             : selectedStatus,
       );
 
-      filteredOrders = List.from(allOrders);
-
-      applyPagination();
+      if (!mounted) return;
+      setState(() {
+        allOrders = fetched;
+        filteredOrders = List.from(allOrders);
+        applyPagination();
+      });
     } catch (e) {
       debugPrint("Load Orders Error: $e");
     }
 
+    if (!mounted) return;
     setState(() {
       isLoading = false;
     });
@@ -206,330 +213,334 @@ class _CompletedOrdersScreenState
   }
 
 
+  void setFilter(OrderTypeFilter filter) {
+    setState(() {
+      selectedFilter = filter;
+      switch (filter) {
+        case OrderTypeFilter.all:
+          selectedOrderType = 'All';
+          break;
+        case OrderTypeFilter.dineIn:
+          selectedOrderType = 'Dine In';
+          break;
+        case OrderTypeFilter.takeaway:
+          selectedOrderType = 'Takeaway';
+          break;
+        case OrderTypeFilter.online:
+          selectedOrderType = 'Online';
+          break;
+      }
+      currentPage = 1;
+    });
+    applyFilters();
+  }
+
+  Widget _filterButtonGroup() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.04),
+            blurRadius: 4,
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _filterButton(
+            title: "All",
+            selected: selectedFilter == OrderTypeFilter.all,
+            onTap: () => setFilter(OrderTypeFilter.all),
+          ),
+          _filterButton(
+            title: "Dine-In",
+            selected: selectedFilter == OrderTypeFilter.dineIn,
+            icon: Icons.restaurant,
+            iconColor: Colors.orange,
+            onTap: () => setFilter(OrderTypeFilter.dineIn),
+          ),
+          _filterButton(
+            title: "Takeaways",
+            selected: selectedFilter == OrderTypeFilter.takeaway,
+            icon: Icons.shopping_bag_outlined,
+            iconColor: Colors.blueGrey,
+            onTap: () => setFilter(OrderTypeFilter.takeaway),
+          ),
+          _filterButton(
+            title: "Online Orders",
+            selected: selectedFilter == OrderTypeFilter.online,
+            icon: Icons.delivery_dining,
+            iconColor: Colors.green,
+            onTap: () => setFilter(OrderTypeFilter.online),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _filterButton({
+    required String title,
+    required bool selected,
+    required VoidCallback onTap,
+    IconData? icon,
+    Color? iconColor,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 18,
+          vertical: 10,
+        ),
+        decoration: BoxDecoration(
+          color: selected
+              ? const Color(0xff2F4376)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null)
+              Icon(
+                icon,
+                size: 16,
+                color: selected ? Colors.white : iconColor,
+              ),
+            if (icon != null)
+              const SizedBox(width: 4),
+            Text(
+              title,
+              style: TextStyle(
+                color: selected
+                    ? Colors.white
+                    : Colors.black87,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final orderProvider = context.watch<OrderProvider>();
-    return Scaffold(
-        backgroundColor: const Color(0xffF4F4F4),
-        body: SafeArea(
-          child: Padding(
-            padding: EdgeInsets.zero,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(15),
+
+    final contentWidget = Column(
+      children: [
+        // Row 1: Title, Search Bar, Order Filters
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            children: [
+              if (!widget.isEmbedded) ...[
+                InkWell(
+                  onTap: () => Navigator.pop(context),
+                  child: const Icon(
+                    Icons.arrow_back,
+                    size: 24,
+                    color: Color(0xff222222),
+                  ),
+                ),
+                const SizedBox(width: 10),
+              ],
+              const Text(
+                "KOT History",
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xff1E293B),
+                ),
               ),
-              child: Column(
-                children: [
-                  // TopBarWidget(
-                  //   selectedFilter: selectedFilter,
-                  //   selectedView: selectedView,
-                  //
-                  //   onFilterChanged: (filter) {
-                  //     setState(() {
-                  //       selectedFilter = filter;
-                  //     });
-                  //   },
-                  //
-                  //   onViewChanged: (view) {
-                  //     setState(() {
-                  //       selectedView = view;
-                  //     });
-                  //   },
-                  // ),
-
-                  const SizedBox(height: 10),
-
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 10,
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        /// Left Side
-                        Expanded(
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              InkWell(
-                                onTap: () => Navigator.pop(context),
-                                child: const Padding(
-                                  padding: EdgeInsets.only(top: 4),
-                                  child: Icon(
-                                    Icons.arrow_back,
-                                    size: 24,
-                                    color: Color(0xff222222),
-                                  ),
-                                ),
-                              ),
-
-                              const SizedBox(width: 10),
-
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: const [
-                                  Text(
-                                    "KOT's History",
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xff222222),
-                                    ),
-                                  ),
-
-                                  SizedBox(height: 4),
-
-                                  Text(
-                                    "View Completed & Cancelled KOT's",
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Color(0xff6B7280),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        /// Right Side Cards
-                        Row(
-                          children: [
-                            _summaryCard(
-                              title: "Total KOT's",
-                              value: "${allOrders.length}",
-                              color: const Color(0xff2563EB),
-                              icon: Icons.receipt_long,
-                            ),
-
-                            const SizedBox(width: 18),
-
-                            _summaryCard(
-                              title: "Completed",
-                              value: "${allOrders.where((e) => e.status.toLowerCase() == 'completed').length}",
-                              color: const Color(0xff16A34A),
-                              icon: Icons.check_circle,
-                            ),
-
-                            const SizedBox(width: 18),
-
-                            _summaryCard(
-                              title: "Cancelled",
-                              value: "${allOrders.where((e) => e.status.toLowerCase() == 'cancelled').length}",
-                              color: const Color(0xffEF4444),
-                              icon: Icons.cancel,
-                            ),
-                          ],
-                        ),
-                      ],
+              const SizedBox(width: 30),
+              Expanded(
+                child: SizedBox(
+                  height: 42,
+                  child: TextField(
+                    onChanged: (value) {
+                      searchText = value;
+                      applyFilters();
+                    },
+                    decoration: InputDecoration(
+                      hintText: "Search Order ID or KOT ID...",
+                      prefixIcon: const Icon(Icons.search, size: 20),
+                      filled: true,
+                      fillColor: const Color(0xfff8fafc),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
                     ),
                   ),
+                ),
+              ),
+              const SizedBox(width: 30),
+              _filterButtonGroup(),
+            ],
+          ),
+        ),
 
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
+        const SizedBox(height: 8),
 
-                        // Today
-                        SizedBox(
-                          height: 40,
-                          width: 150,
-                          child: TextField(
-                            controller: _dateController,
-                            readOnly: true,
-                            onTap: () async {
-                              final picked = await showDatePicker(
-                                context: context,
-                                initialDate: selectedDate ?? DateTime.now(),
-                                firstDate: DateTime(2020),
-                                lastDate: DateTime(2030),
-                              );
-                              if (picked != null) {
-                                setState(() {
-                                  selectedDate = picked;
-                                  _dateController.text = DateFormat('dd/MM/yy').format(picked);
-                                  applyFilters();
-                                });
-                              }
-                            },
-                            decoration: InputDecoration(
-                              hintText: "Select Date",
-                              hintStyle: const TextStyle(
-                                color: Colors.black,
-                                fontSize: 14,
-                              ),
-                              suffixIcon: Icon(Icons.calendar_today, size: 18),
-                              filled: true,
-                              fillColor: Colors.grey.shade200,
-                              contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide.none,
-                              ),
-                            ),
-                            style: TextStyle(fontSize: 14),
-                          ),
-                        ),
+        // Row 2: Metrics and Secondary Filters
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              // Stats
+              _summaryCard(
+                title: "Total KOT's",
+                value: "${allOrders.length}",
+                color: const Color(0xff2563EB),
+                icon: Icons.assignment,
+              ),
+              const SizedBox(width: 12),
+              _summaryCard(
+                title: "Completed",
+                value: "${allOrders.where((e) => e.status.toLowerCase() == 'completed').length}",
+                color: const Color(0xff16A34A),
+                icon: Icons.check,
+              ),
+              const SizedBox(width: 12),
+              _summaryCard(
+                title: "Cancelled",
+                value: "${allOrders.where((e) => e.status.toLowerCase() == 'cancelled').length}",
+                color: const Color(0xffEF4444),
+                icon: Icons.close,
+              ),
 
-                        const SizedBox(width: 15),
+              const Spacer(),
 
-                        // Last 60 Min
-                        Container(
-                          width: 150,
-                          height: 40,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(8),
-                            color: Colors.white,
-                          ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<String>(
-                              value: selectedDuration,
-                              hint: const Text("Last 60 Min"),
-                              isExpanded: true,
-                              items: const [
-                                DropdownMenuItem(
-                                  value: '30 Min',
-                                  child: Text('30 Min'),
-                                ),
-                                DropdownMenuItem(
-                                  value: '60 Min',
-                                  child: Text('60 Min'),
-                                ),
-                                DropdownMenuItem(
-                                  value: '5 Hours',
-                                  child: Text('5 Hours'),
-                                ),
-                                DropdownMenuItem(
-                                  value: '24 Hours',
-                                  child: Text('24 Hours'),
-                                ),
-                              ],
-                              onChanged: (value) {
-                                setState(() {
-                                  selectedDuration = value;
-                                  applyFilters();
-                                });
-
-                                // Apply your filter here
-                              },
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 15),
-
-// All Status
-                        Container(
-                          width: 170,
-                          height: 40,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(8),
-                            color: Colors.white,
-                          ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<String>(
-                                value: selectedStatus,
-                                isExpanded: true,
-                                items: const [
-                                  DropdownMenuItem(
-                                    value: 'All Status',
-                                    child: Text('All Status'),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: 'Completed',
-                                    child: Text('Completed'),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: 'Cancelled',
-                                    child: Text('Cancelled'),
-                                  ),
-                                ],
-                                onChanged: (value) async {
-                                  if (value == null) return;
-
-                                  setState(() {
-                                    selectedStatus = value;
-                                    currentPage = 1;
-                                  });
-
-                                  await loadOrders();
-                                }
-                            ),
-                          ),
-                        ),
-
-                        const Spacer(),
-
-                        // const Spacer(),
-
-                        // Search Order ID
-                        SizedBox(
-                          width: 250,
-                          height: 40,
-                          child: TextField(
-                            onChanged: (value) {
-                              searchText = value;
-                              applyFilters();
-                            },
-                            decoration: InputDecoration(
-                              hintText: "Search Order ID",
-                              prefixIcon: const Icon(Icons.search),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(
-                                  color: Colors.grey.shade300,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(width: 10),
-
-                        // Order Type
-                        SizedBox(
-                          width: 180,
-                          height: 40,
-                          child: DropdownButtonFormField<String>(
-                            value: selectedOrderType,
-                            decoration: InputDecoration(
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            items: const [
-                              DropdownMenuItem(
-                                value: 'All',
-                                child: Text('All'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'Dine In',
-                                child: Text('Dine In'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'Takeaway',
-                                child: Text('Takeaway'),
-                              ),
-                            ],
-                            onChanged: (value) {
-                              setState(() {
-                                selectedOrderType = value!;
-                              });
-                              applyFilters();
-                            },
-                          ),
-                        ),
-                      ],
+              // Date Picker
+              SizedBox(
+                height: 40,
+                width: 120,
+                child: TextField(
+                  controller: _dateController,
+                  readOnly: true,
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDate ?? DateTime.now(),
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime(2030),
+                    );
+                    if (picked != null) {
+                      setState(() {
+                        selectedDate = picked;
+                        _dateController.text = DateFormat('dd/MM/yy').format(picked);
+                      });
+                      await loadOrders();
+                    }
+                  },
+                  decoration: InputDecoration(
+                    hintText: "Select Date",
+                    hintStyle: const TextStyle(fontSize: 13),
+                    suffixIcon: const Icon(Icons.calendar_today, size: 14),
+                    filled: true,
+                    fillColor: Colors.grey.shade100,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide.none,
                     ),
                   ),
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ),
+              const SizedBox(width: 10),
+
+              // Duration Dropdown
+              Container(
+                width: 110,
+                height: 40,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.white,
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: selectedDuration,
+                    hint: const Text("Duration", style: TextStyle(fontSize: 13)),
+                    isExpanded: true,
+                    items: const [
+                      DropdownMenuItem(value: '30 Min', child: Text('30 Min', style: TextStyle(fontSize: 13))),
+                      DropdownMenuItem(value: '60 Min', child: Text('60 Min', style: TextStyle(fontSize: 13))),
+                      DropdownMenuItem(value: '5 Hours', child: Text('5 Hours', style: TextStyle(fontSize: 13))),
+                      DropdownMenuItem(value: '24 Hours', child: Text('24 Hours', style: TextStyle(fontSize: 13))),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        selectedDuration = value;
+                        applyFilters();
+                      });
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+
+              // Status Dropdown
+              Container(
+                width: 110,
+                height: 40,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.white,
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: selectedStatus,
+                    isExpanded: true,
+                    items: const [
+                      DropdownMenuItem(value: 'All Status', child: Text('All Status', style: TextStyle(fontSize: 13))),
+                      DropdownMenuItem(value: 'Completed', child: Text('Completed', style: TextStyle(fontSize: 13))),
+                      DropdownMenuItem(value: 'Cancelled', child: Text('Cancelled', style: TextStyle(fontSize: 13))),
+                    ],
+                    onChanged: (value) async {
+                      if (value == null) return;
+                      setState(() {
+                        selectedStatus = value;
+                        currentPage = 1;
+                      });
+                      await loadOrders();
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+
+              // Refresh Button
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xff3B82F6),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onPressed: loadOrders,
+                icon: const Icon(Icons.refresh, size: 16),
+                label: const Text("Refresh", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
 
                   Expanded(
                     child: Container(
@@ -541,8 +552,14 @@ class _CompletedOrdersScreenState
                           color: const Color(0xffE5E7EB),
                         ),
                       ),
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
+                      child: isLoading
+                          ? const Center(
+                              child: CircularProgressIndicator(
+                                color: Color(0xff2F4376),
+                              ),
+                            )
+                          : LayoutBuilder(
+                              builder: (context, constraints) {
                           return SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
                             child: ConstrainedBox(
@@ -705,15 +722,19 @@ class _CompletedOrdersScreenState
 
                                             if (!mounted) return;
 
-                                            Navigator.pushReplacement(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) => ActiveOrdersScreen(
-                                                  token: widget.token,
-                                                  restaurantId: widget.restaurantId,
+                                            if (widget.isEmbedded) {
+                                              widget.onRecallSuccess?.call();
+                                            } else {
+                                              Navigator.pushReplacement(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) => ActiveOrdersScreen(
+                                                    token: widget.token,
+                                                    restaurantId: widget.restaurantId,
+                                                  ),
                                                 ),
-                                              ),
-                                            );
+                                              );
+                                            }
                                           },
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
@@ -825,10 +846,33 @@ class _CompletedOrdersScreenState
                     ),
                   )
                 ],
-              ),
+              );
+    if (widget.isEmbedded) {
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xffe2e8f0)),
+        ),
+        child: contentWidget,
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: const Color(0xffF4F4F4),
+      body: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.zero,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(15),
             ),
+            child: contentWidget,
           ),
-        ));
+        ),
+      ),
+    );
   }
   Widget pageButton(
       String text,
@@ -974,61 +1018,45 @@ Widget _summaryCard({
   required IconData icon,
 }) {
   return Container(
-    width: 160,
-    height: 62,
-    padding: const EdgeInsets.symmetric(
-      horizontal: 10,
-      vertical: 8,
-    ),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     decoration: BoxDecoration(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(20),
       border: Border.all(
-        color: color.withOpacity(.25),
+        color: color.withOpacity(.4),
+        width: 1.5,
       ),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(.03),
-          blurRadius: 4,
-        ),
-      ],
     ),
     child: Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        CircleAvatar(
-          radius: 12,
-          backgroundColor: color.withOpacity(.12),
-          child: Icon(
-            icon,
-            color: color,
-            size: 18,
+        Text(
+          "$title  : ",
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: Color(0xff64748b),
           ),
         ),
-
-        const SizedBox(width: 8),
-
-        Expanded(
-          child: Column(
-            crossAxisAlignment:
-            CrossAxisAlignment.start,
-            mainAxisAlignment:
-            MainAxisAlignment.center,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xff6B7280),
-                ),
-              ),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            icon,
+            color: Colors.white,
+            size: 14,
           ),
         ),
       ],

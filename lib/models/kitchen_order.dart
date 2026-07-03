@@ -48,6 +48,7 @@ class KitchenOrder {
   final DateTime? kotTime;
   final List<OrderItem> items;
   final String kotStatus;
+  DateTime? servedAt;
 
   KitchenOrder({
     required this.id,
@@ -62,6 +63,7 @@ class KitchenOrder {
     this.kotTime,
     required this.items,
     this.kotStatus = '',
+    this.servedAt,
   });
 
   Color get headerColor {
@@ -161,6 +163,7 @@ class KitchenOrder {
       items: (json['kot_items'] as List? ?? [])
           .map((e) => OrderItem.fromJson(Map<String, dynamic>.from(e)))
           .toList(),
+      servedAt: json['servedAt'] != null ? DateTime.tryParse(json['servedAt'].toString()) : null,
     );
   }
   /// Save to local storage
@@ -177,6 +180,7 @@ class KitchenOrder {
     'kotTime': kotTime?.toIso8601String(),
     'items': items.map((item) => item.toJson()).toList(),
     'kotStatus': kotStatus,
+    'servedAt': servedAt?.toIso8601String(),
   };
 
   /// For UI widgets
@@ -195,6 +199,7 @@ class KitchenOrder {
     'locationLabel': locationLabel,
     'kotTime': kotTime,
     'headerColor': headerColor,
+    'servedAt': servedAt,
     'items': items
         .map((item) => {
       'name': item.name,

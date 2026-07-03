@@ -1,10 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:kds_app/widgets/completed_orders.dart';
-import 'package:kds_app/widgets/repeated_item.dart';
-// import 'package:kds_app/widgets/repeated_items.dart';
-
-import 'active_orderscreen.dart';
-import 'kitchen_display_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum OrderTypeFilter {
   all,
@@ -16,311 +11,212 @@ enum OrderTypeFilter {
 enum KotView {
   pending,
   active,
+  repeated,
   history,
 }
 
-class TopBarWidget extends StatelessWidget {
+class TopBarWidget extends StatefulWidget {
   final String token;
   final int restaurantId;
-
-  final OrderTypeFilter selectedFilter;
   final KotView selectedView;
-
-  final ValueChanged<OrderTypeFilter> onFilterChanged;
   final ValueChanged<KotView> onViewChanged;
+  final VoidCallback? onLogout;
+  final int pendingCount;
+  final int activeCount;
+  final int repeatedCount;
 
   const TopBarWidget({
     super.key,
     required this.token,
     required this.restaurantId,
-    required this.selectedFilter,
     required this.selectedView,
-    required this.onFilterChanged,
     required this.onViewChanged,
+    this.onLogout,
+    this.pendingCount = 0,
+    this.activeCount = 0,
+    this.repeatedCount = 0,
   });
+
+  @override
+  State<TopBarWidget> createState() => _TopBarWidgetState();
+}
+
+class _TopBarWidgetState extends State<TopBarWidget> {
+  String _displayName = "Mohan Krishna";
+  String _role = "I am manager";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final name = prefs.getString("display_name") ?? prefs.getString("employee_name") ?? "Mohan Krishna";
+      final role = prefs.getString("role") ?? prefs.getString("employee_role") ?? "I am manager";
+      if (mounted) {
+        setState(() {
+          _displayName = name;
+          _role = role;
+        });
+      }
+    } catch (e) {
+      debugPrint("Failed to load profile in TopBarWidget: $e");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 70,
+      height: 75,
       padding: const EdgeInsets.symmetric(
         horizontal: 20,
-        vertical: 10,
+        vertical: 8,
       ),
-      color: const Color(0xfff4f4f4),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          bottom: BorderSide(
+            color: Color(0xffe2e8f0),
+            width: 1,
+          ),
+        ),
+      ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(.08),
-                  blurRadius: 4,
+          // Logo Section
+          Image.asset(
+            "assets/pinaka_logo.png",
+            height: 40,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              return const Text(
+                "PINAKA",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 22,
+                  color: Color(0xff2F4376),
                 ),
-              ],
-            ),
-            child: Row(
-              children: [
-                _filterButton(
-                  title: "All",
-                  selected:
-                  selectedFilter == OrderTypeFilter.all,
-                  onTap: () =>
-                      onFilterChanged(OrderTypeFilter.all),
-                ),
-
-                _filterButton(
-                  title: "Dine-In",
-                  selected:
-                  selectedFilter == OrderTypeFilter.dineIn,
-                  icon: Icons.restaurant,
-                  iconColor: Colors.orange,
-                  onTap: () =>
-                      onFilterChanged(OrderTypeFilter.dineIn),
-                ),
-
-                _filterButton(
-                  title: "Takeaways",
-                  selected: selectedFilter ==
-                      OrderTypeFilter.takeaway,
-                  icon: Icons.shopping_bag_outlined,
-                  iconColor: Colors.blueGrey,
-                  onTap: () => onFilterChanged(
-                      OrderTypeFilter.takeaway),
-                ),
-
-                _filterButton(
-                  title: "Online Orders",
-                  selected:
-                  selectedFilter == OrderTypeFilter.online,
-                  icon: Icons.delivery_dining,
-                  iconColor: Colors.green,
-                  onTap: () =>
-                      onFilterChanged(OrderTypeFilter.online),
-                ),
-              ],
-            ),
+              );
+            },
           ),
-
-          // const Spacer(),
+          
           const Spacer(),
 
-          ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => RepeatedItemsScreen(
-                    token: token,
-                    restaurantId: restaurantId,
-                  ),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xffF28C28),
-              foregroundColor: Colors.white,
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 18,
-                vertical: 14,
+          // Navigation buttons
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _navButton(
+                title: "Pending KOTs",
+                view: KotView.pending,
+                icon: Icons.format_list_bulleted,
+                isSelected: widget.selectedView == KotView.pending,
+                count: widget.pendingCount,
+                onTap: () => widget.onViewChanged(KotView.pending),
               ),
-              shape: RoundedRectangleBorder(
+              _navButton(
+                title: "Active KOTs",
+                view: KotView.active,
+                icon: Icons.cached,
+                isSelected: widget.selectedView == KotView.active,
+                count: widget.activeCount,
+                onTap: () => widget.onViewChanged(KotView.active),
+              ),
+              _navButton(
+                title: "Repeated Items",
+                view: KotView.repeated,
+                icon: Icons.sync,
+                isSelected: widget.selectedView == KotView.repeated,
+                count: widget.repeatedCount,
+                onTap: () => widget.onViewChanged(KotView.repeated),
+              ),
+              _navButton(
+                title: "KOT History",
+                view: KotView.history,
+                icon: Icons.history,
+                isSelected: widget.selectedView == KotView.history,
+                onTap: () => widget.onViewChanged(KotView.history),
+              ),
+            ],
+          ),
+
+          const Spacer(),
+
+          // Logout Button
+          GestureDetector(
+            onTap: widget.onLogout,
+            child: Container(
+              height: 48,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: const Color(0xffFF5B4F),
                 borderRadius: BorderRadius.circular(8),
               ),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  "Repeated Items",
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
+              child: const Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.logout,
+                    color: Colors.white,
+                    size: 16,
                   ),
-                ),
-                SizedBox(width: 6),
-                Icon(
-                  Icons.receipt_long,
-                  size: 18,
-                ),
-              ],
+                  SizedBox(height: 2),
+                  Text(
+                    "Logout",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
 
-          const SizedBox(width: 20),
+          const SizedBox(width: 12),
 
+          // User Profile Section
           Container(
-            height: 42,
+            height: 48,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
+              color: Colors.white,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: Colors.teal,
+                color: const Color(0xffe2e8f0),
               ),
             ),
             child: Row(
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ActiveOrdersScreen(
-                          token: token,
-                          restaurantId: restaurantId,
-                        ),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 25,
-                    ),
-                    decoration: BoxDecoration(
-                      color: selectedView == KotView.active
-                          ? Colors.teal
-                          : Colors.white,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(7),
-                        bottomLeft: Radius.circular(7),
-                      ),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      "Active KOT's",
-                      style: TextStyle(
-                        color: selectedView == KotView.active
-                            ? Colors.white
-                            : Colors.teal,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ),
-
-                GestureDetector(
-                  onTap: () {
-                    onViewChanged(KotView.pending);
-
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => KitchenDashboardScreen(
-                          token: token,
-                          restaurantId: restaurantId,
-                        ),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                    ),
-                    decoration: BoxDecoration(
-                      color: selectedView == KotView.pending
-                          ? Colors.teal
-                          : Colors.white,
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      "Pending KOT's",
-                      style: TextStyle(
-                        color: selectedView == KotView.pending
-                            ? Colors.white
-                            : Colors.teal,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(width: 20),
-
-          ElevatedButton(
-            onPressed: () {
-              print("TopBar Token: '$token'");
-              print("Restaurant ID: $restaurantId");
-
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => CompletedOrdersScreen(
-                    token: token,
-                    restaurantId: restaurantId,
-                  ),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 22,
-                vertical: 14,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Row(
-              children: [
-                Text(
-                  "KOT's History",
-                  style: TextStyle(
-                    color: Colors.white,
-                  ),
-                ),
-                SizedBox(width: 8),
-                Icon(
-                  Icons.arrow_forward,
-                  color: Colors.white,
-                  size: 18,
-                )
-              ],
-            ),
-          ),
-
-
-          const SizedBox(width: 20),
-
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 8,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 CircleAvatar(
                   radius: 16,
-                  child: Icon(Icons.person),
+                  backgroundColor: const Color(0xfff1f5f9),
+                  backgroundImage: const AssetImage("assets/chef.png"),
+                  child: const SizedBox.shrink(),
                 ),
-                SizedBox(width: 10),
+                const SizedBox(width: 8),
                 Column(
-                  crossAxisAlignment:
-                  CrossAxisAlignment.start,
-                  mainAxisAlignment:
-                  MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      "Madhuri Thota",
-                      style: TextStyle(
+                      _displayName,
+                      style: const TextStyle(
                         fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xff1e293b),
                       ),
                     ),
                     Text(
-                      "Head Chef",
-                      style: TextStyle(
+                      _role,
+                      style: const TextStyle(
                         fontSize: 10,
-                        color: Colors.grey,
+                        color: Color(0xff64748b),
                       ),
                     ),
                   ],
@@ -333,49 +229,69 @@ class TopBarWidget extends StatelessWidget {
     );
   }
 
-  Widget _filterButton({
+  Widget _navButton({
     required String title,
-    required bool selected,
+    required KotView view,
+    required IconData icon,
+    required bool isSelected,
+    int? count,
     required VoidCallback onTap,
-    IconData? icon,
-    Color? iconColor,
   }) {
+    final activeColor = const Color(0xff7C3AED);
+    final inactiveTextColor = const Color(0xff64748b);
+    final inactiveIconColor = const Color(0xff94a3b8);
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(
-          horizontal: 18,
-          vertical: 10,
-        ),
+        margin: const EdgeInsets.symmetric(horizontal: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: selected
-              ? const Color(0xff2F4376)
-              : Colors.transparent,
+          color: isSelected ? const Color(0xffF0EEFF) : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? const Color(0xffDCD6FF) : Colors.transparent,
+            width: 1.5,
+          ),
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            if (icon != null)
-              Icon(
-                icon,
-                size: 16,
-                color: iconColor,
-              ),
-            if (icon != null)
-              const SizedBox(width: 4),
+            Icon(
+              icon,
+              size: 18,
+              color: isSelected ? activeColor : inactiveIconColor,
+            ),
+            const SizedBox(width: 8),
             Text(
               title,
               style: TextStyle(
-                color: selected
-                    ? Colors.white
-                    : Colors.black87,
-                fontWeight: FontWeight.w500,
+                color: isSelected ? activeColor : inactiveTextColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
               ),
             ),
+            if (count != null) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                decoration: BoxDecoration(
+                  color: isSelected ? activeColor : const Color(0xffe2e8f0),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  "$count",
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : inactiveTextColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
   }
-}
+}

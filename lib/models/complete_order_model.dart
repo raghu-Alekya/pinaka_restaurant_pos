@@ -83,3 +83,34 @@ class CompletedOrderModel {
     };
   }
 }
+class CompletedOrdersResponse {
+  final List<CompletedOrderModel> orders;
+  final int currentPage;
+  final int totalPages;
+  final int totalItems;
+  final int completedCount;
+  final int cancelledCount;
+
+  CompletedOrdersResponse({
+    required this.orders,
+    required this.currentPage,
+    required this.totalPages,
+    required this.totalItems,
+    required this.completedCount,
+    required this.cancelledCount,
+  });
+
+  factory CompletedOrdersResponse.fromJson(Map<String, dynamic> json) {
+    return CompletedOrdersResponse(
+      orders: (json["data"] as List)
+          .map((e) => CompletedOrderModel.fromJson(e))
+          .toList(),
+
+      currentPage: json["current_page"] ?? 1,
+      totalPages: json["total_pages"] ?? 1,
+      totalItems: int.parse(json["total_items"].toString()),
+      completedCount: json["completed_count"] ?? 0,
+      cancelledCount: json["cancelled_count"] ?? 0,
+    );
+  }
+}
