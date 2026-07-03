@@ -43,7 +43,9 @@ class OrderProvider extends ChangeNotifier {
   int get mqttMessagesReceived => _mqttService.messagesReceived;
 
   List<Map<String, dynamic>> get pendingOrders => _orders
-      .where((o) => o.status == 'Pending')
+      .where((o) =>
+  o.status == 'Pending' &&
+      o.kotStatus.toLowerCase() != 'on hold')
       .map((o) => o.toUiMap())
       .toList();
 
@@ -297,12 +299,24 @@ class OrderProvider extends ChangeNotifier {
       _orders.clear();
 
       for (final json in apiOrders) {
-        print('API Status = ${json['status']}');
-        print(
-          "KOT=${json['kot_number']} "
-              "Order=${json['order_id']} "
-              "Status=${json['status']}",
-        );
+        print("=======================================");
+        print("KOT Number  : ${json['kot_number']}");
+        print("Order ID    : ${json['order_id']}");
+        print("Order Type  : ${json['order_type']}");
+        print("Status      : ${json['status']}");
+        print("KOT Status  : ${json['kot_status']}");
+        print("Table       : ${json['table_name']}");
+        print("Full JSON   : $json");
+        print("=======================================");
+
+        final kotStatus =
+            json['kot_status']?.toString().trim().toLowerCase() ?? '';
+
+        // Skip On Hold KOTs
+        // if (kotStatus == 'on hold') {
+        //   print("Skipping On Hold KOT : ${json['kot_number']}");
+        //   continue;
+        // }
 
         final order = KitchenOrder.fromJson(
           Map<String, dynamic>.from(json),

@@ -40,6 +40,11 @@ class EmployeePinLoginRepository {
         final login = LoginModel.fromJson(
           jsonDecode(response.body),
         );
+        if (!login.data.permissions.canViewKDS) {
+          throw Exception(
+            "You are not authorized to access the Kitchen Display System.",
+          );
+        }
 
         print("Login Success");
         print("User ID      : ${login.data.id}");

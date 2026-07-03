@@ -89,7 +89,8 @@ class KotOrderApiService {
 
       case 'processing':
       case 'preparing':
-      case 'kot processed':
+      case 'yet-to-prepare':
+      case 'yet to prepare':
         return 'Preparing';
 
       case 'ready':

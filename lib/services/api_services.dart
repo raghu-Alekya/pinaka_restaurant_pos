@@ -107,7 +107,7 @@ class OrderApiService {
   Future<Map<String, dynamic>> updateKotOrderStatus({
     required int orderId,
     required int parentId,
-    required int zoneId,
+    int? zoneId,
     required int restaurantId,
     required String status,
   }) async {
@@ -120,10 +120,13 @@ class OrderApiService {
     final payload = {
       'flag_type': _flagUpdateKotStatus,
       'restaurant_id': restaurantId,
-      'zone_id': zoneId,
       'parent_id': parentId,
       'status': KotApiStatus.fromLocal(status),
     };
+
+    if (zoneId != null && zoneId > 0) {
+      payload['zone_id'] = zoneId;
+    }
 
     KdsDebugLog.info('PUT $url');
     KdsDebugLog.info('Payload => $payload');
@@ -155,7 +158,7 @@ class OrderApiService {
     return updateKotOrderStatus(
       orderId: _requireKotId(order),
       parentId: _requireParentOrderId(order),
-      zoneId: _requireZoneId(order),
+      zoneId: order.zoneId,
       restaurantId: restaurantId,
       status: apiStatus,
     );
@@ -202,17 +205,23 @@ class OrderApiService {
     return parentId;
   }
 
-  int _requireZoneId(KitchenOrder order) {
-    final zoneId = order.zoneId;
+  int? _requireZoneId(KitchenOrder order) {
+    // Zone ID is required only for Dine-In orders
+    if (order.type.toLowerCase().contains('dine')) {
+      final zoneId = order.zoneId;
 
-    if (zoneId == null || zoneId <= 0) {
-      throw OrderApiException(
-        statusCode: 0,
-        message: 'Missing zoneId for order ${order.id}',
-      );
+      if (zoneId == null || zoneId <= 0) {
+        throw OrderApiException(
+          statusCode: 0,
+          message: 'Missing zoneId for Dine-In order ${order.id}',
+        );
+      }
+
+      return zoneId;
     }
 
-    return zoneId;
+    // Takeaway / Online orders don't require zoneId
+    return null;
   }
 
   Map<String, dynamic> _parseResponse(http.Response response) {

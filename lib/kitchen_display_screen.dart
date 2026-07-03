@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:kds_app/top_bar.dart';
@@ -30,6 +32,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
   String selectedOrderType = "All";
   OrderTypeFilter selectedFilter = OrderTypeFilter.all;
   String? selectedCancelKotId;
+  Timer? _refreshTimer;
   // Add these here
   String? selectedCancelItemKotId;
   final Set<String> selectedItems = {};
@@ -42,8 +45,22 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<OrderProvider>().loadExistingOrders();
+    });
+    _refreshTimer = Timer.periodic(
+      const Duration(seconds: 5),
+          (_) {
+        context.read<OrderProvider>().loadExistingOrders();
+      },
+    );
 
     print("KitchenDashboardScreen received token: '${widget.token}'");
+  }
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   @override

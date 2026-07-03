@@ -26,6 +26,7 @@ class LoginData {
   final String role;
   final int restaurantId;
   final String restaurantName;
+  final Permissions permissions;
 
   LoginData({
     required this.token,
@@ -35,6 +36,7 @@ class LoginData {
     required this.role,
     required this.restaurantId,
     required this.restaurantName,
+    required this.permissions,
   });
 
   factory LoginData.fromJson(Map<String, dynamic> json) {
@@ -46,6 +48,9 @@ class LoginData {
       role: json["role"] ?? "",
       restaurantId: json["restaurant_id"] ?? 0,
       restaurantName: json["restaurant_name"] ?? "",
+      permissions: Permissions.fromJson(
+        json["permissions"] ?? {},
+      ), // <-- Add this
     );
   }
 }
@@ -70,5 +75,18 @@ class LogoutResponse {
       "success": success,
       "message": message,
     };
+  }
+}
+class Permissions {
+  final bool canViewKDS;
+
+  Permissions({
+    required this.canViewKDS,
+  });
+
+  factory Permissions.fromJson(Map<String, dynamic> json) {
+    return Permissions(
+      canViewKDS: json["canViewKDS"] ?? false,
+    );
   }
 }

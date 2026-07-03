@@ -219,7 +219,7 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
                   /// LEFT IMAGE SECTION
 
                     Expanded(
-                      flex: 3,
+                      // flex: 3,
                       child: Container(
                         color: const Color(0xff173F7A),
                         child: Center(
@@ -246,147 +246,112 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
 
                 /// RIGHT LOGIN PANEL
 
-                Expanded(
-                    flex: 3,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 45,
-                        vertical: 35,
-                      ),
-                      child: Column(
-                          crossAxisAlignment:
-                          CrossAxisAlignment.center,
-                          children: [
 
-                          const SizedBox(height: 20),
-
-                            Image.asset(
-                              "assets/pinaka_logo.png",
-                              height: 70,
-                              fit: BoxFit.contain,
-                            ),
-
-                      const SizedBox(height: 15),
-
-                      const Text(
-                        "Employee Login",
-                        style: TextStyle(
-                          fontSize: 30,
-                          color: Color(0xffF36D5D),
-                          fontWeight: FontWeight.w700,
+                    Expanded(
+                    child: Center(
+                    child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Image.asset(
+                          "assets/pinaka.png",
+                          height: 80,
                         ),
-                      ),
-
-                      const SizedBox(height: 10),
-
-                      const Text(
-                        "Please Input your PIN to Login",
-                        style: TextStyle(
-                          color: Color(0xff7A7A7A),
-                          fontSize: 14,
-                        ),
-                      ),
-
-                      const SizedBox(height: 15),
-
-                      Row(
-                        mainAxisAlignment:
-                        MainAxisAlignment.center,
-                        children: List.generate(
-                          6,
-                              (index) => pinBox(index),
-                        ),
-                      ),
-
-                      const SizedBox(height: 35),
-                      Flexible(
-                        child: GridView.count(
-                          crossAxisCount: 3,
-                          crossAxisSpacing: 8,
-                          mainAxisSpacing: 8,
-                          childAspectRatio: 3.5,
-                          physics: const NeverScrollableScrollPhysics(),
-                          children: [
-
-                            numberButton(
-                              "1",
-                              onTap: () => addNumber("1"),
-                            ),
-
-                            numberButton(
-                              "2",
-                              onTap: () => addNumber("2"),
-                            ),
-
-                            numberButton(
-                              "3",
-                              onTap: () => addNumber("3"),
-                            ),
-
-                            numberButton(
-                              "4",
-                              onTap: () => addNumber("4"),
-                            ),
-
-                            numberButton(
-                              "5",
-                              onTap: () => addNumber("5"),
-                            ),
-
-                            numberButton(
-                              "6",
-                              onTap: () => addNumber("6"),
-                            ),
-
-                            numberButton(
-                              "7",
-                              onTap: () => addNumber("7"),
-                            ),
-
-                            numberButton(
-                              "8",
-                              onTap: () => addNumber("8"),
-                            ),
-
-                            numberButton(
-                              "9",
-                              onTap: () => addNumber("9"),
-                            ),
-
-                            numberButton(
-                              "C",
-                              color: const Color(0xffFFF4F4),
-                              onTap: clearPin,
-                            ),
-
-                            numberButton(
-                              "0",
-                              onTap: () => addNumber("0"),
-                            ),
-
-                            numberButton(
-                              "",
-                              icon: Icons.backspace_outlined,
-                              color: const Color(0xffFFF4F4),
-                              onTap: removeLast,
-                            ),
-                          ],
-                        ),
-                      ),
-
 
                         const SizedBox(height: 20),
 
+                        const Text(
+                          "Employee Login",
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 23,
+                            fontFamily: "Inter",
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        const Text(
+                          "Please Input your PIN to Validate yourself",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Color(0xff4C5F7D),
+                            fontSize: 18,
+                            fontFamily: "Inter",
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+
+                        const SizedBox(height: 28),
+
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(
+                            6,
+                                (index) => pinBox(index),
+                          ),
+                        ),
+
+                        const SizedBox(height: 28),
+
                         SizedBox(
-                          width: double.infinity,
-                          height: 55,
+                          width: 350,
+                          child: GridView.count(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            crossAxisCount: 3,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: 1.55,
+                            children: [
+                              numberButton("1", onTap: () => addNumber("1")),
+                              numberButton("2", onTap: () => addNumber("2")),
+                              numberButton("3", onTap: () => addNumber("3")),
+
+                              numberButton("4", onTap: () => addNumber("4")),
+                              numberButton("5", onTap: () => addNumber("5")),
+                              numberButton("6", onTap: () => addNumber("6")),
+
+                              numberButton("7", onTap: () => addNumber("7")),
+                              numberButton("8", onTap: () => addNumber("8")),
+                              numberButton("9", onTap: () => addNumber("9")),
+
+                              numberButton(
+                                "C",
+                                color: const Color(0xffFFF4F4),
+                                onTap: clearPin,
+                              ),
+
+                              numberButton(
+                                "0",
+                                onTap: () => addNumber("0"),
+                              ),
+
+                              numberButton(
+                                "",
+                                icon: Icons.backspace_outlined,
+                                color: const Color(0xffFFF4F4),
+                                onTap: removeLast,
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 30),
+
+                        SizedBox(
+                          width: 420,
+                          height: 52,
                           child: ElevatedButton(
                             onPressed: isLoading ? null : _login,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xffF36D5D),
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
                               elevation: 0,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
+                                borderRadius: BorderRadius.circular(8),
                               ),
                             ),
                             child: isLoading
@@ -399,29 +364,19 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
                               ),
                             )
                                 : const Text(
-                              "Check IN",
+                              "Login",
                               style: TextStyle(
                                 fontSize: 20,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
                         ),
-
-                            const SizedBox(height: 20),
-
-                          const Text(
-                            "© 2026 PINAKA Restaurant POS",
-                            style: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 12,
-                            ),
-                          ),
                       ],
-                        ),
                     ),
-                ),
+                  ),
+                  ),
+                  ),
                   ],
                 ),
             ),
