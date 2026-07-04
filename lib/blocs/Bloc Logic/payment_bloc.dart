@@ -73,8 +73,6 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
     });
 
     on<UpdateMerchantDiscount>((event, emit) {
-      debugPrint("🟦 PaymentBloc UpdateMerchantDiscount = ${event.value}");
-
       if (state is PaymentSummaryLoaded) {
         final current = state as PaymentSummaryLoaded;
 
@@ -83,11 +81,16 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
             summary: current.summary,
             selectedMethod: current.selectedMethod,
             merchantDiscount: event.value,
-            isNoCharge: current.isNoCharge,
+            isNoCharge: event.isNoCharge,
           ),
         );
 
-        debugPrint("🟩 PaymentBloc emitted merchantDiscount = ${event.value}");
+        debugPrint(
+          "🟩 PaymentBloc emitted merchantDiscount = ${event.value}",
+        );
+        debugPrint(
+          "🟩 PaymentBloc emitted isNoCharge = ${event.isNoCharge}",
+        );
       }
     });
 

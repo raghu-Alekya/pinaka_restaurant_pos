@@ -62,7 +62,9 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
         // ✅ Clear order items only if it's a different order
         orderItems: isDifferentOrder ? [] : state.orderItems,
         // ❌ Don’t clear KOTs
-        kotList: state.kotList,
+        // Clear previous order data for a new order
+        // orderItems: isDifferentOrder ? [] : state.orderItems,
+        kotList: isDifferentOrder ? [] : state.kotList,
         // ✅ IMPORTANT: reset repeat order lock for new order/table
         // isKotRepeated: false,
         // repeatedOrderId: 0,

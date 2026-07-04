@@ -135,7 +135,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     variantRepository = VariantRepository(token: widget.token);
 
     // ✅ CRITICAL FIX: Reset takeaway state on init
-    _resetTakeawayState();
+    // _resetTakeawayState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _searchFocusNode.unfocus();
@@ -207,33 +207,33 @@ class _DashboardScreenState extends State<DashboardScreen>
       selectedFolder = null;
       currentSubCategories = [];
 
-      breadcrumbNames = [
-        selectedCategoryName!,
-        subCategory.name,
-      ];
+      // Reset breadcrumb completely
+      breadcrumbNames.clear();
+      breadcrumbIds.clear();
 
-      breadcrumbIds = [
-        -1,
-        subCategory.id,
-      ];
+      breadcrumbNames.add(selectedCategoryName!);
+      breadcrumbNames.add(subCategory.name);
+
+      breadcrumbIds.add(-1);
+      breadcrumbIds.add(subCategory.id);
     });
 
     context.read<SubCategoryBloc>().add(
       SelectSubCategory(subCategory: subCategory),
     );
   }
-
   void onFolderSelected(MiniSubCategory folder) {
     setState(() {
       selectedFolder = folder;
 
+      // Remove old folder breadcrumb
       if (breadcrumbNames.length > 2) {
-        breadcrumbNames[2] = folder.name;
-        breadcrumbIds[2] = folder.id;
-      } else {
-        breadcrumbNames.add(folder.name);
-        breadcrumbIds.add(folder.id);
+        breadcrumbNames.removeRange(2, breadcrumbNames.length);
+        breadcrumbIds.removeRange(2, breadcrumbIds.length);
       }
+
+      breadcrumbNames.add(folder.name);
+      breadcrumbIds.add(folder.id);
 
       currentSubCategories = folder.products
           .map((p) => MiniSubCategory(
@@ -317,11 +317,11 @@ class _DashboardScreenState extends State<DashboardScreen>
                           style: const TextStyle(fontSize: 14),
                         ),
                         onTap: () async {
-                          setState(() {
-                            _searchEditable = false;
-                          });
-
-                          FocusScope.of(context).requestFocus(_searchFocusNode);
+                          // setState(() {
+                          //   _searchEditable = false;
+                          // });
+                          //
+                          // FocusScope.of(context).requestFocus(_searchFocusNode);
 
                           final orderBloc = context.read<OrderBloc>();
 
@@ -407,7 +407,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                           );
                           _searchController.clear();
 
-                          _removeSearchOverlay();
+                          _removeOverlayOnly();   // ✅
                           context.read<SearchProductBloc>().add(SearchClearProducts());
                         }
                     );
@@ -422,7 +422,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   void _showNoProductsOverlay() {
-    _removeSearchOverlay();
+    // _removeSearchOverlay();
     _removeOverlayOnly();
     _searchOverlay = OverlayEntry(
       builder: (context) => Positioned(
@@ -593,35 +593,46 @@ class _DashboardScreenState extends State<DashboardScreen>
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(8),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+                  border: Border.all(
+                    color: const Color(0xFFE0E0E0),
+                    width: 1,
+                  ),
+
                 ),
                 child: TextField(
                   controller: _searchController,
                   focusNode: _searchFocusNode,
+
                   autofocus: false,
+                  textAlignVertical: TextAlignVertical.center,
+                  // 🔐 KEY LINE
                   readOnly: !_searchEditable,
                   decoration: const InputDecoration(
                     hintText: "Search item",
-                    prefixIcon: Icon(Icons.search, size: 18),
+                    hintStyle: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF9CA3AF), // Optional
+
+                    ),
+                    prefixIcon: Icon(Icons.search, size: 18, color: Color(0xFF9CA3AF),),
                     border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(vertical: 10),
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
                   ),
                   onTap: () {
                     if (!_searchEditable) {
                       setState(() {
-                        _searchEditable = true;
+                        _searchEditable = true; // 🔓 unlock typing
                       });
+
+                      // delay ensures Flutter updates readOnly before focus
                       Future.microtask(() {
                         FocusScope.of(context).requestFocus(_searchFocusNode);
                       });
                     }
                   },
+
                   onChanged: (value) {
                     final query = value.trim();
                     _isSearchActive = query.isNotEmpty;
@@ -714,7 +725,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             },
           ),
           body: Container(
-            color: const Color(0xFFDEE8FF),
+            color: const Color(0xFFECEDF4),
             child: Row(
               children: [
                 // LEFT SIDE
@@ -776,6 +787,29 @@ class _DashboardScreenState extends State<DashboardScreen>
                                                     (e) => e.id == subState.selectedSubCategory,
                                               );
 
+                                              if (selectedIndex != -1 &&
+                                                  selectedCategoryName != null &&
+                                                  (breadcrumbNames.length < 2 ||
+                                                      breadcrumbNames[0] != selectedCategoryName ||
+                                                      breadcrumbNames[1] != subState.subcategories[selectedIndex].name)) {
+                                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                                  if (!mounted) return;
+
+                                                  final sub = subState.subcategories[selectedIndex];
+
+                                                  setState(() {
+                                                    breadcrumbNames = [
+                                                      selectedCategoryName!,
+                                                      sub.name,
+                                                    ];
+
+                                                    breadcrumbIds = [
+                                                      int.parse(category.id),
+                                                      sub.id,
+                                                    ];
+                                                  });
+                                                });
+                                              }
                                               return SubCategoryTabWidget(
                                                 subCategories: subState.subcategories,
                                                 selectedIndex: selectedIndex,
@@ -921,10 +955,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                   listener: (context, state) {
                     debugPrint("🧠 Search State Changed → $state");
                     if (!_isSearchActive) {
-                      _removeSearchOverlay();
+                      _removeOverlayOnly();
                       return;
                     }
-
                     if (state is SearchProductLoaded) {
                       debugPrint("📥 Overlay showing ${state.products.length} items");
                       _showSearchOverlay(state.products);
@@ -932,7 +965,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                       _showNoProductsOverlay();
                     } else if (state is SearchProductInitial ||
                         state is SearchProductError) {
-                      _removeSearchOverlay();
+                      _removeOverlayOnly();
                     }
                   },
                   child: const SizedBox.shrink(),

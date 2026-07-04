@@ -60,6 +60,9 @@ class PaymentRepository {
         );
 
         if (response.statusCode == 200) {
+          debugPrint("PAYMENT SUMMARY RESPONSE:");
+          debugPrint(response.body);
+
           return PaymentSummary.fromJson(
             jsonDecode(response.body),
           );

@@ -134,7 +134,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
         final merchantDiscount = state is PaymentSummaryLoaded ? state.merchantDiscount : 0.0;
         final orderId = context.read<OrderBloc>().state.orderId ?? 0;
 
-        final hasCouponApplied = paymentSummary?.coupons != null && paymentSummary!.coupons > 0;
+        final hasCouponApplied =
+            _couponAmount > 0 ||
+                ((paymentSummary?.coupons ?? 0) > 0);
         final hasDiscountApplied = merchantDiscount.abs() > 0;
 
         // ✅ DEBUG: Print payment state
@@ -148,7 +150,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         return Scaffold(
           appBar: PreferredSize(
             preferredSize: const Size.fromHeight(60),
-            child: TopBar(
+            child:TopBar(
               userPermissions: _userPermissions,
               token: widget.token,
               isPaymentScreen: true,
@@ -159,7 +161,23 @@ class _PaymentScreenState extends State<PaymentScreen> {
               loadedTables: widget.loadedTables,
               zoneId: widget.zoneId,
               cashierName: _selectedUser?['name'] ?? '',
-              isTakeAway: widget.isTakeAway,  // ✅ Pass isTakeAway to TopBar
+              isTakeAway: widget.isTakeAway,
+              onBackPressed: () {
+                if (_couponAmount > 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        "Please remove the applied coupon before going back.",
+                      ),
+                      backgroundColor: Colors.red,
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                  return;
+                }
+
+                Navigator.pop(context);
+              },
             ),
           ),
           body: Row(
@@ -176,7 +194,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     paymentSummary: paymentSummary,
                     hasCouponApplied: hasCouponApplied,
                     hasDiscountApplied: hasDiscountApplied,
-                    appliedCouponAmount: paymentSummary?.coupons ?? 0.0,
+                    appliedCouponAmount:
+                    _couponAmount > 0
+                        ? _couponAmount
+                        : (paymentSummary?.coupons ?? 0.0),
                     token: widget.token,
                     onNetPayableChanged: (double value) {
                       debugPrint("💳 Net payable changed: $value (isTakeAway: ${widget.isTakeAway})");
@@ -200,7 +221,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   isTakeAway: widget.isTakeAway,  // ✅ Pass isTakeAway to paymentsummary
                   onMerchantDiscountChanged: (double value) {
                     debugPrint("💳 Merchant discount changed: $value (isTakeAway: ${widget.isTakeAway})");
-                    context.read<PaymentBloc>().add(UpdateMerchantDiscount(value));
+                    context.read<PaymentBloc>().add(
+                      UpdateMerchantDiscount(
+                        value: value,
+                        isNoCharge: false,
+                      ),
+                    );
                   },
                   onTipChanged: (double value) {
                     debugPrint("💳 Tip changed: $value (isTakeAway: ${widget.isTakeAway})");
@@ -209,7 +235,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   onCouponAmountChanged: (double amount) {
                     debugPrint("💳 Coupon amount changed: $amount (isTakeAway: ${widget.isTakeAway})");
                     setState(() {
-                      if (amount > 0) _couponAmount = amount;
+                      _couponAmount = amount;
                     });
                   },
                 ),

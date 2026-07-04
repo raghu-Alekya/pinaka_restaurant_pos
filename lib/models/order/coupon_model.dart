@@ -29,9 +29,11 @@ class CouponModel {
 class CouponResponse {
   final bool success;
   final String message;
+  final double couponAmount;
 
   CouponResponse({
     required this.success,
     required this.message,
+    required this.couponAmount,
   });
 }

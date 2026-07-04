@@ -98,17 +98,20 @@ class CouponRepository {
         return CouponResponse(
           success: true,
           message: "Coupon applied successfully.",
+          couponAmount: (data["coupon_amount"] as num?)?.toDouble() ?? 0.0,
         );
       } else {
         return CouponResponse(
           success: false,
           message: data["message"] ?? "Failed to apply coupon.",
+          couponAmount: 0.0,
         );
       }
     } catch (e) {
       return CouponResponse(
         success: false,
         message: "Something went wrong. Please try again.",
+        couponAmount: 0.0,
       );
     }
   }

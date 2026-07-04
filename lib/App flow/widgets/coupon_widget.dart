@@ -81,8 +81,8 @@ class _CouponscreenState extends State<Couponscreen> {
 
       if (result.success) {
         widget.onCouponApplied(
-          selectedCoupon.code,
-          selectedCoupon.amount,
+          code,
+          result.couponAmount,
         );
 
         Navigator.pop(context);

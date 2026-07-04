@@ -107,9 +107,10 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
   // ─── Header ────────────────────────────────
   Widget _dialogHeader(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      height: 58,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: const BoxDecoration(
-        color: Color(0xFFF0F3FC),
+        color: Color(0xffF4F6FB),
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(12),
           topRight: Radius.circular(12),
@@ -118,12 +119,12 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
+          Text(
             "Void Items",
             style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF2C3E50),
+              fontSize: 24,
+              fontWeight: FontWeight.w500,
+              color: Color(0xff3C4A63),
             ),
           ),
           InkWell(
@@ -147,9 +148,12 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
   Widget _tableHeaderRow({bool isLeft = false}) {
     return Container(
       height: 44,
-      decoration: BoxDecoration(
-        color: const Color(0xFFDCDADA),
-        borderRadius: BorderRadius.circular(6),
+      decoration: const BoxDecoration(
+        color: Color(0xFFDCDADA),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(8),
+          topRight: Radius.circular(8),
+        ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Row(
@@ -216,494 +220,567 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
   // ─── LEFT PANEL (Original KOT - No changes) ────────────────────────────────
   Widget _leftPanel() {
     return Expanded(
-      flex: 1,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        color: Colors.white,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "To void an item, please select the item and provide a reason for voiding.",
-              style: TextStyle(fontSize: 12, color: Color(0xFF4C5F7D)),
-            ),
-            const SizedBox(height: 12),
-            _tableHeaderRow(isLeft: true),
-            const SizedBox(height: 6),
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFFE6E6E6)),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Scrollbar(
-                  controller: _leftScrollController,
-                  thumbVisibility: true,
-                  interactive: true,
-                  child: ListView.separated(
-                    controller: _leftScrollController,
-                    itemCount: originalKotItems.length,
-                    separatorBuilder: (_, __) =>
-                    const Divider(
-                      height: 1,
-                      color: Color(0xFFEDEDED),
-                    ),
-                    itemBuilder: (context, index) {
-                      final item = originalKotItems[index];
-
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 10),
-                        child: Row(
-                          children: [
-                            const SizedBox(width: 36),
-
-                            // Item Name + Modifiers
-                            Expanded(
-                              flex: 4,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item.productName,
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  if (item.modifiers.isNotEmpty)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 2),
-                                      child: Text(
-                                        "Modifiers: ${item.modifiers.join(
-                                            ", ")}",
-                                        style: const TextStyle(
-                                          fontSize: 10,
-                                          color: Colors.blueGrey,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-
-                            // Qty (Read Only)
-                            Expanded(
-                              flex: 2,
-                              child: Center(
-                                child: Text(
-                                  "${item.quantity}",
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                            // Amount (Read Only)
-                            Expanded(
-                              flex: 2,
-                              child: Align(
-                                alignment: Alignment.centerRight,
-                                child: Text(
-                                  item.amount.toStringAsFixed(2),
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF2C3E50),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 18),
-
-            Row(
-              children: [
-                Text(
-                  "Total Items : $leftTotalItems",
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF2C3E50),
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  "Total Amount : ${leftTotalAmount.toStringAsFixed(2)}",
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF2C3E50),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3F6FF),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Row(
+        flex: 1,
+        child:Container(
+          // decoration: BoxDecoration(
+          //   color: Colors.white,
+          //   borderRadius: BorderRadius.circular(12),
+          //   border: Border.all(
+          //     color: const Color(0xffE6E8EF),
+          //   ),
+          //   boxShadow: [
+          //     BoxShadow(
+          //       color: Colors.black.withOpacity(.04),
+          //       blurRadius: 12,
+          //       offset: const Offset(0, 4),
+          //     )
+          //   ],
+          // ),
+            padding: const EdgeInsets.all(12),
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    "Enter Reason :",
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                    ),
+                    "To void an item, please select the item and provide a reason for voiding.",
+                    style: TextStyle(fontSize: 14, color: Color(0xFF4C5F7D),fontWeight: FontWeight.w600),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(height: 12),
                   Expanded(
                     child: Container(
-                      height: 38,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
+                      clipBehavior: Clip.antiAlias,
+                      decoration: ShapeDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: const Color(0xFFE0E0E0)),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: selectedReason,
-                          hint: const Text(
-                            "Select Reason",
-                            style: TextStyle(fontSize: 12),
-                          ),
-                          isExpanded: true,
-                          icon: const Icon(Icons.keyboard_arrow_down),
-                          items: voidReasons.map((reason) {
-                            return DropdownMenuItem(
-                              value: reason,
-                              child: Text(
-                                reason,
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              selectedReason = value;
-                            });
-                            widget.onRemark(value ?? "");
-                          },
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
+                        shadows: const [
+                          BoxShadow(
+                            color: Color(0x19000000),
+                            blurRadius: 0,
+                            offset: Offset(0, 0),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          _tableHeaderRow(isLeft: true),
+
+                          Expanded(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: const Color(0xFFE6E6E6),
+                                ),
+                                borderRadius: const BorderRadius.only(
+                                  bottomLeft: Radius.circular(8),
+                                  bottomRight: Radius.circular(8),
+                                ),
+                              ),
+                              child: Scrollbar(
+                                controller: _leftScrollController,
+                                thumbVisibility: true,
+                                interactive: true,
+                                child: ListView.separated(
+                                  controller: _leftScrollController,
+                                  itemCount: originalKotItems.length,
+                                  separatorBuilder: (_, __) =>
+                                  const Divider(
+                                    height: 1,
+                                    color: Color(0xFFEDEDED),
+                                  ),
+                                  itemBuilder: (context, index) {
+                                    final item = originalKotItems[index];
+
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 12),
+                                      child: Row(
+                                        children: [
+                                          const SizedBox(width: 36),
+
+                                          // Item Name + Modifiers
+                                          Expanded(
+                                            flex: 4,
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  item.productName,
+                                                  style: const TextStyle(
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                                if (item.modifiers.isNotEmpty)
+                                                  Padding(
+                                                    padding: const EdgeInsets.only(top: 2),
+                                                    child: Text(
+                                                      "Modifiers: ${item.modifiers.join(
+                                                          ", ")}",
+                                                      style: const TextStyle(
+                                                        fontSize: 10,
+                                                        color: Colors.blueGrey,
+                                                        fontWeight: FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
+                                          ),
+
+                                          // Qty (Read Only)
+                                          Expanded(
+                                            flex: 2,
+                                            child: Center(
+                                              child: Text(
+                                                "${item.quantity}",
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+
+                                          // Amount (Read Only)
+                                          Expanded(
+                                            flex: 2,
+                                            child: Align(
+                                              alignment: Alignment.centerRight,
+                                              child: Text(
+                                                item.amount.toStringAsFixed(2),
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Color(0xFF2C3E50),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+
+                          Row(
+                            children: [
+                              Text(
+                                "Total Items : $leftTotalItems",
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF2C3E50),
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                "Total Amount : ${leftTotalAmount.toStringAsFixed(2)}",
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF2C3E50),
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF3F6FF),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child:
+                            Row(
+                              children: [
+                                const Text(
+                                  "Enter Reason :",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Container(
+                                    height: 38,
+                                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: const Color(0xFFE0E0E0)),
+                                    ),
+                                    child: DropdownButtonHideUnderline(
+                                      child: DropdownButton<String>(
+                                        value: selectedReason,
+                                        hint: const Text(
+                                          "Select Reason",
+                                          style: TextStyle(fontSize: 12),
+                                        ),
+                                        isExpanded: true,
+                                        icon: const Icon(Icons.keyboard_arrow_down),
+                                        items: voidReasons.map((reason) {
+                                          return DropdownMenuItem(
+                                            value: reason,
+                                            child: Text(
+                                              reason,
+                                              style: const TextStyle(fontSize: 12),
+                                            ),
+                                          );
+                                        }).toList(),
+                                        onChanged: (value) {
+                                          setState(() {
+                                            selectedReason = value;
+                                          });
+                                          widget.onRemark(value ?? "");
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+                  )]))
     );
   }
 
   // ─── RIGHT PANEL (Editable) ────────────────────────────────
   Widget _rightPanel() {
     return Expanded(
-      flex: 1,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        color: Colors.white,
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Text(
-                  "Table : #${widget.tableNo}",
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w600, fontSize: 13),
-                ),
-                const SizedBox(width: 18),
-                Text(
-                  "KOT : ${widget.kotNo}",
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w600, fontSize: 13),
-                ),
-                const Spacer(),
-                Text(
-                  "Date :  ${DateTime.now().toLocal().toString().split(
-                      ' ')[0]}   ${TimeOfDay.now().format(context)}",
-                  style: const TextStyle(fontSize: 11, color: Colors.grey),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _tableHeaderRow(isLeft: false),
-            const SizedBox(height: 6),
+        flex: 1,
+        child: Container(
+            padding: const EdgeInsets.all(12),
+            color: Colors.white,
+            child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        "Table : #${widget.tableNo}",
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 13),
+                      ),
+                      const SizedBox(width: 18),
+                      Text(
+                        "KOT : ${widget.kotNo}",
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 13),
+                      ),
+                      const Spacer(),
+                      Text(
+                        "Date :  ${DateTime.now().toLocal().toString().split(
+                            ' ')[0]}   ${TimeOfDay.now().format(context)}",
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600 ,color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: Container(
+                      clipBehavior: Clip.antiAlias,
+                      decoration: ShapeDecoration(
+                        color: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        // shadows: const [
+                        //   BoxShadow(
+                        //     color: Color(0x19000000),
+                        //     blurRadius: 10,
+                        //     offset: Offset(0, 0),
+                        //     spreadRadius: 0,
+                        //   ),
+                        // ],
+                      ),
+                      child: Column(
+                        children: [
+                          _tableHeaderRow(isLeft: false),
 
-            /// ✅ MAIN CONTAINER (List + Update Button inside)
-            Expanded(
-              child: ValueListenableBuilder<List<KotItem>>(
-                valueListenable: itemsNotifier,
-                builder: (context, items, _) {
-                  final rightItems = items;
+                          Expanded(
+                            child: ValueListenableBuilder<List<KotItem>>(
+                              valueListenable: itemsNotifier,
+                              builder: (context, items, _) {
+                                final rightItems = items;
 
-                  return Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: const Color(0xFFE6E6E6)),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      children: [
+                                return Container(
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: const Color(0xFFE6E6E6),
+                                    ),
+                                    borderRadius: const BorderRadius.only(
+                                      bottomLeft: Radius.circular(8),
+                                      bottomRight: Radius.circular(8),
+                                    ),
+                                    // shadows: const [
+                                    //   BoxShadow(
+                                    //     color: Color(0x19000000),
+                                    //     blurRadius: 10,
+                                    //     offset: Offset(0, 0),
+                                    //     spreadRadius: 0,
+                                    //   ),
+                                    // ],
 
-                        /// LIST
-                        Expanded(
-                          child: Scrollbar(
-                            controller: _rightScrollController,
-                            thumbVisibility: true,
-                            interactive: true,
-                            child: ListView.separated(
-                              controller: _rightScrollController,
-                              itemCount: rightItems.length,
-                              separatorBuilder: (_, __) =>
-                              const Divider(
-                                height: 1,
-                                color: Color(0xFFEDEDED),
-                              ),
-                              itemBuilder: (context, index) {
-                                final item = rightItems[index];
-
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 10),
-                                  child: Row(
+                                  ),
+                                  child: Column(
                                     children: [
-                                      SizedBox(
-                                        width: 28,
-                                        child: Text("${index + 1}"),
-                                      ),
+
+                                      /// LIST
                                       Expanded(
-                                        flex: 4,
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment
-                                              .start,
-                                          children: [
-                                            Text(
-                                              item.productName,
-                                              style: const TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w500,
-                                              ),
+                                        child: Scrollbar(
+                                          controller: _rightScrollController,
+                                          thumbVisibility: true,
+                                          interactive: true,
+                                          child: ListView.separated(
+                                            controller: _rightScrollController,
+                                            itemCount: rightItems.length,
+                                            separatorBuilder: (_, __) =>
+                                            const Divider(
+                                              height: 1,
+                                              color: Color(0xFFEDEDED),
                                             ),
-                                            if (item.modifiers.isNotEmpty)
-                                              Padding(
-                                                padding: const EdgeInsets.only(
-                                                    top: 2),
-                                                child: Text(
-                                                  "Modifiers: ${item.modifiers
-                                                      .join(", ")}",
-                                                  style: const TextStyle(
-                                                    fontSize: 10,
-                                                    color: Colors.blueGrey,
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                ),
-                                              ),
-                                          ],
-                                        ),
-                                      ),
+                                            itemBuilder: (context, index) {
+                                              final item = rightItems[index];
 
-                                      Expanded(
-                                        flex: 2,
-                                        child: Row(
-                                          mainAxisAlignment: MainAxisAlignment
-                                              .center,
-                                          children: [
-                                            // ➖ Minus button
-                                            _qtyButton(
-                                              icon: Icons.remove,
-                                              onTap: () {
-                                                if (item.quantity <= 0)
-                                                  return; // ✅ allow zero, stop below 0
-
-                                                item.quantity--;
-                                                item.amount =
-                                                    item.price * item.quantity;
-
-                                                // refresh UI
-                                                itemsNotifier.value = List.from(
-                                                    itemsNotifier.value);
-                                              },
-                                            ),
-
-
-                                            const SizedBox(width: 8),
-
-                                            Text(
-                                              "${item.quantity}",
-                                              style: const TextStyle(
-                                                  fontWeight: FontWeight.w600),
-                                            ),
-
-                                            const SizedBox(width: 8),
-
-                                            // ➕ Plus button
-                                            _qtyButton(
-                                              icon: Icons.add,
-                                              onTap: () {
-                                                final originalQty = originalKotItems[index]
-                                                    .quantity;
-
-                                                if (item.quantity >=
-                                                    originalQty) {
-                                                  ScaffoldMessenger
-                                                      .of(context)
-                                                      .showSnackBar(
-                                                    SnackBar(
-                                                      content: Text(
-                                                          "Cannot exceed actual quantity ($originalQty)",
-                                                         ),
-                                                      duration: Duration(seconds: 1),
+                                              return Padding(
+                                                padding: const EdgeInsets.symmetric(
+                                                    horizontal: 12, vertical: 8),
+                                                child: Row(
+                                                  children: [
+                                                    SizedBox(
+                                                      width: 28,
+                                                      child: Text("${index + 1}"),
                                                     ),
-                                                  );
-                                                  return;
-                                                }
+                                                    Expanded(
+                                                      flex: 4,
+                                                      child: Column(
+                                                        crossAxisAlignment: CrossAxisAlignment
+                                                            .start,
+                                                        children: [
+                                                          Text(
+                                                            item.productName,
+                                                            style: const TextStyle(
+                                                              fontSize: 13,
+                                                              fontWeight: FontWeight.w500,
+                                                            ),
+                                                          ),
+                                                          if (item.modifiers.isNotEmpty)
+                                                            Padding(
+                                                              padding: const EdgeInsets.only(
+                                                                  top: 2),
+                                                              child: Text(
+                                                                "Modifiers: ${item.modifiers
+                                                                    .join(", ")}",
+                                                                style: const TextStyle(
+                                                                  fontSize: 10,
+                                                                  color: Colors.blueGrey,
+                                                                  fontWeight: FontWeight.w500,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                        ],
+                                                      ),
+                                                    ),
 
-                                                item.quantity++;
-                                                item.amount =
-                                                    item.price * item.quantity;
+                                                    Expanded(
+                                                      flex: 2,
+                                                      child: Row(
+                                                        mainAxisAlignment: MainAxisAlignment
+                                                            .center,
+                                                        children: [
+                                                          // ➖ Minus button
+                                                          _qtyButton(
+                                                            icon: Icons.remove,
+                                                            onTap: () {
+                                                              if (item.quantity <= 0)
+                                                                return; // ✅ allow zero, stop below 0
 
-                                                // refresh UI
-                                                itemsNotifier.value = List.from(
-                                                    itemsNotifier.value);
-                                              },
-                                            ),
-                                          ],
-                                        ),
-                                      ),
+                                                              item.quantity--;
+                                                              item.amount =
+                                                                  item.price * item.quantity;
+
+                                                              // refresh UI
+                                                              itemsNotifier.value = List.from(
+                                                                  itemsNotifier.value);
+                                                            },
+                                                          ),
 
 
-                                      Expanded(
-                                        flex: 2,
-                                        child: Align(
-                                          alignment: Alignment.centerRight,
-                                          child: Text(
-                                            item.amount.toStringAsFixed(2),
-                                            style: const TextStyle(
-                                                fontWeight: FontWeight.w600),
+                                                          const SizedBox(width: 8),
+
+                                                          Text(
+                                                            "${item.quantity}",
+                                                            style: const TextStyle(
+                                                                fontWeight: FontWeight.w600),
+                                                          ),
+
+                                                          const SizedBox(width: 8),
+
+                                                          // ➕ Plus button
+                                                          _qtyButton(
+                                                            icon: Icons.add,
+                                                            onTap: () {
+                                                              final originalQty = originalKotItems[index]
+                                                                  .quantity;
+
+                                                              if (item.quantity >=
+                                                                  originalQty) {
+                                                                ScaffoldMessenger
+                                                                    .of(context)
+                                                                    .showSnackBar(
+                                                                  SnackBar(
+                                                                    content: Text(
+                                                                      "Cannot exceed actual quantity ($originalQty)",
+                                                                    ),
+                                                                    duration: Duration(seconds: 1),
+                                                                  ),
+                                                                );
+                                                                return;
+                                                              }
+
+                                                              item.quantity++;
+                                                              item.amount =
+                                                                  item.price * item.quantity;
+
+                                                              // refresh UI
+                                                              itemsNotifier.value = List.from(
+                                                                  itemsNotifier.value);
+                                                            },
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+
+
+                                                    Expanded(
+                                                      flex: 2,
+                                                      child: Align(
+                                                        alignment: Alignment.centerRight,
+                                                        child: Text(
+                                                          item.amount.toStringAsFixed(2),
+                                                          style: const TextStyle(
+                                                              fontWeight: FontWeight.w600),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                            },
                                           ),
                                         ),
                                       ),
+
                                     ],
                                   ),
                                 );
                               },
                             ),
                           ),
-                        ),
 
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
+                          // const SizedBox(height: 5),
 
-            const SizedBox(height: 10),
+                          const SizedBox(height: 6),
 
-            const SizedBox(height: 10),
+                          /// TOTAL ROW OUTSIDE CONTAINER
+                          ValueListenableBuilder<List<KotItem>>(
+                            valueListenable: itemsNotifier,
+                            builder: (context, items, _) {
+                              final subtotal = items.fold(
+                                  0.0, (sum, item) => sum + item.amount);
+                              final totalItems = items.fold(
+                                  0, (sum, item) => sum + item.quantity);
 
-            /// TOTAL ROW OUTSIDE CONTAINER
-            ValueListenableBuilder<List<KotItem>>(
-              valueListenable: itemsNotifier,
-              builder: (context, items, _) {
-                final subtotal = items.fold(
-                    0.0, (sum, item) => sum + item.amount);
-                final totalItems = items.fold(
-                    0, (sum, item) => sum + item.quantity);
-
-                return Row(
-                  children: [
-                    Text("Total Items : $totalItems",
-                        style: const TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.w500)),
-                    const Spacer(),
-                    Text("Sub Total : ${subtotal.toStringAsFixed(2)}",
-                        style: const TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.w600)),
-                  ],
-                );
-              },
-            ),
+                              return Row(
+                                children: [
+                                  Text("Total Items : $totalItems",
+                                      style: const TextStyle(
+                                          fontSize: 14, fontWeight: FontWeight.w600)),
+                                  const Spacer(),
+                                  Text("Sub Total : ${subtotal.toStringAsFixed(2)}",
+                                      style: const TextStyle(
+                                          fontSize: 14, fontWeight: FontWeight.w600)),
+                                ],
+                              );
+                            },
+                          ),
 
 
-            const SizedBox(height: 18),
+                          const SizedBox(height: 28),
 
-            Align(
-              alignment: Alignment.centerRight,
-              child: SizedBox(
-                width: 150,
-                height: 40,
-                child: ElevatedButton(
-                  onPressed: () {
-                    debugPrint("✅ Save clicked");
-                    debugPrint("kotId = ${widget.kotId}");
-                    debugPrint("token = ${widget.token}");
-                    debugPrint("selectedReason = $selectedReason");
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: SizedBox(
+                              width: 150,
+                              height: 40,
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  debugPrint("✅ Save clicked");
+                                  debugPrint("kotId = ${widget.kotId}");
+                                  debugPrint("token = ${widget.token}");
+                                  debugPrint("selectedReason = $selectedReason");
 
-                    final selectedItems = itemsNotifier.value; // ✅ include 0 qty also
+                                  final selectedItems = itemsNotifier.value; // ✅ include 0 qty also
 
-                    debugPrint("selectedItems count = ${selectedItems.length}");
+                                  debugPrint("selectedItems count = ${selectedItems.length}");
 
-                    final request = UpdatekotRequest(
-                      lineItems: selectedItems
-                          .map((e) => LineItemUpdate(id: e.id, productId: e.productId,  quantity: e.quantity))
-                          .toList(),
-                      metaData: [
-                        MetaDataItem(key: "kot_remarks", value: selectedReason ?? ""),
-                      ],
-                    );
+                                  final request = UpdatekotRequest(
+                                    lineItems: selectedItems
+                                        .map((e) => LineItemUpdate(id: e.id, productId: e.productId,  quantity: e.quantity))
+                                        .toList(),
+                                    metaData: [
+                                      MetaDataItem(key: "kot_remarks", value: selectedReason ?? ""),
+                                    ],
+                                  );
 
-                    context.read<UpdatekotBloc>().add(
-                      UpdatekotPressed(
-                        token: widget.token,
-                        kotId: widget.kotId,
-                        request: request,
+                                  context.read<UpdatekotBloc>().add(
+                                    UpdatekotPressed(
+                                      token: widget.token,
+                                      kotId: widget.kotId,
+                                      request: request,
+                                    ),
+                                  );
+                                },
+
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFFF6B6B),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  elevation: 0,
+                                ),
+                                child: const Text(
+                                  " Save ",
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  softWrap: false,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                        ],
                       ),
-                    );
-                  },
-
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF6B6B),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
                     ),
-                    elevation: 0,
-                  ),
-                  child: const Text(
-                    " Save ",
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    softWrap: false,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ),
 
-          ],
-        ),
-      ),
+                  )]))
+
     );
+
   }
 
 
@@ -714,7 +791,7 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
         if (state is UpdatekotSuccess) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text("KOT Updated Successfully"),
-            duration: Duration(seconds: 1),),
+              duration: Duration(seconds: 1),),
           );
 
           /// ✅ Refresh KOT list using KotBloc
@@ -763,12 +840,12 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 10),
+                      horizontal: 14, vertical: 4),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _leftPanel(),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 10),
                       _rightPanel(),
                     ],
                   ),

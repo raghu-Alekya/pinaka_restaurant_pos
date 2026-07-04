@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import '../../models/category/subcategory_model.dart';
 
@@ -22,20 +21,47 @@ class _SubCategoryTabWidgetState extends State<SubCategoryTabWidget> {
   final ScrollController _scrollController = ScrollController();
   late int _selectedIndex;
   // bool _defaultTriggered = false; // to load default mini-subcategory once
-
+  bool _showLeftArrow = false;
+  bool _showRightArrow = false;
+  bool _isScrollable = false;
+  @override
   @override
   void initState() {
     super.initState();
-    _selectedIndex = widget.selectedIndex ?? -1; // no default selection
-    // Do NOT call widget.onTap here, wait for user tap
+    _selectedIndex = widget.selectedIndex ?? -1;
+
+    _scrollController.addListener(_updateArrows);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateArrows();
+    });
   }
+  @override
+  void dispose() {
+    _scrollController.removeListener(_updateArrows);
+    _scrollController.dispose();
+    super.dispose();
+  }
+  void _updateArrows() {
+    if (!_scrollController.hasClients) return;
 
+    final maxExtent = _scrollController.position.maxScrollExtent;
 
-
+    setState(() {
+      _isScrollable = maxExtent > 0;
+      _showLeftArrow = _isScrollable && _scrollController.offset > 0;
+      _showRightArrow =
+          _isScrollable && _scrollController.offset < maxExtent;
+    });
+  }
   @override
   void didUpdateWidget(covariant SubCategoryTabWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _updateArrows();
+      }
+    });
     if (widget.subCategories != oldWidget.subCategories &&
         widget.subCategories.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -198,65 +224,66 @@ class _SubCategoryTabWidgetState extends State<SubCategoryTabWidget> {
               },
             ),
           ),
-          // Positioned(
-          //   left: 0,
-          //   top: 0,
-          //   bottom: 0,
-          //   child: Center(
-          //     child: Container(
-          //       width: 32, // circular size
-          //       height: 32,
-          //       decoration: BoxDecoration(
-          //         color: Colors.white, // background color of the circle
-          //         shape: BoxShape.circle,
-          //         boxShadow: [
-          //           BoxShadow(
-          //             color: Colors.black26,
-          //             blurRadius: 4,
-          //             offset: Offset(0, 2),
-          //           ),
-          //         ],
-          //       ),
-          //       child: IconButton(
-          //         padding: EdgeInsets.zero, // remove default padding
-          //         icon: const Icon(Icons.arrow_back_ios, size: 16),
-          //         onPressed: _scrollLeft,
-          //         color: Colors.black,
-          //         splashRadius: 20,
-          //       ),
-          //     ),
-          //   ),
-          // ),
-          //
-          // Positioned(
-          //   right: 0,
-          //   top: 0,
-          //   bottom: 0,
-          //   child: Center(
-          //     child: Container(
-          //       width: 32, // circular size
-          //       height: 32,
-          //       decoration: BoxDecoration(
-          //         color: Colors.white, // background color of the circle
-          //         shape: BoxShape.circle,
-          //         boxShadow: [
-          //           BoxShadow(
-          //             color: Colors.black26,
-          //             blurRadius: 4,
-          //             offset: Offset(0, 2),
-          //           ),
-          //         ],
-          //       ),
-          //       child: IconButton(
-          //         padding: EdgeInsets.zero, // remove default padding
-          //         icon: const Icon(Icons.arrow_forward_ios, size: 16),
-          //         onPressed: _scrollRight,
-          //         color: Colors.black,
-          //         splashRadius: 20,
-          //       ),
-          //     ),
-          //   ),
-          // ),
+          if (_showLeftArrow)
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: Container(
+                  width: 32, // circular size
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: Colors.white, // background color of the circle
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: IconButton(
+                    padding: EdgeInsets.zero, // remove default padding
+                    icon: const Icon(Icons.arrow_back_ios, size: 16),
+                    onPressed: _scrollLeft,
+                    color: Colors.black,
+                    splashRadius: 20,
+                  ),
+                ),
+              ),
+            ),
+          if (_showRightArrow)
+            Positioned(
+              right: 0,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: Container(
+                  width: 32, // circular size
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: Colors.white, // background color of the circle
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: IconButton(
+                    padding: EdgeInsets.zero, // remove default padding
+                    icon: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onPressed: _scrollRight,
+                    color: Colors.black,
+                    splashRadius: 20,
+                  ),
+                ),
+              ),
+            ),
 
         ],
       ),

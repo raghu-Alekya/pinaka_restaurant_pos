@@ -179,7 +179,8 @@ class _TablesScreenState extends State<TablesScreen> {
   Map<String, dynamic>? _editingTableData;
 
   final ScrollController gridScrollController = ScrollController();
-
+  bool showLeftArrow = false;
+  bool showRightArrow = true;
   /// Index of the table currently being edited.
   int? _editingTableIndex;
   bool _isRotating = false;
@@ -252,6 +253,7 @@ class _TablesScreenState extends State<TablesScreen> {
       LoadTablesEvent(widget.token),
     );
 
+    gridScrollController.addListener(_scrollListener);
     GlobalReservationMonitor().start(widget.token);
 
     _reservationListener = () {
@@ -271,6 +273,7 @@ class _TablesScreenState extends State<TablesScreen> {
     GlobalReservationMonitor()
         .reservationsNotifier
         .removeListener(_reservationListener);
+    gridScrollController.dispose();
 
     super.dispose();
   }
@@ -293,7 +296,17 @@ class _TablesScreenState extends State<TablesScreen> {
       });
     }
   }
+  void _scrollListener() {
+    if (!gridScrollController.hasClients) return;
 
+    final max = gridScrollController.position.maxScrollExtent;
+    final offset = gridScrollController.offset;
+
+    setState(() {
+      showLeftArrow = offset > 5;
+      showRightArrow = offset < (max - 5);
+    });
+  }
   Future<void> _loadZones() async {
     try {
       final zoneRepository = ZoneRepository();
@@ -1713,10 +1726,10 @@ class _TablesScreenState extends State<TablesScreen> {
 
 
   Widget _buildSharedAreaFilter() {
-    if (areaNames.isEmpty) return SizedBox.shrink();
+    if (areaNames.isEmpty) return const SizedBox.shrink();
 
     return ConstrainedBox(
-      constraints: BoxConstraints(maxWidth: 370),
+      constraints: const BoxConstraints(maxWidth: 370),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
         decoration: BoxDecoration(
@@ -1724,54 +1737,111 @@ class _TablesScreenState extends State<TablesScreen> {
           border: Border.all(color: Colors.grey.shade300),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          controller: gridScrollController,
-          child: Row(
-            children:
-            areaNames.map((area) {
-              _areaKeys.putIfAbsent(area, () => GlobalKey());
+        child: Row(
+          children: [
+            // LEFT SCROLL BUTTON
+            _scrollButton(
+              icon: Icons.chevron_left,
+              onTap: () {
+                gridScrollController.animateTo(
+                  gridScrollController.offset - 120,
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.ease,
+                );
+              },
+            ),
 
-              final bool isSelected = selectedArea == area;
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                child: Container(
-                  key: _areaKeys[area],
-                  child: TextButton(
-                    onPressed: () => _selectArea(area),
-                    style: TextButton.styleFrom(
-                      backgroundColor:
-                      isSelected
-                          ? const Color(0xFFFD6464)
-                          : Colors.transparent,
-                      foregroundColor:
-                      isSelected ? Colors.white : Colors.black87,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 15.0,
-                        vertical: 13.0,
+            const SizedBox(width: 4),
+
+            // SCROLLABLE AREA
+            Expanded(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                controller: gridScrollController,
+                child: Row(
+                  children: areaNames.map((area) {
+                    _areaKeys.putIfAbsent(area, () => GlobalKey());
+
+                    final bool isSelected = selectedArea == area;
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                      child: Container(
+                        key: _areaKeys[area],
+                        child: TextButton(
+                          onPressed: () => _selectArea(area),
+                          style: TextButton.styleFrom(
+                            backgroundColor: isSelected
+                                ? const Color(0xFFFD6464)
+                                : Colors.transparent,
+                            foregroundColor:
+                            isSelected ? Colors.white : Colors.black87,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 15.0,
+                              vertical: 13.0,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                            textStyle: const TextStyle(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 12.5,
+                            ),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          child: Text(area),
+                        ),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(5),
-                      ),
-                      textStyle: const TextStyle(
-                        fontWeight: FontWeight.w500,
-                        fontSize: 12.5,
-                      ),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    child: Text(area),
-                  ),
+                    );
+                  }).toList(),
                 ),
-              );
-            }).toList(),
-          ),
+              ),
+            ),
+
+            const SizedBox(width: 4),
+
+            // RIGHT SCROLL BUTTON
+            _scrollButton(
+              icon: Icons.chevron_right,
+              onTap: () {
+                gridScrollController.animateTo(
+                  gridScrollController.offset + 120,
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.ease,
+                );
+              },
+            ),
+          ],
         ),
       ),
     );
   }
-
+  Widget _scrollButton({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.grey.shade300),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 4,
+            )
+          ],
+        ),
+        child: Icon(icon, size: 18, color: Colors.black87),
+      ),
+    );
+  }
   /// Displays a confirmation dialog before deleting a placed table.
   ///
   /// Retrieves the selected table's name and area, then presents a confirmation
@@ -2200,50 +2270,50 @@ class _TablesScreenState extends State<TablesScreen> {
             ),
 
             if (!_showPopup)
-              // BottomNavBar(
-              //   selectedIndex: _selectedIndex,
-              //   onItemTapped: _onNavItemTapped,
-              //   userPermissions: _userPermissions,
-              // ),
+            // BottomNavBar(
+            //   selectedIndex: _selectedIndex,
+            //   onItemTapped: _onNavItemTapped,
+            //   userPermissions: _userPermissions,
+            // ),
 
             // 8. Legend at bottom
-            if (!_showPopup)
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 70,
-                child: Center(
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Color(0xFFFAFBFF),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 4,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        TableHelpers.buildLegendDot(Colors.green, "Available"),
-                        SizedBox(width: 20),
-                        TableHelpers.buildLegendDot(Colors.red, "Dine In"),
-                        SizedBox(width: 20),
-                        TableHelpers.buildLegendDot(Colors.grey, "Reserve"),
-                        SizedBox(width: 20),
-                        TableHelpers.buildLegendDot(
-                          Colors.blue,
-                          "Ready to Pay",
-                        ),
-                      ],
+              if (!_showPopup)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 70,
+                  child: Center(
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Color(0xFFFAFBFF),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 4,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TableHelpers.buildLegendDot(Colors.green, "Available"),
+                          SizedBox(width: 20),
+                          TableHelpers.buildLegendDot(Colors.red, "Dine In"),
+                          SizedBox(width: 20),
+                          TableHelpers.buildLegendDot(Colors.grey, "Reserve"),
+                          SizedBox(width: 20),
+                          TableHelpers.buildLegendDot(
+                            Colors.blue,
+                            "Ready to Pay",
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
             if (_showEditPopup)
               Positioned.fill(
                 child: BackdropFilter(

@@ -29,7 +29,12 @@ class ResetPayment extends PaymentEvent {}
 /// ✅ ADD THIS EVENT
 class UpdateMerchantDiscount extends PaymentEvent {
   final double value;
-  UpdateMerchantDiscount(this.value);
+  final bool isNoCharge;
+
+  UpdateMerchantDiscount({
+    required this.value,
+    required this.isNoCharge,
+  });
 }
 
 

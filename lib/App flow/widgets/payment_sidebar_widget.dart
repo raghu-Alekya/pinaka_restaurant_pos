@@ -211,10 +211,7 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
     }
 
     final grossTotal = widget.paymentSummary!.grossTotal;
-    final couponDiscount =
-    widget.paymentSummary!.coupons > 0
-        ? widget.paymentSummary!.coupons
-        : widget.appliedCouponAmount;
+    final couponDiscount = widget.appliedCouponAmount;
     final merchantDiscount = widget.merchantDiscount.abs();
     final tipAmount = widget.tipAmount;
     final serviceCharge = widget.paymentSummary!.serviceChargeValue;
@@ -1313,8 +1310,7 @@ Net Payable      : $netPayableTemp
                                 }
                                 final grossTotal =
                                     widget.paymentSummary!.grossTotal;
-                                final couponDiscount =
-                                    widget.paymentSummary!.coupons;
+                                final couponDiscount = widget.appliedCouponAmount;
                                 final double merchantDiscount =
                                     widget.merchantDiscount;
 
@@ -1336,10 +1332,7 @@ Net Payable      : $netPayableTemp
 
                                   final grossTotal =
                                       widget.paymentSummary!.grossTotal;
-                                  final couponDiscount =
-                                  widget.paymentSummary!.coupons > 0
-                                      ? widget.paymentSummary!.coupons
-                                      : widget.appliedCouponAmount;
+                                  final couponDiscount = widget.appliedCouponAmount;
                                   final merchantDiscount =
                                   widget.merchantDiscount.abs();
                                   final subTotal = grossTotal - couponDiscount;

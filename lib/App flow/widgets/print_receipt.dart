@@ -109,8 +109,8 @@ class _PrintReciptState extends State<PrintRecipt> {
     Navigator.of(context).pop();
 
     // ✅ STEP 2: CLEAR ORDER STATE
-    context.read<OrderBloc>().add(ClearOrder());
-
+    // context.read<OrderBloc>().add(ClearOrder());
+    context.read<OrderBloc>().add(ResetOrder());
     // ⏳ Small delay ensures Bloc processes event before navigation
     await Future.delayed(const Duration(milliseconds: 100));
 

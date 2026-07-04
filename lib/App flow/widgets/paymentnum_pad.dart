@@ -128,6 +128,9 @@ class _paymentsummaryState extends State<paymentsummary> {
   }
 
   void _syncFromState(PaymentSummaryLoaded state) {
+    debugPrint(
+        "_syncFromState -> state.isNoCharge = ${state.isNoCharge}");
+
     final summary = state.summary;
     final discount = state.merchantDiscount;
 
@@ -225,7 +228,8 @@ class _paymentsummaryState extends State<paymentsummary> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text("Service charge applied successfully"),
-            duration: Duration(seconds: 1)),
+            duration: Duration(seconds: 1),
+          backgroundColor: Colors.green,),
       );
     }
   }
@@ -245,7 +249,8 @@ class _paymentsummaryState extends State<paymentsummary> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text("Service charge removed successfully"),
-            duration: Duration(seconds: 1)),
+            duration: Duration(seconds: 1),
+          backgroundColor: Colors.red,),
       );
     }
   }
@@ -303,7 +308,8 @@ class _paymentsummaryState extends State<paymentsummary> {
 
     if (orderId == null) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Order not created")));
+          .showSnackBar(const SnackBar(content: Text("Order not created"),
+        backgroundColor: Colors.red,));
       return;
     }
     if (userId == null) {
@@ -521,6 +527,9 @@ class _paymentsummaryState extends State<paymentsummary> {
               return;
             }
             if (state is PaymentSummaryLoaded) {
+              debugPrint(
+                "BlocListener -> merchant=${state.merchantDiscount}, isNc=${state.isNoCharge}",
+              );
               _paymentSummary = state.summary;
               _syncFromState(state);
             }
@@ -537,7 +546,8 @@ class _paymentsummaryState extends State<paymentsummary> {
               final paymentBlocState = context.read<PaymentBloc>().state;
               if (paymentBlocState is! PaymentSummaryLoaded) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Payment summary not available")),
+                  const SnackBar(content: Text("Payment summary not available"),
+                    backgroundColor: Colors.red,),
                 );
                 return;
               }
@@ -602,6 +612,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                     SnackBar(
                       content: Text(e.toString()),
                       duration: const Duration(seconds: 1),
+                      backgroundColor: Colors.green,
                     ),
                   );
                 }
@@ -629,6 +640,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                 SnackBar(
                   content: Text(state.error),
                   duration: const Duration(seconds: 1),
+                  backgroundColor: Colors.red,
                 ),
               );
             }
@@ -642,7 +654,8 @@ class _paymentsummaryState extends State<paymentsummary> {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                     content: Text(state.response.message),
-                    duration: const Duration(seconds: 1)),
+                    duration: const Duration(seconds: 1),
+                  backgroundColor: Colors.red,),
               );
               setState(() {
                 _isDiscountApplied = false;
@@ -651,7 +664,12 @@ class _paymentsummaryState extends State<paymentsummary> {
                 merchantDiscount = 0.0;
                 discountController.clear();
               });
-              context.read<PaymentBloc>().add(UpdateMerchantDiscount(0.0));
+              // context.read<PaymentBloc>().add(
+              //   UpdateMerchantDiscount(
+              //     value: applied,
+              //     isNoCharge: isNc,
+              //   ),
+              // );
               widget.onMerchantDiscountChanged(0.0);
               _updateAmountField();
 
@@ -660,7 +678,8 @@ class _paymentsummaryState extends State<paymentsummary> {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                     content: Text(state.error),
-                    duration: const Duration(seconds: 1)),
+                    duration: const Duration(seconds: 1),
+                  backgroundColor: Colors.red,),
               );
             }
           },
@@ -672,17 +691,18 @@ class _paymentsummaryState extends State<paymentsummary> {
         // UI is always visible - no loading state
         body:
         BlocBuilder<PaymentBloc, PaymentState>(
-          buildWhen: (prev, curr) {
-            // Only rebuild when we have data and values changed
-            if (curr is! PaymentSummaryLoaded) return false;
-            if (prev is PaymentSummaryLoaded) {
-              return curr.summary.netTotal != prev.summary.netTotal ||
-                  curr.summary.serviceChargeValue !=
-                      prev.summary.serviceChargeValue ||
-                  curr.merchantDiscount != prev.merchantDiscount;
-            }
-            return true;
-          },
+            buildWhen: (prev, curr) {
+              if (curr is! PaymentSummaryLoaded) return false;
+
+              if (prev is PaymentSummaryLoaded) {
+                return curr.summary.netTotal != prev.summary.netTotal ||
+                    curr.summary.serviceChargeValue != prev.summary.serviceChargeValue ||
+                    curr.merchantDiscount != prev.merchantDiscount ||
+                    curr.isNoCharge != prev.isNoCharge;
+              }
+
+              return true;
+            },
           builder: (context, payState) {
             final double netPayableVal = getGrandTotal(payState);
 
@@ -1559,6 +1579,7 @@ class _paymentsummaryState extends State<paymentsummary> {
 
   // Action buttons section
   Widget _buildActionButtons(BuildContext context, double netPayable) {
+    debugPrint("_buildActionButtons -> _isNcDiscount = $_isNcDiscount");
     return Column(
       children: [
         // Discounts
@@ -1598,11 +1619,28 @@ class _paymentsummaryState extends State<paymentsummary> {
               ),
             );
             if (result != null) {
-              final double applied =
-              (result["amount"] as double).abs();
-              discountController.text = applied.toStringAsFixed(2);
-              setState(() => _isDiscountApplied = true);
-              // _reloadSummary();
+              debugPrint("Discount Result: $result");
+
+              final double applied = (result["amount"] as double).abs();
+              final bool isNc = result["isNc"] == true;
+
+              debugPrint("isNc = $isNc");
+
+              setState(() {
+                _isDiscountApplied = true;
+                _isNcDiscount = isNc;
+                discountController.text = applied.toStringAsFixed(2);
+              });
+
+              // ✅ Update PaymentBloc with both discount and NC flag
+              context.read<PaymentBloc>().add(
+                UpdateMerchantDiscount(
+                  value: applied,
+                  isNoCharge: isNc,
+                ),
+              );
+
+              debugPrint("_isNcDiscount = $_isNcDiscount");
             }
           },
           onDelete: _isDiscountApplied
@@ -1626,66 +1664,73 @@ class _paymentsummaryState extends State<paymentsummary> {
         const SizedBox(height: 8),
 
         // Coupons
-        _actionTile(
-          label: "Coupons",
-          borderColor: const Color(0xFFE65100),
-          iconBg: const Color(0xFFE65100),
-          // icon: Icons.local_offer_rounded,
-          iconWidget: Image.asset(  // ← Now correctly passed
-            "assets/Coupon Icon.png",
-            width: 32,
-            height: 32,
-            color: Colors.white,
-          ),
-          isApplied: _isCouponApplied,
-          appliedText: _appliedCoupon.isNotEmpty ? _appliedCoupon : null,
-          onTap: _isCouponApplied
-              ? null
-              : () {
-            showDialog(
-              context: context,
-              barrierDismissible: false,
-              builder: (_) => Couponscreen(
-                orderId: widget.orderId,
-                token: widget.token,
-                onCouponApplied: (coupon, amt) {
-                  setState(() {
-                    _isCouponApplied = true;
-                    _appliedCoupon = coupon;
-                    _couponAmount = amt;
-                    couponController.text = coupon;
-                  });
-                  widget.onCouponAmountChanged?.call(amt);
-                  // _reloadSummary();
-                },
+        IgnorePointer(
+          ignoring: _isNcDiscount,
+          child: Opacity(
+            opacity: _isNcDiscount ? 0.4 : 1.0,
+            child: _actionTile(
+              label: "Coupons",
+              borderColor: const Color(0xFFE65100),
+              iconBg: const Color(0xFFE65100),
+              iconWidget: Image.asset(
+                "assets/Coupon Icon.png",
+                width: 32,
+                height: 32,
+                color: Colors.white,
               ),
-            );
-          },
-          onDelete: _isCouponApplied
-              ? () async {
-            final success = await _couponRepository.removeCoupon(
-              token: widget.token,
-              orderId: widget.orderId,
-            );
-            if (success) {
-              setState(() {
-                _isCouponApplied = false;
-                _appliedCoupon = '';
-                _couponAmount = 0.0;
-                couponController.clear();
-              });
-              widget.onCouponAmountChanged?.call(0.0);
-              // _reloadSummary();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text("Coupon removed successfully"),
-                    duration: Duration(seconds: 1)),
-              );
-            }
-          }
-              : null,
-        ),
+              isApplied: _isCouponApplied,
+              appliedText:
+              _appliedCoupon.isNotEmpty ? _appliedCoupon : null,
+              onTap: _isCouponApplied
+                  ? null
+                  : () {
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (_) => Couponscreen(
+                    orderId: widget.orderId,
+                    token: widget.token,
+                    onCouponApplied: (coupon, amt) {
+                      setState(() {
+                        _isCouponApplied = true;
+                        _appliedCoupon = coupon;
+                        _couponAmount = amt;
+                        couponController.text = coupon;
+                      });
+                      widget.onCouponAmountChanged?.call(amt);
+                    },
+                  ),
+                );
+              },
+              onDelete: _isCouponApplied
+                  ? () async {
+                final success = await _couponRepository.removeCoupon(
+                  token: widget.token,
+                  orderId: widget.orderId,
+                );
 
+                if (success) {
+                  setState(() {
+                    _isCouponApplied = false;
+                    _appliedCoupon = '';
+                    _couponAmount = 0.0;
+                    couponController.clear();
+                  });
+
+                  widget.onCouponAmountChanged?.call(0.0);
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Coupon removed successfully"),
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                }
+              }
+                  : null,
+            ),
+          ),
+        ),
         const SizedBox(height: 8),
 
         // Tips
@@ -1781,6 +1826,7 @@ class _paymentsummaryState extends State<paymentsummary> {
     String? appliedText,
     VoidCallback? onTap,
     VoidCallback? onDelete,
+    bool enabled = true,
   }) {
     // ── Only change: gradient per tile color ──
     LinearGradient _tileGradient(Color base) {
@@ -1812,7 +1858,9 @@ class _paymentsummaryState extends State<paymentsummary> {
         : borderColor.withOpacity(0.4);
 
     return GestureDetector(
-      onTap: isApplied ? null : onTap,
+      onTap: (!enabled || isApplied) ? null : onTap,
+        child: Opacity(
+          opacity: enabled ? 1.0 : 0.4,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
         decoration: BoxDecoration(
@@ -1889,7 +1937,7 @@ class _paymentsummaryState extends State<paymentsummary> {
           ],
         ),
       ),
-    );
+    ));
   }
   Widget _svcChargeTile(BuildContext context) {
     final bool applied =

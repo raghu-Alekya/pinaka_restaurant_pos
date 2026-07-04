@@ -171,14 +171,25 @@ class _SideBarWidgetsState extends State<SideBarWidgets> {
           listener: (context, state) {
             if (state is CategoryLoaded &&
                 state.categories.isNotEmpty &&
-                !_initialSubCategoryTriggered) {          // ✅ was: state.selectedCategory == null
-              _initialSubCategoryTriggered = true;         // ✅ ADD
-              final firstCategory = state.selectedCategory ?? state.categories.first;
+                !_initialSubCategoryTriggered) {
 
-              context.read<CategoryBloc>().add(SelectCategory(firstCategory.id));
+              _initialSubCategoryTriggered = true;
+
+              final firstCategory =
+                  state.selectedCategory ?? state.categories.first;
+
+              // ✅ Notify Dashboard
+              widget.onCategorySelected?.call(firstCategory);
+
+              context.read<CategoryBloc>().add(
+                SelectCategory(firstCategory.id),
+              );
 
               context.read<SubCategoryBloc>().add(
-                LoadSubCategories(token: widget.token, categoryId: firstCategory.id),
+                LoadSubCategories(
+                  token: widget.token,
+                  categoryId: firstCategory.id,
+                ),
               );
             }
           },

@@ -184,10 +184,25 @@ class _DiscountPopupState extends State<DiscountPopup> {
   }
 
 
+  void _showSuccess(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 1),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   void _showError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg),
-          duration: Duration(seconds: 1),),
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 1),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
   void _exitNCMode() {
@@ -232,8 +247,12 @@ class _DiscountPopupState extends State<DiscountPopup> {
           });
 
           // ✅ save discount in PaymentBloc
-          context.read<PaymentBloc>().add(UpdateMerchantDiscount(appliedDiscount));
-
+          context.read<PaymentBloc>().add(
+            UpdateMerchantDiscount(
+              value: appliedDiscount,
+              isNoCharge: isNCSelected, // or isNc
+            ),
+          );
           Navigator.pop(context, {
             "amount": appliedDiscount,
             "isNc": isNCSelected,
