@@ -9,9 +9,14 @@ plugins {
 }
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
+var hasReleaseSigning = false
 
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+    hasReleaseSigning = keystoreProperties.containsKey("keyAlias") &&
+                        keystoreProperties.containsKey("keyPassword") &&
+                        keystoreProperties.containsKey("storeFile") &&
+                        keystoreProperties.containsKey("storePassword")
 }
 
 android {
@@ -55,7 +60,11 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (hasReleaseSigning) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
             isMinifyEnabled = false
             isShrinkResources = false
         }

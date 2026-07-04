@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:kds_app/widgets/mercahant%20validation%20screen.dart';
+import 'package:kds_app/widgets/login_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import 'kitchen_display_screen.dart';
 import 'providers/order_provider.dart';
@@ -7,6 +9,8 @@ import 'screens/connection_setup_screen.dart';
 import 'services/api_services.dart';
 import 'services/kds_mqtt_service.dart';
 import 'utils/kds_logger.dart';
+import 'utils/AppConstant.dart';
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
@@ -22,30 +26,49 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   KdsConfig? _config;
   OrderProvider? _orderProvider;
-
+  String? _storeBaseUrl;
+  String? _storeName;
+  String? _storeId;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    // _loadConfig();
+    _checkMerchantStatus();
   }
 
-  Future<void> _loadConfig() async {
-    final config = await KdsConfig.load();
+  Future<void> _checkMerchantStatus() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final baseUrl = prefs.getString('store_base_url');
+      final name = prefs.getString('store_name');
+      final id = prefs.getString('store_id');
 
-    KdsDebugLog.info(
-      'Config loaded → '
-          'host=${config.brokerHost}, '
-          'port=${config.brokerPort}, '
-          'restaurantId=${config.restaurantId}, '
-          'tokenEmpty=${config.apiToken.isEmpty}',
-    );
+      if (baseUrl != null && baseUrl.isNotEmpty) {
+        AppConstants.updateBaseUrl(baseUrl);
+      }
 
-    if (config.isValid) {
-      _startWithConfig(config);
-    } else {
-      KdsDebugLog.warn('Config invalid — showing setup screen');
-      setState(() => _config = config);
+      final config = await KdsConfig.load();
+
+      if (mounted) {
+        setState(() {
+          _storeBaseUrl = baseUrl;
+          _storeName = name;
+          _storeId = id;
+          _isLoading = false;
+        });
+      }
+
+      if (config.isValid && config.apiToken.isNotEmpty) {
+        _startWithConfig(config);
+      }
+    } catch (e) {
+      KdsDebugLog.error("Error checking merchant status: $e");
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -75,6 +98,7 @@ class _MyAppState extends State<MyApp> {
       provider.initialize();
     });
   }
+
   @override
   void dispose() {
     _orderProvider?.dispose();
@@ -83,12 +107,41 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: Scaffold(
+          body: Center(
+            child: CircularProgressIndicator(
+              color: Color(0xff2F4376),
+            ),
+          ),
+        ),
+      );
+    }
+
     if (_orderProvider == null) {
+      if (_storeBaseUrl != null && _storeBaseUrl!.isNotEmpty) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'Kitchen Dashboard',
+          home: EmployeeLoginScreen(
+            onLoginSuccess: (config) {
+              _startWithConfig(config);
+            },
+            storeBaseUrl: _storeBaseUrl!,
+            storeName: _storeName ?? '',
+            storeId: _storeId ?? '',
+          ),
+        );
+      }
+
       return MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Kitchen Dashboard',
         home: MerchantOnboardingScreen(
           onLoginSuccess: (config) {
+            _checkMerchantStatus();
             _startWithConfig(config);
           },
         ),
@@ -104,7 +157,10 @@ class _MyAppState extends State<MyApp> {
           token: _config!.apiToken,
           restaurantId: int.tryParse(_config!.restaurantId) ?? 1,
           onOpenSettings: () async {
-            await KdsConfig.clear();
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.remove('token');
+            await prefs.remove('api_token');
+            await prefs.remove('restaurant_id');
 
             _orderProvider?.dispose();
 
@@ -113,7 +169,7 @@ class _MyAppState extends State<MyApp> {
               _config = null;
             });
 
-            _loadConfig();
+            _checkMerchantStatus();
           },
         ),
       ),

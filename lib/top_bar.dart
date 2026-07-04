@@ -1,19 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum OrderTypeFilter {
-  all,
-  dineIn,
-  takeaway,
-  online,
-}
+enum OrderTypeFilter { all, dineIn, takeaway, online }
 
-enum KotView {
-  pending,
-  active,
-  repeated,
-  history,
-}
+enum KotView { pending, active, repeated, history }
 
 class TopBarWidget extends StatefulWidget {
   final String token;
@@ -42,7 +32,7 @@ class TopBarWidget extends StatefulWidget {
 }
 
 class _TopBarWidgetState extends State<TopBarWidget> {
-  String _displayName = "Mohan Krishna";
+  String _displayName = "IDAA Restaurant";
   String _role = "I am manager";
 
   @override
@@ -54,8 +44,14 @@ class _TopBarWidgetState extends State<TopBarWidget> {
   Future<void> _loadProfile() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final name = prefs.getString("display_name") ?? prefs.getString("employee_name") ?? "Mohan Krishna";
-      final role = prefs.getString("role") ?? prefs.getString("employee_role") ?? "I am manager";
+      final name =
+          prefs.getString("display_name") ??
+          prefs.getString("employee_name") ??
+          "IDAA Restaurant";
+      final role =
+          prefs.getString("role") ??
+          prefs.getString("employee_role") ??
+          "I am manager";
       if (mounted) {
         setState(() {
           _displayName = name;
@@ -71,25 +67,17 @@ class _TopBarWidgetState extends State<TopBarWidget> {
   Widget build(BuildContext context) {
     return Container(
       height: 75,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 20,
-        vertical: 8,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(
-          bottom: BorderSide(
-            color: Color(0xffe2e8f0),
-            width: 1,
-          ),
-        ),
+        border: Border(bottom: BorderSide(color: Color(0xffe2e8f0), width: 1)),
       ),
       child: Row(
         children: [
           // Logo Section
           Image.asset(
-            "assets/pinaka_logo.png",
-            height: 40,
+            "assets/pinaka.png",
+            height: 52,
             fit: BoxFit.contain,
             errorBuilder: (context, error, stackTrace) {
               return const Text(
@@ -102,7 +90,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
               );
             },
           ),
-          
+
           const Spacer(),
 
           // Navigation buttons
@@ -110,7 +98,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
             mainAxisSize: MainAxisSize.min,
             children: [
               _navButton(
-                title: "Pending KOTs",
+                title: "QUEUE", //"Pending KOTs",
                 view: KotView.pending,
                 icon: Icons.format_list_bulleted,
                 isSelected: widget.selectedView == KotView.pending,
@@ -126,7 +114,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
                 onTap: () => widget.onViewChanged(KotView.active),
               ),
               _navButton(
-                title: "Repeated Items",
+                title: "SUMMARY",
                 view: KotView.repeated,
                 icon: Icons.sync,
                 isSelected: widget.selectedView == KotView.repeated,
@@ -134,7 +122,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
                 onTap: () => widget.onViewChanged(KotView.repeated),
               ),
               _navButton(
-                title: "KOT History",
+                title: "History",
                 view: KotView.history,
                 icon: Icons.history,
                 isSelected: widget.selectedView == KotView.history,
@@ -158,11 +146,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
               child: const Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.logout,
-                    color: Colors.white,
-                    size: 16,
-                  ),
+                  Icon(Icons.logout, color: Colors.white, size: 16),
                   SizedBox(height: 2),
                   Text(
                     "Logout",
@@ -186,9 +170,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: const Color(0xffe2e8f0),
-              ),
+              border: Border.all(color: const Color(0xffe2e8f0)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -274,7 +256,10 @@ class _TopBarWidgetState extends State<TopBarWidget> {
             if (count != null) ...[
               const SizedBox(width: 6),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 6,
+                  vertical: 1.5,
+                ),
                 decoration: BoxDecoration(
                   color: isSelected ? activeColor : const Color(0xffe2e8f0),
                   borderRadius: BorderRadius.circular(10),
@@ -294,4 +279,4 @@ class _TopBarWidgetState extends State<TopBarWidget> {
       ),
     );
   }
-}
+}

@@ -206,6 +206,7 @@ class _MerchantOnboardingScreenState
                                             response.storeLogo,
                                           );
                                           await prefs.setString('store_gstin', response.storeGstin);
+                                          await prefs.setString('store_id', response.storeId);
 
                                           Navigator.pushReplacement(
                                             context,

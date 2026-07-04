@@ -25,8 +25,7 @@ class KitchenDashboardScreen extends StatefulWidget {
   });
 
   @override
-  State<KitchenDashboardScreen> createState() =>
-      _KitchenDashboardScreenState();
+  State<KitchenDashboardScreen> createState() => _KitchenDashboardScreenState();
 }
 
 class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
@@ -49,13 +48,10 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
       context.read<OrderProvider>().loadExistingOrders();
     });
     _fetchRepeatedItemsCount();
-    _refreshTimer = Timer.periodic(
-      const Duration(seconds: 5),
-      (_) {
-        context.read<OrderProvider>().loadExistingOrders();
-        _fetchRepeatedItemsCount();
-      },
-    );
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      context.read<OrderProvider>().loadExistingOrders();
+      _fetchRepeatedItemsCount();
+    });
 
     _fetchRepeatedItemsCount();
   }
@@ -157,7 +153,9 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
               },
               onLogout: widget.onOpenSettings,
               pendingCount: orderProvider.pendingOrders.length,
-              activeCount: orderProvider.preparingOrders.length + orderProvider.readyOrders.length,
+              activeCount:
+                  orderProvider.preparingOrders.length +
+                  orderProvider.readyOrders.length,
               repeatedCount: _repeatedItemsCount,
             ),
             const SizedBox(height: 10),
@@ -175,11 +173,12 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10),
+          padding: const EdgeInsets.only(top: 1, bottom: 4),
           child: Row(
             children: [
               const Text(
-                "Pending KOTs",
+                //"Pending KOTs",
+                " QUEUE ",
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -258,10 +257,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(.04),
-            blurRadius: 4,
-          ),
+          BoxShadow(color: Colors.black.withOpacity(.04), blurRadius: 4),
         ],
       ),
       child: Row(
@@ -325,33 +321,21 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(
-          horizontal: 18,
-          vertical: 10,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
         decoration: BoxDecoration(
-          color: selected
-              ? const Color(0xff2F4376)
-              : Colors.transparent,
+          color: selected ? const Color(0xff2F4376) : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null)
-              Icon(
-                icon,
-                size: 16,
-                color: selected ? Colors.white : iconColor,
-              ),
-            if (icon != null)
-              const SizedBox(width: 4),
+              Icon(icon, size: 16, color: selected ? Colors.white : iconColor),
+            if (icon != null) const SizedBox(width: 4),
             Text(
               title,
               style: TextStyle(
-                color: selected
-                    ? Colors.white
-                    : Colors.black87,
+                color: selected ? Colors.white : Colors.black87,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -360,7 +344,6 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
       ),
     );
   }
-
 
   Widget _buildOrderCard(
     Map<String, dynamic> order,
@@ -412,15 +395,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(10),
-            border: Border(
-              left: BorderSide(
-                color:
-                    isDineIn
-                        ? const Color(0xffF26B3A)
-                        : const Color(0xff3B73B9),
-                width: 4,
-              ),
-            ),
+            border: Border.all(color: Colors.grey.shade200, width: 1),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(.08),
@@ -429,358 +404,463 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
               ),
             ],
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                /// TOP ROW
-                Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              /// Solid header bar spanning full width
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color:
+                      isDineIn
+                          ? const Color(0xffF26B3A)
+                          : const Color(0xff3B73B9),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(9),
+                    topRight: Radius.circular(9),
+                  ),
+                ),
+                child: Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color:
-                            isDineIn
-                                ? const Color(0xffF26B3A)
-                                : const Color(0xff3B73B9),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        tableNo,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(width: 8),
-
+                    // Left segment (Table No and Zone Name) - taking all remaining space
                     Expanded(
                       child: Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
                         children: [
+                          if (tableNo.isNotEmpty) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                tableNo,
+                                style: TextStyle(
+                                  color:
+                                      isDineIn
+                                          ? const Color(0xffF26B3A)
+                                          : const Color(0xff3B73B9),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
                           Expanded(
                             child: Text(
                               zoneName,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
+                                color: Colors.white,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                          const Spacer(),
-
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color:
-                                  isDineIn
-                                      ? const Color(0xffFFE4D8)
-                                      : const Color(0xffD9E9FF),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              orderType.toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w600,
-                                color:
-                                    isDineIn
-                                        ? const Color(0xffF26B3A)
-                                        : const Color(0xff3B73B9),
                               ),
                             ),
                           ),
                         ],
                       ),
                     ),
+                    const SizedBox(width: 16),
 
-                    const SizedBox(width: 58),
-
+                    // Right segment (Order Type Badge & Elapsed Time grouped next to each other)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.9),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        orderType.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color:
+                              isDineIn
+                                  ? const Color(0xffF26B3A)
+                                  : const Color(0xff3B73B9),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
                     const Icon(
                       Icons.access_time_outlined,
-                      color: Colors.orange,
+                      color: Colors.white,
                       size: 15,
                     ),
-
-                    const SizedBox(width: 2),
-
+                    const SizedBox(width: 4),
                     Text(
                       order['elapsedTime']?.toString() ?? '0:00',
                       style: const TextStyle(
-                        color: Colors.orange,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      /// KOT NO + TIME
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              "KOT #$kotNo",
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xff333333),
+                              ),
+                            ),
+                          ),
 
-                /// KOT NO + TIME
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        "KOT #$kotNo",
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xff333333),
+                          Text(
+                            DateFormat(
+                              "MMM dd, yyyy | hh:mm a",
+                            ).format(DateTime.now()),
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 4),
+
+                      /// ORDER ID + ITEMS COUNT
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              "Order ID: #$orderId",
+                              style: const TextStyle(
+                                color: Color(0xffF26B3A),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+
+                          Text(
+                            "${items.length} Items",
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xff333333),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      const Divider(height: 1),
+
+                      const SizedBox(height: 8),
+
+                      Text(
+                        "Qty × Items",
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 10,
                         ),
                       ),
-                    ),
 
-                    Text(
-                      //"Feb 12, 2026 | 11:30 AM",
-                      DateFormat(
-                        "MMM dd, yyyy | hh:mm a",
-                      ).format(DateTime.now()),
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
-                ),
+                      const SizedBox(height: 8),
 
-                const SizedBox(height: 4),
-
-                /// ORDER ID + ITEMS COUNT
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        "Order ID: #$orderId",
-                        style: const TextStyle(
-                          color: Color(0xffF26B3A),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-
-                    Text(
-                      "${items.length} Items",
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xff333333),
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 8),
-
-                const Divider(height: 1),
-
-                const SizedBox(height: 8),
-
-                Text(
-                  "Qty × Items",
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 10),
-                ),
-
-                const SizedBox(height: 8),
-
-                Expanded(
-                  child: Scrollbar(
-                    child: ListView.builder(
-                      itemCount: items.length + (selectedCancelItemKotId == kotId ? 1 : 0),
-                      itemBuilder: (_, index) {
-                        if (selectedCancelItemKotId == kotId && index == 0) {
-                          final allChecked = selected.every((val) => val);
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: Row(
-                              children: [
-                                Checkbox(
-                                  value: allChecked,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      for (int i = 0; i < selected.length; i++) {
-                                        selected[i] = value ?? false;
+                      Expanded(
+                        child: Scrollbar(
+                          child: ListView.builder(
+                            itemCount:
+                                items.length +
+                                (selectedCancelItemKotId == kotId &&
+                                        selected.any((val) => val)
+                                    ? 1
+                                    : 0),
+                            itemBuilder: (context, index) {
+                              if (selectedCancelItemKotId == kotId &&
+                                  selected.any((val) => val) &&
+                                  index == items.length) {
+                                // Red bottom row button to cancel selected items
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xffFA3633),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                    ),
+                                    onPressed: () async {
+                                      final selectedItems =
+                                          <Map<String, dynamic>>[];
+                                      for (int i = 0; i < items.length; i++) {
+                                        if (selected[i]) {
+                                          selectedItems.add(
+                                            items[i] as Map<String, dynamic>,
+                                          );
+                                        }
                                       }
-                                    });
-                                  },
-                                ),
-                                const Expanded(
-                                  child: Text(
-                                    "All",
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xff444444),
+
+                                      if (selectedItems.isNotEmpty) {
+                                        final success = await orderProvider
+                                            .cancelItems(kotId, selectedItems);
+                                        if (success) {
+                                          setState(() {
+                                            selectedCancelItemKotId = null;
+                                          });
+                                        }
+                                      }
+                                    },
+                                    child: const Text(
+                                      "Confirm Item Cancel",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
+                                );
+                              }
 
-                        final itemIndex = selectedCancelItemKotId == kotId ? index - 1 : index;
-                        final item = items[itemIndex] as Map<String, dynamic>;
+                              final item = items[index];
+                              final name = item['name']?.toString() ?? '';
+                              final qty = item['qty'] ?? 1;
 
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: Row(
-                            children: [
-                              if (selectedCancelItemKotId == kotId)
-                                Checkbox(
-                                  value: selected[itemIndex],
-                                  onChanged: (value) {
-                                    setState(() {
-                                      selected[itemIndex] = value ?? false;
-                                    });
-                                  },
-                                ),
-                              Expanded(
-                                child: Text(
-                                  "1 × ${item['name']}",
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: selected[itemIndex]
-                                        ? Colors.red
-                                        : const Color(0xff444444),
-                                    decoration: selected[itemIndex]
-                                        ? TextDecoration.lineThrough
+                              return InkWell(
+                                onTap:
+                                    selectedCancelItemKotId == kotId
+                                        ? () {
+                                          setState(() {
+                                            selected[index] = !selected[index];
+                                          });
+                                        }
                                         : null,
+                                child: Container(
+                                  color:
+                                      selected[index]
+                                          ? Colors.red.withOpacity(.12)
+                                          : null,
+                                  padding: const EdgeInsets.only(
+                                    top: 4,
+                                    bottom: 4,
+                                    right: 16,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Text(
+                                        "$qty × ",
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          color:
+                                              selected[index]
+                                                  ? Colors.red
+                                                  : const Color(0xff333333),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Text(
+                                          name,
+                                          style: TextStyle(
+                                            color:
+                                                selected[index]
+                                                    ? Colors.red
+                                                    : const Color(0xff333333),
+                                          ),
+                                        ),
+                                      ),
+                                      if (selectedCancelItemKotId == kotId)
+                                        Icon(
+                                          selected[index]
+                                              ? Icons.check_box
+                                              : Icons.check_box_outline_blank,
+                                          size: 18,
+                                          color:
+                                              selected[index]
+                                                  ? Colors.red
+                                                  : Colors.grey,
+                                        ),
+                                    ],
                                   ),
                                 ),
-                              ),
-                            ],
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      Row(
+                        children: [
+                          // Left button: Cancel or Revoke
+                          Expanded(
+                            child: SizedBox(
+                              height: 38,
+                              child: OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor:
+                                      isDineIn
+                                          ? const Color(0xffF26B3A)
+                                          : const Color(0xff3B73B9),
+                                  side: BorderSide(
+                                    color:
+                                        isDineIn
+                                            ? const Color(0xffF26B3A)
+                                            : const Color(0xff3B73B9),
+                                    width: 1.5,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(5),
+                                  ),
+                                ),
+                                icon: Icon(
+                                  selectedCancelItemKotId == kotId
+                                      ? Icons.undo
+                                      : Icons.cancel_outlined,
+                                  size: 16,
+                                ),
+                                label: Text(
+                                  selectedCancelItemKotId == kotId
+                                      ? "Undo Cancel" //"Revoke"
+                                      : "Cancel",
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    if (selectedCancelItemKotId == kotId) {
+                                      // Revoke: uncheck all and exit cancel mode
+                                      for (
+                                        int i = 0;
+                                        i < selected.length;
+                                        i++
+                                      ) {
+                                        selected[i] = false;
+                                      }
+                                      selectedCancelItemKotId = null;
+                                    } else {
+                                      // Cancel: enter cancel mode
+                                      selectedCancelItemKotId = kotId;
+                                    }
+                                  });
+                                },
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+
+                          // Right button: Start KOT or Cancel KOT
+                          Expanded(
+                            child: SizedBox(
+                              height: 38,
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor:
+                                      selected.every((val) => val)
+                                          ? const Color(
+                                            0xffFA3633,
+                                          ) // Cancel KOT background
+                                          : (isDineIn
+                                              ? const Color(0xffF26B3A)
+                                              : const Color(
+                                                0xff3B73B9,
+                                              )), // Start KOT background
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(5),
+                                  ),
+                                ),
+                                icon: Icon(
+                                  selected.every((val) => val)
+                                      ? Icons.cancel_outlined
+                                      : Icons.play_arrow,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
+                                label: Text(
+                                  selected.every((val) => val)
+                                      ? "Cancel KOT"
+                                      : "Start KOT",
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                onPressed: () async {
+                                  if (selected.every((val) => val)) {
+                                    // Cancel entire order
+                                    final success = await orderProvider
+                                        .cancelOrder(kotId);
+                                    if (success) {
+                                      setState(() {
+                                        selectedCancelItemKotId = null;
+                                      });
+                                    }
+                                  } else {
+                                    // Start KOT with remaining items
+                                    final remainingItems =
+                                        <Map<String, dynamic>>[];
+                                    for (int i = 0; i < items.length; i++) {
+                                      if (!selected[i]) {
+                                        remainingItems.add(
+                                          items[i] as Map<String, dynamic>,
+                                        );
+                                      }
+                                    }
+                                    await orderProvider.startOrder(
+                                      kotId,
+                                      remainingItems,
+                                    );
+
+                                    // Clear checkboxes and exit cancel mode after starting KOT
+                                    setState(() {
+                                      for (
+                                        int i = 0;
+                                        i < selected.length;
+                                        i++
+                                      ) {
+                                        selected[i] = false;
+                                      }
+                                      if (selectedCancelItemKotId == kotId) {
+                                        selectedCancelItemKotId = null;
+                                      }
+                                    });
+                                  }
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-
-                const SizedBox(height: 10),
-
-                Row(
-                  children: [
-                    // Left button: Cancel or Revoke
-                    Expanded(
-                      child: SizedBox(
-                        height: 38,
-                        child: OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: isDineIn ? const Color(0xffF26B3A) : const Color(0xff3B73B9),
-                            side: BorderSide(
-                              color: isDineIn ? const Color(0xffF26B3A) : const Color(0xff3B73B9),
-                              width: 1.5,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                          ),
-                          icon: Icon(
-                            selectedCancelItemKotId == kotId
-                                ? Icons.undo
-                                : Icons.cancel_outlined,
-                            size: 16,
-                          ),
-                          label: Text(
-                            selectedCancelItemKotId == kotId ? "Revoke" : "Cancel",
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              if (selectedCancelItemKotId == kotId) {
-                                // Revoke: uncheck all and exit cancel mode
-                                for (int i = 0; i < selected.length; i++) {
-                                  selected[i] = false;
-                                }
-                                selectedCancelItemKotId = null;
-                              } else {
-                                // Cancel: enter cancel mode
-                                selectedCancelItemKotId = kotId;
-                              }
-                            });
-                          },
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-
-                    // Right button: Start KOT or Cancel KOT
-                    Expanded(
-                      child: SizedBox(
-                        height: 38,
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: selected.every((val) => val)
-                                ? const Color(0xffFA3633) // Cancel KOT background
-                                : (isDineIn ? const Color(0xffF26B3A) : const Color(0xff3B73B9)), // Start KOT background
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                          ),
-                          icon: Icon(
-                            selected.every((val) => val)
-                                ? Icons.cancel_outlined
-                                : Icons.play_arrow,
-                            size: 16,
-                            color: Colors.white,
-                          ),
-                          label: Text(
-                            selected.every((val) => val) ? "Cancel KOT" : "Start KOT",
-                            style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
-                          ),
-                          onPressed: () async {
-                            if (selected.every((val) => val)) {
-                              // Cancel entire order
-                              final success = await orderProvider.cancelOrder(kotId);
-                              if (success) {
-                                setState(() {
-                                  selectedCancelItemKotId = null;
-                                });
-                              }
-                            } else {
-                              // Start KOT with remaining items
-                              final remainingItems = <Map<String, dynamic>>[];
-                              for (int i = 0; i < items.length; i++) {
-                                if (!selected[i]) {
-                                  remainingItems.add(items[i] as Map<String, dynamic>);
-                                }
-                              }
-                              await orderProvider.startOrder(kotId, remainingItems);
-                              
-                              // Clear checkboxes and exit cancel mode after starting KOT
-                              setState(() {
-                                for (int i = 0; i < selected.length; i++) {
-                                  selected[i] = false;
-                                }
-                                if (selectedCancelItemKotId == kotId) {
-                                  selectedCancelItemKotId = null;
-                                }
-                              });
-                            }
-                          },
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ],
     );
   }
-
-  }
+}

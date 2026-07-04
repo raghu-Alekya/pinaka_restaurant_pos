@@ -161,7 +161,7 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
       children: [
         if (widget.isEmbedded)
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
+            padding: const EdgeInsets.only(top: 1, bottom: 6),
             child: Row(
               children: [
                 const Text(
@@ -297,6 +297,10 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                   title: "Served",
                   color: const Color(0xff16A34A),
                   child: DragTarget<Map<String, dynamic>>(
+                    onWillAcceptWithDetails: (details) {
+                      final status = details.data['status']?.toString().toLowerCase() ?? '';
+                      return status == 'ready';
+                    },
                     onAcceptWithDetails: (details) {
                       final orderId = details.data['id']?.toString() ?? '';
                       orderProvider.updateOrderStatus(orderId, 'Served');
@@ -622,12 +626,28 @@ class _ExpandableActiveOrderCardState
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w500,
-                                    color: item['status']?.toString().toLowerCase() == 'cancelled' || item['status']?.toString().toLowerCase() == 'cancel'
-                                        ? Colors.red
-                                        : Colors.black87,
-                                    decoration: item['status']?.toString().toLowerCase() == 'cancelled' || item['status']?.toString().toLowerCase() == 'cancel'
-                                        ? TextDecoration.lineThrough
-                                        : null,
+                                    color:
+                                        item['status']
+                                                        ?.toString()
+                                                        .toLowerCase() ==
+                                                    'cancelled' ||
+                                                item['status']
+                                                        ?.toString()
+                                                        .toLowerCase() ==
+                                                    'cancel'
+                                            ? Colors.red
+                                            : Colors.black87,
+                                    decoration:
+                                        item['status']
+                                                        ?.toString()
+                                                        .toLowerCase() ==
+                                                    'cancelled' ||
+                                                item['status']
+                                                        ?.toString()
+                                                        .toLowerCase() ==
+                                                    'cancel'
+                                            ? TextDecoration.lineThrough
+                                            : null,
                                   ),
                                 ),
                                 if (note.isNotEmpty)
@@ -649,12 +669,24 @@ class _ExpandableActiveOrderCardState
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              color: item['status']?.toString().toLowerCase() == 'cancelled' || item['status']?.toString().toLowerCase() == 'cancel'
-                                  ? Colors.red
-                                  : Colors.black87,
-                              decoration: item['status']?.toString().toLowerCase() == 'cancelled' || item['status']?.toString().toLowerCase() == 'cancel'
-                                  ? TextDecoration.lineThrough
-                                  : null,
+                              color:
+                                  item['status']?.toString().toLowerCase() ==
+                                              'cancelled' ||
+                                          item['status']
+                                                  ?.toString()
+                                                  .toLowerCase() ==
+                                              'cancel'
+                                      ? Colors.red
+                                      : Colors.black87,
+                              decoration:
+                                  item['status']?.toString().toLowerCase() ==
+                                              'cancelled' ||
+                                          item['status']
+                                                  ?.toString()
+                                                  .toLowerCase() ==
+                                              'cancel'
+                                      ? TextDecoration.lineThrough
+                                      : null,
                             ),
                           ),
                         ],

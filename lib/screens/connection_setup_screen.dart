@@ -40,12 +40,17 @@ class KdsConfig {
         prefs.getString('mqtt_broker_host') ?? defaultBrokerHost;
     final host = _normalizeHost(rawHost);
 
+    String restaurantIdStr = defaultRestaurantId;
+    final rawRestaurantId = prefs.get('restaurant_id');
+    if (rawRestaurantId != null) {
+      restaurantIdStr = rawRestaurantId.toString();
+    }
+
     final config = KdsConfig(
       brokerHost: host,
       brokerPort: prefs.getInt('mqtt_broker_port') ?? defaultBrokerPort,
-      restaurantId:
-      prefs.getString('restaurant_id') ?? defaultRestaurantId,
-      apiToken: prefs.getString('api_token') ?? '',
+      restaurantId: restaurantIdStr,
+      apiToken: prefs.getString('api_token') ?? prefs.getString('token') ?? '',
     );
 
     if (rawHost != host) {
