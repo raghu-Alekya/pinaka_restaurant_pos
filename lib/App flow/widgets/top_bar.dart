@@ -354,42 +354,57 @@ class _TopBarState extends State<TopBar> {
 
                         // Order Type Dropdown
                         Container(
-                          height: 38,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          width: 165,
+                          height: 40,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                          ),
                           decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFD1D5DB)),
+                            color: const Color(0xFFF9FBFF),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: const Color(0xFFE6E6E6),
+                              width: 1,
+                            ),
                           ),
                           child: DropdownButtonHideUnderline(
                             child: DropdownButton<String>(
-                              // value: _filteredOrderTypes.contains(selectedOrderType) ? selectedOrderType : null,
-                              // items: _filteredOrderTypes.isNotEmpty
-                              //     ? _filteredOrderTypes.map((type) => DropdownMenuItem(value: type, child: Text(type))).toList()
-                              //     : null,
-                              // onChanged: (value) {
-                              //   if (value == null) return;
-                              //   setState(() => selectedOrderType = value);
-                              //   widget.onOrderTypeChanged?.call(value);
-                              // },
-                              // value: _filteredOrderTypes.contains(selectedOrderType) ? selectedOrderType : null,
-                              // items: _filteredOrderTypes.isNotEmpty
-                              //     ? _filteredOrderTypes.map((type) => DropdownMenuItem(value: type, child: Text(type))).toList()
-                              //     : null,
-                              // onChanged: (value) {
-                              //   if (value == null) return;
-                              //   setState(() => selectedOrderType = value);
-                              //   widget.onOrderTypeChanged?.call(value);
-                              // },
-
-                              value: _filteredOrderTypes.contains(selectedOrderType) ? selectedOrderType : null,
-                              items: _filteredOrderTypes.isNotEmpty
-                                  ? _filteredOrderTypes.map((type) => DropdownMenuItem(value: type, child: Text(type))).toList()
-                                  : null,
-                              onChanged: (value) {
+                              value: selectedOrderType,
+                              isExpanded: true,
+                              hint: const Text("Dine In"),
+                              items:
+                              orderTypes.map((type) {
+                                return DropdownMenuItem<String>(
+                                  value: type,
+                                  child: Text(type),
+                                );
+                              }).toList(),
+                              onChanged: (value) async {
                                 if (value == null) return;
-                                setState(() => selectedOrderType = value);
-                                widget.onOrderTypeChanged?.call(value);
+
+                                setState(() {
+                                  selectedOrderType = value;
+                                });
+
+                                final result =
+                                await OrderTypesInPaymentScreenRepository()
+                                    .updateOrderType(
+                                  token: widget.token,
+                                  orderId: widget.paymentSummary!.orderId,
+                                  orderType: value,
+                                );
+
+                                if (result?.success == true) {
+                                  ScaffoldMessenger.of(
+                                    context,
+                                  ).showSnackBar(
+                                    SnackBar(
+                                      content: Text(result!.message),
+                                      duration: Duration(seconds: 1),
+                                      backgroundColor: Colors.green,
+                                    ),
+                                  );
+                                }
                               },
                             ),
                           ),

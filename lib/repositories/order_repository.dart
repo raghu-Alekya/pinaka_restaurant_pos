@@ -26,6 +26,7 @@ class OrderRepository {
     required String zoneName,
     required String restaurantName,
     required List<Guestcount> guests,
+    required String orderDateTime,
     required String tableName,
   }) async {
 
@@ -49,6 +50,7 @@ class OrderRepository {
       "guest_count": guestCount,
       "guest_details": guests.map((g) => g.toJson()).toList(),
       "reservation_id": reservationId,
+      "order_datetime": orderDateTime,
     };
 
     AppLogger.info("REQUEST BODY => ${jsonEncode(body)}");
@@ -344,12 +346,12 @@ class OrderRepository {
 
         // ✅ Fallback zoneId if backend didn’t return it
         final effectiveZoneId = parent['zone_id'] ?? zoneId ?? 0;
-    // / ✅ FIX: read guest_count
-    final int guestCount = parent['guest_count'] ?? 0;
-    AppLogger.debug("👥 Guest count from API = $guestCount");
+        // / ✅ FIX: read guest_count
+        final int guestCount = parent['guest_count'] ?? 0;
+        AppLogger.debug("👥 Guest count from API = $guestCount");
 
 
-    // Parse all KOTs
+        // Parse all KOTs
         final kotOrders = (parent['kot_orders'] as List<dynamic>? ?? [])
             .map((k) => KotModel.fromJson(k as Map<String, dynamic>))
             .toList();
@@ -368,6 +370,9 @@ class OrderRepository {
           kotOrders: kotOrders,
           // ✅ PASS GUEST DATA
           guestCount: guestCount,
+          orderDateTime: parent['order_datetime'] != null
+              ? DateTime.parse(parent['order_datetime'])
+              : null,
           // guestDetails: guestDetails,
         );
 
@@ -383,6 +388,7 @@ class OrderRepository {
   Future<TakeAwayOrderModel> createTakeAwayOrder({
     required String restaurantId,
     required String token,
+    required String orderDateTime,
   }) async {
     final url = Uri.parse(
       '${AppConstants.baseDomain}/wp-json/pinaka-restaurant-pos/v1/orders',
@@ -392,6 +398,7 @@ class OrderRepository {
       "flag_type": "parent_takeaway_order",
       "restaurant_id": int.parse(restaurantId),
       "created_via": "takeaway",
+      "order_datetime": orderDateTime,
     };
 
     AppLogger.info("Take Away Request => ${jsonEncode(body)}");

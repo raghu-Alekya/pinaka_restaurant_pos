@@ -1672,6 +1672,7 @@ class _TablesScreenState extends State<TablesScreen> {
                   tableId: tableId,
                   zoneId: zoneId,
                   guests: [guestDetails],
+                  orderDateTime: DateTime.now().toIso8601String(),
                   guestCount: guestDetails.guestCount,
                   token: token, // ✅ Use login token here
                   zoneName: zoneName,

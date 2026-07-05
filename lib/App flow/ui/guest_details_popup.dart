@@ -39,6 +39,7 @@ class GuestDetailsPopup extends StatefulWidget {
 class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
   List<int> selectedGuests = [];
   bool _isCreatingOrder = false; // NEW
+  final String orderDateTime = DateTime.now().toIso8601String();
 
   @override
   Widget build(BuildContext context) {
@@ -195,6 +196,7 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                             token: widget.token,
                             guestCount: selectedGuests.length,
                             reservationId: reservationId,
+                            orderDateTime: DateTime.now().toIso8601String(),
                           );
 
                           context.read<OrderBloc>().add(
@@ -206,6 +208,7 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                               zoneName: zoneName,
                               restaurantId: widget.restaurantId,
                               guestDetails: guestDetails,
+                              orderDateTime: orderDateTime,
                             ),
                           );
 

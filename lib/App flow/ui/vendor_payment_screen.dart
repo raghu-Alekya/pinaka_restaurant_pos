@@ -754,7 +754,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                                     : payment.vendorName,
                                                 date: payment.paymentDate,
                                                 contact: payment.phoneNumber,
-                                                amount: "₹${payment.amount}",
+                                                amount: "₹${(double.tryParse(payment.amount) ?? 0.0).toStringAsFixed(2)}",
                                                 mode: payment.paymentMethod,
                                                 purpose: payment.purpose.isEmpty
                                                     ? "-"

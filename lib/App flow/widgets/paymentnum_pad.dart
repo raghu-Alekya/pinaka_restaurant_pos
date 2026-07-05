@@ -829,16 +829,18 @@ class _paymentsummaryState extends State<paymentsummary> {
                           ),
                           child: Align(
                             alignment: Alignment.centerRight,
-                            child: Text(
-                              (amount.isEmpty || payDisabled) ? "0.00" : amount,
-                              style: TextStyle(
-                                fontSize: 26,
-                                fontWeight: FontWeight.bold,
-                                color: payDisabled
-                                    ? Colors.grey
-                                    : const Color(0xFF212121),
-                              ),
-                            ),
+                              child: Text(
+                                payDisabled
+                                    ? "0.00"
+                                    : (double.tryParse(amount) ?? 0.0).toStringAsFixed(2),
+                                style: TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.bold,
+                                  color: payDisabled
+                                      ? Colors.grey
+                                      : const Color(0xFF212121),
+                                ),
+                              )
                           ),
                         ),
                       ),

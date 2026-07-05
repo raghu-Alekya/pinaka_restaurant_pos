@@ -60,6 +60,8 @@ class AuthRepository {
             "restaurant_id", restaurantId);
         await prefs.setString(
             "restaurant_name", restaurantName);
+        final currencySymbol =
+            data["currency_symbol"]?.toString() ?? "₹";
 
         await SessionManager.saveToken(token);
 
@@ -76,6 +78,7 @@ class AuthRepository {
           "restaurant_id": restaurantId,
           "restaurant_name": restaurantName,
           "permissions": permissions,
+          "currency_symbol": currencySymbol,
         };
       }
 

@@ -20,6 +20,7 @@ class AuthSuccess extends AuthState {
   final String restaurantId;
   final String restaurantName;
   final Map<String, dynamic> permissions;
+  final String currencySymbol; // NEW
 
   AuthSuccess({
     required this.pin,
@@ -27,6 +28,7 @@ class AuthSuccess extends AuthState {
     required this.restaurantId,
     required this.restaurantName,
     required this.permissions,
+    required this.currencySymbol, // NEW
   });
 }
 
@@ -56,6 +58,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             restaurantId: result['restaurant_id'],
             restaurantName: result['restaurant_name'],
             permissions: Map<String, dynamic>.from(result['permissions'] ?? {}),
+            currencySymbol: result["currency_symbol"] ?? "₹",
           ));
         } else {
           emit(AuthFailure(result['message']));

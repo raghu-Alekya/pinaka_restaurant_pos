@@ -16,6 +16,7 @@ class CreateOrder extends OrderEvent {
   final String zoneName;
   final String tableName;
   final String restaurantName;
+  final String orderDateTime;
 
   CreateOrder({
     required this.restaurantId,
@@ -27,6 +28,7 @@ class CreateOrder extends OrderEvent {
     this.zoneName = '',
     this.tableName = '',
     this.restaurantName = '',
+    required this.orderDateTime,
   });
 }
 
@@ -218,7 +220,7 @@ class UpdateKotStatusInOrder extends OrderEvent {
   final String kotNumber;
   final String status;
 
-   UpdateKotStatusInOrder({
+  UpdateKotStatusInOrder({
     required this.kotNumber,
     required this.status,
   });

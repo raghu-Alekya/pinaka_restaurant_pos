@@ -911,6 +911,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       final response = await orderRepository.createTakeAwayOrder(
         restaurantId: widget.restaurantId,
         token: widget.token,
+        orderDateTime: DateTime.now().toIso8601String(),
       );
 
       orderBloc.add(
@@ -1276,7 +1277,6 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
           content: Text("${item.name} is out of stock"),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 1),
-
         ),
       );
       return;

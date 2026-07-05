@@ -13,6 +13,7 @@ class OrderModel {
   final int guestCount; // ✅ Added guestCount
   final List<OrderItems> items;
   final List<KotModel> kotOrders;
+  final DateTime? orderDateTime;
 
   OrderModel({
     required this.orderId,
@@ -24,6 +25,7 @@ class OrderModel {
     this.guestCount = 0, // default 0
     this.items = const [],
     this.kotOrders = const [],
+    required this.orderDateTime,
   });
 
   /// Convenience getter
@@ -83,6 +85,9 @@ class OrderModel {
       guestCount: parseInt(data['guest_count']), // ✅ Load guest count
       items: items,
       kotOrders: kotOrders,
+      orderDateTime: json['order_datetime'] != null
+          ? DateTime.parse(json['order_datetime'])
+          : null,
     );
   }
 
@@ -98,6 +103,7 @@ class OrderModel {
       "guest_count": guestCount, // ✅ Include guest count
       "items": items.map((e) => e.toJson()).toList(),
       "kot_orders": kotOrders.map((e) => e.toJson()).toList(),
+      "order_datetime": orderDateTime?.toIso8601String(),
     };
   }
 
@@ -112,6 +118,7 @@ class OrderModel {
     int? guestCount, // ✅ Add guestCount
     List<OrderItems>? items,
     List<KotModel>? kotOrders,
+    DateTime? orderDateTime, // <-- Add this
   }) {
     return OrderModel(
       orderId: orderId ?? this.orderId,
@@ -123,6 +130,7 @@ class OrderModel {
       guestCount: guestCount ?? this.guestCount, // ✅ preserve guestCount
       items: items ?? this.items,
       kotOrders: kotOrders ?? this.kotOrders,
+      orderDateTime: orderDateTime ?? this.orderDateTime, // <-- Add this
     );
   }
 }
