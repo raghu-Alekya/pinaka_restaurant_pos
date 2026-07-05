@@ -218,6 +218,7 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                             title: "Preparing...",
                           )
                           : ListView.builder(
+                            padding: EdgeInsets.zero,
                             itemCount: preparingOrders.length,
                             itemBuilder: (context, index) {
                               final order = preparingOrders[index];
@@ -314,6 +315,7 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                       }
 
                       return ListView.builder(
+                        padding: EdgeInsets.zero,
                         itemCount: servedOrders.length,
                         itemBuilder: (_, index) {
                           return Padding(

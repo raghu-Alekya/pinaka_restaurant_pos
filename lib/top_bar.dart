@@ -93,7 +93,6 @@ class _TopBarWidgetState extends State<TopBarWidget> {
 
           const Spacer(),
 
-          // Navigation buttons
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -226,8 +225,8 @@ class _TopBarWidgetState extends State<TopBarWidget> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        margin: const EdgeInsets.symmetric(horizontal: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xffF0EEFF) : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
@@ -241,7 +240,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
           children: [
             Icon(
               icon,
-              size: 18,
+              size: 20,
               color: isSelected ? activeColor : inactiveIconColor,
             ),
             const SizedBox(width: 8),
@@ -250,15 +249,15 @@ class _TopBarWidgetState extends State<TopBarWidget> {
               style: TextStyle(
                 color: isSelected ? activeColor : inactiveTextColor,
                 fontWeight: FontWeight.w600,
-                fontSize: 14,
+                fontSize: 16,
               ),
             ),
             if (count != null) ...[
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 6,
-                  vertical: 1.5,
+                  horizontal: 8,
+                  vertical: 2.5,
                 ),
                 decoration: BoxDecoration(
                   color: isSelected ? activeColor : const Color(0xffe2e8f0),
@@ -268,7 +267,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
                   "$count",
                   style: TextStyle(
                     color: isSelected ? Colors.white : inactiveTextColor,
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: FontWeight.bold,
                   ),
                 ),

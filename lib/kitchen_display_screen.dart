@@ -40,6 +40,8 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
 
   KotView selectedView = KotView.pending;
   int _repeatedItemsCount = 0;
+  bool isZoomedOut = true;
+  String? zoomedKotId;
 
   @override
   void initState() {
@@ -139,7 +141,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
     return Scaffold(
       backgroundColor: const Color(0xffF4F4F4),
       body: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Column(
           children: [
             TopBarWidget(
@@ -158,7 +160,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                   orderProvider.readyOrders.length,
               repeatedCount: _repeatedItemsCount,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
             Expanded(child: bodyWidget),
           ],
         ),
@@ -170,6 +172,76 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
     List<Map<String, dynamic>> filteredOrders,
     OrderProvider orderProvider,
   ) {
+    final size = MediaQuery.of(context).size;
+    final crossAxisCount = isZoomedOut ? 4 : 2;
+    final cardWidth = (size.width - (isZoomedOut ? 96 : 64)) / crossAxisCount;
+    // Calculate the perfect height for cards considering TopBar and padding
+    final cardHeight = (size.height - 190) / (isZoomedOut ? 2 : 1);
+
+    // Dynamic layout columns distribution algorithm
+    final capacity = isZoomedOut ? 2 : 1;
+    List<List<Map<String, dynamic>>> columns = [];
+    List<Map<String, dynamic>> currentColumn = [];
+    int slotsInColumn = 0;
+
+    for (final order in filteredOrders) {
+      final isThisKotZoomed = isZoomedOut && (zoomedKotId == order['id']?.toString());
+      final slotsRequired = isThisKotZoomed ? 2 : 1;
+
+      if (slotsInColumn + slotsRequired > capacity) {
+        if (currentColumn.isNotEmpty) {
+          columns.add(currentColumn);
+        }
+        currentColumn = [];
+        slotsInColumn = 0;
+      }
+      currentColumn.add(order);
+      slotsInColumn += slotsRequired;
+    }
+    if (currentColumn.isNotEmpty) {
+      columns.add(currentColumn);
+    }
+
+    // Build the columns widgets list
+    List<Widget> columnWidgets = [];
+    for (int i = 0; i < columns.length; i++) {
+      final colOrders = columns[i];
+      Widget colWidget;
+      if (colOrders.length == 1 && isZoomedOut && zoomedKotId == colOrders[0]['id']?.toString()) {
+        colWidget = SizedBox(
+          width: cardWidth,
+          height: double.infinity,
+          child: _buildOrderCard(colOrders[0], orderProvider),
+        );
+      } else {
+        colWidget = SizedBox(
+          width: cardWidth,
+          height: double.infinity,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (colOrders.isNotEmpty)
+                SizedBox(
+                  height: cardHeight,
+                  child: _buildOrderCard(colOrders[0], orderProvider),
+                ),
+              if (colOrders.length > 1) ...[
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: cardHeight,
+                  child: _buildOrderCard(colOrders[1], orderProvider),
+                ),
+              ],
+            ],
+          ),
+        );
+      }
+      columnWidgets.add(colWidget);
+      if (i < columns.length - 1) {
+        columnWidgets.add(const SizedBox(width: 16));
+      }
+    }
+
     return Column(
       children: [
         Padding(
@@ -186,13 +258,23 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                 ),
               ),
               const Spacer(),
+              IconButton(
+                onPressed: () {
+                  setState(() {
+                    isZoomedOut = !isZoomedOut;
+                    zoomedKotId = null; // Reset single zoom on global toggle
+                  });
+                },
+                icon: Icon(isZoomedOut ? Icons.zoom_in : Icons.zoom_out),
+              ),
+              const SizedBox(width: 8),
               _filterButtonGroup(),
             ],
           ),
         ),
         Expanded(
           child: Container(
-            padding: const EdgeInsets.all(15),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
@@ -200,7 +282,6 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
             ),
             child: Column(
               children: [
-                const SizedBox(height: 10),
                 Expanded(
                   child:
                       filteredOrders.isEmpty
@@ -227,20 +308,13 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                               ],
                             ),
                           )
-                          : GridView.builder(
-                            itemCount: filteredOrders.length,
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 4,
-                                  crossAxisSpacing: 16,
-                                  mainAxisSpacing: 16,
-                                  childAspectRatio: 1.0,
-                                ),
-                            itemBuilder: (context, index) {
-                              final order = filteredOrders[index];
-                              return _buildOrderCard(order, orderProvider);
-                            },
-                          ),
+                          : SingleChildScrollView(
+                             scrollDirection: Axis.horizontal,
+                             child: Row(
+                               crossAxisAlignment: CrossAxisAlignment.start,
+                               children: columnWidgets,
+                             ),
+                           ),
                 ),
               ],
             ),
@@ -391,7 +465,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
     return Stack(
       children: [
         Container(
-          height: 800,
+          height: double.infinity,
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(10),
@@ -493,21 +567,25 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    const Icon(
-                      Icons.access_time_outlined,
-                      color: Colors.white,
-                      size: 15,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      order['elapsedTime']?.toString() ?? '0:00',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
+                    if (isZoomedOut) ...[
+                      const SizedBox(width: 12),
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            if (zoomedKotId == kotId) {
+                              zoomedKotId = null;
+                            } else {
+                              zoomedKotId = kotId;
+                            }
+                          });
+                        },
+                        child: Icon(
+                          zoomedKotId == kotId ? Icons.zoom_out : Icons.zoom_in,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
@@ -584,63 +662,60 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                         ),
                       ),
 
+                      if (selectedCancelItemKotId == kotId &&
+                          selected.any((val) => val))
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xffFA3633),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                              ),
+                              onPressed: () async {
+                                final selectedItems =
+                                    <Map<String, dynamic>>[];
+                                for (int i = 0; i < items.length; i++) {
+                                  if (selected[i]) {
+                                    selectedItems.add(
+                                      items[i] as Map<String, dynamic>,
+                                    );
+                                  }
+                                }
+
+                                if (selectedItems.isNotEmpty) {
+                                  final success = await orderProvider
+                                      .cancelItems(kotId, selectedItems);
+                                  if (success) {
+                                    setState(() {
+                                      selectedCancelItemKotId = null;
+                                    });
+                                  }
+                                }
+                              },
+                              child: const Text(
+                                "Confirm Item Cancel",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
                       const SizedBox(height: 8),
 
                       Expanded(
                         child: Scrollbar(
                           child: ListView.builder(
-                            itemCount:
-                                items.length +
-                                (selectedCancelItemKotId == kotId &&
-                                        selected.any((val) => val)
-                                    ? 1
-                                    : 0),
+                            itemCount: items.length,
                             itemBuilder: (context, index) {
-                              if (selectedCancelItemKotId == kotId &&
-                                  selected.any((val) => val) &&
-                                  index == items.length) {
-                                // Red bottom row button to cancel selected items
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 8),
-                                  child: ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xffFA3633),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                    ),
-                                    onPressed: () async {
-                                      final selectedItems =
-                                          <Map<String, dynamic>>[];
-                                      for (int i = 0; i < items.length; i++) {
-                                        if (selected[i]) {
-                                          selectedItems.add(
-                                            items[i] as Map<String, dynamic>,
-                                          );
-                                        }
-                                      }
-
-                                      if (selectedItems.isNotEmpty) {
-                                        final success = await orderProvider
-                                            .cancelItems(kotId, selectedItems);
-                                        if (success) {
-                                          setState(() {
-                                            selectedCancelItemKotId = null;
-                                          });
-                                        }
-                                      }
-                                    },
-                                    child: const Text(
-                                      "Confirm Item Cancel",
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }
-
                               final item = items[index];
                               final name = item['name']?.toString() ?? '';
                               final qty = item['qty'] ?? 1;
@@ -740,7 +815,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                 ),
                                 label: Text(
                                   selectedCancelItemKotId == kotId
-                                      ? "Undo Cancel" //"Revoke"
+                                      ? "Undo" //"Revoke"
                                       : "Cancel",
                                   style: const TextStyle(
                                     fontSize: 14,
