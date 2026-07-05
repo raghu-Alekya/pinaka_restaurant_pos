@@ -219,9 +219,24 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
     final subTotal = grossTotal - couponDiscount;
     final totalTaxTemp =
         foodCgstTemp + foodSgstTemp + beverageCgstTemp + beverageSgstTemp;
-
-    final netPayableTemp =
+    double netPayableTemp =
         subTotal + totalTaxTemp - merchantDiscount + tipAmount + serviceCharge;
+
+// If NC is applied, or if calculation goes below zero, show 0
+    final paymentState = context.read<PaymentBloc>().state;
+
+    bool isNc = false;
+
+    if (paymentState is PaymentSummaryLoaded) {
+      isNc = paymentState.isNoCharge;
+    }
+
+    if (isNc) {
+      netPayableTemp = 0;
+    } else {
+      netPayableTemp = netPayableTemp.clamp(0.0, double.infinity);
+    }
+
     debugPrint("""
 Gross Total      : $grossTotal
 Coupon Discount  : $couponDiscount
@@ -799,7 +814,22 @@ Net Payable      : $netPayableTemp
 
       child: Scaffold(
         backgroundColor: const Color(0xFFF5F5F6),
-        body: Stack(
+          body: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+
+        child: Stack(
           children: [
             Padding(
               padding: const EdgeInsets.only(left: 12, top: 16, right: 12),
@@ -877,7 +907,7 @@ Net Payable      : $netPayableTemp
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFF111827),
+                                  color: Color(0xFF000000),
                                 ),
                               ),
                               Text(
@@ -1036,8 +1066,8 @@ Net Payable      : $netPayableTemp
                               Text(
                                 "$formattedDate | $formattedTime",
                                 style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF656161),
+                                  fontSize: 14,
+                                  color: Color(0xFF4C5F7D),
                                 ),
                               ),
                             ],
@@ -1059,7 +1089,7 @@ Net Payable      : $netPayableTemp
                       padding: const EdgeInsets.all(10),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFFFFFF),
+                          color: const Color(0xFFF1F1F3),
                           borderRadius: BorderRadius.circular(5),
                         ),
                         child: Column(
@@ -1257,7 +1287,7 @@ Net Payable      : $netPayableTemp
               alignment: Alignment.bottomCenter,
               child: Container(
                 width: MediaQuery.of(context).size.width * 0.315,
-                margin: const EdgeInsets.only(bottom: 8),
+                margin: const EdgeInsets.only(bottom: 8,left:3,right:3),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFFFFF),
                   borderRadius: BorderRadius.circular(10),
@@ -1478,7 +1508,7 @@ Net Payable      : $netPayableTemp
 
                                       _row(
                                         "Net Payable",
-                                        calculatedNetPayable.abs(),
+                                        calculatedNetPayable,
                                         isBold: true,
                                         fontSize: 18,
                                       ),
@@ -1523,14 +1553,21 @@ Net Payable      : $netPayableTemp
                     /// 🔽 FIXED BOTTOM (Never moves)
                     GestureDetector(
                       onTap: _toggleExpand,
+
                       child: Container(
+
+                        margin: const EdgeInsets.symmetric(horizontal: 1),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
                           vertical: 12,
                         ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFDEE8FF), // SAME COLOR AS IMAGE
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.only(
+                            bottomLeft: Radius.circular(8),
+                            bottomRight: Radius.circular(8),
+                          ),
+
                         ),
                         child: Row(
                           children: [
@@ -1547,8 +1584,9 @@ Net Payable      : $netPayableTemp
 
                             /// NET PAYABLE
                             /// NET PAYABLE (ROUNDED)
-                            Text(
-                              "Net Payable : ₹${calculatedNetPayable.abs().roundToDouble().toStringAsFixed(2)}",
+                        Text(
+                          "Net Payable : ₹${calculatedNetPayable.toStringAsFixed(2)}",
+
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
@@ -1575,7 +1613,7 @@ Net Payable      : $netPayableTemp
           ],
         ),
       ),
-    );
+    )));
   }
 }
 

@@ -341,7 +341,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                               if (variants.isEmpty) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(content: Text('No variants available'),
-                                    duration: Duration(seconds: 1),),
+                                    duration: Duration(seconds: 1),
+                                    backgroundColor: Colors.red,),
                                 );
                                 return;
                               }
@@ -374,7 +375,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                               Navigator.pop(context);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text('Failed to load variants'),
-                                  duration: Duration(seconds: 1),),
+                                  duration: Duration(seconds: 1),
+                                  backgroundColor: Colors.red,),
                               );
                             }
 
@@ -394,7 +396,18 @@ class _DashboardScreenState extends State<DashboardScreen>
                             isCombo: false,
                             hasOptions: false,
                             isVariantProduct: false,
+                            inStock: product.inStock, //
                           );
+                          if (!simpleProduct.inStock) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Product is out of stock"),
+                                backgroundColor: Colors.red,
+                                duration: Duration(seconds: 1),
+                              ),
+                            );
+                            return;
+                          }
 
                           onItemSelected(
                             simpleProduct,

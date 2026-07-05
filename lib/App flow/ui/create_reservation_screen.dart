@@ -1566,6 +1566,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                                         'Table ${updatedTable['table_name']} unmerged',
                                       ),
                                       duration: Duration(seconds: 1),
+                                      backgroundColor: Colors.green,
                                     ),
                                   );
                                 },
@@ -1615,6 +1616,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                                         'Table ${updatedTable['table_name']} merged',
                                       ),
                                       duration: Duration(seconds: 1),
+                                      backgroundColor: Colors.red,
                                     ),
                                   );
                                 },

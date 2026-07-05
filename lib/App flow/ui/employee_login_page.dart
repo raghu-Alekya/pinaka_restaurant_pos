@@ -264,7 +264,9 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
                                         } else {
                                           ScaffoldMessenger.of(context).showSnackBar(
                                             const SnackBar(content: Text('PIN must be exactly 6 digits'),
-                                              duration: Duration(seconds: 1),),
+                                              duration: Duration(seconds: 1),
+                                              backgroundColor: Colors.red,
+                                            ),
                                           );
                                         }
                                       },

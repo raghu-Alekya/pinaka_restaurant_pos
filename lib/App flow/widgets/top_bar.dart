@@ -163,7 +163,10 @@ class _TopBarState extends State<TopBar> {
     if (summaryToPrint == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("No payment summary available. Please try again.")),
+          const SnackBar(content: Text("No payment summary available. Please try again."),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 1),
+          ),
         );
       }
       return;
@@ -224,7 +227,10 @@ class _TopBarState extends State<TopBar> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Receipt sent to printer")),
+          const SnackBar(content: Text("Receipt sent to printer"),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 1),
+          ),
         );
       }
 
@@ -235,6 +241,7 @@ class _TopBarState extends State<TopBar> {
           SnackBar(
             content: Text("Failed to print: ${e.toString().replaceFirst('Exception: ', '')}"),
             backgroundColor: Colors.red,
+            duration: Duration(seconds: 1),
           ),
         );
       }
@@ -250,224 +257,224 @@ class _TopBarState extends State<TopBar> {
     }
 
     return Container(
-      decoration: BoxDecoration(
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withAlpha((0.3 * 255).toInt()),
-            spreadRadius: 0,
-            blurRadius: 2,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: AppBar(
-        backgroundColor: Colors.white,
-        toolbarHeight: 60,
-        automaticallyImplyLeading: false,
-        elevation: 0,
-        titleSpacing: 0,
-        title: SizedBox(
-          height: 60,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 15),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-              // LEFT SIDE
-              if (widget.isPaymentScreen)
-                GestureDetector(
-                  onTap: widget.onBackPressed ?? () => Navigator.pop(context),
-                  child: Container(
-                    width: 84,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1A2B4A),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 14),
-                        SizedBox(width: 6),
-                        Text("Back", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
-                      ],
-                    ),
-                  ),
-                )
-              else
-                Image.asset('assets/pinaka.png', height: 50, width: 100, fit: BoxFit.contain),
-
-              const SizedBox(width: 15),
-
-              // CENTER - PAYMENT CONTROLS
-              if (widget.isPaymentScreen)
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const Text("Customer :", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF111827))),
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      width: 170,
-                      height: 38,
-                      child: TextField(
-                        controller: _customerPhoneController,
-                        keyboardType: TextInputType.phone,
-                        style: const TextStyle(fontSize: 13),
-                        onChanged: widget.onCustomerPhoneChanged,
-                        decoration: InputDecoration(
-                          hintText: "Mobile number",
-                          hintStyle: const TextStyle(fontSize: 12, color: Color(0xFFAAAAAA)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFD1D5DB))),
-                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF4F7CFF), width: 1.5)),
-                          filled: true,
-                          fillColor: Colors.white,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withAlpha((0.3 * 255).toInt()),
+              spreadRadius: 0,
+              blurRadius: 2,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: AppBar(
+          backgroundColor: Colors.white,
+          toolbarHeight: 60,
+          automaticallyImplyLeading: false,
+          elevation: 0,
+          titleSpacing: 0,
+          title: SizedBox(
+            height: 60,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 15),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // LEFT SIDE
+                  if (widget.isPaymentScreen)
                     GestureDetector(
-                      onTap: widget.onAddCustomer,
+                      onTap: widget.onBackPressed ?? () => Navigator.pop(context),
                       child: Container(
-                        height: 38,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        decoration: BoxDecoration(color: const Color(0xFF1A2B4A), borderRadius: BorderRadius.circular(8)),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.add, color: Colors.white, size: 16),
-                            SizedBox(width: 4),
-                            Text("Add", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-
-                    // Order Type Dropdown
-                    Container(
-                      height: 38,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFD1D5DB)),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          // value: _filteredOrderTypes.contains(selectedOrderType) ? selectedOrderType : null,
-                          // items: _filteredOrderTypes.isNotEmpty
-                          //     ? _filteredOrderTypes.map((type) => DropdownMenuItem(value: type, child: Text(type))).toList()
-                          //     : null,
-                          // onChanged: (value) {
-                          //   if (value == null) return;
-                          //   setState(() => selectedOrderType = value);
-                          //   widget.onOrderTypeChanged?.call(value);
-                          // },
-                          // value: _filteredOrderTypes.contains(selectedOrderType) ? selectedOrderType : null,
-                          // items: _filteredOrderTypes.isNotEmpty
-                          //     ? _filteredOrderTypes.map((type) => DropdownMenuItem(value: type, child: Text(type))).toList()
-                          //     : null,
-                          // onChanged: (value) {
-                          //   if (value == null) return;
-                          //   setState(() => selectedOrderType = value);
-                          //   widget.onOrderTypeChanged?.call(value);
-                          // },
-
-                          value: _filteredOrderTypes.contains(selectedOrderType) ? selectedOrderType : null,
-                          items: _filteredOrderTypes.isNotEmpty
-                              ? _filteredOrderTypes.map((type) => DropdownMenuItem(value: type, child: Text(type))).toList()
-                              : null,
-                          onChanged: (value) {
-                            if (value == null) return;
-                            setState(() => selectedOrderType = value);
-                            widget.onOrderTypeChanged?.call(value);
-                          },
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(width: 14),
-
-                    // Print Button
-                    GestureDetector(
-                      onTap: _isPrinting ? null : _printBill,
-                      child: Container(
-                        height: 38,
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        width: 84,
+                        height: 36,
                         decoration: BoxDecoration(
-                          color: _isPrinting ? const Color(0xFF9AD9AE) : const Color(0xFF22C55E),
+                          color: const Color(0xFF1A2B4A),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: _isPrinting
-                            ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
-                            : const Row(
-                          mainAxisSize: MainAxisSize.min,
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.print_outlined, color: Colors.white, size: 16),
+                            Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 14),
                             SizedBox(width: 6),
-                            Text("Print", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                            Text("Back", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
                           ],
                         ),
                       ),
+                    )
+                  else
+                    Image.asset('assets/pinaka.png', height: 50, width: 100, fit: BoxFit.contain),
+
+                  const SizedBox(width: 15),
+
+                  // CENTER - PAYMENT CONTROLS
+                  if (widget.isPaymentScreen)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        const Text("Customer :", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF111827))),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          width: 170,
+                          height: 38,
+                          child: TextField(
+                            controller: _customerPhoneController,
+                            keyboardType: TextInputType.phone,
+                            style: const TextStyle(fontSize: 13),
+                            onChanged: widget.onCustomerPhoneChanged,
+                            decoration: InputDecoration(
+                              hintText: "Mobile number",
+                              hintStyle: const TextStyle(fontSize: 12, color: Color(0xFFAAAAAA)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFD1D5DB))),
+                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF4F7CFF), width: 1.5)),
+                              filled: true,
+                              fillColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: widget.onAddCustomer,
+                          child: Container(
+                            height: 38,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            decoration: BoxDecoration(color: const Color(0xFF1A2B4A), borderRadius: BorderRadius.circular(8)),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.add, color: Colors.white, size: 16),
+                                SizedBox(width: 4),
+                                Text("Add", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+
+                        // Order Type Dropdown
+                        Container(
+                          height: 38,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFD1D5DB)),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              // value: _filteredOrderTypes.contains(selectedOrderType) ? selectedOrderType : null,
+                              // items: _filteredOrderTypes.isNotEmpty
+                              //     ? _filteredOrderTypes.map((type) => DropdownMenuItem(value: type, child: Text(type))).toList()
+                              //     : null,
+                              // onChanged: (value) {
+                              //   if (value == null) return;
+                              //   setState(() => selectedOrderType = value);
+                              //   widget.onOrderTypeChanged?.call(value);
+                              // },
+                              // value: _filteredOrderTypes.contains(selectedOrderType) ? selectedOrderType : null,
+                              // items: _filteredOrderTypes.isNotEmpty
+                              //     ? _filteredOrderTypes.map((type) => DropdownMenuItem(value: type, child: Text(type))).toList()
+                              //     : null,
+                              // onChanged: (value) {
+                              //   if (value == null) return;
+                              //   setState(() => selectedOrderType = value);
+                              //   widget.onOrderTypeChanged?.call(value);
+                              // },
+
+                              value: _filteredOrderTypes.contains(selectedOrderType) ? selectedOrderType : null,
+                              items: _filteredOrderTypes.isNotEmpty
+                                  ? _filteredOrderTypes.map((type) => DropdownMenuItem(value: type, child: Text(type))).toList()
+                                  : null,
+                              onChanged: (value) {
+                                if (value == null) return;
+                                setState(() => selectedOrderType = value);
+                                widget.onOrderTypeChanged?.call(value);
+                              },
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(width: 14),
+
+                        // Print Button
+                        GestureDetector(
+                          onTap: _isPrinting ? null : _printBill,
+                          child: Container(
+                            height: 38,
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            decoration: BoxDecoration(
+                              color: _isPrinting ? const Color(0xFF9AD9AE) : const Color(0xFF22C55E),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: _isPrinting
+                                ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                                : const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.print_outlined, color: Colors.white, size: 16),
+                                SizedBox(width: 6),
+                                Text("Print", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
 
-              const Spacer(),
+                  const Spacer(),
 
-              // ==================== RIGHT SIDE ====================
-              // Show Profile always, but hide other buttons on Payment Screen
-              if (widget.isPaymentScreen) ...[
-                _buildProfileSection(),
-              ] else ...[
-                if (widget.isHomeScreen) ...[
-                  if (widget.userPermissions?.canUpdateShiftAttendance ?? false) ...[
-                    _buildAttendanceIconButton(context),
-                    const SizedBox(width: 10),
-                  ],
-                  _buildNotificationIconButton(),
-                  const SizedBox(width: 10),
-                  _buildSettingsButton(),
-                  const SizedBox(width: 10),
-                  _buildLogoutButton(),
-                  const SizedBox(width: 10),
-                  _buildProfileSection(),
-                ] else if (widget.isOrderPanel) ...[
-                  _buildHomeButton(),
-                  const SizedBox(width: 10),
-                  if (!widget.isTakeAway) ...[
-                    _buildTablesButton(),
-                    const SizedBox(width: 10),
-                  ],
+                  // ==================== RIGHT SIDE ====================
+                  // Show Profile always, but hide other buttons on Payment Screen
+                  if (widget.isPaymentScreen) ...[
+                    _buildProfileSection(),
+                  ] else ...[
+                    if (widget.isHomeScreen) ...[
+                      if (widget.userPermissions?.canUpdateShiftAttendance ?? false) ...[
+                        _buildAttendanceIconButton(context),
+                        const SizedBox(width: 10),
+                      ],
+                      _buildNotificationIconButton(),
+                      const SizedBox(width: 10),
+                      _buildSettingsButton(),
+                      const SizedBox(width: 10),
+                      _buildLogoutButton(),
+                      const SizedBox(width: 10),
+                      _buildProfileSection(),
+                    ] else if (widget.isOrderPanel) ...[
+                      _buildHomeButton(),
+                      const SizedBox(width: 10),
+                      if (!widget.isTakeAway) ...[
+                        _buildTablesButton(),
+                        const SizedBox(width: 10),
+                      ],
 
-                  _buildNotificationIconButton(),
-                  const SizedBox(width: 10),
-                  _buildSettingsButton(),
-                  const SizedBox(width: 10),
-                  _buildProfileSection(),
-                ] else ...[
-                  _buildHomeButton(),
-                  const SizedBox(width: 10),
-                  _buildNotificationIconButton(),
-                  const SizedBox(width: 10),
-                  _buildSettingsButton(),
-                  const SizedBox(width: 10),
-                  _buildLogoutButton(),
-                  const SizedBox(width: 10),
-                  _buildProfileSection(),
-                ]
-              ],
-            ],
+                      _buildNotificationIconButton(),
+                      const SizedBox(width: 10),
+                      _buildSettingsButton(),
+                      const SizedBox(width: 10),
+                      _buildProfileSection(),
+                    ] else ...[
+                      _buildHomeButton(),
+                      const SizedBox(width: 10),
+                      _buildNotificationIconButton(),
+                      const SizedBox(width: 10),
+                      _buildSettingsButton(),
+                      const SizedBox(width: 10),
+                      _buildLogoutButton(),
+                      const SizedBox(width: 10),
+                      _buildProfileSection(),
+                    ]
+                  ],
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
-      )
+        )
     );
   }
 
@@ -715,6 +722,7 @@ class _TopBarState extends State<TopBar> {
                 e.toString().replaceFirst("Exception: ", ""),
               ),
               backgroundColor: Colors.red,
+              duration: Duration(seconds: 1),
             ),
           );
         }
@@ -880,7 +888,10 @@ class _TopBarState extends State<TopBar> {
           if (context.mounted) {
             Navigator.pop(context);
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Failed to load employees')),
+              const SnackBar(content: Text('Failed to load employees'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 1),
+              ),
             );
           }
         } finally {

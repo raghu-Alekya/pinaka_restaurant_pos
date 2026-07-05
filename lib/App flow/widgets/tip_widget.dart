@@ -60,6 +60,7 @@ class _TipPopupState extends State<TipPopup> {
     if (_tipController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter tip amount'),
+            backgroundColor: Colors.red,
             duration: Duration(seconds: 1)),
       );
       return;
@@ -70,6 +71,7 @@ class _TipPopupState extends State<TipPopup> {
     if (amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Invalid tip amount'),
+            backgroundColor: Colors.red,
             duration: Duration(seconds: 1)),
       );
       return;
@@ -108,6 +110,7 @@ class _TipPopupState extends State<TipPopup> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e'),
+            backgroundColor: Colors.red,
             duration: Duration(seconds: 1)),
       );
     } finally {

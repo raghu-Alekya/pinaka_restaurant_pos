@@ -160,6 +160,7 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                                   'Cannot create order: Table/Zone ID missing',
                                 ),
                                 duration: Duration(seconds: 1),
+                                backgroundColor: Colors.red,
                               ),
                             );
                             return;
@@ -236,6 +237,7 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                             SnackBar(
                               content: Text('Failed to create order: $e'),
                               duration: Duration(seconds: 1),
+                              backgroundColor: Colors.red,
                             ),
                           );
                         } finally {

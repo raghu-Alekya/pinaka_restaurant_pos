@@ -96,6 +96,51 @@ class PaymentSummary {
       ) ?? 0.0,
     );
   }
+  PaymentSummary copyWith({
+    int? restaurantId,
+    int? orderId,
+    double? grossTotal,
+    double? tax,
+    double? fees,
+    double? coupons,
+    double? discount,
+    double? tipAmount,
+    double? netTotal,
+    List<LineItem>? lineItems,
+    int? tableId,
+    String? tableName,
+    int? zoneId,
+    bool? modifiersTaxable,
+    bool? isNoCharge,
+    List<CouponDetail>? couponDetails,
+    double? serviceChargePercentage,
+    double? serviceChargeValue,
+    double? roundOff,
+  }) {
+    return PaymentSummary(
+      restaurantId: restaurantId ?? this.restaurantId,
+      orderId: orderId ?? this.orderId,
+      grossTotal: grossTotal ?? this.grossTotal,
+      tax: tax ?? this.tax,
+      fees: fees ?? this.fees,
+      coupons: coupons ?? this.coupons,
+      discount: discount ?? this.discount,
+      tipAmount: tipAmount ?? this.tipAmount,
+      netTotal: netTotal ?? this.netTotal,
+      lineItems: lineItems ?? this.lineItems,
+      tableId: tableId ?? this.tableId,
+      tableName: tableName ?? this.tableName,
+      zoneId: zoneId ?? this.zoneId,
+      modifiersTaxable: modifiersTaxable ?? this.modifiersTaxable,
+      isNoCharge: isNoCharge ?? this.isNoCharge,
+      couponDetails: couponDetails ?? this.couponDetails,
+      serviceChargePercentage:
+      serviceChargePercentage ?? this.serviceChargePercentage,
+      serviceChargeValue:
+      serviceChargeValue ?? this.serviceChargeValue,
+      roundOff: roundOff ?? this.roundOff,
+    );
+  }
 }
 
 

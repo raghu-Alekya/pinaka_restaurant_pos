@@ -185,7 +185,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                 "Vendor payment deleted successfully",
           ),
           duration: Duration(seconds: 1),
-          backgroundColor: Colors.green,
+          backgroundColor: Colors.red,
         ),
       );
 
@@ -790,6 +790,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                                         content: Text(e.toString()
                                                         ),
                                                         duration: Duration(seconds: 1),
+                                                        backgroundColor: Colors.red,
                                                       ),
 
                                                     );

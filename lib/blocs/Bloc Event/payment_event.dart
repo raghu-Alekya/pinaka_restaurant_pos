@@ -36,5 +36,10 @@ class UpdateMerchantDiscount extends PaymentEvent {
     required this.isNoCharge,
   });
 }
+class UpdateTip extends PaymentEvent {
+  final double tipAmount;
+
+  UpdateTip(this.tipAmount);
+}
 
 

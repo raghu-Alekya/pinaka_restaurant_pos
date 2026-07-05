@@ -190,7 +190,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     userPermissions: _userPermissions,
                     selectedUser: _selectedUser,
                     merchantDiscount: merchantDiscount,
-                    tipAmount: _tipAmount,
+                    tipAmount: _tipAmount > 0
+                        ? _tipAmount
+                        : (paymentSummary?.tipAmount ?? 0),
                     paymentSummary: paymentSummary,
                     hasCouponApplied: hasCouponApplied,
                     hasDiscountApplied: hasDiscountApplied,
@@ -230,7 +232,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   },
                   onTipChanged: (double value) {
                     debugPrint("💳 Tip changed: $value (isTakeAway: ${widget.isTakeAway})");
-                    setState(() => _tipAmount = value);
+
+                    setState(() {
+                      _tipAmount = value;
+                    });
+
+                    context.read<PaymentBloc>().add(
+                      UpdateTip(value),
+                    );
                   },
                   onCouponAmountChanged: (double amount) {
                     debugPrint("💳 Coupon amount changed: $amount (isTakeAway: ${widget.isTakeAway})");

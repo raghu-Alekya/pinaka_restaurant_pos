@@ -49,6 +49,8 @@ class Search_ProductRepository {
       throw Exception("Search failed: ${response.statusCode}");
     }
 
+    debugPrint("Search API Response: ${response.body}");
+
     final decoded = json.decode(response.body);
 
     // ✅ IMPORTANT FIX

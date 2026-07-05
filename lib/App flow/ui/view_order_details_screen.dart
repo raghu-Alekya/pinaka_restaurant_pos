@@ -524,7 +524,8 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                           {
                                             ScaffoldMessenger.of(context).showSnackBar(
                                               const SnackBar(content: Text('Only managers can edit orders'),
-                                                duration: Duration(seconds: 1),),
+                                                duration: Duration(seconds: 1),
+                                                backgroundColor: Colors.green,),
                                             );
                                             return;
                                           }
@@ -552,7 +553,8 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                           if (isCheckedIn != true) {
                                             ScaffoldMessenger.of(context).showSnackBar(
                                               const SnackBar(content: Text('PIN verification failed'),
-                                                duration: Duration(seconds: 1)),
+                                                duration: Duration(seconds: 1),
+                                                backgroundColor: Colors.red,),
                                             );
                                             return;
                                           }
@@ -561,7 +563,8 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                           if ((_permissions?.role ?? '').toLowerCase() != 'manager') {
                                             ScaffoldMessenger.of(context).showSnackBar(
                                               const SnackBar(content: Text('Invalid manager PIN'),
-                                                duration: Duration(seconds: 1),),
+                                                duration: Duration(seconds: 1),
+                                                backgroundColor: Colors.red,),
                                             );
                                             return;
                                           }
@@ -579,6 +582,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                   'Only the same manager who completed this order can edit it.',
                                                 ),
                                                 duration: Duration(seconds: 1),
+                                                backgroundColor: Colors.red,
                                               ),
                                             );
                                             return;
@@ -592,6 +596,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                   'PIN must belong to the logged-in manager.',
                                                 ),
                                                 duration: Duration(seconds: 1),
+                                                backgroundColor: Colors.red,
                                               ),
                                             );
                                             return;

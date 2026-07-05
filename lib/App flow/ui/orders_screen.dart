@@ -1556,6 +1556,7 @@ class _OrderPanelState extends State<OrderPanel> {
                                   const SnackBar(
                                     duration: Duration(seconds: 1),
                                     content: Text("No active order to cancel"),
+                                    backgroundColor: Colors.red,
                                   ),
                                 );
                                 return;
@@ -1619,6 +1620,7 @@ class _OrderPanelState extends State<OrderPanel> {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                       content: Text("Takeaway order cancelled successfully"),
+                                      backgroundColor: Colors.red,
                                     ),
                                   );
 
@@ -1653,6 +1655,7 @@ class _OrderPanelState extends State<OrderPanel> {
                                       content: Text(
                                         "Order ${responseJson['order_id']} cancelled successfully",
                                       ),
+                                      backgroundColor: Colors.red,
                                     ),
                                   );
 
@@ -1681,6 +1684,7 @@ class _OrderPanelState extends State<OrderPanel> {
                                     const SnackBar(
                                       duration: Duration(seconds: 1),
                                       content: Text("Failed to cancel order"),
+                                      backgroundColor: Colors.red,
                                     ),
                                   );
                                 }
@@ -2059,6 +2063,7 @@ class _OrderPanelState extends State<OrderPanel> {
                                     SnackBar(
                                       content: Text(state.error!),
                                       duration: Duration(seconds: 1),
+                                      backgroundColor: Colors.red,
                                     ),
                                   );
                               }
@@ -2090,6 +2095,7 @@ class _OrderPanelState extends State<OrderPanel> {
                                       content: Text(
                                         "Order not found",
                                       ),
+                                      backgroundColor: Colors.red,
                                     ),
                                   );
                                   setState(() {
@@ -2153,6 +2159,7 @@ class _OrderPanelState extends State<OrderPanel> {
                                 content: Text(
                                   'No items to create KOT!',
                                 ),
+                                backgroundColor: Colors.red,
                               ),
                             );
                             return;
@@ -2202,6 +2209,7 @@ class _OrderPanelState extends State<OrderPanel> {
                             final captainName =
                                 permissions?.displayName ?? '';
                             if (kot != null) {
+                              debugPrint("CreateKOT Status = ${kot.status}");
                               await printKot(
                                 kotNo: kot.kotNumber ?? '',
                                 orderId:
@@ -2233,13 +2241,21 @@ class _OrderPanelState extends State<OrderPanel> {
                                 zoneId: orderBloc.state.zoneId,
                                 zoneName:
                                 orderBloc.state.zoneName,
-                                orderType: 'Dine-In',
+                                orderType: widget.isTakeAway ? "Take Away" : "Dine-In",
                                 kot: kot,
                                 tableName:
                                 orderBloc.state.tableName,
                               );
-                              orderBloc.add(AddKOT(kot));
-                              kotBloc.add(AddKotToList(kot));
+                              // // ✅ Convert "created" to "Yet To Prepare" for immediate UI display
+                              final updatedKot = kot.copyWith(
+                                status: kot.status.toLowerCase() == "created"
+                                    ? "Yet To Prepare"
+                                    : kot.status,
+                              );
+
+                              orderBloc.add(AddKOT(updatedKot));
+                              kotBloc.add(AddKotToList(updatedKot)); // ✅ Use updatedKot here
+
                               orderBloc.add(ClearOrder());
 
                               ScaffoldMessenger.of(
@@ -2548,6 +2564,13 @@ class _OrderPanelState extends State<OrderPanel> {
               zoneId: state.zoneId,
               captainId: captainId,
             );
+            final updatedKot = kot?.copyWith(
+              status: kot.status.toLowerCase() == "created"
+                  ? "Yet To Prepare"
+                  : kot.status,
+            );
+            debugPrint("KOT Status from API = ${kot?.status}");
+            debugPrint("KOT JSON = ${kot?.toJson()}");
 
             if (kot == null) {
               throw Exception("Failed to generate KOT");

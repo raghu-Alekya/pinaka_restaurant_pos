@@ -93,6 +93,28 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
         );
       }
     });
+    on<UpdateTip>((event, emit) {
+      if (state is PaymentSummaryLoaded) {
+        final current = state as PaymentSummaryLoaded;
+
+        final updatedSummary = current.summary.copyWith(
+          tipAmount: event.tipAmount,
+        );
+
+        emit(
+          PaymentSummaryLoaded(
+            summary: updatedSummary,
+            merchantDiscount: current.merchantDiscount,
+            isNoCharge: current.isNoCharge,
+            selectedMethod: current.selectedMethod,
+          ),
+        );
+      }
+    });
 
   }
+
 }
+
+
+

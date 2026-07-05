@@ -932,6 +932,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
         const SnackBar(
           content: Text("Failed to create takeaway order"),
           duration: Duration(seconds: 1),
+          backgroundColor: Colors.red,
         ),
       );
     } finally {
@@ -1027,6 +1028,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
         SnackBar(
           content: Text(e.toString()),
           duration: const Duration(seconds: 1),
+          backgroundColor: Colors.red,
         ),
       );
     }
@@ -1274,6 +1276,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
           content: Text("${item.name} is out of stock"),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 1),
+
         ),
       );
       return;

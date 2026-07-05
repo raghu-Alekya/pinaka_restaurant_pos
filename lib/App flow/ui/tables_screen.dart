@@ -1713,6 +1713,7 @@ class _TablesScreenState extends State<TablesScreen> {
                   const SnackBar(
                     content: Text("Failed to create order, please try again."),
                     duration: Duration(seconds: 1),
+                    backgroundColor: Colors.red,
                   ),
                 );
               }

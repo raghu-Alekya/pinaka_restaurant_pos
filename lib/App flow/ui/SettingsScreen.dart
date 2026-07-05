@@ -987,7 +987,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Image selection failed'),
-        duration: Duration(seconds: 1),));
+        duration: Duration(seconds: 1),
+        backgroundColor: Colors.red,));
     }
   }
 
@@ -1014,7 +1015,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Settings saved successfully'),
-        duration: Duration(seconds: 1),),
+        duration: Duration(seconds: 1),
+        backgroundColor: Colors.green,),
     );
   }
 

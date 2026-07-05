@@ -69,6 +69,8 @@ class _paymentsummaryState extends State<paymentsummary> {
   double? calculatedChange;
   String selectedPaymentMode = "Cash";
   bool isCashSelected = true;
+  bool _isPaymentLoading = false;
+  String _loadingPaymentMode = "";
 
   // Inline validation message
   String? tenderAmountError;
@@ -314,12 +316,16 @@ class _paymentsummaryState extends State<paymentsummary> {
     }
     if (userId == null) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("User not logged in")));
+          .showSnackBar(const SnackBar(content: Text("User not logged in"),
+        backgroundColor: Colors.red,
+
+      ));
       return;
     }
     if (shiftId == null) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Shift not started")));
+          .showSnackBar(const SnackBar(content: Text("Shift not started"),
+        backgroundColor: Colors.red,));
       return;
     }
 
@@ -425,8 +431,8 @@ class _paymentsummaryState extends State<paymentsummary> {
       return;
     }
 
-    // Check if amount is 0
     final double enteredAmount = double.tryParse(amount) ?? 0.0;
+
     if (enteredAmount <= 0) {
       setState(() {
         selectedPaymentMode = mode;
@@ -436,24 +442,35 @@ class _paymentsummaryState extends State<paymentsummary> {
       return;
     }
 
+    // Show loader
     setState(() {
       selectedPaymentMode = mode;
       isCashSelected = mode == "Cash";
       tenderAmountError = null;
+
+      _isPaymentLoading = true;
+      _loadingPaymentMode = mode;
     });
 
-    // ── NEW: the Balance Amount is only allowed to reduce AFTER the
-    // cashier has actually tapped a payment mode (Cash/Card/UPI), and only
-    // after a short confirmation delay — not the instant the tender amount
-    // is typed on the numpad.
-    await Future.delayed(const Duration(milliseconds: 350));
-    if (!mounted) return;
-    setState(() {
-      _balanceRevealed = true;
-      _confirmedTenderForBalance = enteredAmount;
-    });
+    try {
+      await Future.delayed(const Duration(milliseconds: 350));
 
-    await _submitPayment();
+      if (!mounted) return;
+
+      setState(() {
+        _balanceRevealed = true;
+        _confirmedTenderForBalance = enteredAmount;
+      });
+
+      await _submitPayment();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isPaymentLoading = false;
+          _loadingPaymentMode = "";
+        });
+      }
+    }
   }
 
   void _onPresetAmountTap(String value) {
@@ -598,6 +615,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                     SnackBar(
                       content: Text(message),
                       duration: const Duration(seconds: 1),
+                      backgroundColor: Colors.green,
                     ),
                   );
                   setState(() {
@@ -612,7 +630,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                     SnackBar(
                       content: Text(e.toString()),
                       duration: const Duration(seconds: 1),
-                      backgroundColor: Colors.green,
+                      backgroundColor: Colors.red,
                     ),
                   );
                 }
@@ -1080,7 +1098,9 @@ class _paymentsummaryState extends State<paymentsummary> {
     final bool isSelected = selectedPaymentMode == mode;
     return Expanded(
       child: GestureDetector(
-        onTap: () => _onPaymentModeTap(mode),
+        onTap: _isPaymentLoading
+            ? null
+            : () => _onPaymentModeTap(mode),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           height: 54,
@@ -1102,7 +1122,18 @@ class _paymentsummaryState extends State<paymentsummary> {
               )
             ],
           ),
-          child: Row(
+          child: _isPaymentLoading && _loadingPaymentMode == mode
+              ? const Center(
+            child: SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
+          )
+              : Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
@@ -1110,13 +1141,10 @@ class _paymentsummaryState extends State<paymentsummary> {
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
-                  // ── FIX: text is always white now since the button
-                  // background is always the full bright color.
                   color: Colors.white,
                 ),
               ),
               const SizedBox(width: 10),
-
               CircleAvatar(
                 radius: 16,
                 backgroundColor: Colors.white,
@@ -1126,18 +1154,15 @@ class _paymentsummaryState extends State<paymentsummary> {
                     asset,
                     width: 18,
                     height: 18,
-                    color: color, // icon color inside white circle
+                    color: color,
                   ),
                 ),
               ),
-
             ],
-          ),
-        ),
+          ),        ),
       ),
     );
   }
-
   // ═══════════════════════════════════════════════════════════════════════
   // RIGHT COLUMN
   // ═══════════════════════════════════════════════════════════════════════
@@ -1148,8 +1173,11 @@ class _paymentsummaryState extends State<paymentsummary> {
       }) {
     final double screenW = MediaQuery.of(context).size.width;
 
-    return SizedBox(
+    return Container(
       width: screenW * 0.19,
+      margin: const EdgeInsets.only(
+        bottom: 12, // Adjust as needed
+      ),
       child: Column(
         children: [
           const SizedBox(height: 12),
@@ -1723,6 +1751,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                     const SnackBar(
                       content: Text("Coupon removed successfully"),
                       duration: Duration(seconds: 1),
+                      backgroundColor: Colors.red,
                     ),
                   );
                 }
@@ -1764,6 +1793,10 @@ class _paymentsummaryState extends State<paymentsummary> {
                     tipController.text = amt.toStringAsFixed(2);
                   });
                   widget.onTipChanged(amt);
+
+                  context.read<PaymentBloc>().add(
+                    UpdateTip(amt),
+                  );
                   // _reloadSummary();
                 },
               ),
@@ -1775,6 +1808,8 @@ class _paymentsummaryState extends State<paymentsummary> {
                 tipController.text = result.toStringAsFixed(2);
               });
               widget.onTipChanged(result);
+              context.read<PaymentBloc>().add(
+                  UpdateTip(result));
               // _reloadSummary();
             }
           },
@@ -1791,17 +1826,23 @@ class _paymentsummaryState extends State<paymentsummary> {
                 tipController.clear();
               });
               widget.onTipChanged(0);
+
+              context.read<PaymentBloc>().add(
+                UpdateTip(0),
+              );
               _updateAmountField();
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                     content: Text('Tip removed successfully'),
-                    duration: Duration(seconds: 1)),
+                    duration: Duration(seconds: 1),
+                  backgroundColor: Colors.red,),
               );
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                     content: Text('Failed to remove tip'),
-                    duration: Duration(seconds: 1)),
+                    duration: Duration(seconds: 1),
+                  backgroundColor: Colors.red,),
               );
             }
           }

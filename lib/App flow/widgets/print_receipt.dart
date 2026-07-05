@@ -56,6 +56,7 @@ class _PrintReciptState extends State<PrintRecipt> {
           const SnackBar(
             content: Text("Please enter a valid email address"),
             duration: Duration(seconds: 1),
+            backgroundColor: Colors.red,
           ),
         );
         return;
@@ -69,6 +70,7 @@ class _PrintReciptState extends State<PrintRecipt> {
           const SnackBar(
             content: Text("Please enter a valid phone number"),
             duration: Duration(seconds: 1),
+            backgroundColor: Colors.red,
           ),
         );
         return;

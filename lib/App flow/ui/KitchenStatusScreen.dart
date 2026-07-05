@@ -28,13 +28,13 @@ class KitchenStatusScreen extends StatefulWidget {
   final String restaurantName;
 
   const KitchenStatusScreen({
-              Key? key,
-              required this.pin,
-              required this.associatedManagerPin,
-              required this.token,
-              required this.restaurantId,
-              required this.restaurantName,
-            }) : super(key: key);
+    Key? key,
+    required this.pin,
+    required this.associatedManagerPin,
+    required this.token,
+    required this.restaurantId,
+    required this.restaurantName,
+  }) : super(key: key);
 
   @override
   _KitchenStatusScreenState createState() => _KitchenStatusScreenState();
@@ -317,7 +317,9 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     if (kotId == 0 || restaurantId == 0 || zoneId == 0 || parentOrderId == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Unable to open Void Items for selected KOT"),
-            duration: Duration(seconds: 1),),
+          duration: Duration(seconds: 1),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -383,6 +385,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
             "Failed to load KOT items: $e",
           ),
           duration: Duration(seconds: 1),
+          backgroundColor: Colors.red,
         ),
       );
     }
@@ -400,23 +403,25 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       _selectedTable,
       ['order_id', 'id', 'parent_order_id', 'parentOrderId'],
     ) !=
-            0
+        0
         ? _pickInt(
-            _selectedTable,
-            ['order_id', 'id', 'parent_order_id', 'parentOrderId'],
-          )
+      _selectedTable,
+      ['order_id', 'id', 'parent_order_id', 'parentOrderId'],
+    )
         : _pickInt(kotOrder, ['parent_order_id', 'parentOrderId', 'order_id']);
     final fromTableId = _pickInt(_selectedTable, ['table_id', 'tableId']);
     final restaurantId = _asInt(widget.restaurantId);
     final tableName = ((_selectedTable?['table_name'] ??
-                _selectedTable?['tableName'] ??
-                _selectedTable?['table_no']) ??
-            '')
+        _selectedTable?['tableName'] ??
+        _selectedTable?['table_no']) ??
+        '')
         .toString();
     if (kotId == 0 || orderId == 0 || restaurantId == 0 || tableName.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Unable to transfer selected KOT"),
-          duration: Duration(seconds: 1),),
+          duration: Duration(seconds: 1),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -470,11 +475,13 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       }
 
       final resolvedFromTableId =
-          fromTableId != 0 ? fromTableId : (tableIds[tableName] ?? 0);
+      fromTableId != 0 ? fromTableId : (tableIds[tableName] ?? 0);
       if (resolvedFromTableId == 0) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Unable to transfer selected KOT"),
-            duration: Duration(seconds: 1),),
+            duration: Duration(seconds: 1),
+            backgroundColor: Colors.red,
+          ),
         );
         return;
       }
@@ -520,7 +527,9 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Transfer KOT failed: $e"),
-          duration: Duration(seconds: 1),),
+          duration: Duration(seconds: 1),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -986,18 +995,18 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
               await _fetchParentKotOrders(_selectedTable!);
             }
           },
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: const Color(0xFFD4EBFF), // ✅ #D4EBFF
-                  width: 1.2,
-                ),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: const Color(0xFFD4EBFF), // ✅ #D4EBFF
+                width: 1.2,
               ),
-          child: normalizeOrderType(selectedOrderType) == "dinein"
-              ? _buildDineInCard(table, kotCount, isSelected)
-              : _buildTakeawayCard(table, kotCount, isSelected),
-        ),
+            ),
+            child: normalizeOrderType(selectedOrderType) == "dinein"
+                ? _buildDineInCard(table, kotCount, isSelected)
+                : _buildTakeawayCard(table, kotCount, isSelected),
+          ),
         );
       },
     );
@@ -1508,11 +1517,11 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       case 'served':
         return Colors.red;
 
-      // case 'cancelled':
-      //   return Colors.red;
-      //
-      // case 'kot-processed':
-      //   return Colors.purple;
+    // case 'cancelled':
+    //   return Colors.red;
+    //
+    // case 'kot-processed':
+    //   return Colors.purple;
 
       default:
         return Colors.grey;

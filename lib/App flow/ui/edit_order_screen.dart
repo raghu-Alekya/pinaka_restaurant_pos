@@ -321,7 +321,9 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
     if (selectedReason == null || selectedReason!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please select a reason"),
-          duration: Duration(seconds: 1),),
+          duration: Duration(seconds: 1),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -350,7 +352,9 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       if (items == null || items.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("⚠️ No items to update"),
-            duration: Duration(seconds: 1),),
+            duration: Duration(seconds: 1),
+            backgroundColor: Colors.red,
+          ),
         );
         return;
       }
@@ -377,7 +381,9 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       if (lineItemsPayload.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("⚠️ No valid items to update"),
-            duration: Duration(seconds: 1),),
+            duration: Duration(seconds: 1),
+            backgroundColor: Colors.red,
+          ),
         );
         return;
       }
@@ -455,7 +461,9 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       print("❌ KOT Update Failed => $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("❌ Update failed: $e"),
-          duration: Duration(seconds: 1),),
+          duration: Duration(seconds: 1),
+          backgroundColor: Colors.green,
+        ),
       );
     }
   }
@@ -530,8 +538,8 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         token: widget.token,
         pin: widget.pin,
         userPermissions: _userPermissions,
-          restaurantId: widget.restaurantId,
-          restaurantName: widget.restaurantName,
+        restaurantId: widget.restaurantId,
+        restaurantName: widget.restaurantName,
         onPermissionsReceived: (p) => setState(() => _userPermissions = p),
       ),
 

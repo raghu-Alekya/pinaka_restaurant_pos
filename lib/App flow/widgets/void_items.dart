@@ -643,6 +643,7 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                                                                       "Cannot exceed actual quantity ($originalQty)",
                                                                     ),
                                                                     duration: Duration(seconds: 1),
+                                                                    backgroundColor: Colors.red,
                                                                   ),
                                                                 );
                                                                 return;
@@ -791,6 +792,7 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
         if (state is UpdatekotSuccess) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text("KOT Updated Successfully"),
+              backgroundColor: Colors.green,
               duration: Duration(seconds: 1),),
           );
 
@@ -812,6 +814,7 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(state.message ?? "Update failed"),
               duration: Duration(seconds: 1),
+              backgroundColor: Colors.red,
             ),
           );
         }

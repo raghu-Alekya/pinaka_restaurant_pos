@@ -168,6 +168,27 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
 
     return zoneMap;
   }
+  String getDisplayStatus(String status) {
+    switch (status.toLowerCase().trim()) {
+      case 'kot processed':
+      case 'kot created':
+      case 'yet to prepare':
+      case 'yet_to_prepare':
+        return 'YET TO PREPARE';
+
+      case 'preparing':
+        return 'PREPARING';
+
+      case 'ready':
+        return 'READY';
+
+      case 'served':
+        return 'SERVED';
+
+      default:
+        return status.toUpperCase();
+    }
+  }
 
 
 
@@ -273,7 +294,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                 ConstrainedBox(
                   constraints: const BoxConstraints(
                     maxHeight: 368,
-                    minHeight: 340,
+                    minHeight: 341,
                   ),
                   child: Material(
                     elevation: 8,
@@ -398,15 +419,13 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                               borderRadius: BorderRadius.circular(12),
                                             ),
                                             child:Text(
-                                              kot.status.toLowerCase() == 'kot processed'
-                                                  ? 'YET TO PREPARE'
-                                                  : kot.status.toUpperCase(),
+                                              getDisplayStatus(kot.status),
                                               style: const TextStyle(
                                                 color: Colors.white,
                                                 fontSize: 10,
                                                 fontWeight: FontWeight.bold,
                                               ),
-                                            ),
+                                            )
                                           ),
 
                                           const SizedBox(width: 15),
@@ -477,6 +496,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                   SnackBar(
                                                     content: Text(state.message),
                                                     duration: const Duration(seconds: 1),
+                                                    backgroundColor: Colors.red,
                                                   ),
                                                 );
                                               }

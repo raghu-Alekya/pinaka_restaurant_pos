@@ -305,9 +305,10 @@ class _MergeEditTablePopupState extends State<MergeEditTablePopup> {
                   if (selectedParent == null || selectedChildren.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                          content:
-                          Text("Please select parent and child tables."),
-                        duration: Duration(seconds: 1)),
+                        content:
+                        Text("Please select parent and child tables."),
+                        duration: Duration(seconds: 1),
+                        backgroundColor: Colors.red,),
 
                     );
                     return;
@@ -352,16 +353,18 @@ class _MergeEditTablePopupState extends State<MergeEditTablePopup> {
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content:
-                            Text(result['message'] ?? "Merge failed."),
-                          duration: Duration(seconds: 1)),
+                          content:
+                          Text(result['message'] ?? "Merge failed."),
+                          duration: Duration(seconds: 1),
+                          backgroundColor: Colors.red,),
                       );
                     }
                   } catch (e) {
                     debugPrint("Error creating merge tables: $e");
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text("Error: $e"),
-                        duration: Duration(seconds: 1)),
+                        duration: Duration(seconds: 1),
+                        backgroundColor: Colors.red,),
                     );
                   }
                 },
