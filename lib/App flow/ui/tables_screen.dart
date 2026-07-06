@@ -108,6 +108,8 @@ class _TablesScreenState extends State<TablesScreen> {
 
   /// Index of the currently selected bottom navigation tab.
   int _selectedIndex = 1;
+  int _currentZoneIndex = 0;
+  static const int _visibleZoneCount = 3;
 
   bool _isAddingTable = false;
   final tableRepository = TableRepository();
@@ -253,7 +255,7 @@ class _TablesScreenState extends State<TablesScreen> {
       LoadTablesEvent(widget.token),
     );
 
-    gridScrollController.addListener(_scrollListener);
+    // gridScrollController.addListener(_scrollListener);
     GlobalReservationMonitor().start(widget.token);
 
     _reservationListener = () {
@@ -296,16 +298,20 @@ class _TablesScreenState extends State<TablesScreen> {
       });
     }
   }
-  void _scrollListener() {
-    if (!gridScrollController.hasClients) return;
+  void _moveLeft() {
+    if (_currentZoneIndex > 0) {
+      setState(() {
+        _currentZoneIndex--;
+      });
+    }
+  }
 
-    final max = gridScrollController.position.maxScrollExtent;
-    final offset = gridScrollController.offset;
-
-    setState(() {
-      showLeftArrow = offset > 5;
-      showRightArrow = offset < (max - 5);
-    });
+  void _moveRight() {
+    if (_currentZoneIndex + _visibleZoneCount < areaNames.length) {
+      setState(() {
+        _currentZoneIndex++;
+      });
+    }
   }
   Future<void> _loadZones() async {
     try {
@@ -618,15 +624,20 @@ class _TablesScreenState extends State<TablesScreen> {
     });
   }
 
-  bool isReservationTimePassed(String dateStr, String timeStr) {
+  bool isReservationTimePassed(
+      String dateStr,
+      String bufferTime,
+      ) {
     try {
       final now = DateTime.now();
-      final combinedStr = '$dateStr $timeStr';
-      final format = DateFormat('yyyy-MM-dd hh:mm a');
-      final reservationDateTime = format.parse(combinedStr);
 
-      return now.isAfter(reservationDateTime);
+      final expiryTime = DateFormat(
+        'yyyy-MM-dd hh:mm a',
+      ).parse('$dateStr $bufferTime');
+
+      return now.isAfter(expiryTime);
     } catch (e) {
+      debugPrint("Error: $e");
       return false;
     }
   }
@@ -1211,7 +1222,9 @@ class _TablesScreenState extends State<TablesScreen> {
           }
           return;
         }
-        if (status == 'dine' || status == 'dine in') {
+        if (status == 'dine' ||
+            status == 'dine in' ||
+            status == 'ready to pay') {
           final orderRepository = OrderRepository(
             baseUrl: 'https://merchantrestaurant.alektasolutions.com',
           );
@@ -1363,7 +1376,9 @@ class _TablesScreenState extends State<TablesScreen> {
           }
           return;
         }
-        if (status == 'dine' || status == 'dine in') {
+        if (status == 'dine' ||
+            status == 'dine in' ||
+            status == 'ready to pay') {
           final orderRepository = OrderRepository(
             baseUrl: 'https://merchantrestaurant.alektasolutions.com',
           );
@@ -1744,32 +1759,27 @@ class _TablesScreenState extends State<TablesScreen> {
             // LEFT SCROLL BUTTON
             _scrollButton(
               icon: Icons.chevron_left,
-              onTap: () {
-                gridScrollController.animateTo(
-                  gridScrollController.offset - 120,
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.ease,
-                );
-              },
+              onTap: _currentZoneIndex > 0 ? _moveLeft : () {},
             ),
 
             const SizedBox(width: 4),
 
             // SCROLLABLE AREA
             Expanded(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                controller: gridScrollController,
-                child: Row(
-                  children: areaNames.map((area) {
-                    _areaKeys.putIfAbsent(area, () => GlobalKey());
+              child: Row(
+                children: List.generate(
+                  (_currentZoneIndex + _visibleZoneCount > areaNames.length)
+                      ? areaNames.length - _currentZoneIndex
+                      : _visibleZoneCount,
+                      (index) {
+                    final actualIndex = _currentZoneIndex + index;
+                    final area = areaNames[actualIndex];
 
                     final bool isSelected = selectedArea == area;
 
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                      child: Container(
-                        key: _areaKeys[area],
+                    return Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 2),
                         child: TextButton(
                           onPressed: () => _selectArea(area),
                           style: TextButton.styleFrom(
@@ -1778,26 +1788,18 @@ class _TablesScreenState extends State<TablesScreen> {
                                 : Colors.transparent,
                             foregroundColor:
                             isSelected ? Colors.white : Colors.black87,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 15.0,
-                              vertical: 13.0,
-                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(5),
                             ),
-                            textStyle: const TextStyle(
-                              fontWeight: FontWeight.w500,
-                              fontSize: 12.5,
-                            ),
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            visualDensity: VisualDensity.compact,
                           ),
-                          child: Text(area),
+                          child: Text(
+                            area,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ),
                     );
-                  }).toList(),
+                  },
                 ),
               ),
             ),
@@ -1807,13 +1809,9 @@ class _TablesScreenState extends State<TablesScreen> {
             // RIGHT SCROLL BUTTON
             _scrollButton(
               icon: Icons.chevron_right,
-              onTap: () {
-                gridScrollController.animateTo(
-                  gridScrollController.offset + 120,
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.ease,
-                );
-              },
+              onTap: (_currentZoneIndex + _visibleZoneCount < areaNames.length)
+                  ? _moveRight
+                  : () {},
             ),
           ],
         ),

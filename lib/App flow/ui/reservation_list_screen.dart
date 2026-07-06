@@ -266,7 +266,18 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                     /// 🔙 BACK BUTTON
                     InkWell(
                       onTap: () {
-                        Navigator.pop(context);
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => HomeScreen(
+                              token: widget.token,
+                              pin: widget.pin,
+                              restaurantId: widget.restaurantId,
+                              restaurantName: widget.restaurantName,
+                            ),
+                          ),
+                              (route) => false,
+                        );
                       },
                       child: Container(
                         width: 40,

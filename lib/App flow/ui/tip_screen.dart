@@ -40,10 +40,12 @@ class _TipsScreenState extends State<TipsScreen> {
   final TextEditingController _datetipController = TextEditingController();
   DateTime? selectedDate;
   static const int rowsPerPage = 9;
+  String _currency = "₹";
   @override
   void initState() {
     super.initState();
     _loadPermissions();
+    _loadCurrency();
 
     selectedDate = DateTime.now();
 
@@ -58,7 +60,15 @@ class _TipsScreenState extends State<TipsScreen> {
           "${selectedDate!.day.toString().padLeft(2, '0')}",
     );
   }
+  Future<void> _loadCurrency() async {
+    final currency = await SessionManager.getCurrencySymbol();
 
+    if (mounted) {
+      setState(() {
+        _currency = currency ?? "₹";
+      });
+    }
+  }
   Future<void> _loadPermissions() async {
     final savedPermissions = await SessionManager.loadPermissions();
     if (savedPermissions != null) {
@@ -329,7 +339,8 @@ class _TipsScreenState extends State<TipsScreen> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              "₹ ${tipsData?.totalTipAmt.toStringAsFixed(2) ?? '0.00'}",
+                              "$_currency ${tipsData?.totalTipAmt.toStringAsFixed(2) ?? '0.00'}",
+                              // "₹ ${tipsData?.totalTipAmt.toStringAsFixed(2) ?? '0.00'}",
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
@@ -499,7 +510,8 @@ class _TipsScreenState extends State<TipsScreen> {
                                         Expanded(
                                           child: Center(
                                             child: Text(
-                                              tip.orderAmt.toStringAsFixed(2),
+                                              "$_currency${tip.orderAmt.toStringAsFixed(2)}",
+                                              // tip.orderAmt.toStringAsFixed(2),
                                               style: const TextStyle(
                                                 fontSize: 14,
                                                 color: Color(0xFF3D3D3D),
@@ -511,7 +523,8 @@ class _TipsScreenState extends State<TipsScreen> {
                                         Expanded(
                                           child: Center(
                                             child: Text(
-                                              tip.orderTipAmt.toStringAsFixed(2),
+                                              "$_currency${tip.orderTipAmt.toStringAsFixed(2)}",
+                                              // tip.orderTipAmt.toStringAsFixed(2),
                                               style: const TextStyle(
                                                 fontSize: 14,
                                                 color: Color(0xFF3D3D3D),

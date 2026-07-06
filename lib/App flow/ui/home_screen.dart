@@ -428,6 +428,19 @@ class _HomeScreenState extends State<HomeScreen> {
                           ],
                           icon: Icons.inventory_2_outlined,
                           onTap: () {
+                            final orderBloc = context.read<OrderBloc>();
+                            final state = orderBloc.state;
+
+                            // No active order -> clear stale data
+                            if (state.orderItems.isEmpty) {
+                              debugPrint("🧹 No active order found. Resetting OrderBloc.");
+                              orderBloc.add(ResetOrder());
+                            } else {
+                              debugPrint(
+                                "✅ Active takeaway order found. orderId: ${state.orderId}, items: ${state.orderItems.length}",
+                              );
+                            }
+
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -441,8 +454,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                               ),
                             );
-                          }
-                      ),
+                          }                      ),
                     ),
 
                     const SizedBox(width: 16),
@@ -548,7 +560,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         width: 250,
                         child: _whiteModuleCard(
                           title: "Tips",
-                          count: totalTipAmount.toStringAsFixed(2),
+                          count: "₹${totalTipAmount.toStringAsFixed(2)}",
+                          // count: totalTipAmount.toStringAsFixed(2),
                           countLabel: "Tips",
                           icon: Icons.account_balance_wallet_outlined,
                           iconColor: Colors.orange,

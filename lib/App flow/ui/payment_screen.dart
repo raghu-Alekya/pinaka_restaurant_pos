@@ -162,22 +162,39 @@ class _PaymentScreenState extends State<PaymentScreen> {
               zoneId: widget.zoneId,
               cashierName: _selectedUser?['name'] ?? '',
               isTakeAway: widget.isTakeAway,
-              onBackPressed: () {
-                if (_couponAmount > 0) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        "Please remove the applied coupon before going back.",
-                      ),
-                      backgroundColor: Colors.red,
-                      duration: Duration(seconds: 1),
-                    ),
-                  );
-                  return;
-                }
+                onBackPressed: () {
+                  final paymentState = context.read<PaymentBloc>().state;
 
-                Navigator.pop(context);
-              },
+                  final bool isNoCharge =
+                      paymentState is PaymentSummaryLoaded &&
+                          paymentState.isNoCharge;
+
+                  if (_couponAmount > 0) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Please remove the applied coupon before going back."),
+                        backgroundColor: Colors.red,
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                    return;
+                  }
+
+                  if (isNoCharge) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          "Please remove the applied No Charge discount before going back.",
+                        ),
+                        backgroundColor: Colors.red,
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                    return;
+                  }
+
+                  Navigator.pop(context);
+                }
             ),
           ),
           body: Row(

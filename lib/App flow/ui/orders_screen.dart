@@ -1390,7 +1390,7 @@ class _OrderPanelState extends State<OrderPanel> {
           final bool canPrintKot = hasCartItems;
 
           /// Pay -> enabled if there's any valid KOT (not voided or transferred)
-          final bool canPay = hasAnyValidKot;
+          final bool canPay = hasAnyValidKot && !hasCartItems;
 
           return Container(
             width: 700,
@@ -2526,12 +2526,15 @@ class _OrderPanelState extends State<OrderPanel> {
     ),
   );
   Widget _takeAwayCheckoutButton(bool canPay) {
-    return GestureDetector(
-      onTap: canPay
-          ? () async {
-        final orderBloc = context.read<OrderBloc>();
-        final state = orderBloc.state;
+    final orderBloc = context.watch<OrderBloc>();
+    final state = orderBloc.state;
 
+    // Checkout is enabled only if canPay is true AND cart has items
+    final canCheckout = canPay && state.orderItems.isNotEmpty;
+
+    return GestureDetector(
+      onTap: canCheckout
+          ? () async {
         final orderRepo = OrderRepository(
           baseUrl: 'https://merchantrestaurant.alektasolutions.com',
         );
@@ -2539,7 +2542,8 @@ class _OrderPanelState extends State<OrderPanel> {
         showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (_) => const Center(child: CircularProgressIndicator()),
+          builder: (_) =>
+          const Center(child: CircularProgressIndicator()),
         );
 
         try {
@@ -2564,17 +2568,13 @@ class _OrderPanelState extends State<OrderPanel> {
               zoneId: state.zoneId,
               captainId: captainId,
             );
-            final updatedKot = kot?.copyWith(
-              status: kot.status.toLowerCase() == "created"
-                  ? "Yet To Prepare"
-                  : kot.status,
-            );
-            debugPrint("KOT Status from API = ${kot?.status}");
-            debugPrint("KOT JSON = ${kot?.toJson()}");
 
             if (kot == null) {
               throw Exception("Failed to generate KOT");
             }
+
+            debugPrint("KOT Status from API = ${kot.status}");
+            debugPrint("KOT JSON = ${kot.toJson()}");
 
             orderBloc.add(AddKOT(kot));
             orderBloc.add(SetTakeAwayKotId(kot.kotId));
@@ -2592,8 +2592,8 @@ class _OrderPanelState extends State<OrderPanel> {
 
           Navigator.pop(context);
 
-          // ✅ FIX: Pass isTakeAway: true here
-          debugPrint("💳 Navigating to PaymentScreen from Take Away - isTakeAway: true");
+          debugPrint(
+              "💳 Navigating to PaymentScreen from Take Away - isTakeAway: true");
 
           Navigator.push(
             context,
@@ -2617,7 +2617,7 @@ class _OrderPanelState extends State<OrderPanel> {
                   restaurantId: widget.restaurantId,
                   restaurantName: widget.restaurantName,
                   zoneId: widget.zoneId,
-                  isTakeAway: true,  // ✅ CRITICAL: Pass true for Take Away
+                  isTakeAway: true,
                 ),
               ),
             ),
@@ -2643,12 +2643,17 @@ class _OrderPanelState extends State<OrderPanel> {
         height: 55,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: canPay ? const Color(0xFF086888) : const Color(0xFFDEDEDE),
+          color: canCheckout
+              ? const Color(0xFF086888)
+              : const Color(0xFFDEDEDE),
           borderRadius: BorderRadius.circular(14),
-          border: canPay
+          border: canCheckout
               ? null
-              : Border.all(color: const Color(0xFFC0C0C0), width: 1),
-          boxShadow: canPay
+              : Border.all(
+            color: const Color(0xFFC0C0C0),
+            width: 1,
+          ),
+          boxShadow: canCheckout
               ? [
             BoxShadow(
               color: Colors.black.withOpacity(0.15),
@@ -2661,7 +2666,9 @@ class _OrderPanelState extends State<OrderPanel> {
         child: Text(
           "Check out",
           style: TextStyle(
-            color: canPay ? Colors.white : const Color(0xFFABABAB),
+            color: canCheckout
+                ? Colors.white
+                : const Color(0xFFABABAB),
             fontSize: 20,
             fontWeight: FontWeight.w500,
             height: 1.33,

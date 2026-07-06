@@ -161,14 +161,17 @@ class Paymentsucess extends StatelessWidget {
   }
 
   Widget _buildInfoRow(BuildContext context, String? mode, String? amount) {
+    final formattedAmount =
+    (double.tryParse(amount ?? '0') ?? 0).toStringAsFixed(2);
+
     return Container(
       height: MediaQuery.of(context).size.height * 0.07,
       width: MediaQuery.of(context).size.width * 0.38,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: Color(0x10000000), width: 0.8),
-        boxShadow: [
+        border: Border.all(color: const Color(0x10000000), width: 0.8),
+        boxShadow: const [
           BoxShadow(
             color: Colors.black12,
             blurRadius: 10,
@@ -176,21 +179,21 @@ class Paymentsucess extends StatelessWidget {
           ),
         ],
       ),
-      padding: EdgeInsets.symmetric(horizontal: 30),
+      padding: const EdgeInsets.symmetric(horizontal: 30),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             mode ?? '',
-            style: TextStyle(
+            style: const TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 20,
               color: Color(0xFF4C5F7D),
             ),
           ),
           Text(
-            "₹${amount ?? '0.00'}",
-            style: TextStyle(
+            "₹$formattedAmount",
+            style: const TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 20,
               color: Color(0xFF4C5F7D),

@@ -350,7 +350,7 @@ class _TopBarState extends State<TopBar> {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 14),
+                        const SizedBox(width: 350),
 
                         // Order Type Dropdown
                         Container(

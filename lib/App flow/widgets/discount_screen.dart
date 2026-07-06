@@ -417,13 +417,15 @@ class _DiscountPopupState extends State<DiscountPopup> {
       children: [
         _amountBox(
           'Payable Amount',
-          payableAmount.toStringAsFixed(0),
+          '₹${payableAmount.toStringAsFixed(0)}',
           readOnly: true,
         ),
+
         const SizedBox(width: 12),
+
         _amountBox(
           'New Payable Amount',
-          newPayableAmount.toStringAsFixed(0), // 🔥 LIVE UPDATE
+          '₹${newPayableAmount.toStringAsFixed(0)}',
           readOnly: true,
         ),
       ],
@@ -509,21 +511,28 @@ class _DiscountPopupState extends State<DiscountPopup> {
               enabled: !isNCSelected,
               textAlign: TextAlign.center,
               decoration: InputDecoration(
+                prefixText: isNCSelected
+                    ? ''
+                    : (selectedType == DiscountType.amount ? '₹ ' : ''),
+                prefixStyle: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
                 hintText: isNCSelected
                     ? '--'
                     : selectedType == DiscountType.percent
-                    ? ' ex:10%'
-                    : 'ex:₹100',
-                hintStyle: TextStyle(               // ✅ CONTROL COLOR HERE
+                    ? 'ex:10%'
+                    : '100',
+                hintStyle: TextStyle(
                   color: isNCSelected
-                      ? const Color(0xFF9CA3AF)     // medium grey (disabled)
-                      : const Color(0xFF999393),    // darker grey (active)
+                      ? const Color(0xFF9CA3AF)
+                      : const Color(0xFF999393),
                   fontWeight: FontWeight.w500,
                 ),
-
                 filled: true,
                 fillColor: isNCSelected
-                    ? const Color(0xFFE5E7EB) // disabled look
+                    ? const Color(0xFFE5E7EB)
                     : Colors.white,
                 contentPadding:
                 const EdgeInsets.symmetric(horizontal: 10, vertical: 10),

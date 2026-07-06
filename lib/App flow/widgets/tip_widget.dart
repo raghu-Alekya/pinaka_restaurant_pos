@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../repositories/TIP_repository.dart';
+import '../../utils/SessionManager.dart';
 
 class TipPopup extends StatefulWidget {
   final int orderId;
@@ -25,9 +26,23 @@ class _TipPopupState extends State<TipPopup> {
   int? selectedTip;
   bool _isLoading = false;
   final TipRepository _tipRepository = TipRepository();
-
+  String _currencySymbol = "₹";
   final List<int> tipOptions = [10, 20, 50, 100];
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrency();
+  }
 
+  Future<void> _loadCurrency() async {
+    final symbol = await SessionManager.getCurrencySymbol();
+
+    if (mounted) {
+      setState(() {
+        _currencySymbol = symbol;
+      });
+    }
+  }
   void _onNumberPressed(String value) {
     setState(() {
       _tipController.text += value;
@@ -147,7 +162,8 @@ class _TipPopupState extends State<TipPopup> {
           ],
         ),
         child: Text(
-          value.toString(),
+          // value.toString(),
+          "$_currencySymbol$value",
           style: const TextStyle(
             color: Colors.white,
             fontSize: 18,
@@ -271,15 +287,17 @@ class _TipPopupState extends State<TipPopup> {
                             controller: _tipController,
                             readOnly: true,
                             decoration: InputDecoration(
+                              prefixText: "$_currencySymbol ",
                               hintText: "Please enter amount",
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 12),
+                                horizontal: 12,
+                                vertical: 12,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 25),
+                          ),                          const SizedBox(height: 25),
                           ElevatedButton(
                             onPressed: _isLoading ? null : _applyTip,
                             style: ElevatedButton.styleFrom(

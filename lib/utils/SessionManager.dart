@@ -8,6 +8,7 @@ class SessionManager {
   static const _shiftIdKey = 'shift_id';
   static const String _tokenKey = 'auth_token';
   static const _restaurantIdKey = 'restaurant_id';
+  static const _currencySymbolKey = 'currency_symbol';
 
   // -------- TOKEN --------
   static Future<void> saveToken(String token) async {
@@ -141,5 +142,16 @@ class SessionManager {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
     print("🧹 Session cleared");
+  }
+  static Future<void> saveCurrencySymbol(String symbol) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_currencySymbolKey, symbol);
+
+    print("✅ Currency Symbol Saved: $symbol");
+  }
+  static Future<String> getCurrencySymbol() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    return prefs.getString(_currencySymbolKey) ?? "₹";
   }
 }

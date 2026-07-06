@@ -65,6 +65,7 @@ class _paymentsummaryState extends State<paymentsummary> {
   String amount = '';
   PaymentSummary? _paymentSummary;
   String _cashierName = "";
+  String _currencySymbol = "₹";
 
   double? calculatedChange;
   String selectedPaymentMode = "Cash";
@@ -116,6 +117,7 @@ class _paymentsummaryState extends State<paymentsummary> {
   @override
   void initState() {
     super.initState();
+    _loadCurrencySymbol();
     // Initialize UI immediately - no loading state
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -126,6 +128,13 @@ class _paymentsummaryState extends State<paymentsummary> {
         // Load summary in background without showing loading
         _reloadSummary();
       }
+    });
+  }
+  Future<void> _loadCurrencySymbol() async {
+    final symbol = await SessionManager.getCurrencySymbol();
+
+    setState(() {
+      _currencySymbol = symbol;
     });
   }
 
@@ -260,34 +269,35 @@ class _paymentsummaryState extends State<paymentsummary> {
   Future<void> _submitPayment() async {
     debugPrint("🟡 SUBMIT PAYMENT CALLED");
 
-    // Validate: must enter amount
-    if (amount.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Please enter payment amount"),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-          duration: Duration(seconds: 2),
-        ),
-      );
-      return;
+    // Validate amount only for normal payments
+    if (!_isNcDiscount) {
+      if (amount.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Please enter payment amount"),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        return;
+      }
+
+      final double enteredAmount = double.tryParse(amount) ?? 0.0;
+      if (enteredAmount <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Please enter a valid amount greater than 0"),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        return;
+      }
     }
 
-    // Validate: amount must be greater than 0
-    final double enteredAmount = double.tryParse(amount) ?? 0.0;
-    if (enteredAmount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Please enter a valid amount greater than 0"),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-          duration: Duration(seconds: 2),
-        ),
-      );
-      return;
-    }
-
-    // Validate: must select payment mode
+    // Validate payment mode
     if (selectedPaymentMode.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -305,31 +315,35 @@ class _paymentsummaryState extends State<paymentsummary> {
     final int? userId = await SessionManager.getUserId();
     final int? shiftId = await SessionManager.getShiftId();
 
-    debugPrint(
-        "➡️ orderId: $orderId | userId: $userId | shiftId: $shiftId | amount: $amount | mode: $selectedPaymentMode");
-
     if (orderId == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Order not created"),
-        backgroundColor: Colors.red,));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Order not created"),
+          backgroundColor: Colors.red,
+        ),
+      );
       return;
     }
+
     if (userId == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("User not logged in"),
-        backgroundColor: Colors.red,
-
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("User not logged in"),
+          backgroundColor: Colors.red,
+        ),
+      );
       return;
     }
+
     if (shiftId == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Shift not started"),
-        backgroundColor: Colors.red,));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Shift not started"),
+          backgroundColor: Colors.red,
+        ),
+      );
       return;
     }
-
-    debugPrint("✅ ALL VALID — Creating payment...");
 
     context.read<CreatePaymentBloc>().add(
       CreatePaymentRequested(
@@ -337,7 +351,9 @@ class _paymentsummaryState extends State<paymentsummary> {
         request: CreatePaymentRequest(
           orderId: orderId,
           title: "POS Payment",
-          amount: double.parse(amount),
+          amount: _isNcDiscount
+              ? 0.0
+              : double.parse(amount),
           paymentMethod: selectedPaymentMode,
           shiftId: shiftId,
           userId: userId,
@@ -422,24 +438,27 @@ class _paymentsummaryState extends State<paymentsummary> {
   }
 
   Future<void> _onPaymentModeTap(String mode) async {
-    if (amount.isEmpty) {
-      setState(() {
-        selectedPaymentMode = mode;
-        isCashSelected = mode == "Cash";
-        tenderAmountError = "Please enter the amount";
-      });
-      return;
-    }
+    // Skip tender amount validation for NC orders
+    if (!_isNcDiscount) {
+      if (amount.isEmpty) {
+        setState(() {
+          selectedPaymentMode = mode;
+          isCashSelected = mode == "Cash";
+          tenderAmountError = "Please enter the amount";
+        });
+        return;
+      }
 
-    final double enteredAmount = double.tryParse(amount) ?? 0.0;
+      final double enteredAmount = double.tryParse(amount) ?? 0.0;
 
-    if (enteredAmount <= 0) {
-      setState(() {
-        selectedPaymentMode = mode;
-        isCashSelected = mode == "Cash";
-        tenderAmountError = "Please enter a valid amount";
-      });
-      return;
+      if (enteredAmount <= 0) {
+        setState(() {
+          selectedPaymentMode = mode;
+          isCashSelected = mode == "Cash";
+          tenderAmountError = "Please enter a valid amount";
+        });
+        return;
+      }
     }
 
     // Show loader
@@ -459,7 +478,8 @@ class _paymentsummaryState extends State<paymentsummary> {
 
       setState(() {
         _balanceRevealed = true;
-        _confirmedTenderForBalance = enteredAmount;
+        _confirmedTenderForBalance =
+        _isNcDiscount ? 0.0 : (double.tryParse(amount) ?? 0.0);
       });
 
       await _submitPayment();
@@ -726,8 +746,13 @@ class _paymentsummaryState extends State<paymentsummary> {
 
             final bool isSummaryReady =
                 payState is PaymentSummaryLoaded || _paymentSummary != null;
-            final bool payDisabled = isSummaryReady && netPayableVal <= 0;
+            final bool isNoCharge =
+                payState is PaymentSummaryLoaded && payState.isNoCharge;
 
+            final bool payDisabled =
+                isSummaryReady &&
+                    netPayableVal <= 0 &&
+                    !isNoCharge;
             // ── CHANGED: Balance Amount stays at 0 until a payment mode is
             // tapped and confirmed (see _onPaymentModeTap) — it no longer
             // reacts to every keystroke on the tender amount.
@@ -831,8 +856,8 @@ class _paymentsummaryState extends State<paymentsummary> {
                             alignment: Alignment.centerRight,
                               child: Text(
                                 payDisabled
-                                    ? "0.00"
-                                    : (double.tryParse(amount) ?? 0.0).toStringAsFixed(2),
+                                    ? "$_currencySymbol 0.00"
+                                    : "$_currencySymbol${(double.tryParse(amount) ?? 0.0).toStringAsFixed(2)}",
                                 style: TextStyle(
                                   fontSize: 26,
                                   fontWeight: FontWeight.bold,
@@ -893,20 +918,27 @@ class _paymentsummaryState extends State<paymentsummary> {
                     flex: 1,
                     child: Column(
                       children: [
-                        ...presets.take(3).map(
-                              (v) => _presetBtn(v, payDisabled),
-                        ),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.all(4),
-                            child: GestureDetector(
-                              onTap: () => handleKeyPress("C"),
+                        for (int i = 0; i < 3; i++)
+                          _presetBtn(
+                            i < presets.length ? presets[i] : 0.0,
+                            payDisabled,
+                          ),
+                        Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: GestureDetector(
+                            onTap: payDisabled ? null : () => handleKeyPress("C"),
+                            child: Opacity(
+                              opacity: payDisabled ? 0.5 : 1.0,
                               child: Container(
+                                height: 80,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFFFEBEB),
+                                  color: payDisabled
+                                      ? Colors.grey.shade300
+                                      : const Color(0xFFFFEBEB),
                                   borderRadius: BorderRadius.circular(10),
-                                  // ── ONLY CHANGE: blue-tinted shadow bottom+right ──
-                                  boxShadow: const [
+                                  boxShadow: payDisabled
+                                      ? []
+                                      : const [
                                     BoxShadow(
                                       color: Color(0xCCF0A0A0),
                                       blurRadius: 0,
@@ -921,11 +953,16 @@ class _paymentsummaryState extends State<paymentsummary> {
                                   ],
                                 ),
                                 alignment: Alignment.center,
-                                child: const Text("C",
-                                    style: TextStyle(
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFFE53935))),
+                                child: Text(
+                                  "C",
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: payDisabled
+                                        ? Colors.grey
+                                        : const Color(0xFFE53935),
+                                  ),
+                                ),
                               ),
                             ),
                           ),
@@ -1046,7 +1083,7 @@ class _paymentsummaryState extends State<paymentsummary> {
   }
 
   Widget _presetBtn(double value, bool disabled) {
-    if (value <= 0) return const SizedBox.shrink();
+    // if (value <= 0) return const SizedBox.shrink();
 
     final bool isSelected = amount == value.toStringAsFixed(2);
     return Expanded(
@@ -1097,6 +1134,7 @@ class _paymentsummaryState extends State<paymentsummary> {
 
 
   Widget _payModeBtn(String mode, Color color, String asset) {
+
     final bool isSelected = selectedPaymentMode == mode;
     return Expanded(
       child: GestureDetector(
@@ -1265,9 +1303,9 @@ class _paymentsummaryState extends State<paymentsummary> {
           const Text(
             "Net Payable",
             style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF7B7B8D),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF6B7628),
               letterSpacing: 0.2,
             ),
           ),
@@ -1287,11 +1325,11 @@ class _paymentsummaryState extends State<paymentsummary> {
 
                     Expanded(
                       child: Text(
-                        value.toStringAsFixed(2),
+                        "$_currencySymbol${value.toStringAsFixed(2)}",
                         style: const TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF1A1A2E),
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF262525),
                           letterSpacing: -0.5,
                         ),
                       ),
@@ -1336,9 +1374,9 @@ class _paymentsummaryState extends State<paymentsummary> {
           const Text(
             "Balance Amount",
             style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF7B7B8D),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF913177),
               letterSpacing: 0.2,
             ),
           ),
@@ -1360,11 +1398,11 @@ class _paymentsummaryState extends State<paymentsummary> {
                   children: [
                     Expanded(
                       child: Text(
-                        value.toStringAsFixed(2),
+                        "$_currencySymbol${value.toStringAsFixed(2)}",
                         style: const TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF1A1A2E),
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF262525),
                           letterSpacing: -0.5,
                         ),
                       ),
@@ -1615,8 +1653,8 @@ class _paymentsummaryState extends State<paymentsummary> {
         // Discounts
         _actionTile(
           label: "Discounts",
-          borderColor: const Color(0xFF1E88E5),
-          iconBg: const Color(0xFF2563EB),
+          borderColor: const Color(0xFF6BACC3),
+          iconBg: const Color(0xFF6BACC3),
           // icon: Icons.discount_rounded,
           iconWidget: Image.asset(  // ← Now correctly passed
             "assets/Discount Icon.png",
@@ -1700,8 +1738,8 @@ class _paymentsummaryState extends State<paymentsummary> {
             opacity: _isNcDiscount ? 0.4 : 1.0,
             child: _actionTile(
               label: "Coupons",
-              borderColor: const Color(0xFFE65100),
-              iconBg: const Color(0xFFE65100),
+              borderColor: const Color(0xFFF7B05F),
+              iconBg: const Color(0xFFF7B05F),
               iconWidget: Image.asset(
                 "assets/Coupon Icon.png",
                 width: 32,
@@ -1767,8 +1805,8 @@ class _paymentsummaryState extends State<paymentsummary> {
         // Tips
         _actionTile(
           label: "Tips",
-          borderColor: const Color(0xFF2E7D32),
-          iconBg: const Color(0xFF2E7D32),
+          borderColor: const Color(0xFF50AC9A),
+          iconBg: const Color(0xFF50AC9A),
           // icon: Icons.volunteer_activism_rounded,
           iconWidget: Image.asset(  // ← Now correctly passed
             "assets/Tips Icon.png",
@@ -1924,8 +1962,8 @@ class _paymentsummaryState extends State<paymentsummary> {
                   Text(
                     label,
                     style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
                       color: labelColor,
                     ),
                   ),
@@ -1947,15 +1985,15 @@ class _paymentsummaryState extends State<paymentsummary> {
               GestureDetector(
                 onTap: onDelete,
                 child: Container(
-                  width: 28,
-                  height: 28,
+                  width: 38,
+                  height: 38,
                   decoration: const BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
                   ),
                   // ── Only change: trash icon instead of close ──
                   child: const Icon(Icons.delete_outline_rounded,
-                      size: 15, color: Colors.red),
+                      size: 25, color: Colors.red),
                 ),
               )
             else
@@ -1985,7 +2023,7 @@ class _paymentsummaryState extends State<paymentsummary> {
   Widget _svcChargeTile(BuildContext context) {
     final bool applied =
         isServiceChargeApplied && selectedServiceCharge != null;
-    final Color base = const Color(0xFFC62828);
+    final Color base = const Color(0xFFE57F69);
     final Color labelColor =
     applied ? Colors.white : const Color(0xFFC62828);
     final Color subColor = Colors.white.withOpacity(0.9);
@@ -1996,7 +2034,7 @@ class _paymentsummaryState extends State<paymentsummary> {
         // ── Only change: red gradient when applied ──
         gradient: applied
             ? const LinearGradient(
-          colors: [Color(0xFFFF7A7A), Color(0xFFE84040)],
+          colors: [Color(0xFFF8AD9D), Color(0xFFE57F69)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         )

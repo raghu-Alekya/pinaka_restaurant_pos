@@ -910,7 +910,10 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
             "No. of People * :",
             _peopleController,
             keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+            ],
+            onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 10),
 
@@ -946,6 +949,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
         FocusNode? focusNode,
         TextInputType? keyboardType,
         List<TextInputFormatter>? inputFormatters,
+        ValueChanged<String>? onChanged,
       }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -957,6 +961,9 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
         const SizedBox(height: 4),
         TextField(
           controller: controller,
+          onChanged: (_) {
+            setState(() {});
+          },
           focusNode: focusNode,
           keyboardType: keyboardType,
           inputFormatters: inputFormatters,
@@ -1135,7 +1142,14 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final tablesToShow = _filteredTablesByArea;
+    final int peopleCount = int.tryParse(_peopleController.text) ?? 0;
+
+    final tablesToShow = _filteredTablesByArea.where((table) {
+      final capacity = int.tryParse(table['capacity'].toString()) ?? 0;
+
+      // Show only tables that can accommodate the entered people
+      return peopleCount == 0 || capacity >= peopleCount;
+    }).toList();
 
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
