@@ -39,7 +39,7 @@ class _TipsScreenState extends State<TipsScreen> {
   bool isLoading = false;
   final TextEditingController _datetipController = TextEditingController();
   DateTime? selectedDate;
-  static const int rowsPerPage = 9;
+  static const int rowsPerPage = 10;
   String _currency = "₹";
   @override
   void initState() {
@@ -164,65 +164,65 @@ class _TipsScreenState extends State<TipsScreen> {
             children: [
               /// Header
               Container(
-                margin: const EdgeInsets.all(16),
+                margin: const EdgeInsets.all(12),
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
-                    InkWell(
-                      borderRadius: BorderRadius.circular(10),
-                      onTap: () {
-                        Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => HomeScreen(
-                              pin: widget.pin,
-                              token: widget.token,
-                              restaurantId: widget.restaurantId,
-                              restaurantName: widget.restaurantName,
-                            ),
-                          ),
-                              (route) => false,
-                        );
-                      },
-                      child: Container(
-                        width: 100,
-                        height: 40,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF3B4259),
-                          borderRadius: BorderRadius.circular(10),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x19000000),
-                              blurRadius: 4,
-                              offset: Offset(0, 1),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          children: const [
-                            Icon(
-                              Icons.arrow_back,
-                              color: Colors.white,
-                            ),
-                            SizedBox(width: 8),
-                            Text(
-                              'Back',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 20),
+                    // InkWell(
+                    //   borderRadius: BorderRadius.circular(10),
+                    //   onTap: () {
+                    //     Navigator.pushAndRemoveUntil(
+                    //       context,
+                    //       MaterialPageRoute(
+                    //         builder: (_) => HomeScreen(
+                    //           pin: widget.pin,
+                    //           token: widget.token,
+                    //           restaurantId: widget.restaurantId,
+                    //           restaurantName: widget.restaurantName,
+                    //         ),
+                    //       ),
+                    //           (route) => false,
+                    //     );
+                    //   },
+                    //   child: Container(
+                    //     width: 100,
+                    //     height: 40,
+                    //     padding: const EdgeInsets.symmetric(horizontal: 12),
+                    //     decoration: BoxDecoration(
+                    //       color: const Color(0xFF3B4259),
+                    //       borderRadius: BorderRadius.circular(10),
+                    //       boxShadow: const [
+                    //         BoxShadow(
+                    //           color: Color(0x19000000),
+                    //           blurRadius: 4,
+                    //           offset: Offset(0, 1),
+                    //         ),
+                    //       ],
+                    //     ),
+                    //     child: Row(
+                    //       children: const [
+                    //         Icon(
+                    //           Icons.arrow_back,
+                    //           color: Colors.white,
+                    //         ),
+                    //         SizedBox(width: 8),
+                    //         Text(
+                    //           'Back',
+                    //           style: TextStyle(
+                    //             color: Colors.white,
+                    //             fontWeight: FontWeight.w500,
+                    //           ),
+                    //         ),
+                    //       ],
+                    //     ),
+                    //   ),
+                    // ),
+                    // const SizedBox(width: 20),
 
                     const Text(
                       'Tips',
                       style: TextStyle(
-                        color: Color(0xFF3D3D3D),
+                        color: Color(0xFF1D1D1D),
                         fontSize: 24,
                         fontFamily: 'Inter',
                         fontWeight: FontWeight.w600,
@@ -357,7 +357,7 @@ class _TipsScreenState extends State<TipsScreen> {
               /// Remaining screen content
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 32,vertical: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 32,vertical: 0),
                   child: Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -366,9 +366,9 @@ class _TipsScreenState extends State<TipsScreen> {
                     child: Column(
                       children: [
                         Container(
-                          height: 40,
+                          height: 45,
                           decoration: const BoxDecoration(
-                            color: Color(0xFF4260A0),
+                            color: Color(0xFF2A3558),
                             borderRadius: BorderRadius.only(
                               topLeft: Radius.circular(8),
                               topRight: Radius.circular(8),
@@ -468,10 +468,10 @@ class _TipsScreenState extends State<TipsScreen> {
                                   return Container(
                                     height: 40,
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFFEEEEF8),
-                                      border: const Border(
+                                      color: Color(0xFFFCFCFF),
+                                      border: Border(
                                         bottom: BorderSide(
-                                          color: Color(0xFFE1E1E1),
+                                          color: Color(0xFFE0E0E0),
                                         ),
                                       ),
                                       borderRadius: index == currentPageOrders.length - 1

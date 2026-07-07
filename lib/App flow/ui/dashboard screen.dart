@@ -63,6 +63,12 @@ class DashboardScreen extends StatefulWidget {
   final Map<String, dynamic>? tableData;
   final List<dynamic>? kotList;
   final bool refresh;
+  final TextEditingController? searchController;
+  final FocusNode? searchFocusNode;
+  final LayerLink? searchLink;
+  final ValueChanged<String>? onSearchChanged;
+  final VoidCallback? onSearchTap;
+  final bool showSearchBar;
 
   const DashboardScreen({
     super.key,
@@ -84,6 +90,12 @@ class DashboardScreen extends StatefulWidget {
     this.kotList,
     this.loadedTables = const [],
     this.refresh = false,
+    this.searchController,
+    this.searchFocusNode,
+    this.searchLink,
+    this.onSearchChanged,
+    this.onSearchTap,
+    this.showSearchBar = false,
   });
 
 
@@ -102,6 +114,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   MiniSubCategory? selectedFolder;
   int? selectedSubCategoryId;
   String? selectedCategoryName;
+  Timer? _searchDebounce;
 
   // Breadcrumbs
   List<String> breadcrumbNames = [];
@@ -170,13 +183,28 @@ class _DashboardScreenState extends State<DashboardScreen>
     routeObserver.subscribe(this as RouteAware, ModalRoute.of(context)! as PageRoute);
   }
 
+
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _categorySubscription?.cancel();
     _searchController.dispose();
     routeObserver.unsubscribe(this as RouteAware);
     _searchFocusNode.dispose();
     super.dispose();
+  }
+  void _resetSearch() {
+    _searchController.clear();
+    _isSearchActive = false;
+    _searchEditable = false;
+
+    _removeOverlayOnly();
+
+    _searchFocusNode.unfocus();
+    FocusScope.of(context).unfocus();
+    FocusManager.instance.primaryFocus?.unfocus();
+
+    context.read<SearchProductBloc>().add(SearchClearProducts());
   }
 
   @override
@@ -184,8 +212,8 @@ class _DashboardScreenState extends State<DashboardScreen>
     debugPrint("🔥 Returned to Dashboard — closing keyboard");
     _searchFocusNode.unfocus();
     FocusManager.instance.primaryFocus?.unfocus();
-    _removeSearchOverlay();
-
+    // _removeSearchOverlay();
+    _closeSearch();
     // ✅ Reset takeaway state when returning to this screen
     if (widget.isTakeAway) {
       _resetTakeawayState();
@@ -286,8 +314,8 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   void _showSearchOverlay(List<Search_ProductModel> products) {
-    _removeSearchOverlay();
-
+    // _removeSearchOverlay();
+    _removeOverlayOnly();
     _searchOverlay = OverlayEntry(
         builder: (context) => Positioned(
           width: 300,
@@ -369,6 +397,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                   subCategories: const [],
                                 ),
                               );
+                              _resetSearch();
                               _searchController.clear();
 
                             } catch (e) {
@@ -380,7 +409,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                               );
                             }
 
-                            _removeSearchOverlay();
+                            // _removeSearchOverlay();
+                            _closeSearch();
                             context.read<SearchProductBloc>().add(SearchClearProducts());
                             return;
                           }
@@ -420,7 +450,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                           );
                           _searchController.clear();
 
-                          _removeOverlayOnly();   // ✅
+                          _removeOverlayOnly();
+                          _resetSearch();// ✅
                           context.read<SearchProductBloc>().add(SearchClearProducts());
                         }
                     );
@@ -473,14 +504,17 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   void _removeSearchOverlay() {
-    setState(() {
-      _searchEditable = false;
-    });
+    _searchOverlay?.remove();
+    _searchOverlay = null;
+  }
+  void _closeSearch() {
+    _searchEditable = false;
 
     _searchFocusNode.unfocus();
     FocusManager.instance.primaryFocus?.unfocus();
 
-    _searchOverlay?.remove();
+    _removeOverlayOnly();
+
     _searchOverlay = null;
   }
 
@@ -488,7 +522,8 @@ class _DashboardScreenState extends State<DashboardScreen>
     _searchController.clear();
     _isSearchActive = false;
     _searchEditable = false;
-    _removeSearchOverlay();
+    // _removeSearchOverlay();
+    _closeSearch();
     context.read<SearchProductBloc>().add(SearchClearProducts());
     FocusScope.of(context).unfocus();
   }
@@ -555,135 +590,135 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
   }
 
-  Widget _buildBreadcrumbs() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: List.generate(breadcrumbNames.length, (index) {
-                  final name = breadcrumbNames[index];
-                  final isLast = index == breadcrumbNames.length - 1;
-
-                  return Row(
-                    children: [
-                      GestureDetector(
-                        onTap: (isLast || index == 0)
-                            ? null
-                            : () => _onBreadcrumbTap(index),
-                        child: Text(
-                          name,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: isLast ? Colors.red : Colors.black,
-                            fontWeight:
-                            isLast ? FontWeight.w600 : FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      if (!isLast)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 6),
-                          child: Icon(Icons.chevron_right, size: 16),
-                        ),
-                    ],
-                  );
-                }),
-              ),
-            ),
-          ),
-          const SizedBox(width: 3),
-          Align(
-            alignment: Alignment.centerRight,
-            child: CompositedTransformTarget(
-              link: _searchLink,
-              child: Container(
-                width: 230,
-                height: 35,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: const Color(0xFFE0E0E0),
-                    width: 1,
-                  ),
-
-                ),
-                child: TextField(
-                  controller: _searchController,
-                  focusNode: _searchFocusNode,
-
-                  autofocus: false,
-                  textAlignVertical: TextAlignVertical.center,
-                  // 🔐 KEY LINE
-                  readOnly: !_searchEditable,
-                  decoration: const InputDecoration(
-                    hintText: "Search item",
-                    hintStyle: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF9CA3AF), // Optional
-
-                    ),
-                    prefixIcon: Icon(Icons.search, size: 18, color: Color(0xFF9CA3AF),),
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                  onTap: () {
-                    if (!_searchEditable) {
-                      setState(() {
-                        _searchEditable = true; // 🔓 unlock typing
-                      });
-
-                      // delay ensures Flutter updates readOnly before focus
-                      Future.microtask(() {
-                        FocusScope.of(context).requestFocus(_searchFocusNode);
-                      });
-                    }
-                  },
-
-                  onChanged: (value) {
-                    final query = value.trim();
-                    _isSearchActive = query.isNotEmpty;
-
-                    if (query.isEmpty) {
-                      _removeSearchOverlay();
-                      context.read<SearchProductBloc>().add(SearchClearProducts());
-                      return;
-                    }
-
-                    if (query.length >= 2) {
-                      context
-                          .read<SearchProductBloc>()
-                          .add(SearchFetchProducts(search: query));
-                    }
-                  },
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _onBreadcrumbTap(int index) {
-    setState(() {
-      breadcrumbNames = breadcrumbNames.sublist(0, index + 1);
-      breadcrumbIds = breadcrumbIds.sublist(0, index + 1);
-
-      if (index == 0) {
-        selectedSubCategoryId = null;
-        selectedFolder = null;
-        currentSubCategories = [];
-        context.read<MiniSubCategoryBloc>().add(ResetMiniSubCategory());
-      }
-    });
-  }
+  // Widget _buildBreadcrumbs() {
+  //   return Padding(
+  //     padding: const EdgeInsets.symmetric(horizontal: 16),
+  //     child: Row(
+  //       children: [
+  //         Expanded(
+  //           child: SingleChildScrollView(
+  //             scrollDirection: Axis.horizontal,
+  //             child: Row(
+  //               children: List.generate(breadcrumbNames.length, (index) {
+  //                 final name = breadcrumbNames[index];
+  //                 final isLast = index == breadcrumbNames.length - 1;
+  //
+  //                 return Row(
+  //                   children: [
+  //                     GestureDetector(
+  //                       onTap: (isLast || index == 0)
+  //                           ? null
+  //                           : () => _onBreadcrumbTap(index),
+  //                       child: Text(
+  //                         name,
+  //                         style: TextStyle(
+  //                           fontSize: 14,
+  //                           color: isLast ? Colors.red : Colors.black,
+  //                           fontWeight:
+  //                           isLast ? FontWeight.w600 : FontWeight.w500,
+  //                         ),
+  //                       ),
+  //                     ),
+  //                     if (!isLast)
+  //                       const Padding(
+  //                         padding: EdgeInsets.symmetric(horizontal: 6),
+  //                         child: Icon(Icons.chevron_right, size: 16),
+  //                       ),
+  //                   ],
+  //                 );
+  //               }),
+  //             ),
+  //           ),
+  //         ),
+  //         const SizedBox(width: 3),
+  //         Align(
+  //           alignment: Alignment.centerRight,
+  //           child: CompositedTransformTarget(
+  //             link: _searchLink,
+  //             child: Container(
+  //               width: 230,
+  //               height: 35,
+  //               decoration: BoxDecoration(
+  //                 color: Colors.white,
+  //                 borderRadius: BorderRadius.circular(8),
+  //                 border: Border.all(
+  //                   color: const Color(0xFFE0E0E0),
+  //                   width: 1,
+  //                 ),
+  //
+  //               ),
+  //               child: TextField(
+  //                 controller: _searchController,
+  //                 focusNode: _searchFocusNode,
+  //
+  //                 autofocus: false,
+  //                 textAlignVertical: TextAlignVertical.center,
+  //                 // 🔐 KEY LINE
+  //                 readOnly: !_searchEditable,
+  //                 decoration: const InputDecoration(
+  //                   hintText: "Search item",
+  //                   hintStyle: TextStyle(
+  //                     fontSize: 14,
+  //                     fontWeight: FontWeight.w500,
+  //                     color: Color(0xFF9CA3AF), // Optional
+  //
+  //                   ),
+  //                   prefixIcon: Icon(Icons.search, size: 18, color: Color(0xFF9CA3AF),),
+  //                   border: InputBorder.none,
+  //                   isDense: true,
+  //                   contentPadding: EdgeInsets.zero,
+  //                 ),
+  //                 onTap: () {
+  //                   if (!_searchEditable) {
+  //                     setState(() {
+  //                       _searchEditable = true; // 🔓 unlock typing
+  //                     });
+  //
+  //                     // delay ensures Flutter updates readOnly before focus
+  //                     Future.microtask(() {
+  //                       FocusScope.of(context).requestFocus(_searchFocusNode);
+  //                     });
+  //                   }
+  //                 },
+  //
+  //                 onChanged: (value) {
+  //                   final query = value.trim();
+  //                   _isSearchActive = query.isNotEmpty;
+  //
+  //                   if (query.isEmpty) {
+  //                     _removeSearchOverlay();
+  //                     context.read<SearchProductBloc>().add(SearchClearProducts());
+  //                     return;
+  //                   }
+  //
+  //                   if (query.length >= 2) {
+  //                     context
+  //                         .read<SearchProductBloc>()
+  //                         .add(SearchFetchProducts(search: query));
+  //                   }
+  //                 },
+  //               ),
+  //             ),
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
+  //
+  // void _onBreadcrumbTap(int index) {
+  //   setState(() {
+  //     breadcrumbNames = breadcrumbNames.sublist(0, index + 1);
+  //     breadcrumbIds = breadcrumbIds.sublist(0, index + 1);
+  //
+  //     if (index == 0) {
+  //       selectedSubCategoryId = null;
+  //       selectedFolder = null;
+  //       currentSubCategories = [];
+  //       context.read<MiniSubCategoryBloc>().add(ResetMiniSubCategory());
+  //     }
+  //   });
+  // }
 
   void _onNavItemTapped(int index) async {
     setState(() {
@@ -715,10 +750,9 @@ class _DashboardScreenState extends State<DashboardScreen>
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-        behavior: HitTestBehavior.translucent,
+        behavior: HitTestBehavior.deferToChild,
         onTap: () {
-          _searchFocusNode.unfocus();
-          FocusManager.instance.primaryFocus?.unfocus();
+          FocusScope.of(context).unfocus();
         },
         child: Scaffold(
           appBar: TopBar(
@@ -731,6 +765,41 @@ class _DashboardScreenState extends State<DashboardScreen>
             isHomeScreen: false,
             isTakeAway: widget.isTakeAway,
             showTablesIcon: true,
+            showSearchBar: true,
+
+            searchController: _searchController,
+            searchFocusNode: _searchFocusNode,
+            searchLink: _searchLink,
+
+            onSearchTap: () {
+              if (!_searchEditable) {
+                setState(() {
+                  _searchEditable = true;
+                });
+
+                Future.microtask(() {
+                  FocusScope.of(context).requestFocus(_searchFocusNode);
+                });
+              }
+            },
+
+            onSearchChanged: (value) {
+              final query = value.trim();
+              _isSearchActive = query.isNotEmpty;
+
+              if (query.isEmpty) {
+                _removeSearchOverlay();
+                context.read<SearchProductBloc>().add(SearchClearProducts());
+                return;
+              }
+
+              if (query.length >= 2) {
+                context.read<SearchProductBloc>().add(
+                  SearchFetchProducts(search: query),
+                );
+              }
+            },
+
             onPermissionsReceived: (permissions) {
               setState(() {
                 _userPermissions = permissions;
@@ -786,10 +855,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                                         CrossAxisAlignment.start,
                                         children: [
                                           const SizedBox(height: 8),
-                                          if (breadcrumbNames.isNotEmpty) ...[
-                                            _buildBreadcrumbs(),
-                                            const SizedBox(height: 8),
-                                          ],
+                                          // if (breadcrumbNames.isNotEmpty) ...[
+                                          //   _buildBreadcrumbs(),
+                                          //   const SizedBox(height: 8),
+                                          // ],
                                           BlocBuilder<SubCategoryBloc, SubCategoryState>(
                                             builder: (context, subState) {
                                               if (subState is! SubCategoryLoaded) {

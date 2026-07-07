@@ -52,6 +52,12 @@ class TopBar extends StatefulWidget implements PreferredSizeWidget {
   final List<Map<String, dynamic>> loadedTables;
   final int? zoneId;
   final bool isTakeAway;
+  final bool showSearchBar;
+  final TextEditingController? searchController;
+  final FocusNode? searchFocusNode;
+  final LayerLink? searchLink;
+  final ValueChanged<String>? onSearchChanged;
+  final VoidCallback? onSearchTap;
 
   const TopBar({
     Key? key,
@@ -75,6 +81,12 @@ class TopBar extends StatefulWidget implements PreferredSizeWidget {
     this.loadedTables = const [],
     this.zoneId,
     this.isTakeAway = false,
+    this.showSearchBar = false,
+    this.searchController,
+    this.searchFocusNode,
+    this.searchLink,
+    this.onSearchChanged,
+    this.onSearchTap,
   }) : super(key: key);
 
   @override
@@ -304,7 +316,73 @@ class _TopBarState extends State<TopBar> {
                   else
                     Image.asset('assets/pinaka.png', height: 50, width: 100, fit: BoxFit.contain),
 
-                  const SizedBox(width: 15),
+                  const SizedBox(width: 75),
+
+                  if (widget.showSearchBar)
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: CompositedTransformTarget(
+                          link: widget.searchLink!,
+                          child: Container(
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(0xFFE5E7EB),
+                                width: 1,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.06),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: TextField(
+                              controller: widget.searchController,
+                              focusNode: widget.searchFocusNode,
+                              onTap: widget.onSearchTap,
+                              onChanged: widget.onSearchChanged,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF111827),
+                                fontWeight: FontWeight.w500,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: "Search item or short code....",
+                                hintStyle: const TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF9CA3AF),
+                                  fontWeight: FontWeight.w400,
+                                ),
+                                prefixIcon: const Padding(
+                                  padding: EdgeInsets.only(left: 10, right: 8),
+                                  child: Icon(
+                                    Icons.search_rounded,
+                                    size: 20,
+                                    color: Color(0xFFB6BDC7),
+                                  ),
+                                ),
+                                prefixIconConstraints: const BoxConstraints(
+                                  minWidth: 42,
+                                  minHeight: 42,
+                                ),
+                                border: InputBorder.none,
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 11,
+                                  horizontal: 6,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
 
                   // CENTER - PAYMENT CONTROLS
                   if (widget.isPaymentScreen)

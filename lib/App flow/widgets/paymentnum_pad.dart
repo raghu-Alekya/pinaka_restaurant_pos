@@ -38,6 +38,7 @@ class paymentsummary extends StatefulWidget {
   final ValueChanged<double> onTipChanged;
   final Function(double)? onCouponAmountChanged;
   final double? grandTotal;
+  final ValueChanged<bool>? onPartialPaymentChanged;
 
   const paymentsummary({
     Key? key,
@@ -54,6 +55,7 @@ class paymentsummary extends StatefulWidget {
     required this.onTipChanged,
     this.onCouponAmountChanged,
     this.grandTotal,
+    this.onPartialPaymentChanged,
   }) : super(key: key);
 
   @override
@@ -91,6 +93,12 @@ class _paymentsummaryState extends State<paymentsummary> {
 
   bool _balanceRevealed = false;
   double _confirmedTenderForBalance = 0.0;
+
+  // ➕ NEW — tracks how much of the current order has already been
+  // collected across one or more partial ("split") payments. This is
+  // purely additive: while it stays at 0.0 (the default), every existing
+  // calculation below behaves exactly as it did before.
+  double _totalPaidAmount = 0.0;
 
   double serviceChargeAmount = 0.0;
   int? selectedServiceCharge;
@@ -139,6 +147,7 @@ class _paymentsummaryState extends State<paymentsummary> {
   }
 
   void _syncFromState(PaymentSummaryLoaded state) {
+    print("========== _syncFromState CALLED ==========");
     debugPrint(
         "_syncFromState -> state.isNoCharge = ${state.isNoCharge}");
 
@@ -154,11 +163,24 @@ class _paymentsummaryState extends State<paymentsummary> {
       couponController.text = _appliedCoupon;
       _isCouponApplied = true;
     }
+    // else {
+    //   _appliedCoupon = "";
+    //   _couponAmount = 0.0;
+    //   couponController.clear();
+    //   _isCouponApplied = false;
+    // }
+    debugPrint("Coupon Details = ${summary.couponDetails}");
+    debugPrint("Tip Amount = ${summary.tipAmount}");
 
     if (summary.tipAmount > 0) {
       _tipAmount = summary.tipAmount;
       tipController.text = summary.tipAmount.toStringAsFixed(2);
       _isTipApplied = true;
+    }
+    else {
+      _tipAmount = 0.0;
+      tipController.clear();
+      _isTipApplied = false;
     }
 
     setState(() {
@@ -224,6 +246,24 @@ class _paymentsummaryState extends State<paymentsummary> {
     return _roundMoney(calculatedPayable.abs());
   }
 
+  // ➕ NEW — full order total minus whatever has already been collected
+  // through earlier partial ("split") payments for this order. When no
+  // partial payment has been made (_totalPaidAmount == 0.0, the default)
+  // this returns exactly the same value as getGrandTotal(state) — so
+  // nothing changes for the normal, non-split-payment flow.
+  double _remainingNetPayable(PaymentState state) {
+    final double full = getGrandTotal(state);
+    final double remaining = full - _totalPaidAmount;
+    return remaining < 0 ? 0.0 : remaining;
+  }
+
+  // ➕ NEW — safe numeric parsing used only for the partial-payment math.
+  double _asDouble(dynamic v) {
+    if (v == null) return 0.0;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString()) ?? 0.0;
+  }
+
   Future<void> applyServiceCharge(int percentage) async {
     final response = await serviceChargeRepository.applyServiceCharge(
       token: widget.token,
@@ -238,8 +278,8 @@ class _paymentsummaryState extends State<paymentsummary> {
       _reloadSummary();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text("Service charge applied successfully"),
-            duration: Duration(seconds: 1),
+          content: Text("Service charge applied successfully"),
+          duration: Duration(seconds: 1),
           backgroundColor: Colors.green,),
       );
     }
@@ -259,8 +299,8 @@ class _paymentsummaryState extends State<paymentsummary> {
       _reloadSummary();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text("Service charge removed successfully"),
-            duration: Duration(seconds: 1),
+          content: Text("Service charge removed successfully"),
+          duration: Duration(seconds: 1),
           backgroundColor: Colors.red,),
       );
     }
@@ -434,7 +474,13 @@ class _paymentsummaryState extends State<paymentsummary> {
 
   double _getCurrentNetPayable() {
     final state = context.read<PaymentBloc>().state;
-    return getGrandTotal(state);
+    // ➕ CHANGED: now returns the *remaining* balance (full total minus
+    // whatever has already been collected via partial payments) instead
+    // of always returning the full order total. When no partial payment
+    // has ever been made (_totalPaidAmount == 0.0) this is identical to
+    // the original `getGrandTotal(state)` return value, so every existing
+    // caller of this method keeps working exactly as before.
+    return _remainingNetPayable(state);
   }
 
   Future<void> _onPaymentModeTap(String mode) async {
@@ -481,6 +527,18 @@ class _paymentsummaryState extends State<paymentsummary> {
         _confirmedTenderForBalance =
         _isNcDiscount ? 0.0 : (double.tryParse(amount) ?? 0.0);
       });
+
+      // ➕ NEW — purely informational: lets us log whether this tap is
+      // going to be a partial ("split") payment or a full settlement.
+      // Does not change any control flow.
+      final double remainingBeforeThisTxn = _getCurrentNetPayable();
+      final double enteredAmountForLog =
+      _isNcDiscount ? 0.0 : (double.tryParse(amount) ?? 0.0);
+      final bool isPartialAttempt =
+          enteredAmountForLog < remainingBeforeThisTxn - 0.01;
+      debugPrint(isPartialAttempt
+          ? "🟠 PARTIAL PAYMENT — sending ₹${enteredAmountForLog.toStringAsFixed(2)} via create-payment (balance before this txn: ₹${remainingBeforeThisTxn.toStringAsFixed(2)})"
+          : "🟢 FULL PAYMENT — sending ₹${enteredAmountForLog.toStringAsFixed(2)} via create-payment");
 
       await _submitPayment();
     } finally {
@@ -537,7 +595,225 @@ class _paymentsummaryState extends State<paymentsummary> {
         token: widget.token,
         orderId: widget.orderId,
         restaurantId: widget.restaurantId,
-        orderType: "Dine In",
+        orderType: widget.isTakeAway ? "Take Away" : "Dine In",
+      ),
+    );
+  }
+
+  // ➕ NEW — Void / Next Payment popup shown when a tendered amount is less
+  // than the remaining balance (a partial / split payment).
+  Future<String?> _showPartialPaymentDialog({
+    required double paidAmount,
+    required double remainingAmount,
+  }) {
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withOpacity(0.4),
+      builder: (dialogContext) {
+        return Center(
+          child: Container(
+            width: MediaQuery.of(dialogContext).size.width * 0.45,
+            decoration: ShapeDecoration(
+              color: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomLeft,
+                        colors: [Color(0xFFFFE0B2), Color(0xFFFFFFFF)],
+                      ),
+                      borderRadius: BorderRadius.circular(63),
+                    ),
+                    child: const Center(
+                      child: Icon(Icons.info_rounded,
+                          size: 55, color: Color(0xFFE65100)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Partial Payment Received!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Color(0xFF4C5F7D),
+                      fontSize: 22,
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w500,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  _buildPartialInfoRow(
+                    dialogContext,
+                    "Amount Paid",
+                    paidAmount.toStringAsFixed(2),
+                  ),
+                  const SizedBox(height: 15),
+                  _buildPartialBalanceRow(
+                    dialogContext,
+                    remainingAmount.toStringAsFixed(2),
+                  ),
+                  const SizedBox(height: 25),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildPartialActionButton(
+                        dialogContext,
+                        label: 'Void',
+                        color: const Color(0xFFFD6464),
+                        onTap: () =>
+                            Navigator.of(dialogContext).pop("void"),
+                      ),
+                      const SizedBox(width: 30),
+                      _buildPartialActionButton(
+                        dialogContext,
+                        label: 'Next Payment',
+                        color: const Color(0xFF1BA672),
+                        onTap: () =>
+                            Navigator.of(dialogContext).pop("next"),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ➕ NEW — styled the same as Paymentsucess._buildInfoRow.
+  Widget _buildPartialInfoRow(
+      BuildContext context, String label, String amountText) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.07,
+      width: MediaQuery.of(context).size.width * 0.38,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(5),
+        border: Border.all(color: const Color(0x10000000), width: 0.8),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 10,
+            offset: Offset(0, 1),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 30),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 20,
+              color: Color(0xFF4C5F7D),
+            ),
+          ),
+          Text(
+            "$_currencySymbol$amountText",
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 20,
+              color: Color(0xFF4C5F7D),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ➕ NEW — styled the same as Paymentsucess._buildChangeRow, but tinted
+  // orange/red since this is money still owed, not change to give back.
+  Widget _buildPartialBalanceRow(BuildContext context, String balanceText) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.07,
+      width: MediaQuery.of(context).size.width * 0.38,
+      decoration: BoxDecoration(
+        color: const Color(0x10E53935),
+        borderRadius: BorderRadius.circular(5),
+        border: Border.all(color: const Color(0x10E53935), width: 0.8),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x10E53935),
+            blurRadius: 10,
+            offset: Offset(0, 1),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 30),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            "Balance Due:",
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: 20,
+              color: Color(0xFFE53935),
+            ),
+          ),
+          Text(
+            "$_currencySymbol$balanceText",
+            style: const TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: 20,
+              color: Color(0xFFE53935),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ➕ NEW — same 180x50 pill button style as Paymentsucess._buildActionButton.
+  Widget _buildPartialActionButton(
+      BuildContext context, {
+        required String label,
+        required Color color,
+        required VoidCallback onTap,
+      }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 180,
+        height: 50,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x19000000),
+              blurRadius: 4,
+              offset: Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontFamily: 'Inter',
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -587,6 +863,88 @@ class _paymentsummaryState extends State<paymentsummary> {
                     backgroundColor: Colors.red,),
                 );
                 return;
+              }
+
+              // ➕ NEW — figure out whether this payment fully settles the
+              // order or is a partial ("split") payment. This block is
+              // purely additive: when the tendered amount covers the whole
+              // remaining net payable (the normal, existing case — including
+              // the fully-discounted ₹0 order case), remainingAfter comes out
+              // <= 0.01 and everything below falls straight through to the
+              // ORIGINAL, unchanged receipt flow exactly as before.
+              final double paidThisTxn = _asDouble(state.response.paidAmount);
+              final double fullNet = getGrandTotal(paymentBlocState);
+              final double newTotalPaid = _totalPaidAmount + paidThisTxn;
+              final double remainingAfter = fullNet - newTotalPaid;
+
+              if (remainingAfter > 0.01) {
+                // ── Partial payment: show Void / Next Payment popup
+                // instead of the normal receipt dialog.
+                final String? partialAction = await _showPartialPaymentDialog(
+                  paidAmount: paidThisTxn,
+                  remainingAmount: remainingAfter,
+                );
+
+                if (!mounted) return;
+
+                if (partialAction == "void") {
+                  try {
+                    final message = await _paymentRepository.voidPayment(
+                      token: widget.token,
+                      paymentId: state.response.paymentId,
+                      orderId: state.response.orderId,
+                    );
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(message),
+                        duration: const Duration(seconds: 1),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  } catch (e) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(e.toString()),
+                        duration: const Duration(seconds: 1),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                  setState(() {
+                    amount = '';
+                    tenderAmountError = null;
+                    _balanceRevealed = false;
+                    _confirmedTenderForBalance = 0.0;
+                    // ── FIX: only THIS transaction is being voided — it
+                    // was never added to _totalPaidAmount (that only
+                    // happens in the "Next Payment" branch below), so
+                    // _totalPaidAmount must be left exactly as it was.
+                  });
+                } else {
+                  // "Next Payment" — accept the partial amount, and update
+                  // every place on screen (Net Payable card, Balance
+                  // Amount card, numpad enable state, preset buttons) so it
+                  // now reflects the reduced remaining balance.
+                  setState(() {
+                    _totalPaidAmount = newTotalPaid;
+                    amount = '';
+                    tenderAmountError = null;
+                    _balanceRevealed = false;
+                    _confirmedTenderForBalance = 0.0;
+                  });
+                  widget.onPartialPaymentChanged?.call(true);
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                          "Partial payment of $_currencySymbol${paidThisTxn.toStringAsFixed(2)} recorded. Balance $_currencySymbol${remainingAfter.toStringAsFixed(2)} remaining."),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+                return; // don't fall through to the full receipt flow below
               }
 
               final summary = paymentBlocState.summary;
@@ -643,6 +1001,10 @@ class _paymentsummaryState extends State<paymentsummary> {
                     tenderAmountError = null;
                     _balanceRevealed = false;
                     _confirmedTenderForBalance = 0.0;
+                    // ── FIX: this only reverses THIS transaction — it does
+                    // not touch any earlier partial payments the cashier
+                    // already accepted via "Next Payment", so
+                    // _totalPaidAmount is intentionally left untouched here.
                   });
                 } catch (e) {
                   if (!mounted) return;
@@ -657,12 +1019,23 @@ class _paymentsummaryState extends State<paymentsummary> {
               } else {
                 // ✅ IMPORTANT: Just clean up local state, don't navigate here
                 // Navigation is handled inside Paymentsucess -> PrintRecipt
+                // setState(() {
+                //   _balanceRevealed = false;
+                //   _confirmedTenderForBalance = 0.0;
+                // });
+
+                // ➕ NEW — the order is now fully paid off (this branch only
+                // runs when remainingAfter <= 0.01 above). Marking
+                // _totalPaidAmount as the full order total here makes sure
+                // Net Payable / Balance Amount correctly show "fully paid"
+                // (Balance Amount stays at 0) if this screen is still
+                // visible for a moment before navigation happens.
+                final double fullNetAtCompletion =
+                getGrandTotal(paymentBlocState);
                 setState(() {
-                  _balanceRevealed = false;
-                  _confirmedTenderForBalance = 0.0;
+                  _totalPaidAmount = fullNetAtCompletion;
                 });
-
-
+                widget.onPartialPaymentChanged?.call(false);
 
                 // DO NOT navigate here - let Paymentsucess handle it
                 // The navigation will happen inside PrintRecipt's _onDonePressed
@@ -691,8 +1064,8 @@ class _paymentsummaryState extends State<paymentsummary> {
             if (state is RemoveDiscountSuccess) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                    content: Text(state.response.message),
-                    duration: const Duration(seconds: 1),
+                  content: Text(state.response.message),
+                  duration: const Duration(seconds: 1),
                   backgroundColor: Colors.red,),
               );
               setState(() {
@@ -715,8 +1088,8 @@ class _paymentsummaryState extends State<paymentsummary> {
             if (state is RemoveDiscountFailure) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                    content: Text(state.error),
-                    duration: const Duration(seconds: 1),
+                  content: Text(state.error),
+                  duration: const Duration(seconds: 1),
                   backgroundColor: Colors.red,),
               );
             }
@@ -729,20 +1102,35 @@ class _paymentsummaryState extends State<paymentsummary> {
         // UI is always visible - no loading state
         body:
         BlocBuilder<PaymentBloc, PaymentState>(
-            buildWhen: (prev, curr) {
-              if (curr is! PaymentSummaryLoaded) return false;
+          buildWhen: (prev, curr) {
+            if (curr is! PaymentSummaryLoaded) return false;
 
-              if (prev is PaymentSummaryLoaded) {
-                return curr.summary.netTotal != prev.summary.netTotal ||
-                    curr.summary.serviceChargeValue != prev.summary.serviceChargeValue ||
-                    curr.merchantDiscount != prev.merchantDiscount ||
-                    curr.isNoCharge != prev.isNoCharge;
-              }
+            if (prev is PaymentSummaryLoaded) {
+              return curr.summary.netTotal != prev.summary.netTotal ||
+                  curr.summary.serviceChargeValue != prev.summary.serviceChargeValue ||
+                  curr.merchantDiscount != prev.merchantDiscount ||
+                  curr.isNoCharge != prev.isNoCharge;
+            }
 
-              return true;
-            },
+            return true;
+          },
           builder: (context, payState) {
-            final double netPayableVal = getGrandTotal(payState);
+            // ➕ CHANGED (additive): fullNetPayableVal is the full order
+            // total exactly as before; netPayableVal now represents the
+            // *remaining* balance still owed (full total minus whatever
+            // has already been collected through partial payments). Every
+            // downstream usage below (payDisabled, presets, numpad,
+            // Net Payable card, Balance Amount card) is unchanged code —
+            // it just now automatically reflects partial payments because
+            // this single value does. When no partial payment has ever
+            // been made, _totalPaidAmount is 0 and netPayableVal is
+            // identical to the old value, so nothing else changes.
+            final double netPayableVal = getGrandTotal(payState); // Always fixed
+
+            final double remainingBalance =
+            (netPayableVal - _totalPaidAmount) < 0
+                ? 0.0
+                : (netPayableVal - _totalPaidAmount);
 
             final bool isSummaryReady =
                 payState is PaymentSummaryLoaded || _paymentSummary != null;
@@ -758,20 +1146,21 @@ class _paymentsummaryState extends State<paymentsummary> {
             // reacts to every keystroke on the tender amount.
             final double tenderAmt =
             _balanceRevealed ? _confirmedTenderForBalance : 0.0;
-            final double balAmt = tenderAmt < netPayableVal
-                ? (netPayableVal - tenderAmt)
+
+            final double balAmt = tenderAmt < remainingBalance
+                ? (remainingBalance - tenderAmt)
                 : 0.0;
 
-            final List<double> presets = buildPresetAmounts(netPayableVal);
+            final List<double> presets = buildPresetAmounts(remainingBalance);
 
             return Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // LEFT — Numpad
                 Expanded(
-                  child: _buildNumpadColumn(
+                  child:_buildNumpadColumn(
                     context,
-                    netPayableVal: netPayableVal,
+                    netPayableVal: remainingBalance,
                     payDisabled: payDisabled,
                     presets: presets,
                   ),
@@ -853,7 +1242,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                                 : Colors.white,
                           ),
                           child: Align(
-                            alignment: Alignment.centerRight,
+                              alignment: Alignment.centerRight,
                               child: Text(
                                 payDisabled
                                     ? "$_currencySymbol 0.00"
@@ -1309,6 +1698,21 @@ class _paymentsummaryState extends State<paymentsummary> {
               letterSpacing: 0.2,
             ),
           ),
+          // ➕ NEW — shows up only once a partial payment has been
+          // accepted for this order, so the cashier can see how much has
+          // already been collected. Purely additive: nothing is removed.
+          if (_totalPaidAmount > 0)
+            // Padding(
+            //   padding: const EdgeInsets.only(top: 2),
+            //   child: Text(
+            //     "Paid $_currencySymbol${_totalPaidAmount.toStringAsFixed(2)}",
+            //     style: const TextStyle(
+            //       fontSize: 10,
+            //       fontWeight: FontWeight.w700,
+            //       color: Color(0xFF2E7D32),
+            //     ),
+            //   ),
+            // ),
           const SizedBox(height: 7),
           Stack(
             clipBehavior: Clip.none,
@@ -1873,15 +2277,15 @@ class _paymentsummaryState extends State<paymentsummary> {
               _updateAmountField();
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                    content: Text('Tip removed successfully'),
-                    duration: Duration(seconds: 1),
+                  content: Text('Tip removed successfully'),
+                  duration: Duration(seconds: 1),
                   backgroundColor: Colors.red,),
               );
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                    content: Text('Failed to remove tip'),
-                    duration: Duration(seconds: 1),
+                  content: Text('Failed to remove tip'),
+                  duration: Duration(seconds: 1),
                   backgroundColor: Colors.red,),
               );
             }
@@ -1939,86 +2343,86 @@ class _paymentsummaryState extends State<paymentsummary> {
         : borderColor.withOpacity(0.4);
 
     return GestureDetector(
-      onTap: (!enabled || isApplied) ? null : onTap,
+        onTap: (!enabled || isApplied) ? null : onTap,
         child: Opacity(
           opacity: enabled ? 1.0 : 0.4,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-        decoration: BoxDecoration(
-          // ── Only change: gradient when applied, white when not ──
-          gradient: isApplied ? _tileGradient(iconBg) : null,
-          color: isApplied ? null : Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-              color: activeBorder,
-              width: isApplied ? 0 : 1.2),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: labelColor,
-                    ),
-                  ),
-                  if (appliedText != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      appliedText,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: subColor,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+            decoration: BoxDecoration(
+              // ── Only change: gradient when applied, white when not ──
+              gradient: isApplied ? _tileGradient(iconBg) : null,
+              color: isApplied ? null : Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                  color: activeBorder,
+                  width: isApplied ? 0 : 1.2),
             ),
-            if (isApplied && onDelete != null)
-              GestureDetector(
-                onTap: onDelete,
-                child: Container(
-                  width: 38,
-                  height: 38,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: labelColor,
+                        ),
+                      ),
+                      if (appliedText != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          appliedText,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: subColor,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                  // ── Only change: trash icon instead of close ──
-                  child: const Icon(Icons.delete_outline_rounded,
-                      size: 25, color: Colors.red),
                 ),
-              )
-            else
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: iconBg,
-                  shape: BoxShape.circle,
-                ),
-                // ── Only change: iconWidget wrapped in CircleAvatar ──
-                child: CircleAvatar(
-                  radius: 17,
-                  backgroundColor: Colors.transparent,
-                  child: iconWidget ??
-                      (icon != null
-                          ? Icon(icon, color: Colors.white, size: 18)
-                          : const Icon(Icons.help_outline,
-                          color: Colors.white, size: 18)),
-                ),
-              ),
-          ],
-        ),
-      ),
-    ));
+                if (isApplied && onDelete != null)
+                  GestureDetector(
+                    onTap: onDelete,
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      // ── Only change: trash icon instead of close ──
+                      child: const Icon(Icons.delete_outline_rounded,
+                          size: 25, color: Colors.red),
+                    ),
+                  )
+                else
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: iconBg,
+                      shape: BoxShape.circle,
+                    ),
+                    // ── Only change: iconWidget wrapped in CircleAvatar ──
+                    child: CircleAvatar(
+                      radius: 17,
+                      backgroundColor: Colors.transparent,
+                      child: iconWidget ??
+                          (icon != null
+                              ? Icon(icon, color: Colors.white, size: 18)
+                              : const Icon(Icons.help_outline,
+                              color: Colors.white, size: 18)),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ));
   }
   Widget _svcChargeTile(BuildContext context) {
     final bool applied =
@@ -2101,13 +2505,13 @@ class _paymentsummaryState extends State<paymentsummary> {
             GestureDetector(
               onTap: deleteServiceCharge,
               child: Container(
-                width: 28,
-                height: 28,
+                width: 38,
+                height: 38,
                 decoration: const BoxDecoration(
                     color: Colors.white, shape: BoxShape.circle),
                 // ── Only change: trash icon ──
                 child: const Icon(Icons.delete_outline_rounded,
-                    size: 15, color: Colors.red),
+                    size: 25, color: Colors.red),
               ),
             )
           else

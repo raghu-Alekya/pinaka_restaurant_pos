@@ -1770,6 +1770,269 @@ class _OrderPanelState extends State<OrderPanel> {
                 // const SizedBox(height: 2),
 
                 /// Main Content Area
+                // Flexible(
+                //   child: Column(
+                //     crossAxisAlignment: CrossAxisAlignment.stretch,
+                //     children: [
+                //       /// KOT Dropdown - Always shows the header bar
+                //       if (!widget.isTakeAway && state.kotList.isNotEmpty)
+                //         MultiBlocProvider(
+                //           providers: [
+                //             BlocProvider<KotLineItemsBloc>(
+                //               create:
+                //                   (_) => KotLineItemsBloc(
+                //                 repository: VoidItemRepository(),
+                //               ),
+                //             ),
+                //             BlocProvider<UpdatekotBloc>(
+                //               create:
+                //                   (_) => UpdatekotBloc(
+                //                 repository: UpdatekotRepository(),
+                //               ),
+                //             ),
+                //             BlocProvider.value(value: context.read<KotBloc>()),
+                //           ],
+                //           child: ViewAllKOTDropdown(
+                //             kots: state.kotList,
+                //             parentOrderId: state.orderId,
+                //             restaurantId: int.parse(widget.restaurantId),
+                //             zoneId: state.zoneId,
+                //             token: widget.token,
+                //             tableNo: state.tableName,
+                //             // onToggle: (isExpanded) {
+                //             //   // Update state when dropdown expands/collapses
+                //             //   setState(() {
+                //             //     _showKotList = isExpanded;
+                //             //   });
+                //             // },
+                //           ),
+                //         ),
+                //
+                //       /// Spacing only for Dine-In
+                //       if (!widget.isTakeAway &&
+                //           state.kotList.isNotEmpty &&
+                //           !_showKotList)
+                //         const SizedBox(height: 8),
+                //
+                //       /// Conditional Rendering:
+                //       /// - If KOT view is expanded => show ONLY the KOT list.
+                //       /// - Otherwise => show order header + order list + total.
+                //       /// These two branches are mutually exclusive: only one
+                //       /// is ever built into the widget tree at a time.
+                //       if (_showKotList)
+                //       /// ---------------- KOT-ONLY VIEW ----------------
+                //         Expanded(
+                //           child: Container(
+                //             color: const Color(0xFFF1F1F3),
+                //             padding: const EdgeInsets.all(16),
+                //             child: ListView.builder(
+                //               itemCount: state.kotList.length,
+                //               itemBuilder: (context, index) {
+                //                 final kot = state.kotList[index];
+                //                 return Card();
+                //               },
+                //             ),
+                //           ),
+                //         )
+                //       else
+                //       /// ---------------- ORDER VIEW ----------------
+                //         Flexible(
+                //           child: Column(
+                //             crossAxisAlignment: CrossAxisAlignment.stretch,
+                //             children: [
+                //               /// Header
+                //               Container(
+                //                 height: 30,
+                //                 decoration: BoxDecoration(
+                //                   color: const Color(0xFF989292),
+                //                   borderRadius: const BorderRadius.only(
+                //                     topLeft: Radius.circular(6),
+                //                     topRight: Radius.circular(6),
+                //                   ),
+                //                 ),
+                //                 padding: const EdgeInsets.symmetric(
+                //                   horizontal: 12,
+                //                 ),
+                //                 child: Row(
+                //                   children: [
+                //                     const SizedBox(width: 7),
+                //                     SizedBox(width: 40, child: headerText('#')),
+                //                     const SizedBox(width: 6),
+                //                     Expanded(child: headerText('Item Name')),
+                //                     const SizedBox(width: 40),
+                //                     headerText('Modifiers'),
+                //                     SizedBox(
+                //                       width: 70,
+                //                       child: headerText(
+                //                         'Price',
+                //                         align: TextAlign.right,
+                //                       ),
+                //                     ),
+                //                     const SizedBox(width: 30),
+                //                     SizedBox(
+                //                       width: 80,
+                //                       child: headerText(
+                //                         'Qty',
+                //                         align: TextAlign.center,
+                //                       ),
+                //                     ),
+                //                     const SizedBox(width: 5),
+                //                     SizedBox(
+                //                       width: 70,
+                //                       child: headerText(
+                //                         'Amount',
+                //                         align: TextAlign.right,
+                //                       ),
+                //                     ),
+                //                   ],
+                //                 ),
+                //               ),
+                //               const SizedBox(height: 2),
+                //
+                //               /// Order List
+                //               Expanded(
+                //                 child: Container(
+                //                   color: const Color(0xFFF1F1F3),
+                //                   child:
+                //                   state.orderItems.isEmpty
+                //                       ? const Center(
+                //                     child: Column(
+                //                       mainAxisSize: MainAxisSize.min,
+                //                       children: [
+                //                         Text(
+                //                           "No item Selected",
+                //                           style: TextStyle(
+                //                             fontSize: 16,
+                //                             fontWeight: FontWeight.w600,
+                //                             color: Color(0xFFB8B8B8),
+                //                           ),
+                //                         ),
+                //                         SizedBox(height: 8),
+                //                         Text(
+                //                           "Please select item from Menu",
+                //                           style: TextStyle(
+                //                             fontSize: 16,
+                //                             fontWeight: FontWeight.w600,
+                //                             color: Color(0xFFB8B8B8),
+                //                           ),
+                //                         ),
+                //                       ],
+                //                     ),
+                //                   )
+                //                       : OrderPanelList(
+                //                     orderItems: state.orderItems,
+                //                     addonPrices: widget.addonPrices,
+                //                     onIncreaseQuantity: (index) {
+                //                       final item =
+                //                       state.orderItems[index];
+                //                       context.read<OrderBloc>().add(
+                //                         UpdateOrderItemQuantity(
+                //                           index,
+                //                           item.quantity + 1,
+                //                         ),
+                //                       );
+                //                     },
+                //                     onDecreaseQuantity: (index) {
+                //                       final item =
+                //                       state.orderItems[index];
+                //                       if (item.quantity > 1) {
+                //                         context.read<OrderBloc>().add(
+                //                           UpdateOrderItemQuantity(
+                //                             index,
+                //                             item.quantity - 1,
+                //                           ),
+                //                         );
+                //                       }
+                //                     },
+                //                     onModifiersChanged: (
+                //                         index,
+                //                         modifiers,
+                //                         addOns,
+                //                         note,
+                //                         ) {
+                //                       final fullAddOns =
+                //                       <
+                //                           String,
+                //                           Map<String, dynamic>
+                //                       >{};
+                //                       addOns.forEach((name, qty) {
+                //                         fullAddOns[name] = {
+                //                           'quantity': qty,
+                //                           'price':
+                //                           widget
+                //                               .addonPrices[name] ??
+                //                               0,
+                //                         };
+                //                       });
+                //
+                //                       context.read<OrderBloc>().add(
+                //                         UpdateOrderItemDetails(
+                //                           index: index,
+                //                           modifiers: modifiers,
+                //                           addOns: fullAddOns,
+                //                           note: note,
+                //                         ),
+                //                       );
+                //                     },
+                //                     onRemoveItem: (index) {
+                //                       context.read<OrderBloc>().add(
+                //                         RemoveOrderItem(index),
+                //                       );
+                //                     },
+                //                     token: widget.token,
+                //                   ),
+                //                 ),
+                //               ),
+                //
+                //               /// TOTAL
+                //               Container(
+                //                 padding: const EdgeInsets.symmetric(
+                //                   horizontal: 12,
+                //                   vertical: 6,
+                //                 ),
+                //                 decoration: BoxDecoration(
+                //                   color: const Color(0xFFE9EAFC),
+                //                   borderRadius: const BorderRadius.only(
+                //                     bottomLeft: Radius.circular(6),
+                //                     bottomRight: Radius.circular(6),
+                //                   ),
+                //                 ),
+                //                 child: Row(
+                //                   mainAxisAlignment:
+                //                   MainAxisAlignment.spaceBetween,
+                //                   children: [
+                //                     Text(
+                //                       'Total Items: ${state.orderItems.length}',
+                //                       style: const TextStyle(
+                //                         fontSize: 14,
+                //                         fontWeight: FontWeight.w600,
+                //                         color: const Color(0xFF1A3C71),
+                //                       ),
+                //                     ),
+                //                     Text(
+                //                       state.orderItems
+                //                           .fold(
+                //                         0.0,
+                //                             (sum, item) =>
+                //                         sum + item.totalWithAddons,
+                //                       )
+                //                           .toStringAsFixed(2),
+                //                       style: const TextStyle(
+                //                         fontSize: 14,
+                //                         fontWeight: FontWeight.w700,
+                //                         color: const Color(0xFF1A3C71),
+                //                       ),
+                //                     ),
+                //                   ],
+                //                 ),
+                //               ),
+                //             ],
+                //           ),
+                //         ),
+                //     ],
+                //   ),
+                // ),
+
                 Flexible(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1799,12 +2062,13 @@ class _OrderPanelState extends State<OrderPanel> {
                             zoneId: state.zoneId,
                             token: widget.token,
                             tableNo: state.tableName,
-                            // onToggle: (isExpanded) {
-                            //   // Update state when dropdown expands/collapses
-                            //   setState(() {
-                            //     _showKotList = isExpanded;
-                            //   });
-                            // },
+                            // ✅ Wired up so expanding/collapsing the KOT
+                            // dropdown hides/shows the order header + item list below.
+                            onToggle: (isExpanded) {
+                              setState(() {
+                                _showKotList = isExpanded;
+                              });
+                            },
                           ),
                         ),
 
@@ -1814,28 +2078,12 @@ class _OrderPanelState extends State<OrderPanel> {
                           !_showKotList)
                         const SizedBox(height: 8),
 
-                      /// Conditional Rendering:
-                      /// - If KOT view is expanded => show ONLY the KOT list.
-                      /// - Otherwise => show order header + order list + total.
-                      /// These two branches are mutually exclusive: only one
-                      /// is ever built into the widget tree at a time.
-                      if (_showKotList)
-                      /// ---------------- KOT-ONLY VIEW ----------------
-                        Expanded(
-                          child: Container(
-                            color: const Color(0xFFF1F1F3),
-                            padding: const EdgeInsets.all(16),
-                            child: ListView.builder(
-                              itemCount: state.kotList.length,
-                              itemBuilder: (context, index) {
-                                final kot = state.kotList[index];
-                                return Card();
-                              },
-                            ),
-                          ),
-                        )
-                      else
                       /// ---------------- ORDER VIEW ----------------
+                      /// ✅ When the KOT dropdown is expanded (_showKotList == true)
+                      /// the order header + item list + total below are hidden
+                      /// entirely (no separate KOT-only list is rendered here —
+                      /// the dropdown itself shows the KOT details).
+                      if (!_showKotList)
                         Flexible(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,

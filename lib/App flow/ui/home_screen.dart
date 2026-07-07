@@ -355,7 +355,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         title: "Tables",
                         subtitle: "Floor Plan",
                         count: occupiedTables.toString(),
-                        countLabel: "occupied",
+                        countLabel: "Occupied",
                         isCurrent: true,
                         color: const Color(0xffF5A25D),
                         icon: Icons.grid_view_rounded,
@@ -404,7 +404,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           title: "Take Aways",
                           subtitle: "Walk-in Orders",
                           count: "0",
-                          countLabel: "active",
+                          countLabel: "Active",
                           color: const Color(0xff5FCB89),
                           gradient: const RadialGradient(
                             center: Alignment(0.82, 0.85),
@@ -465,7 +465,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         title: "Online Orders",
                         subtitle: "Delivery",
                         count: "0",
-                        countLabel: "pending",
+                        countLabel: "Pending",
                         color: const Color(0xff9B7AE7),
                         icon: Icons.language,
                         gradient: const RadialGradient(
@@ -503,7 +503,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: _whiteModuleCard(
                         title: "KOT Status",
                         count: "8",
-                        countLabel: "in kitchen",
+                        countLabel: "In Kitchen",
                         icon: Icons.restaurant_menu,
                         iconColor: Colors.red,
                         description: "Monitor live kitchen order tickets and prep times",
@@ -529,7 +529,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: _whiteModuleCard(
                         title: "Orders",
                         count: activeOrdersCount.toString(),
-                        countLabel: "total",
+                        countLabel: "Total",
                         icon: Icons.receipt_long,
                         iconColor: Colors.blue,
                         description: "View, modify and settle all active orders",
@@ -596,7 +596,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: _whiteModuleCard(
                         title: "Reservation",
                         count: upcomingReservations.toString(),
-                        countLabel: "upcoming",
+                        countLabel: "Upcoming",
                         icon: Icons.calendar_today,
                         iconColor: Colors.blue,
                         description: "Accept, confirm and seat table reservations",
@@ -620,8 +620,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       width: 250,
                       child: _whiteModuleCard(
                         title: "Customers",
-                        count: "248",
-                        countLabel: "profiles",
+                        count: "48",
+                        countLabel: "Profiles",
                         icon: Icons.people_outline,
                         iconColor: Colors.purple,
                         description: "Profiles, loyalty history and preferences",
@@ -634,7 +634,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: _whiteModuleCard(
                           title: "Vendors",
                           count: vendorcount.toInt().toString(),
-                          countLabel: "vendors",
+                          countLabel: "Vendors",
                           icon: Icons.local_shipping_outlined,
                           iconColor: Colors.orange,
                           description: "Manage supplier profiles, orders and deliveries",
@@ -845,18 +845,19 @@ class _HomeScreenState extends State<HomeScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            count,
+                            count.padLeft(2, '0'),
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
-                              fontSize: 12,
+                              fontSize: 16,
                             ),
                           ),
                           Text(
                             countLabel,
                             style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 8,
+                                color: Colors.white70,
+                                fontSize: 8,
+                                fontWeight: FontWeight.w600
                             ),
                           ),
                         ],
@@ -890,7 +891,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 // const Spacer(),
 
                 const Text(
-                  "Open module →",
+                  "Open Module →",
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: 10,
@@ -986,7 +987,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      count,
+                      count.toString().padLeft(2, '0'),
                       style: TextStyle(
                         color: iconColor,
                         fontWeight: FontWeight.bold,
@@ -1032,7 +1033,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 4),
 
             const Text(
-              "Open module →",
+              "Open Module →",
               style: TextStyle(
                 color: Color(0xFF9CA3AF),
                 fontSize: 10,

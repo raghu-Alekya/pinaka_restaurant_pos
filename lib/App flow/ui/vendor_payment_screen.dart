@@ -353,42 +353,42 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                   ),
                                 ],
                               ),
-                              child: InkWell(
-                                onTap: () {
-                                  Navigator.pushAndRemoveUntil(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => HomeScreen(
-                                        pin: widget.pin,
-                                        token: widget.token,
-                                        restaurantId: widget.restaurantId,
-                                        restaurantName: widget.restaurantName,
-                                      ),
-                                    ),
-                                        (route) => false,
-                                  );
-                                },
-                                child: const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.arrow_back,
-                                      color: Colors.white,
-                                      size: 18,
-                                    ),
-                                    SizedBox(width: 6),
-                                    Text(
-                                      'Back',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                              // child: InkWell(
+                              //   onTap: () {
+                              //     Navigator.pushAndRemoveUntil(
+                              //       context,
+                              //       MaterialPageRoute(
+                              //         builder: (_) => HomeScreen(
+                              //           pin: widget.pin,
+                              //           token: widget.token,
+                              //           restaurantId: widget.restaurantId,
+                              //           restaurantName: widget.restaurantName,
+                              //         ),
+                              //       ),
+                              //           (route) => false,
+                              //     );
+                              //   },
+                              //   child: const Row(
+                              //     mainAxisAlignment: MainAxisAlignment.center,
+                              //     children: [
+                              //       Icon(
+                              //         Icons.arrow_back,
+                              //         color: Colors.white,
+                              //         size: 18,
+                              //       ),
+                              //       SizedBox(width: 6),
+                              //       Text(
+                              //         'Back',
+                              //         style: TextStyle(
+                              //           color: Colors.white,
+                              //           fontWeight: FontWeight.w500,
+                              //         ),
+                              //       ),
+                              //     ],
+                              //   ),
+                              // ),
                             ),
-                            const SizedBox(width: 20),
+                            // const SizedBox(width: 20),
 
                             const Text(
                               'Vendor Management',
@@ -1016,8 +1016,8 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 14,
-              color: Color(0xFF3D3D3D),
-              fontWeight: FontWeight.w500,
+              color: Color(0xFF1D1D1D),
+              fontWeight: FontWeight.w400,
             ),
           ),
         ),

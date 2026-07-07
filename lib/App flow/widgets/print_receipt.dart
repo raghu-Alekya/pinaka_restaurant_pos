@@ -42,10 +42,15 @@ class PrintRecipt extends StatefulWidget {
 }
 
 class _PrintReciptState extends State<PrintRecipt> {
-  String _selectedOption = '';
+  String _selectedOption = 'Printer';
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _smsController = TextEditingController();
   final List<String> options = ['Printer', 'Email', 'SMS'];
+  @override
+  void initState() {
+    super.initState();
+    _selectedOption = 'Printer';
+  }
 
   void _onDonePressed() async {
     // 1️⃣ Validation

@@ -293,8 +293,8 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
               if (_expanded)
                 ConstrainedBox(
                   constraints: const BoxConstraints(
-                    maxHeight: 368,
-                    minHeight: 341,
+                    maxHeight: 320,
+                    minHeight: 320,
                   ),
                   child: Material(
                     elevation: 8,

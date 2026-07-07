@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -25,7 +27,9 @@ class OrdersListTable extends StatefulWidget {
   final String restaurantName;
   final UserPermissions? userPermissions;
 
-  const OrdersListTable({super.key,required this.token,
+  const OrdersListTable({
+    super.key,
+    required this.token,
     required List orders,
     required this.pin,
     required this.restaurantId,
@@ -42,8 +46,14 @@ class _OrdersListTableState extends State<OrdersListTable> {
   int _selectedIndex = 4;
   String? _selectedStatus;
   String? _selectedDate;
+  Timer? _searchDebounce;
 
-  final List<String> statusOptions = ['All', 'Completed', 'Processing', 'cancelled'];
+  final List<String> statusOptions = [
+    'All',
+    'Completed',
+    'Processing',
+    'cancelled',
+  ];
   DateTime? selectedDate;
 
   void _onItemTapped(int index) {
@@ -69,7 +79,8 @@ class _OrdersListTableState extends State<OrdersListTable> {
   final TextEditingController _dateController = TextEditingController();
 
   String _searchQuery = "";
-
+  List<OrderlistModel> _allOrders = [];
+  List<OrderlistModel> _filteredOrders = [];
 
   @override
   void initState() {
@@ -77,19 +88,22 @@ class _OrdersListTableState extends State<OrdersListTable> {
     _userPermissions = widget.userPermissions;
     // Trigger fetch
     _loadPermissions();
-    context.read<OrderstatusBloc>().add(
-      FetchOrders(token: widget.token),
-
-    );
+    context.read<OrderstatusBloc>().add(FetchOrders(token: widget.token));
     _selectedStatus = 'All'; // <-- Add this line
 
     _searchController.addListener(() {
-      setState(() {
-        _searchQuery = _searchController.text.toLowerCase();
-        _currentPage = 0;
+      _searchDebounce?.cancel();
+
+      _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+        setState(() {
+          _searchQuery = _searchController.text.toLowerCase();
+          _currentPage = 0;
+          _updateFilteredOrders();
+        });
       });
     });
   }
+
   Future<void> _loadPermissions() async {
     final savedPermissions = await SessionManager.loadPermissions();
     if (savedPermissions != null) {
@@ -147,6 +161,13 @@ class _OrdersListTableState extends State<OrdersListTable> {
     }).toList();
   }
 
+  void _updateFilteredOrders() {
+    _filteredOrders = _filterOrders(_allOrders);
+
+    if (_currentPage * _rowsPerPage >= _filteredOrders.length) {
+      _currentPage = 0;
+    }
+  }
 
   bool _isResetEnabled() {
     return _searchQuery.isNotEmpty ||
@@ -154,8 +175,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
         selectedDate != null;
   }
 
-
-  List<OrderlistModel> _currentPageOrders(List< OrderlistModel> filtered) {
+  List<OrderlistModel> _currentPageOrders(List<OrderlistModel> filtered) {
     final startIndex = _currentPage * _rowsPerPage;
     final endIndex = (_currentPage + 1) * _rowsPerPage;
     return filtered.sublist(
@@ -173,6 +193,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
   void _previousPage() {
     if (_currentPage > 0) setState(() => _currentPage--);
   }
+
   List<int> _visiblePages(int totalPages) {
     const int maxVisible = 4;
 
@@ -185,12 +206,16 @@ class _OrdersListTableState extends State<OrdersListTable> {
     if (startPage < 0) startPage = 0;
 
     final visibleCount =
-    (totalPages - startPage) >= maxVisible ? maxVisible : totalPages - startPage;
+    (totalPages - startPage) >= maxVisible
+        ? maxVisible
+        : totalPages - startPage;
 
     return List.generate(visibleCount, (i) => startPage + i);
   }
+
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     _dateController.dispose();
     super.dispose();
@@ -199,7 +224,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Color(0xFFE4E9F9),
       appBar: TopBar(
         token: widget.token,
         pin: widget.pin,
@@ -253,117 +278,89 @@ class _OrdersListTableState extends State<OrdersListTable> {
           // MAIN CONTENT (BlocBuilder)
           Expanded(
             child: BlocBuilder<OrderstatusBloc, OrderstatusState>(
+              buildWhen: (previous, current) {
+                return current is OrderLoading ||
+                    current is OrderLoaded ||
+                    current is OrderError;
+              },
               builder: (context, state) {
                 if (state is OrderLoading) {
                   return const Center(child: CircularProgressIndicator());
-                }
-                else if (state is OrderLoaded) {
+                } else if (state is OrderLoaded) {
                   final orders = state.orders;
 
-                  // ======= Debug prints =======
-                  for (var order in orders) {
-                    print('==============================');
-                    print('Order ID        : ${order.orderId}');
-                    print('Order Type      : ${order.orderType}');
-                    print('Date            : ${order.date}');
-                    print('Customer Name   : ${order.customerName}');
-                    print('Customer Phone  : ${order.customerPhone}');
-                    print('Payment Type    : ${order.paymentType}');
-                    print('Amount          : ${order.amount}');
-                    print('Discount        : ${order.discount}');
-                    print('Total           : ${order.total}');
-                    print('Status          : ${order.status}');
-                    print('Is Parent       : ${order.isParent}');
-                    print('Restaurant ID   : ${order.restaurantId}');
-                    print('Zone ID         : ${order.zoneId}');
-                    print('Zone Name       : ${order.zoneName}');
-                    print('Table ID        : ${order.tableId}');
-                    print('Table Name      : ${order.tableName}');
-                    print('Table Status    : ${order.tableStatus}');
-                    print('--- KOT ORDERS ---');
-
-                    if (order.kotOrders != null && order.kotOrders!.isNotEmpty) {
-                      for (var kot in order.kotOrders!) {
-                        print('  ----------------------------');
-                        print('  KOT Order ID  : ${kot.kotOrderId}');
-                        print('  Status        : ${kot.status}');
-                        print('  Total         : ${kot.total}');
-                        print('  Created At    : ${kot.createdAt}');
-                        print('  Is Parent     : ${kot.isParent}');
-                        print('  --- LINE ITEMS ---');
-
-                        if (kot.lineItems != null && kot.lineItems!.isNotEmpty) {
-                          for (var item in kot.lineItems!) {
-                            print('    Item ID     : ${item.itemId}');
-                            print('    Name        : ${item.name}');
-                            print('    Quantity    : ${item.quantity}');
-                            print('    Rate        : ${item.amount}');
-                            print('    Total       : ${item.total}');
-                          }
-                        } else {
-                          print('    No line items found.');
-                        }
-                      }
-                    } else {
-                      print('No KOT Orders found.');
-                    }
+                  if (_allOrders != orders) {
+                    _allOrders = orders;
+                    _updateFilteredOrders();
                   }
-                  print('==================================');
 
-                  // ===========================
+                  final pageOrders = _currentPageOrders(_filteredOrders);
 
-                  final filtered = _filterOrders(orders);
-                  final pageOrders = _currentPageOrders(filtered);
-                  final totalPages = ((filtered.length - 1) ~/ _rowsPerPage) + 1;
-                  final int totalOrders = orders.length;
-                  final int displayedOrders = filtered.length;
+                  final totalPages =
+                  _filteredOrders.isEmpty
+                      ? 1
+                      : ((_filteredOrders.length - 1) ~/ _rowsPerPage) + 1;
 
+                  final int totalOrders = _allOrders.length;
+                  final int displayedOrders = _filteredOrders.length;
 
                   /// 🔹 TABLE + PAGINATION CONTAINER
                   return Container(
-                    margin: const EdgeInsets.all(8),
+                    margin: const EdgeInsets.all(10),
                     padding: const EdgeInsets.all(8),
+                    // decoration: BoxDecoration(
+                    //   color: Colors.white,
+                    //   borderRadius: BorderRadius.circular(12),
+                    //   border: Border.all(color: const Color(0xFFF1F1F3), width: 1),
+                    // ),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFF1F1F3), width: 1),
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x3F474747),
+                          blurRadius: 10,
+                          offset: Offset(0, 1),
+                        ),
+                      ],
                     ),
                     child: Column(
                       children: [
                         /// HEADER + SEARCH
                         Row(
                           children: [
-                            InkWell(
-                              onTap: () {
-                                Navigator.pop(context);
-                              },
-                              child: Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(8),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Colors.black12,
-                                      blurRadius: 4,
-                                    ),
-                                  ],
-                                ),
-                                child: const Icon(
-                                  Icons.arrow_back,
-                                  color: Color(0xFF0A1B4D),
-                                ),
-                              ),
-                            ),
-
+                            // InkWell(
+                            //   onTap: () {
+                            //     Navigator.pop(context);
+                            //   },
+                            //   child: Container(
+                            //     width: 40,
+                            //     height: 40,
+                            //     decoration: BoxDecoration(
+                            //       color: Colors.white,
+                            //       borderRadius: BorderRadius.circular(8),
+                            //       boxShadow: const [
+                            //         BoxShadow(
+                            //           color: Colors.black12,
+                            //           blurRadius: 4,
+                            //         ),
+                            //       ],
+                            //     ),
+                            //     child: const Icon(
+                            //       Icons.arrow_back,
+                            //       color: Color(0xFF0A1B4D),
+                            //     ),
+                            //   ),
+                            // ),
                             const SizedBox(width: 8),
 
                             const Text(
                               "Orders List",
                               style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF3D3D3D),
+                                fontSize: 24,
+                                fontFamily: 'Inter',
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
 
@@ -373,27 +370,36 @@ class _OrdersListTableState extends State<OrdersListTable> {
                             Container(
                               height: 36,
                               width: 360,
-                              padding: const EdgeInsets.symmetric(horizontal: 6),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: const Color(0xFFF1F1F3)),
-                                boxShadow: const [
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                              ),
+                              decoration: ShapeDecoration(
+                                color: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                shadows: const [
                                   BoxShadow(
-                                    color: Color(0xFFFFFFFF),
-                                    blurRadius: 4,
-                                    offset: Offset(0, 1),
+                                    color: Color(0x4204347F),
+                                    blurRadius: 5,
+                                    offset: Offset(0, 0),
                                   ),
                                 ],
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.search, size: 18, color: Colors.grey),
+                                  const Icon(
+                                    Icons.search,
+                                    size: 18,
+                                    color: Colors.grey,
+                                  ),
                                   const SizedBox(width: 6),
                                   Expanded(
                                     child: TextField(
                                       controller: _searchController,
                                       decoration: const InputDecoration(
-                                        hintText: 'Search order ID, Order Type, Zone, Table, or Cust name, phone....',
+                                        hintText:
+                                        'Search order ID, Order Type, Zone, Table, or Cust name, phone....',
                                         border: InputBorder.none,
                                         isDense: true,
                                         hintStyle: TextStyle(
@@ -402,10 +408,9 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                           fontWeight: FontWeight.w400,
                                         ),
                                       ),
-                                      onChanged: (_) => setState(() {}),
+                                      // onChanged: (_) => setState(() {}),
                                     ),
                                   ),
-
                                 ],
                               ),
                             ),
@@ -430,7 +435,11 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                   if (picked != null) {
                                     setState(() {
                                       selectedDate = picked;
-                                      _dateController.text = DateFormat('dd/MM/yy').format(picked);
+                                      _dateController.text = DateFormat(
+                                        'dd/MM/yy',
+                                      ).format(picked);
+                                      _currentPage = 0;
+                                      _updateFilteredOrders();
                                     });
                                   }
                                 },
@@ -440,10 +449,15 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                     color: Colors.black,
                                     fontSize: 14,
                                   ),
-                                  suffixIcon: Icon(Icons.calendar_today, size: 18),
+                                  suffixIcon: Icon(
+                                    Icons.calendar_month_sharp,
+                                    size: 18,
+                                  ),
                                   filled: true,
                                   fillColor: Colors.grey.shade200,
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 10),
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                  ),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(10),
                                     borderSide: BorderSide.none,
@@ -458,183 +472,268 @@ class _OrdersListTableState extends State<OrdersListTable> {
                             //  status dropdown
                             Container(
                               height: 36,
-                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                              ),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(8),
                                 color: const Color(0xFF4C81F1),
                               ),
                               child: DropdownButtonHideUnderline(
-                                  child: DropdownButton<String>(
-                                    dropdownColor: const Color(0xFF4C81F1),
-                                    iconEnabledColor: Colors.white,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 13,
-                                    ),
-                                    value: _selectedStatus,
-                                    items: statusOptions.map(
-                                          (e) => DropdownMenuItem<String>(
-                                        value: e,
-                                        child: Text(
-                                          e,
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 13,
-                                          ),
+                                child: DropdownButton<String>(
+                                  dropdownColor: const Color(0xFF4C81F1),
+                                  iconEnabledColor: Colors.white,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                  ),
+                                  value: _selectedStatus,
+                                  items:
+                                  statusOptions
+                                      .map(
+                                        (e) => DropdownMenuItem<String>(
+                                      value: e,
+                                      child: Text(
+                                        e,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 13,
                                         ),
                                       ),
-                                    ).toList(),
-                                    onChanged: (val) {
-                                      setState(() {
-                                        _selectedStatus = val;
-                                        _currentPage = 0;
-                                      });
-                                    },
+                                    ),
                                   )
+                                      .toList(),
+                                  onChanged: (val) {
+                                    setState(() {
+                                      _selectedStatus = val;
+                                      _currentPage = 0;
+                                      _updateFilteredOrders();
+                                    });
+                                  },
+                                ),
                               ),
                             ),
 
                             const SizedBox(width: 12),
-                            ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: _isResetEnabled()
-                                    ? Colors.red
-                                    : Colors.grey.shade300,
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
+                            SizedBox(
+                              height: 40, // Set your desired height
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor:
+                                  _isResetEnabled()
+                                      ? Colors.red
+                                      : Colors.grey.shade300,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 0,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                onPressed:
+                                _isResetEnabled()
+                                    ? () {
+                                  setState(() {
+                                    // 🔹 Search
+                                    _searchQuery = '';
+                                    _searchController.clear();
+
+                                    // 🔹 Status
+                                    _selectedStatus = 'All';
+
+                                    // 🔹 Date
+                                    selectedDate = null;
+                                    _dateController.clear();
+
+                                    // 🔹 Pagination
+                                    _currentPage = 0;
+                                    _updateFilteredOrders();
+                                  });
+                                }
+                                    : null,
+                                icon: const Icon(
+                                  Icons.refresh,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
+                                label: const Text(
+                                  "Reset",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                  ),
                                 ),
                               ),
-                              onPressed: _isResetEnabled()
-                                  ? () {
-                                setState(() {
-                                  // 🔹 Search
-                                  _searchQuery = '';
-                                  _searchController.clear();
-
-                                  // 🔹 Status
-                                  _selectedStatus = 'All';
-
-                                  // 🔹 Date
-                                  selectedDate = null;
-                                  _dateController.clear();
-
-                                  // 🔹 Pagination
-                                  _currentPage = 0;
-                                });
-                              }
-                                  : null,
-                              icon: const Icon(Icons.refresh, size: 16, color: Colors.white),
-                              label: const Text(
-                                "Reset",
-                                style: TextStyle(color: Colors.white, fontSize: 14),
-                              ),
-                            ),
-
-                          ],
+                            )],
                         ),
-
 
                         const SizedBox(height: 12),
 
                         // TABLE
                         Expanded(
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: SizedBox(
-                              width: MediaQuery.of(context).size.width * 0.99, // 80% of screen width
-                              child: DataTable(
-                                showCheckboxColumn: false,
-                                headingTextStyle: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
-                                  height: 1.10,
-                                ),
-                                headingRowHeight: 45,
-                                dataRowHeight: 40,
-                                headingRowColor: MaterialStateProperty.all(const Color(0xFFE7F5FD)),
-                                columnSpacing: 40,
-                                dividerThickness: 0,
-                                columns: const [
-                                  DataColumn(label: Text("Order ID")),
-                                  DataColumn(label: Text("Order Type")),
-                                  DataColumn(label: Text("Date")),
-                                  DataColumn(label: Text("Zone")),
-                                  DataColumn(label: Text("Table")),
-                                  DataColumn(label: Text("Cust. Name")),
-                                  DataColumn(label: Text("Cust. Phone")),
-                                  DataColumn(label: Text("Payment")),
-                                  // DataColumn(label: Text("Amount")),
-                                  // DataColumn(label: Text("Discount")),
-                                  DataColumn(label: Text("Total")),
-                                  DataColumn(label: Text("Status")),
-                                ],
-                                rows: pageOrders.map((order) {
-                                  return DataRow(
-                                    onSelectChanged: (_) async {
-                                      // Wait for the OrdersDetailsScreen to return a value
-                                      final bool? didUpdate = await Navigator.push<bool>(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => OrdersDetailsScreen(
-                                            token: widget.token,
-                                            pin: widget.pin,
-                                            restaurantId: widget.restaurantId,
-                                            restaurantName: widget.restaurantName,
-                                            userPermissions: _userPermissions,
-                                            orderId: order.orderId!,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(8),
+                                topRight: Radius.circular(8),
+                              ),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: SizedBox(
+                                width:
+                                MediaQuery.of(context).size.width *
+                                    0.99, // 80% of screen width
+                                child: DataTable(
+                                  showCheckboxColumn: false,
+                                  headingTextStyle: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    height: 1.10,
+                                  ),
+                                  headingRowHeight: 45,
+                                  dataRowHeight: 40,
+                                  headingRowColor: MaterialStateProperty.all(
+                                    const Color(0xFF2A3558),
+                                  ),
+                                  columnSpacing: 40,
+                                  dividerThickness: 0,
+                                  columns: const [
+                                    DataColumn(label: Text("Order ID")),
+                                    DataColumn(label: Text("Order Type")),
+                                    DataColumn(label: Text("Date")),
+                                    DataColumn(label: Text("Zone")),
+                                    DataColumn(label: Text("Table")),
+                                    DataColumn(label: Text("Cust. Name")),
+                                    DataColumn(label: Text("Cust. Phone")),
+                                    DataColumn(label: Text("Payment")),
+                                    // DataColumn(label: Text("Amount")),
+                                    // DataColumn(label: Text("Discount")),
+                                    DataColumn(label: Text("Total")),
+                                    DataColumn(label: Text("Status")),
+                                  ],
+                                  rows:
+                                  pageOrders.map((order) {
+                                    return DataRow(
+                                      onSelectChanged: (_) async {
+                                        // Wait for the OrdersDetailsScreen to return a value
+                                        final bool?
+                                        didUpdate = await Navigator.push<
+                                            bool
+                                        >(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder:
+                                                (_) => OrdersDetailsScreen(
+                                              token: widget.token,
+                                              pin: widget.pin,
+                                              restaurantId:
+                                              widget.restaurantId,
+                                              restaurantName:
+                                              widget.restaurantName,
+                                              userPermissions:
+                                              _userPermissions,
+                                              orderId: order.orderId!,
+                                            ),
                                           ),
-                                        ),
-                                      );
+                                        );
 
-                                      // If the screen returned true (order was updated), refetch
-                                      if (didUpdate == true) {
-                                        context.read<OrderstatusBloc>().add(FetchOrders(token: widget.token));
-                                      }
-                                    },
-                                    cells: [
-                                      DataCell(Text(order.orderId?.toString() ?? '-')),
-                                      DataCell(Text(order.orderType ?? '-')),
-                                      DataCell(Text(order.date ?? '-')),
-                                      DataCell(Text(order.zoneName ?? '-')),
-                                      DataCell(Text(order.tableName ?? '-')),
-                                      DataCell(Text(
-                                        order.customerName?.trim().isEmpty == true
-                                            ? 'Guest'
-                                            : order.customerName ?? '-',
-                                      )),
-                                      DataCell(
-                                        Text(
-                                          order.customerPhone?.trim().isEmpty == true
-                                              ? '-'
-                                              : order.customerPhone ?? '-',
-                                        ),
-                                      ),
-                                      DataCell(Text(order.paymentType ?? '-')),
-                                      // DataCell(Text(order.amount?.toStringAsFixed(2) ?? '0.00')),
-                                      // DataCell(Text(order.discount?.toStringAsFixed(2) ?? '0.00')),
-                                      DataCell(Text(order.netPayable?.toStringAsFixed(2) ?? '0.00')),
-                                      DataCell(
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                          decoration: BoxDecoration(
-                                            color: _statusColor(order.status ?? '').withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(12),
+                                        // If the screen returned true (order was updated), refetch
+                                        if (didUpdate == true) {
+                                          context
+                                              .read<OrderstatusBloc>()
+                                              .add(
+                                            FetchOrders(
+                                              token: widget.token,
+                                            ),
+                                          );
+                                        }
+                                      },
+                                      cells: [
+                                        DataCell(
+                                          Text(
+                                            order.orderId?.toString() ??
+                                                '-',
                                           ),
-                                          child: Text(
-                                            order.status?.isNotEmpty == true ? order.status! : '-',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w500,
-                                              color: _statusColor(order.status ?? ''),
+                                        ),
+                                        DataCell(
+                                          Text(order.orderType ?? '-'),
+                                        ),
+                                        DataCell(Text(order.date ?? '-')),
+                                        DataCell(
+                                          Text(order.zoneName ?? '-'),
+                                        ),
+                                        DataCell(
+                                          Text(order.tableName ?? '-'),
+                                        ),
+                                        DataCell(
+                                          Text(
+                                            order.customerName
+                                                ?.trim()
+                                                .isEmpty ==
+                                                true
+                                                ? 'Guest'
+                                                : order.customerName ?? '-',
+                                          ),
+                                        ),
+                                        DataCell(
+                                          Text(
+                                            order.customerPhone
+                                                ?.trim()
+                                                .isEmpty ==
+                                                true
+                                                ? '-'
+                                                : order.customerPhone ??
+                                                '-',
+                                          ),
+                                        ),
+                                        DataCell(
+                                          Text(order.paymentType ?? '-'),
+                                        ),
+                                        // DataCell(Text(order.amount?.toStringAsFixed(2) ?? '0.00')),
+                                        // DataCell(Text(order.discount?.toStringAsFixed(2) ?? '0.00')),
+                                        DataCell(
+                                          Text(
+                                            "₹${order.netPayable?.toStringAsFixed(2) ?? '0.00'}",
+                                          ),
+                                        ),
+                                        DataCell(
+                                          Container(
+                                            padding:
+                                            const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 6,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: _statusColor(
+                                                order.status ?? '',
+                                              ).withOpacity(0.1),
+                                              borderRadius:
+                                              BorderRadius.circular(12),
+                                            ),
+                                            child: Text(
+                                              order.status?.isNotEmpty ==
+                                                  true
+                                                  ? order.status!
+                                                  : '-',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w500,
+                                                color: _statusColor(
+                                                  order.status ?? '',
+                                                ),
+                                              ),
                                             ),
                                           ),
                                         ),
-                                      ),
-                                    ],
-                                  );
-                                }).toList(),
+                                      ],
+                                    );
+                                  }).toList(),
+                                ),
                               ),
                             ),
                           ),
@@ -643,81 +742,116 @@ class _OrdersListTableState extends State<OrdersListTable> {
                         const SizedBox(height: 12),
 
                         /// PAGINATION
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              displayedOrders == totalOrders
-                                  ? "Total Orders: $totalOrders"
-                                  : "Showing $displayedOrders of $totalOrders Orders",
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black87,
+                        Container(
+                          height: 45,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFF7F7F7),
+                            border: Border(
+                              top: BorderSide(
+                                color: Color(0xFFE0E0E0),
                               ),
                             ),
-
-                            /// PAGINATION
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                GestureDetector(
-                                  onTap: _previousPage,
-                                  child: _paginationButton(
-                                    text: "Previous",
-                                    borderRadius: const BorderRadius.only(
-                                      topLeft: Radius.circular(3),
-                                      bottomLeft: Radius.circular(3),
-                                    ),
-                                  ),
+                            borderRadius: BorderRadius.only(
+                              bottomLeft: Radius.circular(10),
+                              bottomRight: Radius.circular(10),
+                            ),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                displayedOrders == totalOrders
+                                    ? "Total Orders: $totalOrders"
+                                    : "Showing $displayedOrders of $totalOrders Orders",
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black87,
                                 ),
-                                Row(
-                                  children: _visiblePages(totalPages).map((index) {
-                                    final isActive = index == _currentPage;
-                                    return GestureDetector(
-                                      onTap: () => setState(() => _currentPage = index),
-                                      child: Container(
-                                        width: 30,
-                                        height: 30,
-                                        margin: const EdgeInsets.symmetric(horizontal: 2),
-                                        decoration: BoxDecoration(
-                                          color: isActive ? Colors.red : Colors.white,
-                                          border: Border.all(color: const Color(0xFFEEEEEE)),
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            "${index + 1}",
-                                            style: TextStyle(
-                                              color: isActive ? Colors.white : const Color(0xFF727272),
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
+                              ),
+
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  border: Border.all(
+                                    color: const Color(0xFFEFEFEF),
+                                  ),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    GestureDetector(
+                                      onTap: _currentPage > 0 ? _previousPage : null,
+                                      child: _paginationButton(
+                                        text: "Previous",
+                                        borderRadius: const BorderRadius.only(
+                                          topLeft: Radius.circular(3),
+                                          bottomLeft: Radius.circular(3),
                                         ),
                                       ),
-                                    );
-                                  }).toList(),
-                                ),
-                                GestureDetector(
-                                  onTap: () => _nextPage(filtered.length),
-                                  child: _paginationButton(
-                                    text: "Next",
-                                    borderRadius: const BorderRadius.only(
-                                      topRight: Radius.circular(3),
-                                      bottomRight: Radius.circular(3),
                                     ),
-                                  ),
+
+                                    Row(
+                                      children: _visiblePages(totalPages).map((index) {
+                                        final isActive = index == _currentPage;
+
+                                        return GestureDetector(
+                                          onTap: () => setState(() => _currentPage = index),
+                                          child: Container(
+                                            width: 30,
+                                            height: 29,
+                                            decoration: BoxDecoration(
+                                              color: isActive
+                                                  ? const Color(0xFFFF4D20)
+                                                  : Colors.white,
+                                              border: const Border(
+                                                right: BorderSide(
+                                                  color: Color(0xFFEFEFEF),
+                                                ),
+                                              ),
+                                            ),
+                                            alignment: Alignment.center,
+                                            child: Text(
+                                              "${index + 1}",
+                                              style: TextStyle(
+                                                color: isActive
+                                                    ? Colors.white
+                                                    : const Color(0xFF727272),
+                                                fontSize: 11,
+                                                fontWeight: isActive
+                                                    ? FontWeight.w600
+                                                    : FontWeight.w400,
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+
+                                    GestureDetector(
+                                      onTap: (_currentPage + 1) < totalPages
+                                          ? () => _nextPage(_filteredOrders.length)
+                                          : null,
+                                      child: _paginationButton(
+                                        text: "Next",
+                                        borderRadius: const BorderRadius.only(
+                                          topRight: Radius.circular(3),
+                                          bottomRight: Radius.circular(3),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                          ],
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
                   );
-
-                }
-                else if (state is OrderError) {
+                } else if (state is OrderError) {
                   return Center(child: Text('Error: ${state.message}'));
                 }
 
@@ -726,7 +860,6 @@ class _OrdersListTableState extends State<OrdersListTable> {
             ),
           ),
         ],
-
       ),
 
       // BOTTOM NAV BAR
@@ -749,25 +882,51 @@ class _OrdersListTableState extends State<OrdersListTable> {
     );
   }
 
-  Widget _paginationButton(
-      {required String text, required BorderRadius borderRadius}) {
+  Widget _paginationButton({
+    required String text,
+    required BorderRadius borderRadius,
+  }) {
     return Container(
       width: 65,
-      height: 30,
-      decoration: ShapeDecoration(
-        shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 1, color: Color(0xFFEEEEEE)),
-          borderRadius: borderRadius,
+      height: 32,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: borderRadius,
+        border: Border.all(
+          color: const Color(0xFFEFEFEF),
         ),
       ),
-      child: Center(
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: Color(0xFF727272),
-            fontSize: 13,
-            fontWeight: FontWeight.w400,
-          ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Color(0xFF727272),
+          fontSize: 11,
+          fontWeight: FontWeight.w400,
+        ),
+      ),
+    );
+  }
+  Widget _pageButton(
+      int page, {
+        bool selected = false,
+      }) {
+    return Container(
+      width: 32,
+      height: 32,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: selected ? const Color(0xFFFF4D20) : Colors.white,
+        border: Border.all(
+          color: const Color(0xFFEFEFEF),
+        ),
+      ),
+      child: Text(
+        '$page',
+        style: TextStyle(
+          color: selected ? Colors.white : const Color(0xFF727272),
+          fontSize: 11,
+          fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
         ),
       ),
     );

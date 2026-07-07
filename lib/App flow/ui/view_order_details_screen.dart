@@ -502,7 +502,9 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                     // Edit Order Button
                                     if ((orderModel.status ?? '').toLowerCase() == 'completed')
                                       ElevatedButton(
-                                        onPressed: () async {
+                                        onPressed: !(_userPermissions?.canEditOrder ?? false)
+                                            ? null // Disable button
+                                            : () async {
                                           // order with merchant discount
                                           if ((orderModel.merchantDiscount ?? 0) > 0) {
                                             ScaffoldMessenger.of(context).showSnackBar(
@@ -529,78 +531,51 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                             );
                                             return;
                                           }
-
-                                          final String originalLoggedInUserId =
-                                              _userPermissions!.userId;
-
-
-                                          // 2️ PIN VERIFICATION
-                                          final bool? isCheckedIn = await showDialog<bool>(
-                                            context: context,
-                                            barrierDismissible: true,
-                                            builder: (_) => Checkinpopup(
-                                              token: widget.token,
-                                              onCheckIn: () {
-                                                Navigator.of(context).pop(true);
-                                              },
-                                              onCancel: () => Navigator.of(context).pop(false),
-                                              onPermissionsReceived: (permissions) {
-                                                _handlePermissions(permissions); // stores in _permissions
-                                              },
-                                            ),
-                                          );
-
-                                          if (isCheckedIn != true) {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(content: Text('PIN verification failed'),
-                                                duration: Duration(seconds: 1),
-                                                backgroundColor: Colors.red,),
-                                            );
-                                            return;
-                                          }
-
                                           // 3️ PIN-ENTERED USER MUST BE MANAGER
-                                          if ((_permissions?.role ?? '').toLowerCase() != 'manager') {
+                                          // Permission check from login response
+                                          if (!(_userPermissions?.canEditOrder ?? false)) {
                                             ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(content: Text('Invalid manager PIN'),
+                                              const SnackBar(
+                                                content: Text("Only managers can edit orders"),
                                                 duration: Duration(seconds: 1),
-                                                backgroundColor: Colors.red,),
+                                                backgroundColor: Colors.red,
+                                              ),
                                             );
                                             return;
                                           }
 
                                           // 4️ SAME MANAGER DOUBLE CHECK
-                                          final String pinEnteredManagerId = _permissions!.userId;
-                                          final String? orderCompletedById =
-                                              orderModel.completedByUserId;
-
-                                          if (orderCompletedById != null &&
-                                              pinEnteredManagerId != orderCompletedById) {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(
-                                                content: Text(
-                                                  'Only the same manager who completed this order can edit it.',
-                                                ),
-                                                duration: Duration(seconds: 1),
-                                                backgroundColor: Colors.red,
-                                              ),
-                                            );
-                                            return;
-                                          }
+                                          // final String pinEnteredManagerId = _permissions!.userId;
+                                          // final String? orderCompletedById =
+                                          //     orderModel.completedByUserId;
+                                          //
+                                          // if (orderCompletedById != null &&
+                                          //     pinEnteredManagerId != orderCompletedById) {
+                                          //   ScaffoldMessenger.of(context).showSnackBar(
+                                          //     const SnackBar(
+                                          //       content: Text(
+                                          //         'Only the same manager who completed this order can edit it.',
+                                          //       ),
+                                          //       duration: Duration(seconds: 1),
+                                          //       backgroundColor: Colors.red,
+                                          //     ),
+                                          //   );
+                                          //   return;
+                                          // }
 
                                           //  OPTIONAL: ensure same top-bar manager & PIN manager
-                                          if (pinEnteredManagerId != originalLoggedInUserId) {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(
-                                                content: Text(
-                                                  'PIN must belong to the logged-in manager.',
-                                                ),
-                                                duration: Duration(seconds: 1),
-                                                backgroundColor: Colors.red,
-                                              ),
-                                            );
-                                            return;
-                                          }
+                                          // if (pinEnteredManagerId != originalLoggedInUserId) {
+                                          //   ScaffoldMessenger.of(context).showSnackBar(
+                                          //     const SnackBar(
+                                          //       content: Text(
+                                          //         'PIN must belong to the logged-in manager.',
+                                          //       ),
+                                          //       duration: Duration(seconds: 1),
+                                          //       backgroundColor: Colors.red,
+                                          //     ),
+                                          //   );
+                                          //   return;
+                                          // }
 
                                           // 5️ Navigation
                                           final bool? updated = await Navigator.push<bool>(

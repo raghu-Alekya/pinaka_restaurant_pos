@@ -76,6 +76,33 @@ class ApiExceptionHandler {
       );
     }
   }
+  static Future<http.Response> put(
+      Uri url, {
+        required Map<String, String> headers,
+        Object? body,
+      }) async {
+    try {
+      return await http
+          .put(
+        url,
+        headers: headers,
+        body: body,
+      )
+          .timeout(const Duration(seconds: 30));
+    } on SocketException {
+      throw Exception(
+        "Unable to connect to the server. Please check your internet connection.",
+      );
+    } on TimeoutException {
+      throw Exception(
+        "Request timed out. Please try again.",
+      );
+    } on http.ClientException {
+      throw Exception(
+        "Unable to connect to the server. Please try again later.",
+      );
+    }
+  }
 
   static String parseError(http.Response response,
       {String defaultMessage = "Something went wrong."}) {
@@ -103,9 +130,49 @@ class ApiExceptionHandler {
 
         case "payment_not_found":
           return "Payment record not found.";
+      // Coupon errors
+        case "woocommerce_rest_invalid_coupon":
+          return "The coupon code is invalid.";
+
+        case "woocommerce_rest_coupon_expired":
+          return "This coupon has expired.";
+
+        case "woocommerce_rest_coupon_usage_limit":
+          return "This coupon has reached its usage limit.";
+
 
         default:
-          return error["message"] ?? defaultMessage;
+          final message = (error["message"] ?? "").toString().toLowerCase();
+
+          if (message.contains("invalid coupon")) {
+            return "The coupon code you entered is invalid.";
+          }
+
+          if (message.contains("already applied")) {
+            return "This coupon has already been applied.";
+          }
+
+          if (message.contains("expired")) {
+            return "This coupon has expired.";
+          }
+
+          if (message.contains("not applicable")) {
+            return "This coupon is not applicable to this order.";
+          }
+
+          if (message.contains("minimum spend")) {
+            return "The minimum order amount required for this coupon has not been met.";
+          }
+
+          if (message.contains("maximum spend")) {
+            return "This coupon cannot be applied because the order exceeds the allowed amount.";
+          }
+
+          if (message.contains("usage limit")) {
+            return "This coupon has reached its usage limit.";
+          }
+
+          return defaultMessage;
       }
     } catch (_) {
       return defaultMessage;

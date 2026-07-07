@@ -626,18 +626,23 @@ class _TablesScreenState extends State<TablesScreen> {
 
   bool isReservationTimePassed(
       String dateStr,
-      String bufferTime,
+      String reservationTime,
+      int bufferMinutes,
       ) {
     try {
       final now = DateTime.now();
 
-      final expiryTime = DateFormat(
+      final reservationDateTime = DateFormat(
         'yyyy-MM-dd hh:mm a',
-      ).parse('$dateStr $bufferTime');
+      ).parse('$dateStr $reservationTime');
+
+      final expiryTime = reservationDateTime.add(
+        Duration(minutes: bufferMinutes),
+      );
 
       return now.isAfter(expiryTime);
     } catch (e) {
-      debugPrint("Error: $e");
+      debugPrint(e.toString());
       return false;
     }
   }
@@ -960,7 +965,11 @@ class _TablesScreenState extends State<TablesScreen> {
         if (statusLower == 'reserve' &&
             reservationDateStr != null &&
             reservationTimeStr != null &&
-            !isReservationTimePassed(reservationDateStr, reservationTimeStr)) {
+            !isReservationTimePassed(
+              reservationDateStr,
+              reservationTimeStr,
+              30, // or backend buffer value
+            )) {
           showDialog(
             context: context,
             barrierDismissible: false,
@@ -1199,7 +1208,11 @@ class _TablesScreenState extends State<TablesScreen> {
         if (status == 'reserve' &&
             reservationDateStr != null &&
             reservationTimeStr != null &&
-            !isReservationTimePassed(reservationDateStr, reservationTimeStr)) {
+            !isReservationTimePassed(
+              reservationDateStr,
+              reservationTimeStr,
+              30, // or backend buffer value
+            )) {
           showDialog(
             context: context,
             barrierDismissible: false,
@@ -1352,7 +1365,11 @@ class _TablesScreenState extends State<TablesScreen> {
         if (status == 'reserve' &&
             reservationDateStr != null &&
             reservationTimeStr != null &&
-            !isReservationTimePassed(reservationDateStr, reservationTimeStr)) {
+            !isReservationTimePassed(
+              reservationDateStr,
+              reservationTimeStr,
+              30, // or backend buffer value
+            )) {
           showDialog(
             context: context,
             barrierDismissible: false,

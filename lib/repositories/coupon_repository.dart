@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants/constants.dart';
 import '../models/order/coupon_model.dart';
+import '../services/api_exception.dart';
 
 class CouponRepository {
   String get couponUrl =>
@@ -74,7 +75,7 @@ class CouponRepository {
     required String couponCode,
   }) async {
     try {
-      final response = await http.put(
+      final response = await ApiExceptionHandler.put(
         Uri.parse('${AppConstants.baseApiPath}/orders/$orderId'),
         headers: {
           'Content-Type': 'application/json',
@@ -100,17 +101,20 @@ class CouponRepository {
           message: "Coupon applied successfully.",
           couponAmount: (data["coupon_amount"] as num?)?.toDouble() ?? 0.0,
         );
-      } else {
-        return CouponResponse(
-          success: false,
-          message: data["message"] ?? "Failed to apply coupon.",
-          couponAmount: 0.0,
-        );
       }
+
+      return CouponResponse(
+        success: false,
+        message: ApiExceptionHandler.parseError(
+          response,
+          defaultMessage: "Failed to apply coupon.",
+        ),
+        couponAmount: 0.0,
+      );
     } catch (e) {
       return CouponResponse(
         success: false,
-        message: "Something went wrong. Please try again.",
+        message: e.toString().replaceFirst("Exception: ", ""),
         couponAmount: 0.0,
       );
     }
@@ -121,7 +125,7 @@ class CouponRepository {
     required int orderId,
   }) async {
     try {
-      final response = await http.put(
+      final response = await ApiExceptionHandler.put(
         Uri.parse(
           '${AppConstants.baseApiPath}/orders/$orderId',
         ),

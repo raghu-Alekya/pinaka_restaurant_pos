@@ -285,6 +285,10 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       _showError("Please enter the contact details.");
       return;
     }
+    if (contact.length != 10) {
+      _showError("Please enter a valid 10-digit mobile number.");
+      return;
+    }
 
     if (selectedSlot.isEmpty) {
       _showError("Please select a time slot.");

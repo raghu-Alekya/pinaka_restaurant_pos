@@ -48,6 +48,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   double _tipAmount = 0.0;
   double _couponAmount = 0.0;
   double? _grandTotal;
+  bool _hasPartialPayment = false;
 
   @override
   void initState() {
@@ -169,12 +170,18 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       paymentState is PaymentSummaryLoaded &&
                           paymentState.isNoCharge;
 
+                  final double remainingAmount =
+                  paymentState is PaymentSummaryLoaded
+                      ? paymentState.summary.netTotal
+                      : 0.0;
+
                   if (_couponAmount > 0) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text("Please remove the applied coupon before going back."),
+                        content: Text(
+                          "Please remove the applied coupon before going back.",
+                        ),
                         backgroundColor: Colors.red,
-                        duration: Duration(seconds: 1),
                       ),
                     );
                     return;
@@ -187,7 +194,18 @@ class _PaymentScreenState extends State<PaymentScreen> {
                           "Please remove the applied No Charge discount before going back.",
                         ),
                         backgroundColor: Colors.red,
-                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                    return;
+                  }
+
+                  if (_hasPartialPayment) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          "Please complete the remaining payment before leaving this screen.",
+                        ),
+                        backgroundColor: Colors.red,
                       ),
                     );
                     return;
@@ -262,6 +280,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     debugPrint("💳 Coupon amount changed: $amount (isTakeAway: ${widget.isTakeAway})");
                     setState(() {
                       _couponAmount = amount;
+                    });
+                  },
+                  onPartialPaymentChanged: (value) {
+                    setState(() {
+                      _hasPartialPayment = value;
                     });
                   },
                 ),

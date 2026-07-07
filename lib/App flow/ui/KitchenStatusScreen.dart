@@ -776,29 +776,29 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         children: [
           /// 🔹 LEFT: Title
           /// 🔙 BACK BUTTON
-          InkWell(
-            onTap: () {
-              Navigator.pop(context);
-            },
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 4,
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.arrow_back,
-                color: Color(0xFF0A1B4D),
-              ),
-            ),
-          ),
+          // InkWell(
+          //   onTap: () {
+          //     Navigator.pop(context);
+          //   },
+          //   child: Container(
+          //     width: 40,
+          //     height: 40,
+          //     decoration: BoxDecoration(
+          //       color: Colors.white,
+          //       borderRadius: BorderRadius.circular(8),
+          //       boxShadow: const [
+          //         BoxShadow(
+          //           color: Colors.black12,
+          //           blurRadius: 4,
+          //         ),
+          //       ],
+          //     ),
+          //     child: const Icon(
+          //       Icons.arrow_back,
+          //       color: Color(0xFF0A1B4D),
+          //     ),
+          //   ),
+          // ),
 
           const SizedBox(width: 8),
 

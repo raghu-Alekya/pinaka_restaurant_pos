@@ -633,6 +633,7 @@ Net Payable      : $netPayableTemp
           const SnackBar(
             content: Text("No printer selected"),
             duration: Duration(seconds: 1),
+            backgroundColor: Colors.red,
           ),
         );
         return;
@@ -1584,14 +1585,15 @@ Net Payable      : $netPayableTemp
 
                             /// NET PAYABLE
                             /// NET PAYABLE (ROUNDED)
-                        Text(
-                          "Net Payable : ₹${calculatedNetPayable.toStringAsFixed(2)}",
-
+                            /// NET PAYABLE (ROUNDED)
+                            Text(
+                              "Net Payable : ₹${calculatedNetPayable.round().toDouble().toStringAsFixed(2)}",
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
                               ),
                             ),
+                            // const SizedBox(width: 6),
 
                             const SizedBox(width: 6),
 

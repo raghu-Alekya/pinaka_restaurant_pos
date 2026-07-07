@@ -238,7 +238,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
     final currentData = filteredReservations.skip(startIndex).take(entriesPerPage).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F1F3),
+      backgroundColor: Color(0xFFE4E9F9),
       appBar: TopBar(
         token: widget.token,
         pin: widget.pin,
@@ -264,40 +264,40 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                 Row(
                   children: [
                     /// 🔙 BACK BUTTON
-                    InkWell(
-                      onTap: () {
-                        Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => HomeScreen(
-                              token: widget.token,
-                              pin: widget.pin,
-                              restaurantId: widget.restaurantId,
-                              restaurantName: widget.restaurantName,
-                            ),
-                          ),
-                              (route) => false,
-                        );
-                      },
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Colors.black12,
-                              blurRadius: 4,
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.arrow_back,
-                          color: Color(0xFF0A1B4D),
-                        ),
-                      ),
-                    ),
+                    // InkWell(
+                    //   onTap: () {
+                    //     Navigator.pushAndRemoveUntil(
+                    //       context,
+                    //       MaterialPageRoute(
+                    //         builder: (context) => HomeScreen(
+                    //           token: widget.token,
+                    //           pin: widget.pin,
+                    //           restaurantId: widget.restaurantId,
+                    //           restaurantName: widget.restaurantName,
+                    //         ),
+                    //       ),
+                    //           (route) => false,
+                    //     );
+                    //   },
+                    //   child: Container(
+                    //     width: 40,
+                    //     height: 40,
+                    //     decoration: BoxDecoration(
+                    //       color: Colors.white,
+                    //       borderRadius: BorderRadius.circular(8),
+                    //       boxShadow: const [
+                    //         BoxShadow(
+                    //           color: Colors.black12,
+                    //           blurRadius: 4,
+                    //         ),
+                    //       ],
+                    //     ),
+                    //     child: const Icon(
+                    //       Icons.arrow_back,
+                    //       color: Color(0xFF0A1B4D),
+                    //     ),
+                    //   ),
+                    // ),
 
                     const SizedBox(width: 8),
 
@@ -471,12 +471,12 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(16),
-                      topRight: Radius.circular(16),
-                    ),
+                    // borderRadius: BorderRadius.only(
+                    //   topLeft: Radius.circular(16),
+                    //   topRight: Radius.circular(16),
+                    // ),
                   ),
-                  padding: const EdgeInsets.fromLTRB(10, 20, 10, 40),
+                  padding: const EdgeInsets.fromLTRB(10, 20, 10, 70),
                   child: Column(
                     children: [
                       Container(
