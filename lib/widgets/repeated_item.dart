@@ -1,10 +1,6 @@
-import 'dart:ui';
-
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-// import '../services/repeateditem_apiservice.dart';
 import '../services/repeateditem_apiservices.dart';
 
 class RepeatedItem {
@@ -34,12 +30,10 @@ class RepeatedItemsScreen extends StatefulWidget {
   });
 
   @override
-  State<RepeatedItemsScreen> createState() =>
-      _RepeatedItemsScreenState();
+  State<RepeatedItemsScreen> createState() => _RepeatedItemsScreenState();
 }
 
-class _RepeatedItemsScreenState
-    extends State<RepeatedItemsScreen> {
+class _RepeatedItemsScreenState extends State<RepeatedItemsScreen> {
   List<RepeatedItem> items = [];
   bool isLoading = true;
   String lastUpdated = "";
@@ -76,6 +70,7 @@ class _RepeatedItemsScreenState
     // _timer?.cancel();
     super.dispose();
   }
+
   void _updateLastUpdated() {
     if (!mounted) return;
 
@@ -83,6 +78,7 @@ class _RepeatedItemsScreenState
       // lastUpdated = DateTime.now() as String;
     });
   }
+
   Future<void> loadRepeatedItems() async {
     if (!mounted) return;
 
@@ -98,18 +94,18 @@ class _RepeatedItemsScreenState
 
       if (!mounted) return;
 
-      items = response.map<RepeatedItem>((e) {
-        final bool isVeg = e['is_veg'] ?? true;
+      items =
+          response.map<RepeatedItem>((e) {
+            final bool isVeg = e['is_veg'] ?? true;
 
-        return RepeatedItem(
-          name: e['item_name'] ?? '',
-          count: e['quantity'] ?? 0,
-          veg: isVeg,
-          borderColor: isVeg
-              ? const Color(0xff2DB347)
-              : const Color(0xffC61D1D),
-        );
-      }).toList();
+            return RepeatedItem(
+              name: e['item_name'] ?? '',
+              count: e['quantity'] ?? 0,
+              veg: isVeg,
+              borderColor:
+                  isVeg ? const Color(0xff2DB347) : const Color(0xffC61D1D),
+            );
+          }).toList();
 
       _updateLastUpdated();
     } catch (e) {
@@ -122,6 +118,7 @@ class _RepeatedItemsScreenState
       isLoading = false;
     });
   }
+
   @override
   Widget build(BuildContext context) {
     final content = Column(
@@ -139,10 +136,19 @@ class _RepeatedItemsScreenState
             ],
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text("Repeated Items", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xff1E293B))),
-                Text("Items appearing in multiple pending KOTs",
-                    style: TextStyle(fontSize: 12, color: Colors.grey)),
+              children: [
+                Text(
+                  "SUMMARY",
+                  style: GoogleFonts.montserrat(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xff1E293B),
+                  ),
+                ),
+                const Text(
+                  "Items appearing in multiple pending KOTs",
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
               ],
             ),
             const Spacer(),
@@ -150,93 +156,109 @@ class _RepeatedItemsScreenState
             const SizedBox(width: 4),
             Text(
               "Last Updated: $lastUpdated",
-              style: const TextStyle(
-                color: Colors.grey,
-                fontSize: 13,
-              ),
+              style: const TextStyle(color: Colors.grey, fontSize: 13),
             ),
             const SizedBox(width: 16),
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xff2F365F),
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               onPressed: loadRepeatedItems,
               icon: const Icon(Icons.refresh, size: 16),
               label: const Text("Refresh"),
-            )
+            ),
           ],
         ),
         const SizedBox(height: 20),
         Expanded(
-          child: isLoading
-              ? const Center(
-            child: CircularProgressIndicator(),
-          )
-              : GridView.builder(
-            itemCount: items.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 5,
-              crossAxisSpacing: 14,
-              mainAxisSpacing: 14,
-              childAspectRatio: 2.15,
-            ),
-            itemBuilder: (_, i) {
-              final item = items[i];
-              return Stack(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border(left: BorderSide(color: item.borderColor, width: 3)),
-                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(item.name,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 18)),
+          child:
+              isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : GridView.builder(
+                    itemCount: items.length,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 5,
+                          crossAxisSpacing: 14,
+                          mainAxisSpacing: 14,
+                          childAspectRatio: 2.15,
                         ),
-                        Text("${item.count}",
-                            style: const TextStyle(
-                              fontSize: 30,
-                              color: Color(0xffB31313),
-                              fontWeight: FontWeight.bold,
-                            ))
-                      ],
-                    ),
+                    itemBuilder: (_, i) {
+                      final item = items[i];
+                      return Stack(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border(
+                                left: BorderSide(
+                                  color: item.borderColor,
+                                  width: 3,
+                                ),
+                              ),
+                              boxShadow: const [
+                                BoxShadow(color: Colors.black12, blurRadius: 6),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    item.name,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 18),
+                                  ),
+                                ),
+                                Text(
+                                  "${item.count}",
+                                  style: const TextStyle(
+                                    fontSize: 30,
+                                    color: Color(0xffB31313),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color:
+                                    item.veg
+                                        ? const Color(0xff2DB347)
+                                        : const Color(0xffC61D1D),
+                                borderRadius: const BorderRadius.only(
+                                  topRight: Radius.circular(12),
+                                  bottomLeft: Radius.circular(8),
+                                ),
+                              ),
+                              child: Text(
+                                item.veg ? "Veg" : "Non-Veg",
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: item.veg ? const Color(0xff2DB347) : const Color(0xffC61D1D),
-                        borderRadius: const BorderRadius.only(
-                          topRight: Radius.circular(12),
-                          bottomLeft: Radius.circular(8),
-                        ),
-                      ),
-                      child: Text(
-                        item.veg ? "Veg" : "Non-Veg",
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
         ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -253,10 +275,10 @@ class _RepeatedItemsScreenState
                 child: Text(
                   "Count indicate the number of items pending KOT's that contain the item.",
                 ),
-              )
+              ),
             ],
           ),
-        )
+        ),
       ],
     );
 

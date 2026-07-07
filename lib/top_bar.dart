@@ -66,13 +66,14 @@ class _TopBarWidgetState extends State<TopBarWidget> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 75,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      height: 90,
+      padding: const EdgeInsets.only(left: 20, right: 20, top: 28, bottom: 8),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(bottom: BorderSide(color: Color(0xffe2e8f0), width: 1)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // Logo Section
           Image.asset(
@@ -91,10 +92,13 @@ class _TopBarWidgetState extends State<TopBarWidget> {
             },
           ),
 
-          const Spacer(),
+          const SizedBox(width: 16),
+          Container(width: 1, height: 36, color: const Color(0xffe2e8f0)),
+          const SizedBox(width: 16),
 
           Row(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               _navButton(
                 title: "QUEUE", //"Pending KOTs",
@@ -131,6 +135,9 @@ class _TopBarWidgetState extends State<TopBarWidget> {
           ),
 
           const Spacer(),
+
+          Container(width: 1, height: 36, color: const Color(0xffe2e8f0)),
+          const SizedBox(width: 16),
 
           // Logout Button
           GestureDetector(
@@ -173,6 +180,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 CircleAvatar(
                   radius: 16,
@@ -237,6 +245,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Icon(
               icon,

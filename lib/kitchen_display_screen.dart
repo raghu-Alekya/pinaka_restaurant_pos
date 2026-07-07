@@ -6,7 +6,7 @@ import 'package:kds_app/top_bar.dart';
 import 'package:kds_app/widgets/completed_orders.dart';
 import 'package:kds_app/widgets/repeated_item.dart';
 import 'package:provider/provider.dart';
-
+import 'package:google_fonts/google_fonts.dart';
 import 'active_orderscreen.dart';
 import 'providers/order_provider.dart';
 import 'services/kds_mqtt_service.dart';
@@ -41,7 +41,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
   KotView selectedView = KotView.pending;
   int _repeatedItemsCount = 0;
   bool isZoomedOut = true;
-  String? zoomedKotId;
+  final Set<String> zoomedKotIds = {};
 
   @override
   void initState() {
@@ -140,8 +140,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xffF4F4F4),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      body: SafeArea(
         child: Column(
           children: [
             TopBarWidget(
@@ -160,8 +159,15 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                   orderProvider.readyOrders.length,
               repeatedCount: _repeatedItemsCount,
             ),
-            const SizedBox(height: 6),
-            Expanded(child: bodyWidget),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                child: bodyWidget,
+              ),
+            ),
           ],
         ),
       ),
@@ -174,153 +180,128 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
   ) {
     final size = MediaQuery.of(context).size;
     final crossAxisCount = isZoomedOut ? 4 : 2;
-    final cardWidth = (size.width - (isZoomedOut ? 96 : 64)) / crossAxisCount;
-    // Calculate the perfect height for cards considering TopBar and padding
-    final cardHeight = (size.height - 190) / (isZoomedOut ? 2 : 1);
+    // Account for scaffold padding (12 * 2), outer container padding (16 * 2), outer container border (1 * 2), and gaps (16 * (crossAxisCount - 1))
+    final cardWidth =
+        (size.width - 58 - (16 * (crossAxisCount - 1))) / crossAxisCount;
+    // Calculate the perfect height for cards considering TopBar, padding, and spacing
+    final cardHeight =
+        isZoomedOut ? (size.height - 202 - 16) / 2 : (size.height - 202);
 
-    // Dynamic layout columns distribution algorithm
-    final capacity = isZoomedOut ? 2 : 1;
-    List<List<Map<String, dynamic>>> columns = [];
-    List<Map<String, dynamic>> currentColumn = [];
-    int slotsInColumn = 0;
-
-    for (final order in filteredOrders) {
-      final isThisKotZoomed = isZoomedOut && (zoomedKotId == order['id']?.toString());
-      final slotsRequired = isThisKotZoomed ? 2 : 1;
-
-      if (slotsInColumn + slotsRequired > capacity) {
-        if (currentColumn.isNotEmpty) {
-          columns.add(currentColumn);
-        }
-        currentColumn = [];
-        slotsInColumn = 0;
-      }
-      currentColumn.add(order);
-      slotsInColumn += slotsRequired;
-    }
-    if (currentColumn.isNotEmpty) {
-      columns.add(currentColumn);
+    // Distribute all filtered orders into vertical columns (row-major filling)
+    final List<List<Map<String, dynamic>>> columns = List.generate(
+      crossAxisCount,
+      (_) => [],
+    );
+    for (int i = 0; i < filteredOrders.length; i++) {
+      columns[i % crossAxisCount].add(filteredOrders[i]);
     }
 
     // Build the columns widgets list
     List<Widget> columnWidgets = [];
     for (int i = 0; i < columns.length; i++) {
       final colOrders = columns[i];
-      Widget colWidget;
-      if (colOrders.length == 1 && isZoomedOut && zoomedKotId == colOrders[0]['id']?.toString()) {
-        colWidget = SizedBox(
-          width: cardWidth,
-          height: double.infinity,
-          child: _buildOrderCard(colOrders[0], orderProvider),
-        );
-      } else {
-        colWidget = SizedBox(
-          width: cardWidth,
-          height: double.infinity,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (colOrders.isNotEmpty)
-                SizedBox(
-                  height: cardHeight,
-                  child: _buildOrderCard(colOrders[0], orderProvider),
-                ),
-              if (colOrders.length > 1) ...[
-                const SizedBox(height: 16),
-                SizedBox(
-                  height: cardHeight,
-                  child: _buildOrderCard(colOrders[1], orderProvider),
-                ),
-              ],
+      final colWidget = SizedBox(
+        width: cardWidth,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (int j = 0; j < colOrders.length; j++) ...[
+              if (j > 0) const SizedBox(height: 16),
+              (() {
+                final order = colOrders[j];
+                final isThisKotZoomed =
+                    isZoomedOut &&
+                    zoomedKotIds.contains(order['id']?.toString());
+                final currentCardHeight =
+                    isThisKotZoomed ? (cardHeight * 2 + 16) : cardHeight;
+                return SizedBox(
+                  width: cardWidth,
+                  height: currentCardHeight,
+                  child: _buildOrderCard(order, orderProvider),
+                );
+              })(),
             ],
-          ),
-        );
-      }
+          ],
+        ),
+      );
       columnWidgets.add(colWidget);
       if (i < columns.length - 1) {
         columnWidgets.add(const SizedBox(width: 16));
       }
     }
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 1, bottom: 4),
-          child: Row(
-            children: [
-              const Text(
-                //"Pending KOTs",
-                " QUEUE ",
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xff1E293B),
-                ),
-              ),
-              const Spacer(),
-              IconButton(
-                onPressed: () {
-                  setState(() {
-                    isZoomedOut = !isZoomedOut;
-                    zoomedKotId = null; // Reset single zoom on global toggle
-                  });
-                },
-                icon: Icon(isZoomedOut ? Icons.zoom_in : Icons.zoom_out),
-              ),
-              const SizedBox(width: 8),
-              _filterButtonGroup(),
-            ],
-          ),
-        ),
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xffE2E8F0)),
-            ),
-            child: Column(
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xffe2e8f0)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 1, bottom: 4),
+            child: Row(
               children: [
-                Expanded(
-                  child:
-                      filteredOrders.isEmpty
-                          ? Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.receipt_long,
-                                  size: 64,
-                                  color: Colors.grey.shade400,
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  orderProvider.connectionState ==
-                                          KdsConnectionState.connected
-                                      ? 'Waiting for orders from POS...'
-                                      : 'Connecting to POS...',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                          : SingleChildScrollView(
-                             scrollDirection: Axis.horizontal,
-                             child: Row(
-                               crossAxisAlignment: CrossAxisAlignment.start,
-                               children: columnWidgets,
-                             ),
-                           ),
+                Text(
+                  "Pending KOT's (${filteredOrders.length.toString().padLeft(2, '0')})",
+                  style: GoogleFonts.montserrat(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xff1E293B),
+                  ),
                 ),
+                const Spacer(),
+                _filterButtonGroup(),
               ],
             ),
           ),
-        ),
-      ],
+          const SizedBox(height: 8),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Column(
+                children: [
+                  Expanded(
+                    child:
+                        filteredOrders.isEmpty
+                            ? Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.receipt_long,
+                                    size: 64,
+                                    color: Colors.grey.shade400,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    orderProvider.connectionState ==
+                                            KdsConnectionState.connected
+                                        ? 'Waiting for orders from POS...'
+                                        : 'Connecting to POS...',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                            : SingleChildScrollView(
+                              scrollDirection: Axis.vertical,
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: columnWidgets,
+                              ),
+                            ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -330,8 +311,14 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(.04), blurRadius: 4),
+        border: Border.all(color: const Color(0xffe2e8f0), width: 1),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x35595858),
+            offset: Offset(0, 4),
+            blurRadius: 10,
+            spreadRadius: 0,
+          ),
         ],
       ),
       child: Row(
@@ -340,6 +327,8 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
           _filterButton(
             title: "All",
             selected: selectedFilter == OrderTypeFilter.all,
+            icon: Icons.grid_view,
+            iconColor: const Color(0xff2F4376),
             onTap: () {
               setState(() {
                 selectedFilter = OrderTypeFilter.all;
@@ -572,15 +561,17 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                       GestureDetector(
                         onTap: () {
                           setState(() {
-                            if (zoomedKotId == kotId) {
-                              zoomedKotId = null;
+                            if (zoomedKotIds.contains(kotId)) {
+                              zoomedKotIds.remove(kotId);
                             } else {
-                              zoomedKotId = kotId;
+                              zoomedKotIds.add(kotId);
                             }
                           });
                         },
                         child: Icon(
-                          zoomedKotId == kotId ? Icons.zoom_out : Icons.zoom_in,
+                          zoomedKotIds.contains(kotId)
+                              ? Icons.close_fullscreen
+                              : Icons.open_in_full,
                           color: Colors.white,
                           size: 20,
                         ),
@@ -674,11 +665,12 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(4),
                                 ),
-                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                ),
                               ),
                               onPressed: () async {
-                                final selectedItems =
-                                    <Map<String, dynamic>>[];
+                                final selectedItems = <Map<String, dynamic>>[];
                                 for (int i = 0; i < items.length; i++) {
                                   if (selected[i]) {
                                     selectedItems.add(

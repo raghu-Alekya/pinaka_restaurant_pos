@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:kds_app/top_bar.dart';
 import 'package:kds_app/widgets/completed_orders.dart';
@@ -59,8 +60,14 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(.04), blurRadius: 4),
+        border: Border.all(color: const Color(0xffe2e8f0), width: 1),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x35595858),
+            offset: Offset(0, 4),
+            blurRadius: 10,
+            spreadRadius: 0,
+          ),
         ],
       ),
       child: Row(
@@ -69,6 +76,8 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
           _filterButton(
             title: "All",
             selected: selectedFilter == OrderTypeFilter.all,
+            icon: Icons.grid_view,
+            iconColor: const Color(0xff2F4376),
             onTap: () {
               setState(() {
                 selectedFilter = OrderTypeFilter.all;
@@ -157,196 +166,206 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
 
     final servedOrders = filterOrders(orderProvider.servedOrders);
 
-    final content = Column(
-      children: [
-        if (widget.isEmbedded)
-          Padding(
-            padding: const EdgeInsets.only(top: 1, bottom: 6),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xffe2e8f0)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        children: [
+          if (widget.isEmbedded)
+            Padding(
+              padding: const EdgeInsets.only(top: 1, bottom: 6),
+              child: Row(
+                children: [
+                  Text(
+                    "Active KOTs",
+                    style: GoogleFonts.montserrat(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xff1E293B),
+                    ),
+                  ),
+                  const Spacer(),
+                  _filterButtonGroup(),
+                ],
+              ),
+            )
+          else
+            TopBarWidget(
+              token: widget.token,
+              restaurantId: widget.restaurantId,
+              selectedView: selectedView,
+              onViewChanged: (view) {
+                setState(() {
+                  selectedView = view;
+
+                  if (view == KotView.pending) {
+                    Navigator.pop(context);
+                  }
+                });
+              },
+              onLogout: () {},
+            ),
+
+          if (!widget.isEmbedded) const SizedBox(height: 22),
+
+          if (!widget.isEmbedded) const SizedBox(height: 20),
+          Expanded(
             child: Row(
               children: [
-                const Text(
-                  "Active KOTs",
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xff1E293B),
-                  ),
-                ),
-                const Spacer(),
-                _filterButtonGroup(),
-              ],
-            ),
-          )
-        else
-          TopBarWidget(
-            token: widget.token,
-            restaurantId: widget.restaurantId,
-            selectedView: selectedView,
-            onViewChanged: (view) {
-              setState(() {
-                selectedView = view;
+                Expanded(
+                  child: _buildSection(
+                    title: "Preparing",
+                    //color: const Color(0xffF59E0B), //
+                    color: const Color(0xFFFF0000),
+                    child: DragTarget<Map<String, dynamic>>(
+                      onAcceptWithDetails: (details) {
+                        final orderId = details.data['id']?.toString() ?? '';
 
-                if (view == KotView.pending) {
-                  Navigator.pop(context);
-                }
-              });
-            },
-            onLogout: () {},
-          ),
+                        orderProvider.updateOrderStatus(orderId, 'Preparing');
+                      },
+                      builder: (context, candidateData, rejectedData) {
+                        return preparingOrders.isEmpty
+                            ? _buildEmptyState(
+                              color: Colors.orange,
+                              title: "Preparing...",
+                            )
+                            : ListView.builder(
+                              padding: EdgeInsets.zero,
+                              itemCount: preparingOrders.length,
+                              itemBuilder: (context, index) {
+                                final order = preparingOrders[index];
 
-        if (!widget.isEmbedded) const SizedBox(height: 22),
-
-        if (!widget.isEmbedded) const SizedBox(height: 20),
-        Expanded(
-          child: Row(
-            children: [
-              Expanded(
-                child: _buildSection(
-                  title: "Preparing",
-                  //color: const Color(0xffF59E0B), //
-                  color: const Color(0xFFFF0000),
-                  child: DragTarget<Map<String, dynamic>>(
-                    onAcceptWithDetails: (details) {
-                      final orderId = details.data['id']?.toString() ?? '';
-
-                      orderProvider.updateOrderStatus(orderId, 'Preparing');
-                    },
-                    builder: (context, candidateData, rejectedData) {
-                      return preparingOrders.isEmpty
-                          ? _buildEmptyState(
-                            color: Colors.orange,
-                            title: "Preparing...",
-                          )
-                          : ListView.builder(
-                            padding: EdgeInsets.zero,
-                            itemCount: preparingOrders.length,
-                            itemBuilder: (context, index) {
-                              final order = preparingOrders[index];
-
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: Draggable<Map<String, dynamic>>(
-                                  data: order,
-                                  feedback: Material(
-                                    child: SizedBox(
-                                      width: 250,
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: Draggable<Map<String, dynamic>>(
+                                    data: order,
+                                    feedback: Material(
+                                      child: SizedBox(
+                                        width: 250,
+                                        child: _buildOrderCard(order),
+                                      ),
+                                    ),
+                                    childWhenDragging: Opacity(
+                                      opacity: 0.3,
                                       child: _buildOrderCard(order),
                                     ),
-                                  ),
-                                  childWhenDragging: Opacity(
-                                    opacity: 0.3,
                                     child: _buildOrderCard(order),
                                   ),
-                                  child: _buildOrderCard(order),
-                                ),
-                              );
-                            },
-                          );
-                    },
+                                );
+                              },
+                            );
+                      },
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _buildSection(
-                  title: "Ready",
-                  color: const Color(0xff2563EB),
-                  child: DragTarget<Map<String, dynamic>>(
-                    onAcceptWithDetails: (details) {
-                      final orderId = details.data['id']?.toString() ?? '';
-                      orderProvider.updateOrderStatus(orderId, 'Ready');
-                    },
-                    builder: (context, candidateData, rejectedData) {
-                      if (readyOrders.isEmpty) {
-                        return _buildEmptyState(
-                          color: const Color(0xff2563EB),
-                          title: "Ready",
-                        );
-                      }
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildSection(
+                    title: "Ready",
+                    color: const Color(0xff2563EB),
+                    child: DragTarget<Map<String, dynamic>>(
+                      onAcceptWithDetails: (details) {
+                        final orderId = details.data['id']?.toString() ?? '';
+                        orderProvider.updateOrderStatus(orderId, 'Ready');
+                      },
+                      builder: (context, candidateData, rejectedData) {
+                        if (readyOrders.isEmpty) {
+                          return _buildEmptyState(
+                            color: const Color(0xff2563EB),
+                            title: "Ready",
+                          );
+                        }
 
-                      return ListView.builder(
-                        padding: EdgeInsets.zero,
-                        itemCount: readyOrders.length,
-                        itemBuilder: (_, index) {
-                          final order = readyOrders[index];
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Draggable<Map<String, dynamic>>(
-                              data: order,
-                              feedback: Material(
-                                child: SizedBox(
-                                  width: 250,
+                        return ListView.builder(
+                          padding: EdgeInsets.zero,
+                          itemCount: readyOrders.length,
+                          itemBuilder: (_, index) {
+                            final order = readyOrders[index];
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Draggable<Map<String, dynamic>>(
+                                data: order,
+                                feedback: Material(
+                                  child: SizedBox(
+                                    width: 250,
+                                    child: _buildOrderCard(order),
+                                  ),
+                                ),
+                                childWhenDragging: Opacity(
+                                  opacity: 0.3,
                                   child: _buildOrderCard(order),
                                 ),
-                              ),
-                              childWhenDragging: Opacity(
-                                opacity: 0.3,
                                 child: _buildOrderCard(order),
                               ),
-                              child: _buildOrderCard(order),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildSection(
-                  title: "Served",
-                  color: const Color(0xff16A34A),
-                  child: DragTarget<Map<String, dynamic>>(
-                    onWillAcceptWithDetails: (details) {
-                      final status = details.data['status']?.toString().toLowerCase() ?? '';
-                      return status == 'ready';
-                    },
-                    onAcceptWithDetails: (details) {
-                      final orderId = details.data['id']?.toString() ?? '';
-                      orderProvider.updateOrderStatus(orderId, 'Served');
-                    },
-                    builder: (context, candidateData, rejectedData) {
-                      if (servedOrders.isEmpty) {
-                        return _buildEmptyState(
-                          color: const Color(0xff16A34A),
-                          title: "Served",
+                            );
+                          },
                         );
-                      }
-
-                      return ListView.builder(
-                        padding: EdgeInsets.zero,
-                        itemCount: servedOrders.length,
-                        itemBuilder: (_, index) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: _buildOrderCard(servedOrders[index]),
-                          );
-                        },
-                      );
-                    },
+                      },
+                    ),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildSection(
+                    title: "Served",
+                    color: const Color(0xff16A34A),
+                    child: DragTarget<Map<String, dynamic>>(
+                      onWillAcceptWithDetails: (details) {
+                        final status =
+                            details.data['status']?.toString().toLowerCase() ??
+                            '';
+                        return status == 'ready';
+                      },
+                      onAcceptWithDetails: (details) {
+                        final orderId = details.data['id']?.toString() ?? '';
+                        orderProvider.updateOrderStatus(orderId, 'Served');
+                      },
+                      builder: (context, candidateData, rejectedData) {
+                        if (servedOrders.isEmpty) {
+                          return _buildEmptyState(
+                            color: const Color(0xff16A34A),
+                            title: "Served",
+                          );
+                        }
+
+                        return ListView.builder(
+                          padding: EdgeInsets.zero,
+                          itemCount: servedOrders.length,
+                          itemBuilder: (_, index) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: _buildOrderCard(servedOrders[index]),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
-    );
-
-    if (widget.isEmbedded) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: content,
-      );
-    }
-
-    return Scaffold(
-      backgroundColor: const Color(0xffF5F5F5),
-      body: SafeArea(
-        child: Padding(padding: const EdgeInsets.all(16), child: content),
+        ],
       ),
     );
+
+    // if (widget.isEmbedded) {
+    //   return Padding(
+    //     padding: const EdgeInsets.symmetric(horizontal: 4),
+    //     child: content,
+    //   );
+    // }
+
+    // return Scaffold(
+    //   backgroundColor: const Color(0xffF5F5F5),
+    //   body: SafeArea(
+    //     child: Padding(padding: const EdgeInsets.all(16), child: content),
+    //   ),
+    // );
   }
 
   Widget _buildSection({
@@ -416,7 +435,8 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
   }
 
   Widget _buildOrderCard(Map<String, dynamic> order) {
-    return _ExpandableActiveOrderCard(order: order);
+    final kotId = order['id']?.toString() ?? UniqueKey().toString();
+    return _ExpandableActiveOrderCard(key: ValueKey(kotId), order: order);
   }
 
   Widget _filterChip(String title, bool selected) {
@@ -455,7 +475,7 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
 class _ExpandableActiveOrderCard extends StatefulWidget {
   final Map<String, dynamic> order;
 
-  const _ExpandableActiveOrderCard({required this.order});
+  const _ExpandableActiveOrderCard({super.key, required this.order});
 
   @override
   State<_ExpandableActiveOrderCard> createState() =>
@@ -568,6 +588,7 @@ class _ExpandableActiveOrderCardState
                           ? Icons.keyboard_arrow_up
                           : Icons.keyboard_arrow_down,
                       color: Colors.white,
+                      size: 24,
                     ),
                   ],
                 ),

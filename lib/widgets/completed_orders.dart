@@ -326,8 +326,14 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(.04), blurRadius: 4),
+        border: Border.all(color: const Color(0xffe2e8f0), width: 1),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x35595858),
+            offset: Offset(0, 4),
+            blurRadius: 10,
+            spreadRadius: 0,
+          ),
         ],
       ),
       child: Row(
@@ -336,6 +342,8 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
           _filterButton(
             title: "All",
             selected: selectedFilter == OrderTypeFilter.all,
+            icon: Icons.grid_view,
+            iconColor: const Color(0xff2F4376),
             onTap: () => setFilter(OrderTypeFilter.all),
           ),
           _filterButton(
@@ -405,7 +413,12 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
       children: [
         // Row 1: Title, Search Bar, Order Filters
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: const EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 12,
+            bottom: 4,
+          ),
           child: Row(
             children: [
               if (!widget.isEmbedded) ...[
@@ -462,11 +475,16 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
           ),
         ),
 
-        const SizedBox(height: 8),
+        const SizedBox(height: 2),
 
         // Row 2: Metrics and Secondary Filters
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 2,
+            bottom: 4,
+          ),
           child: Row(
             children: [
               // Stats
@@ -663,7 +681,7 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 4),
 
         Expanded(
           child: Container(
@@ -689,12 +707,12 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
                               minWidth: constraints.maxWidth,
                             ),
                             child: DataTable(
-                              headingRowHeight: 50,
-                              dataRowMinHeight: 48,
-                              dataRowMaxHeight: 48,
+                              headingRowHeight: 40,
+                              dataRowMinHeight: 40,
+                              dataRowMaxHeight: 40,
                               showCheckboxColumn: false,
                               horizontalMargin: 16,
-                              columnSpacing: 40, // Fixed spacing
+                              columnSpacing: 46, // Fixed spacing
                               headingRowColor: WidgetStateProperty.all(
                                 const Color(0xff173F7A),
                               ),
@@ -724,7 +742,7 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
                                 ),
                                 DataColumn(
                                   label: Text(
-                                    "Type",
+                                    "  Type",
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
@@ -760,7 +778,7 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
                                 ),
                                 DataColumn(
                                   label: Text(
-                                    "Status",
+                                    " Status",
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
@@ -784,7 +802,8 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
                                         // Order ID
                                         DataCell(
                                           Text(
-                                            "#${order.orderId}",
+                                            //"#${order.orderId}",
+                                            "${order.orderId}",
                                             style: const TextStyle(
                                               fontWeight: FontWeight.w500,
                                               color: Color(0xff444444),
@@ -962,10 +981,10 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
                     ),
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 2),
 
         Padding(
-          padding: const EdgeInsets.only(right: 12, bottom: 8, top: 4),
+          padding: const EdgeInsets.only(right: 12, bottom: 4, top: 2),
           child: Align(
             alignment: Alignment.centerRight,
             child: Row(
@@ -1134,25 +1153,30 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
 
     final Color bgColor;
     final Color textColor;
+    final String displayText;
 
     if (isDineIn) {
       bgColor = const Color(0xffFFE4D8);
       textColor = const Color(0xffF26B3A);
+      displayText = "Dine-In";
     } else if (isTakeaway) {
       bgColor = const Color(0xffD9E9FF);
       textColor = const Color(0xff3B73B9);
+      displayText = "Takeaways";
     } else if (isOnline) {
       bgColor = const Color(0xffD1FAE5);
       textColor = const Color(0xff065F46);
+      displayText = "Online Orders";
     } else {
       bgColor = const Color(0xffF3F4F6);
       textColor = const Color(0xff374151);
+      displayText = type;
     }
 
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
-        width: 100,
+        width: 110,
         height: 22,
         alignment: Alignment.center,
         padding: EdgeInsets.zero,
@@ -1161,7 +1185,7 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
           borderRadius: BorderRadius.circular(4),
         ),
         child: Text(
-          type,
+          displayText,
           style: TextStyle(
             color: textColor,
             fontSize: 12,
@@ -1182,7 +1206,7 @@ Widget _summaryCard({
   required IconData icon,
 }) {
   return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
     decoration: BoxDecoration(
       color: bgColor,
       borderRadius: BorderRadius.circular(8),
