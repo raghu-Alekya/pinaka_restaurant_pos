@@ -214,6 +214,8 @@ class KdsMqttService {
     String? orderType,
     String? tableName,
     bool isCancelled = false,
+    List<Map<String, dynamic>>? cancelledItems,
+    List<Map<String, dynamic>>? remainingItems,
   }) {
     if (_state != KdsConnectionState.connected || _client == null) {
       KdsDebugLog.warn('Cannot send status to POS — not connected');
@@ -232,6 +234,8 @@ class KdsMqttService {
       'kot_number': kotNumber,
       'status': status,
       'is_cancelled': isCancelled,
+      if (cancelledItems != null) 'cancelled_items': cancelledItems,
+      if (remainingItems != null) 'remaining_items': remainingItems,
     };
     KdsDebugLog.info(
         'MQTT STATUS PAYLOAD => ${jsonEncode(payload)}'

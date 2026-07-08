@@ -66,8 +66,8 @@ class _TopBarWidgetState extends State<TopBarWidget> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 90,
-      padding: const EdgeInsets.only(left: 20, right: 20, top: 28, bottom: 8),
+      height: 75,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(bottom: BorderSide(color: Color(0xffe2e8f0), width: 1)),
@@ -234,7 +234,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xffF0EEFF) : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
@@ -264,10 +264,10 @@ class _TopBarWidgetState extends State<TopBarWidget> {
             if (count != null) ...[
               const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 2.5,
-                ),
+                height: 20,
+                constraints: const BoxConstraints(minWidth: 20),
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
                 decoration: BoxDecoration(
                   color: isSelected ? activeColor : const Color(0xffe2e8f0),
                   borderRadius: BorderRadius.circular(10),
@@ -276,7 +276,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
                   "$count",
                   style: TextStyle(
                     color: isSelected ? Colors.white : inactiveTextColor,
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: FontWeight.bold,
                   ),
                 ),

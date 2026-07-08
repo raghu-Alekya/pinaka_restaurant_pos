@@ -20,7 +20,7 @@ class AppConstants {
       '$baseApiPath/token';
 
   static String get logoutEndpoint =>
-      '$baseApiPath/logout';
+      '$baseApiPath/token/logout-by-id';
 
   static String get empOrderPinValidationEndpoint =>
       '$baseApiPath/emp-order-pin-validation';

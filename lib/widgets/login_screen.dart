@@ -1,7 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-// import '../repositories/employee_pin_login_repository.dart';
 import '../screens/connection_setup_screen.dart';
 import '../services/login_respository.dart';
 
@@ -26,17 +25,59 @@ class EmployeeLoginScreen extends StatefulWidget {
 class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
   final EmployeePinLoginRepository _repository = EmployeePinLoginRepository();
 
-  final String _pin = "";
-
-  final List<String> images = [
-    "assets/images/login1.png",
-    "assets/images/login2.png",
-    "assets/images/login3.png",
-  ];
-
-  int currentIndex = 0;
   String enteredPin = "";
   bool isLoading = false;
+  int _currentIndex = 0;
+
+  final List<String> _images = [
+    'assets/login_bg.png',
+    'assets/login_bg.png',
+    'assets/login_bg.png',
+    'assets/login_bg.png',
+  ];
+
+  final List<String> _captions = [
+    '"Designed for speed and efficiency — PINAKA KDS helps you track orders in seconds with an intuitive and user-friendly interface."',
+    '"Track preparation times, manage queues, and handle order status — all from one sleek display built for real-time kitchen efficiency."',
+    '"Reliable and secure — our KDS keeps your kitchen running smoothly every day with 24/7 synchronization and instant POS notifications."',
+    '"Designed for speed and efficiency — PINAKA KDS helps you track orders in seconds with an intuitive and user-friendly interface."',
+  ];
+
+  late PageController _pageController;
+  late Timer _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+
+    _timer = Timer.periodic(const Duration(seconds: 4), (Timer timer) {
+      if (!mounted) return;
+
+      if (_currentIndex < _images.length - 1) {
+        _currentIndex++;
+        _pageController.animateToPage(
+          _currentIndex,
+          duration: const Duration(milliseconds: 700),
+          curve: Curves.easeInOut,
+        );
+      } else {
+        Future.delayed(const Duration(milliseconds: 710), () {
+          if (mounted) {
+            _pageController.jumpToPage(0);
+            _currentIndex = 0;
+          }
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
 
   Future<void> _login() async {
     if (enteredPin.length != 6) {
@@ -58,8 +99,9 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
       // Save token
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString("token", response.data.token);
-
       await prefs.setInt("restaurant_id", response.data.restaurantId);
+      await prefs.setInt("emp_login_pin", int.tryParse(enteredPin) ?? 0);
+      await prefs.setString("emp_login_pin_str", enteredPin);
 
       ScaffoldMessenger.of(
         context,
@@ -110,25 +152,32 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
     });
   }
 
-  Widget pinBox(int index) {
+  Widget pinBox(int index, bool isShort) {
     bool filled = index < enteredPin.length;
 
     return Container(
-      width: 48,
-      height: 48,
-      margin: const EdgeInsets.symmetric(horizontal: 6),
+      width: isShort ? 38 : 48,
+      height: isShort ? 38 : 48,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xffE2E8F0), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 2,
+            spreadRadius: 0,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border.all(color: const Color(0xffF0F4F8), width: 1.5),
       ),
       alignment: Alignment.center,
       child: Text(
         filled ? "*" : "",
-        style: const TextStyle(
-          fontSize: 28,
+        style: TextStyle(
+          fontSize: isShort ? 22 : 28,
           fontWeight: FontWeight.bold,
-          color: Color(0xff2F4376),
+          color: const Color(0xff2F4376),
         ),
       ),
     );
@@ -138,30 +187,45 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
     String text, {
     VoidCallback? onTap,
     IconData? icon,
-    Color color = const Color(0xffF4F5F7),
+    Color color = Colors.white,
+    bool isShort = false,
   }) {
-    return Material(
-      color: color,
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        onTap: onTap,
+    return Container(
+      decoration: BoxDecoration(
+        color: color,
         borderRadius: BorderRadius.circular(8),
-        child: Center(
-          child: icon != null
-              ? Icon(
-                  icon,
-                  size: 22,
-                  color: const Color(0xff2F4376),
-                )
-              : Text(
-                  text,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xff2F4376),
-                    fontFamily: "Inter",
-                  ),
-                ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.09),
+            blurRadius: 6,
+            spreadRadius: 1,
+            offset: const Offset(0, 2.5),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Center(
+            child:
+                icon != null
+                    ? Icon(
+                      icon,
+                      size: isShort ? 18 : 22,
+                      color: const Color(0xff2F4376),
+                    )
+                    : Text(
+                      text,
+                      style: TextStyle(
+                        fontSize: isShort ? 18 : 22,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xff2F4376),
+                        fontFamily: "Inter",
+                      ),
+                    ),
+          ),
         ),
       ),
     );
@@ -175,6 +239,7 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final isNarrow = constraints.maxWidth < 800;
+            final isShort = constraints.maxHeight < 700;
 
             return Center(
               child: SizedBox(
@@ -182,187 +247,261 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
                 height: constraints.maxHeight,
                 child: Row(
                   children: [
-                    /// LEFT IMAGE SECTION (NFC payment mockup match)
+                    /// LEFT IMAGE SECTION with auto-sliding captions
                     if (!isNarrow)
                       Expanded(
-                        child: Container(
-                          decoration: const BoxDecoration(
-                            image: DecorationImage(
-                              image: AssetImage("assets/login_bg.png"),
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                          child: Stack(
-                            children: [
-                              Align(
-                                alignment: Alignment.bottomCenter,
-                                child: Padding(
-                                  padding: const EdgeInsets.only(left: 48, right: 48, bottom: 80),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Text(
-                                        '"Designed for speed and efficiency—PINAKA POS helps you complete sales in seconds with an intuitive and user-friendly interface."',
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w600,
-                                          fontFamily: "Inter",
-                                          height: 1.4,
-                                          shadows: [
-                                            Shadow(
-                                              blurRadius: 4.0,
-                                              color: Colors.black45,
-                                              offset: Offset(0, 2),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(height: 24),
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Container(
-                                            width: 8,
-                                            height: 8,
-                                            decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              color: Colors.transparent,
-                                              border: Border.all(color: Colors.white.withOpacity(0.6), width: 1.5),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Container(
-                                            width: 8,
-                                            height: 8,
-                                            decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              color: Colors.transparent,
-                                              border: Border.all(color: Colors.white.withOpacity(0.6), width: 1.5),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Container(
-                                            width: 8,
-                                            height: 8,
-                                            decoration: const BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              color: Colors.white,
-                                            ),
+                        child: PageView.builder(
+                          controller: _pageController,
+                          itemCount: _images.length,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemBuilder: (context, index) {
+                            return Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                Image.asset(_images[index], fit: BoxFit.cover),
+                                // Dark overlay for text readability
+                                Container(color: Colors.black.withOpacity(0.3)),
+                                AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 700),
+                                  transitionBuilder: (
+                                    Widget child,
+                                    Animation<double> animation,
+                                  ) {
+                                    final offsetAnimation = Tween<Offset>(
+                                      begin: const Offset(-1.0, 0.0),
+                                      end: Offset.zero,
+                                    ).animate(animation);
+                                    return SlideTransition(
+                                      position: offsetAnimation,
+                                      child: child,
+                                    );
+                                  },
+                                  child: Container(
+                                    key: ValueKey<int>(index),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 48,
+                                    ),
+                                    alignment: Alignment.bottomCenter,
+                                    margin: const EdgeInsets.only(bottom: 80),
+                                    child: Text(
+                                      _captions[index],
+                                      style: const TextStyle(
+                                        fontFamily: 'Inter',
+                                        color: Colors.white,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                        shadows: [
+                                          Shadow(
+                                            blurRadius: 4.0,
+                                            color: Colors.black54,
+                                            offset: Offset(0, 2),
                                           ),
                                         ],
                                       ),
-                                    ],
+                                      textAlign: TextAlign.center,
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
+                              ],
+                            );
+                          },
                         ),
                       ),
 
                     /// RIGHT LOGIN PANEL (PIN verification & numeric keypad)
                     Expanded(
-                      child: Container(
-                        color: Colors.white,
-                        child: Center(
-                          child: SingleChildScrollView(
-                            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Image.asset("assets/pinaka.png", height: 80),
-                                const SizedBox(height: 20),
-                                const Text(
-                                  "Employee Login",
-                                  style: TextStyle(
-                                    color: Color(0xffFF6C61),
-                                    fontSize: 28,
-                                    fontFamily: "Inter",
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                      child: Center(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Image.asset(
+                                'assets/pinaka.png',
+                                height: constraints.maxHeight * 0.1,
+                              ),
+                              const SizedBox(height: 10),
+                              const Text(
+                                'Employee Login',
+                                style: TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 23,
+                                  fontFamily: 'Inter',
+                                  fontWeight: FontWeight.w600,
+                                  height: 0.9,
                                 ),
-                                const SizedBox(height: 10),
-                                const Text(
-                                  "Please Input your PIN to Validate your self",
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: Color(0xff4C5F7D),
-                                    fontSize: 14,
-                                    fontFamily: "Inter",
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                              ),
+                              SizedBox(height: isShort ? 14 : 24),
+                              const Text(
+                                'Please Input your PIN to Validate yourself',
+                                style: TextStyle(
+                                  color: Color(0xFF4C5F7D),
+                                  fontSize: 18,
+                                  fontFamily: 'Inter',
+                                  fontWeight: FontWeight.w500,
+                                  height: 0.92,
                                 ),
-                                const SizedBox(height: 28),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: List.generate(
-                                    6,
-                                    (index) => pinBox(index),
-                                  ),
-                                ),
-                                const SizedBox(height: 28),
-                                SizedBox(
-                                  width: 350,
-                                  child: GridView.count(
-                                    shrinkWrap: true,
-                                    physics: const NeverScrollableScrollPhysics(),
-                                    crossAxisCount: 3,
-                                    crossAxisSpacing: 16,
-                                    mainAxisSpacing: 16,
-                                    childAspectRatio: 1.55,
-                                    children: [
-                                      numberButton("1", onTap: () => addNumber("1")),
-                                      numberButton("2", onTap: () => addNumber("2")),
-                                      numberButton("3", onTap: () => addNumber("3")),
-                                      numberButton("4", onTap: () => addNumber("4")),
-                                      numberButton("5", onTap: () => addNumber("5")),
-                                      numberButton("6", onTap: () => addNumber("6")),
-                                      numberButton("7", onTap: () => addNumber("7")),
-                                      numberButton("8", onTap: () => addNumber("8")),
-                                      numberButton("9", onTap: () => addNumber("9")),
-                                      numberButton("C", onTap: clearPin),
-                                      numberButton("0", onTap: () => addNumber("0")),
-                                      numberButton("", icon: Icons.backspace_outlined, onTap: removeLast),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 30),
-                                SizedBox(
-                                  width: 350,
-                                  height: 52,
-                                  child: ElevatedButton(
-                                    onPressed: isLoading ? null : _login,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xffFF6C61),
-                                      foregroundColor: Colors.white,
-                                      elevation: 0,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
+                              ),
+                              SizedBox(height: isShort ? 14 : 24),
+                              SizedBox(
+                                width: isShort ? 310 : 370,
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        pinBox(0, isShort),
+                                        pinBox(1, isShort),
+                                        pinBox(2, isShort),
+                                        pinBox(3, isShort),
+                                        pinBox(4, isShort),
+                                        pinBox(5, isShort),
+                                      ],
                                     ),
-                                    child: isLoading
-                                        ? const SizedBox(
-                                            width: 22,
-                                            height: 22,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: Colors.white,
-                                            ),
-                                          )
-                                        : const Text(
-                                            "Login",
-                                            style: TextStyle(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.bold,
-                                              fontFamily: "Inter",
+                                    SizedBox(height: isShort ? 14 : 24),
+                                    GridView.count(
+                                      shrinkWrap: true,
+                                      physics:
+                                          const NeverScrollableScrollPhysics(),
+                                      crossAxisCount: 3,
+                                      crossAxisSpacing: isShort ? 10 : 16,
+                                      mainAxisSpacing: isShort ? 12 : 20,
+                                      childAspectRatio: isShort ? 2.2 : 1.95,
+                                      children: [
+                                        numberButton(
+                                          "1",
+                                          isShort: isShort,
+                                          onTap: () => addNumber("1"),
+                                        ),
+                                        numberButton(
+                                          "2",
+                                          isShort: isShort,
+                                          onTap: () => addNumber("2"),
+                                        ),
+                                        numberButton(
+                                          "3",
+                                          isShort: isShort,
+                                          onTap: () => addNumber("3"),
+                                        ),
+                                        numberButton(
+                                          "4",
+                                          isShort: isShort,
+                                          onTap: () => addNumber("4"),
+                                        ),
+                                        numberButton(
+                                          "5",
+                                          isShort: isShort,
+                                          onTap: () => addNumber("5"),
+                                        ),
+                                        numberButton(
+                                          "6",
+                                          isShort: isShort,
+                                          onTap: () => addNumber("6"),
+                                        ),
+                                        numberButton(
+                                          "7",
+                                          isShort: isShort,
+                                          onTap: () => addNumber("7"),
+                                        ),
+                                        numberButton(
+                                          "8",
+                                          isShort: isShort,
+                                          onTap: () => addNumber("8"),
+                                        ),
+                                        numberButton(
+                                          "9",
+                                          isShort: isShort,
+                                          onTap: () => addNumber("9"),
+                                        ),
+                                        numberButton(
+                                          "C",
+                                          isShort: isShort,
+                                          onTap: clearPin,
+                                        ),
+                                        numberButton(
+                                          "0",
+                                          isShort: isShort,
+                                          onTap: () => addNumber("0"),
+                                        ),
+                                        numberButton(
+                                          "",
+                                          isShort: isShort,
+                                          icon: Icons.backspace_outlined,
+                                          onTap: removeLast,
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: isShort ? 26 : 30),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      height: isShort ? 44 : 52,
+                                      child: ElevatedButton(
+                                        onPressed:
+                                            isLoading
+                                                ? null
+                                                : () {
+                                                  if (enteredPin.length == 6) {
+                                                    _login();
+                                                  } else {
+                                                    ScaffoldMessenger.of(
+                                                      context,
+                                                    ).showSnackBar(
+                                                      const SnackBar(
+                                                        content: Text(
+                                                          "Please enter 6 digit PIN",
+                                                        ),
+                                                        duration: Duration(
+                                                          seconds: 1,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  }
+                                                },
+                                        style: ButtonStyle(
+                                          backgroundColor:
+                                              WidgetStateProperty.all(
+                                                const Color(0xffFA3633),
+                                              ),
+                                          foregroundColor:
+                                              WidgetStateProperty.all(
+                                                Colors.white,
+                                              ),
+                                          elevation: WidgetStateProperty.all(0),
+                                          shape: WidgetStateProperty.all(
+                                            RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
                                             ),
                                           ),
-                                  ),
+                                        ),
+                                        child:
+                                            (isLoading)
+                                                ? const SizedBox(
+                                                  width: 24,
+                                                  height: 24,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        color: Colors.white,
+                                                        strokeWidth: 2,
+                                                        backgroundColor:
+                                                            Colors.transparent,
+                                                      ),
+                                                )
+                                                : const Text(
+                                                  "Login",
+                                                  style: TextStyle(
+                                                    fontSize: 20,
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                       ),

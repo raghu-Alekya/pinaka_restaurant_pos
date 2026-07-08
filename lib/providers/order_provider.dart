@@ -273,6 +273,19 @@ class OrderProvider extends ChangeNotifier {
         });
       });
 
+      _mqttService.sendStatusUpdate(
+        kotId: order.kotId,
+        parentOrderId: order.parentOrderId,
+        zoneId: order.zoneId,
+        zoneName: order.zoneName,
+        orderType: order.type,
+        tableName: order.tableName,
+        kotNumber: order.id,
+        status: KotApiStatus.fromLocal(order.status),
+        cancelledItems: selectedItems,
+        remainingItems: order.items.map((item) => item.toJson()).toList(),
+      );
+
       notifyListeners();
       return true;
     } catch (e) {

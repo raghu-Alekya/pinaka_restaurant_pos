@@ -24,13 +24,15 @@ class EmployeePinLoginRepository {
       print("Method   : POST");
       print("Request  : {emp_login_pin: $empLoginPin}");
 
-      final request = http.MultipartRequest(
-        'POST',
+      final response = await http.post(
         uri,
-      )..fields['emp_login_pin'] = empLoginPin;
-
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: jsonEncode({
+          "emp_login_pin": empLoginPin,
+        }),
+      );
 
       print("Status Code : ${response.statusCode}");
       print("Response    : ${response.body}");
@@ -75,8 +77,15 @@ class LogoutRepository {
     required String token,
     required int empLoginPin,
   }) async {
+    final url = AppConstants.logoutEndpoint;
+    print("==========================================");
+    print("Employee Logout API");
+    print("URL      : $url");
+    print("Headers  : {Content-Type: application/json, Authorization: Bearer $token}");
+    print("Body     : {emp_login_pin: $empLoginPin}");
+
     final response = await http.post(
-      Uri.parse(AppConstants.logoutEndpoint),
+      Uri.parse(url),
       headers: {
         "Content-Type": "application/json",
         "Authorization": "Bearer $token",
@@ -85,6 +94,10 @@ class LogoutRepository {
         "emp_login_pin": empLoginPin,
       }),
     );
+
+    print("Status Code : ${response.statusCode}");
+    print("Response    : ${response.body}");
+    print("==========================================");
 
     if (response.statusCode == 200) {
       return LogoutResponse.fromJson(jsonDecode(response.body));

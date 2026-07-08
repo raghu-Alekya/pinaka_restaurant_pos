@@ -10,6 +10,7 @@ import 'services/api_services.dart';
 import 'services/kds_mqtt_service.dart';
 import 'utils/kds_logger.dart';
 import 'utils/AppConstant.dart';
+import 'services/login_respository.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -158,9 +159,32 @@ class _MyAppState extends State<MyApp> {
           restaurantId: int.tryParse(_config!.restaurantId) ?? 1,
           onOpenSettings: () async {
             final prefs = await SharedPreferences.getInstance();
+            final token = prefs.getString('token') ?? '';
+            final pinStr = prefs.getString('emp_login_pin_str') ?? '';
+            final pin = prefs.getInt('emp_login_pin') ?? int.tryParse(pinStr) ?? 0;
+
+            print("==========================================");
+            print("Logout Clicked");
+            print("Token Present : ${token.isNotEmpty}");
+            print("Parsed PIN    : $pin");
+
+            if (token.isNotEmpty && pin > 0) {
+              try {
+                final logoutRepo = LogoutRepository();
+                await logoutRepo.logout(token: token, empLoginPin: pin);
+              } catch (e) {
+                print("Failed to notify backend logout: $e");
+              }
+            } else {
+              print("Skipping logout API call due to missing token/pin");
+            }
+            print("==========================================");
+
             await prefs.remove('token');
             await prefs.remove('api_token');
             await prefs.remove('restaurant_id');
+            await prefs.remove('emp_login_pin');
+            await prefs.remove('emp_login_pin_str');
 
             _orderProvider?.dispose();
 

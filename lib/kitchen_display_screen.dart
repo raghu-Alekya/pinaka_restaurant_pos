@@ -236,7 +236,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xffe2e8f0)),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 4),
       child: Column(
         children: [
           Padding(
@@ -256,10 +256,10 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 2),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.only(bottom: 4),
               child: Column(
                 children: [
                   Expanded(
@@ -450,6 +450,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
     // final items = order['items'] as List<dynamic>? ?? [];
 
     final isDineIn = orderType.toLowerCase().contains('dine');
+    final isCardZoomedOut = isZoomedOut && !zoomedKotIds.contains(kotId);
 
     return Stack(
       children: [
@@ -472,9 +473,9 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
             children: [
               /// Solid header bar spanning full width
               Container(
-                padding: const EdgeInsets.symmetric(
+                padding: EdgeInsets.symmetric(
                   horizontal: 12,
-                  vertical: 8,
+                  vertical: isCardZoomedOut ? 5 : 8,
                 ),
                 decoration: BoxDecoration(
                   color:
@@ -495,9 +496,9 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                         children: [
                           if (tableNo.isNotEmpty) ...[
                             Container(
-                              padding: const EdgeInsets.symmetric(
+                              padding: EdgeInsets.symmetric(
                                 horizontal: 8,
-                                vertical: 4,
+                                vertical: isCardZoomedOut ? 2 : 4,
                               ),
                               decoration: BoxDecoration(
                                 color: Colors.white,
@@ -510,7 +511,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                       isDineIn
                                           ? const Color(0xffF26B3A)
                                           : const Color(0xff3B73B9),
-                                  fontSize: 11,
+                                  fontSize: isCardZoomedOut ? 9 : 11,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -522,9 +523,9 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                               zoneName,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 13,
+                                fontSize: isCardZoomedOut ? 11 : 13,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -536,9 +537,9 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
 
                     // Right segment (Order Type Badge & Elapsed Time grouped next to each other)
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isCardZoomedOut ? 6 : 8,
+                        vertical: isCardZoomedOut ? 2 : 4,
                       ),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.9),
@@ -547,7 +548,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                       child: Text(
                         orderType.toUpperCase(),
                         style: TextStyle(
-                          fontSize: 9,
+                          fontSize: isCardZoomedOut ? 8 : 9,
                           fontWeight: FontWeight.w700,
                           color:
                               isDineIn
@@ -582,7 +583,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
               ),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(isCardZoomedOut ? 8 : 12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -592,10 +593,10 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                           Expanded(
                             child: Text(
                               "KOT #$kotNo",
-                              style: const TextStyle(
-                                fontSize: 18,
+                              style: TextStyle(
+                                fontSize: isCardZoomedOut ? 15 : 18,
                                 fontWeight: FontWeight.w500,
-                                color: Color(0xff333333),
+                                color: const Color(0xff333333),
                               ),
                             ),
                           ),
@@ -605,14 +606,15 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                               "MMM dd, yyyy | hh:mm a",
                             ).format(DateTime.now()),
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: isCardZoomedOut ? 10 : 12,
                               color: Colors.grey.shade600,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ],
                       ),
 
-                      const SizedBox(height: 4),
+                      SizedBox(height: isCardZoomedOut ? 2 : 4),
 
                       /// ORDER ID + ITEMS COUNT
                       Row(
@@ -620,9 +622,9 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                           Expanded(
                             child: Text(
                               "Order ID: #$orderId",
-                              style: const TextStyle(
-                                color: Color(0xffF26B3A),
-                                fontSize: 12,
+                              style: TextStyle(
+                                color: const Color(0xffF26B3A),
+                                fontSize: isCardZoomedOut ? 10 : 12,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -630,31 +632,148 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
 
                           Text(
                             "${items.length} Items",
-                            style: const TextStyle(
-                              fontSize: 11,
+                            style: TextStyle(
+                              fontSize: isCardZoomedOut ? 10 : 12,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xff333333),
+                              color: const Color(0xff333333),
                             ),
                           ),
                         ],
                       ),
 
-                      const SizedBox(height: 8),
+                      SizedBox(height: isCardZoomedOut ? 4 : 8),
 
                       const Divider(height: 1),
 
-                      const SizedBox(height: 8),
+                      SizedBox(height: isCardZoomedOut ? 4 : 8),
 
-                      Text(
-                        "Qty × Items",
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 10,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Qty × Items",
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.bold,
+                              fontSize: isCardZoomedOut ? 11 : 13,
+                            ),
+                          ),
+                          if (selectedCancelItemKotId == kotId)
+                            Padding(
+                              padding: EdgeInsets.only(right: isCardZoomedOut ? 8 : 16),
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    final allSelected = selected.every((val) => val);
+                                    for (int i = 0; i < selected.length; i++) {
+                                      selected[i] = !allSelected;
+                                    }
+                                  });
+                                },
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      "Select All",
+                                      style: TextStyle(
+                                        color: Colors.grey.shade600,
+                                        fontSize: isCardZoomedOut ? 9 : 11,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Icon(
+                                      selected.every((val) => val)
+                                          ? Icons.check_box
+                                          : Icons.check_box_outline_blank,
+                                      size: isCardZoomedOut ? 14 : 18,
+                                      color: selected.every((val) => val)
+                                          ? Colors.red
+                                          : Colors.grey,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+
+                      SizedBox(height: isCardZoomedOut ? 4 : 8),
+
+                      Expanded(
+                        child: Scrollbar(
+                          child: ListView.builder(
+                            itemCount: items.length,
+                            itemBuilder: (context, index) {
+                              final item = items[index];
+                              final String name = item['name']?.toString() ?? '';
+                              final int qty = item['qty'] ?? 1;
+
+                              return InkWell(
+                                onTap: () {
+                                  if (selectedCancelItemKotId == kotId) {
+                                    setState(() {
+                                      selected[index] = !selected[index];
+                                    });
+                                  }
+                                },
+                                child: Container(
+                                  color:
+                                      selected[index]
+                                          ? Colors.red.withOpacity(.12)
+                                          : null,
+                                  padding: EdgeInsets.only(
+                                    top: isCardZoomedOut ? 2 : 4,
+                                    bottom: isCardZoomedOut ? 2 : 4,
+                                    right: isCardZoomedOut ? 8 : 16,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Text(
+                                        "$qty × ",
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: isCardZoomedOut ? 12 : 14,
+                                          color:
+                                              selected[index]
+                                                  ? Colors.red
+                                                  : const Color(0xff333333),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Text(
+                                          name,
+                                          style: TextStyle(
+                                            fontSize: isCardZoomedOut ? 12 : 14,
+                                            color:
+                                                selected[index]
+                                                    ? Colors.red
+                                                    : const Color(0xff333333),
+                                          ),
+                                        ),
+                                      ),
+                                      if (selectedCancelItemKotId == kotId)
+                                        Icon(
+                                          selected[index]
+                                              ? Icons.check_box
+                                              : Icons.check_box_outline_blank,
+                                          size: isCardZoomedOut ? 14 : 18,
+                                          color:
+                                              selected[index]
+                                                  ? Colors.red
+                                                  : Colors.grey,
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
                         ),
                       ),
 
                       if (selectedCancelItemKotId == kotId &&
-                          selected.any((val) => val))
+                          selected.any((val) => val) &&
+                          !selected.every((val) => val))
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4),
                           child: SizedBox(
@@ -665,8 +784,8 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(4),
                                 ),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 8,
+                                padding: EdgeInsets.symmetric(
+                                  vertical: isCardZoomedOut ? 5 : 9,
                                 ),
                               ),
                               onPressed: () async {
@@ -685,15 +804,16 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                   if (success) {
                                     setState(() {
                                       selectedCancelItemKotId = null;
+                                      zoomedKotIds.remove(kotId);
                                     });
                                   }
                                 }
                               },
-                              child: const Text(
+                              child: Text(
                                 "Confirm Item Cancel",
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 12,
+                                  fontSize: isCardZoomedOut ? 10 : 12,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -701,89 +821,19 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                           ),
                         ),
 
-                      const SizedBox(height: 8),
-
-                      Expanded(
-                        child: Scrollbar(
-                          child: ListView.builder(
-                            itemCount: items.length,
-                            itemBuilder: (context, index) {
-                              final item = items[index];
-                              final name = item['name']?.toString() ?? '';
-                              final qty = item['qty'] ?? 1;
-
-                              return InkWell(
-                                onTap:
-                                    selectedCancelItemKotId == kotId
-                                        ? () {
-                                          setState(() {
-                                            selected[index] = !selected[index];
-                                          });
-                                        }
-                                        : null,
-                                child: Container(
-                                  color:
-                                      selected[index]
-                                          ? Colors.red.withOpacity(.12)
-                                          : null,
-                                  padding: const EdgeInsets.only(
-                                    top: 4,
-                                    bottom: 4,
-                                    right: 16,
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Text(
-                                        "$qty × ",
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          color:
-                                              selected[index]
-                                                  ? Colors.red
-                                                  : const Color(0xff333333),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: Text(
-                                          name,
-                                          style: TextStyle(
-                                            color:
-                                                selected[index]
-                                                    ? Colors.red
-                                                    : const Color(0xff333333),
-                                          ),
-                                        ),
-                                      ),
-                                      if (selectedCancelItemKotId == kotId)
-                                        Icon(
-                                          selected[index]
-                                              ? Icons.check_box
-                                              : Icons.check_box_outline_blank,
-                                          size: 18,
-                                          color:
-                                              selected[index]
-                                                  ? Colors.red
-                                                  : Colors.grey,
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 10),
+                      SizedBox(height: isCardZoomedOut ? 6 : 10),
 
                       Row(
                         children: [
                           // Left button: Cancel or Revoke
                           Expanded(
                             child: SizedBox(
-                              height: 38,
+                              height: isCardZoomedOut ? 30 : 38,
                               child: OutlinedButton.icon(
                                 style: OutlinedButton.styleFrom(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: isCardZoomedOut ? 4 : 8,
+                                  ),
                                   foregroundColor:
                                       isDineIn
                                           ? const Color(0xffF26B3A)
@@ -803,15 +853,18 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                   selectedCancelItemKotId == kotId
                                       ? Icons.undo
                                       : Icons.cancel_outlined,
-                                  size: 16,
+                                  size: isCardZoomedOut ? 12 : 16,
                                 ),
-                                label: Text(
-                                  selectedCancelItemKotId == kotId
-                                      ? "Undo" //"Revoke"
-                                      : "Cancel",
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
+                                label: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    selectedCancelItemKotId == kotId
+                                        ? "Undo" //"Revoke"
+                                        : "Cancel",
+                                    style: TextStyle(
+                                      fontSize: isCardZoomedOut ? 11 : 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                 ),
                                 onPressed: () {
@@ -826,9 +879,17 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                         selected[i] = false;
                                       }
                                       selectedCancelItemKotId = null;
+                                      zoomedKotIds.remove(kotId);
                                     } else {
                                       // Cancel: enter cancel mode
+                                      if (selectedCancelItemKotId != null &&
+                                          selectedCancelItemKotId != kotId) {
+                                        zoomedKotIds.remove(
+                                          selectedCancelItemKotId,
+                                        );
+                                      }
                                       selectedCancelItemKotId = kotId;
+                                      zoomedKotIds.add(kotId);
                                     }
                                   });
                                 },
@@ -840,9 +901,12 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                           // Right button: Start KOT or Cancel KOT
                           Expanded(
                             child: SizedBox(
-                              height: 38,
+                              height: isCardZoomedOut ? 30 : 38,
                               child: ElevatedButton.icon(
                                 style: ElevatedButton.styleFrom(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: isCardZoomedOut ? 4 : 8,
+                                  ),
                                   backgroundColor:
                                       selected.every((val) => val)
                                           ? const Color(
@@ -861,17 +925,20 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                   selected.every((val) => val)
                                       ? Icons.cancel_outlined
                                       : Icons.play_arrow,
-                                  size: 16,
+                                  size: isCardZoomedOut ? 12 : 16,
                                   color: Colors.white,
                                 ),
-                                label: Text(
-                                  selected.every((val) => val)
-                                      ? "Cancel KOT"
-                                      : "Start KOT",
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
+                                label: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    selected.every((val) => val)
+                                        ? "Cancel KOT"
+                                        : "Start KOT",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: isCardZoomedOut ? 11 : 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                 ),
                                 onPressed: () async {
@@ -882,6 +949,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                     if (success) {
                                       setState(() {
                                         selectedCancelItemKotId = null;
+                                        zoomedKotIds.remove(kotId);
                                       });
                                     }
                                   } else {
@@ -911,6 +979,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                       }
                                       if (selectedCancelItemKotId == kotId) {
                                         selectedCancelItemKotId = null;
+                                        zoomedKotIds.remove(kotId);
                                       }
                                     });
                                   }
