@@ -244,7 +244,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
             child: Row(
               children: [
                 Text(
-                  "Pending KOT's (${filteredOrders.length.toString().padLeft(2, '0')})",
+                  "New KOT's(${filteredOrders.length.toString().padLeft(2, '0')})",
                   style: GoogleFonts.montserrat(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -660,11 +660,15 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                           ),
                           if (selectedCancelItemKotId == kotId)
                             Padding(
-                              padding: EdgeInsets.only(right: isCardZoomedOut ? 8 : 16),
+                              padding: EdgeInsets.only(
+                                right: isCardZoomedOut ? 8 : 16,
+                              ),
                               child: GestureDetector(
                                 onTap: () {
                                   setState(() {
-                                    final allSelected = selected.every((val) => val);
+                                    final allSelected = selected.every(
+                                      (val) => val,
+                                    );
                                     for (int i = 0; i < selected.length; i++) {
                                       selected[i] = !allSelected;
                                     }
@@ -686,9 +690,10 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                           ? Icons.check_box
                                           : Icons.check_box_outline_blank,
                                       size: isCardZoomedOut ? 14 : 18,
-                                      color: selected.every((val) => val)
-                                          ? Colors.red
-                                          : Colors.grey,
+                                      color:
+                                          selected.every((val) => val)
+                                              ? Colors.red
+                                              : Colors.grey,
                                     ),
                                   ],
                                 ),
@@ -705,7 +710,8 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                             itemCount: items.length,
                             itemBuilder: (context, index) {
                               final item = items[index];
-                              final String name = item['name']?.toString() ?? '';
+                              final String name =
+                                  item['name']?.toString() ?? '';
                               final int qty = item['qty'] ?? 1;
 
                               return InkWell(

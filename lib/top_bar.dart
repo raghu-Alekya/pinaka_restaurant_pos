@@ -111,7 +111,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
               _navButton(
                 title: "Active KOTs",
                 view: KotView.active,
-                icon: Icons.cached,
+                icon: Icons.restaurant,
                 isSelected: widget.selectedView == KotView.active,
                 count: widget.activeCount,
                 onTap: () => widget.onViewChanged(KotView.active),
@@ -119,7 +119,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
               _navButton(
                 title: "SUMMARY",
                 view: KotView.repeated,
-                icon: Icons.sync,
+                icon: Icons.bar_chart,
                 isSelected: widget.selectedView == KotView.repeated,
                 count: widget.repeatedCount,
                 onTap: () => widget.onViewChanged(KotView.repeated),

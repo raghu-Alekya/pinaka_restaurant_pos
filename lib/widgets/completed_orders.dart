@@ -487,76 +487,53 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
           ),
           child: Row(
             children: [
-              // Stats
-              _summaryCard(
-                title: "Total KOT's",
-                value: "$totalKotsCount",
-                color: const Color(0xff1E40AF),
-                bgColor: const Color(0xffEFF6FF),
-                borderColor: const Color(0xffBFDBFE),
-                icon: Icons.list_alt,
-              ),
-              const SizedBox(width: 12),
-              _summaryCard(
-                title: "Completed",
-                value: "$completedKotsCount",
-                color: const Color(0xff15803D),
-                bgColor: const Color(0xffF0FDF4),
-                borderColor: const Color(0xffBBF7D0),
-                icon: Icons.check_circle,
-              ),
-              const SizedBox(width: 12),
-              _summaryCard(
-                title: "Cancelled",
-                value: "$cancelledKotsCount",
-                color: const Color(0xffB91C1C),
-                bgColor: const Color(0xffFEF2F2),
-                borderColor: const Color(0xffFCA5A5),
-                icon: Icons.cancel,
-              ),
-
-              const Spacer(),
-
               // Date Picker
-              SizedBox(
-                height: 40,
-                width: 120,
-                child: TextField(
-                  controller: _dateController,
-                  readOnly: true,
-                  onTap: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: selectedDate ?? DateTime.now(),
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime(2030),
-                    );
-                    if (picked != null) {
-                      setState(() {
-                        selectedDate = picked;
-                        _dateController.text = DateFormat(
-                          'dd/MM/yy',
-                        ).format(picked);
-                      });
-                      await loadOrders();
-                    }
-                  },
-                  decoration: InputDecoration(
-                    hintText: "Select Date",
-                    hintStyle: const TextStyle(fontSize: 13),
-                    suffixIcon: const Icon(Icons.calendar_today, size: 14),
-                    filled: true,
-                    fillColor: Colors.grey.shade100,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 8,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide.none,
-                    ),
+              GestureDetector(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: selectedDate ?? DateTime.now(),
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime(2030),
+                  );
+                  if (picked != null) {
+                    setState(() {
+                      selectedDate = picked;
+                      _dateController.text = DateFormat(
+                        'dd/MM/yy',
+                      ).format(picked);
+                    });
+                    await loadOrders();
+                  }
+                },
+                child: Container(
+                  width: 150,
+                  height: 40,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.white,
                   ),
-                  style: const TextStyle(fontSize: 13),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        _dateController.text.isEmpty ? "Select Date" : _dateController.text,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xff1e293b),
+                        ),
+                      ),
+                      const Icon(
+                        Icons.calendar_today,
+                        size: 14,
+                        color: Colors.grey,
+                      ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(width: 10),
@@ -677,6 +654,36 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
                   "Refresh",
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                 ),
+              ),
+
+              const Spacer(),
+
+              // Stats
+              _summaryCard(
+                title: "Total KOT's",
+                value: "$totalKotsCount",
+                color: const Color(0xff1E40AF),
+                bgColor: const Color(0xffEFF6FF),
+                borderColor: const Color(0xffBFDBFE),
+                icon: Icons.list_alt,
+              ),
+              const SizedBox(width: 12),
+              _summaryCard(
+                title: "Completed",
+                value: "$completedKotsCount",
+                color: const Color(0xff15803D),
+                bgColor: const Color(0xffF0FDF4),
+                borderColor: const Color(0xffBBF7D0),
+                icon: Icons.check_circle,
+              ),
+              const SizedBox(width: 12),
+              _summaryCard(
+                title: "Cancelled",
+                value: "$cancelledKotsCount",
+                color: const Color(0xffB91C1C),
+                bgColor: const Color(0xffFEF2F2),
+                borderColor: const Color(0xffFCA5A5),
+                icon: Icons.cancel,
               ),
             ],
           ),
