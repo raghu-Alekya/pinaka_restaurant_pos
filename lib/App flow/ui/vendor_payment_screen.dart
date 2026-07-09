@@ -185,7 +185,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                 "Vendor payment deleted successfully",
           ),
           duration: Duration(seconds: 1),
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.green,
         ),
       );
 
@@ -338,56 +338,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 3),
                         child: Row(
                           children: [
-                            Container(
-                              width: 100,
-                              height: 40,
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF3B4259),
-                                borderRadius: BorderRadius.circular(10),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Color(0x19000000),
-                                    blurRadius: 4,
-                                    offset: Offset(0, 1),
-                                  ),
-                                ],
-                              ),
-                              // child: InkWell(
-                              //   onTap: () {
-                              //     Navigator.pushAndRemoveUntil(
-                              //       context,
-                              //       MaterialPageRoute(
-                              //         builder: (_) => HomeScreen(
-                              //           pin: widget.pin,
-                              //           token: widget.token,
-                              //           restaurantId: widget.restaurantId,
-                              //           restaurantName: widget.restaurantName,
-                              //         ),
-                              //       ),
-                              //           (route) => false,
-                              //     );
-                              //   },
-                              //   child: const Row(
-                              //     mainAxisAlignment: MainAxisAlignment.center,
-                              //     children: [
-                              //       Icon(
-                              //         Icons.arrow_back,
-                              //         color: Colors.white,
-                              //         size: 18,
-                              //       ),
-                              //       SizedBox(width: 6),
-                              //       Text(
-                              //         'Back',
-                              //         style: TextStyle(
-                              //           color: Colors.white,
-                              //           fontWeight: FontWeight.w500,
-                              //         ),
-                              //       ),
-                              //     ],
-                              //   ),
-                              // ),
-                            ),
+
                             // const SizedBox(width: 20),
 
                             const Text(

@@ -1,5 +1,6 @@
 import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:pinaka_restaurant_pos/models/payment/payment_summary_model.dart';
@@ -29,6 +30,8 @@ class Sidebarwidgets extends StatefulWidget {
   final double appliedCouponAmount;
   final String token;
   final ValueChanged<double>? onNetPayableChanged;
+  final ValueChanged<String>? onCustomerPhoneChanged;
+  final VoidCallback? onAddCustomer;
 
   final dynamic userPermissions;
 
@@ -44,6 +47,8 @@ class Sidebarwidgets extends StatefulWidget {
     this.hasDiscountApplied = false,
     required this.token,
     this.onNetPayableChanged,
+    this.onCustomerPhoneChanged,
+    this.onAddCustomer,
   });
 
   @override
@@ -85,7 +90,8 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
   // entry flow (e.g. tenderAmount - calculatedNetPayable = changeAmount).
   double tenderAmount = 0.0;
   double changeAmount = 0.0;
-
+  final TextEditingController _customerPhoneController =
+  TextEditingController();
   // until backend provides it
 
   @override
@@ -152,6 +158,7 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
 
   @override
   void dispose() {
+    _customerPhoneController.dispose();
     _controller.dispose(); // ✅ VERY IMPORTANT
     super.dispose();
   }
@@ -839,7 +846,7 @@ Net Payable      : $netPayableTemp
                 children: [
                   // ---------- Header Section ----------
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       /// LEFT COLUMN
@@ -901,7 +908,7 @@ Net Payable      : $netPayableTemp
                           // 👇 UPDATED: split into "Order ID:" (dark) + order number (red)
                           // to match the reference image.
                           Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
+                            // crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
                               const Text(
                                 "Order ID: ",
@@ -920,6 +927,81 @@ Net Payable      : $netPayableTemp
                                 ),
                               ),
                             ],
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: 200,
+                            height: 40,
+                            child: TextField(
+                              controller: _customerPhoneController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(10),
+                              ],
+                              style: const TextStyle(fontSize: 13),
+                              onChanged: (value) {
+                                setState(() {}); // Refresh to enable/disable Add button
+                                widget.onCustomerPhoneChanged?.call(value);
+                              },
+                              decoration: InputDecoration(
+                                hintText: "Enter Mobile number",
+                                hintStyle: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFFAAAAAA),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 10,
+                                ),
+                                filled: true,
+                                fillColor: Colors.white,
+
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFF4F7CFF),
+                                    width: 1.5,
+                                  ),
+                                ),
+
+                                suffixIcon: Padding(
+                                  padding: const EdgeInsets.all(4),
+                                  child: SizedBox(
+                                    width: 70,
+                                    child: ElevatedButton.icon(
+                                      onPressed: _customerPhoneController.text.length == 10
+                                          ? widget.onAddCustomer
+                                          : null,
+                                      icon: const Icon(Icons.add, size: 14),
+                                      label: const Text(
+                                        "Add",
+                                        style: TextStyle(fontSize: 12),
+                                      ),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFF1A2B4A),
+                                        foregroundColor: Colors.white,
+                                        disabledBackgroundColor: Colors.grey.shade400,
+                                        disabledForegroundColor: Colors.white70,
+                                        padding: EdgeInsets.zero,
+                                        elevation: 0,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                suffixIconConstraints: const BoxConstraints(
+                                  minWidth: 80,
+                                  minHeight: 32,
+                                ),
+                              ),
+                            ),
                           ),
                         ],
                       ),

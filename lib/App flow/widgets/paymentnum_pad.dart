@@ -301,7 +301,7 @@ class _paymentsummaryState extends State<paymentsummary> {
         const SnackBar(
           content: Text("Service charge removed successfully"),
           duration: Duration(seconds: 1),
-          backgroundColor: Colors.red,),
+          backgroundColor: Colors.green,),
       );
     }
   }
@@ -2170,6 +2170,15 @@ class _paymentsummaryState extends State<paymentsummary> {
                         couponController.text = coupon;
                       });
                       widget.onCouponAmountChanged?.call(amt);
+                      // Success message
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Coupon added successfully"),
+                          duration: Duration(seconds: 1),
+                          backgroundColor: Colors.green,
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
                     },
                   ),
                 );
@@ -2195,7 +2204,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                     const SnackBar(
                       content: Text("Coupon removed successfully"),
                       duration: Duration(seconds: 1),
-                      backgroundColor: Colors.red,
+                      backgroundColor: Colors.green,
                     ),
                   );
                 }

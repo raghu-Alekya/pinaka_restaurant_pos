@@ -35,7 +35,7 @@ class ReservationListScreen extends StatefulWidget {
 
 class _ReservationListScreenState extends State<ReservationListScreen> {
   int currentPage = 1;
-  final int entriesPerPage = 8;
+  final int entriesPerPage = 9;
 
   String searchQuery = '';
   String? selectedArea = 'All';
@@ -255,8 +255,23 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
       resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(25, 18, 15,3),
+      Padding(
+          padding: const EdgeInsets.all(12),
+      child: Container(
+
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20,vertical: 25),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -305,70 +320,145 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                       child: Text(
                         "Reservation List",
                         style: TextStyle(
+                          color: Color(0xFF3D3D3D),
                           fontSize: 24,
+                          fontFamily: 'Inter',
                           fontWeight: FontWeight.w600,
-                          color: Colors.black87,
                         ),
                       ),
                     ),
 
-                    SizedBox(
-                      width: 260,
+                    Container(
+                      width: 220,
+                      height: 40,
+                      decoration: ShapeDecoration(
+                        color: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        shadows: const [
+                          BoxShadow(
+                            color: Color(0x4204347F),
+                            blurRadius: 5,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
                       child: TextField(
                         controller: _searchController,
-                        onChanged: (value) => setState(() => searchQuery = value.toLowerCase()),
-                        decoration: InputDecoration(
-                          hintText: "Name, Phone or Table No",
-                          prefixIcon: Icon(Icons.search, size: 18),
-                          filled: true,
-                          fillColor: Colors.white,
-                          contentPadding: EdgeInsets.symmetric(horizontal: 10),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide.none,
+                        cursorColor: Colors.black,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.black87,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            searchQuery = value.toLowerCase();
+                            currentPage = 1; // Reset to first page while searching
+                          });
+                        },
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 11,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            size: 20,
+                            color: Color(0xFF7A7A7A),
+                          ),
+                          hintText: "Search by name, phone or table",
+                          hintStyle: TextStyle(
+                            color: Color(0xFFC3C2C2),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
                           ),
                         ),
-                        style: TextStyle(fontSize: 14),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 12),
                     SizedBox(
                       width: 200,
-                      child: TextField(
-                        controller: _dateController,
-                        readOnly: true,
-                        onTap: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: selectedDate ?? DateTime.now(),
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime(2030),
-                          );
-                          if (picked != null) {
-                            setState(() {
-                              selectedDate = picked;
-                              _dateController.text = DateFormat('dd/MM/yy').format(picked);
-                            });
-                          }
-                        },
-                        decoration: InputDecoration(
-                          hintText: "Select Date",
-                          prefixIcon: Icon(Icons.calendar_today, size: 18),
-                          filled: true,
-                          fillColor: Colors.white,
-                          contentPadding: EdgeInsets.symmetric(horizontal: 10),
-                          border: OutlineInputBorder(
+                      height: 40,
+                      child: Container(
+                        decoration: ShapeDecoration(
+                          color: const Color(0xFFF0F0F0),
+                          shape: RoundedRectangleBorder(
+                            side: const BorderSide(
+                              width: 1,
+                              color: Color(0xFFA5A5A5),
+                            ),
                             borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide.none,
+                          ),
+                          shadows: const [
+                            BoxShadow(
+                              color: Color(0x19000000),
+                              blurRadius: 4,
+                              offset: Offset(0, 1),
+                              spreadRadius: 0,
+                            ),
+                          ],
+                        ),
+                        child: TextField(
+                          controller: _dateController,
+                          readOnly: true,
+                          textAlignVertical: TextAlignVertical.center,
+                          style: const TextStyle(
+                            color: Color(0xFF7E7E7E),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          onTap: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: selectedDate ?? DateTime.now(),
+                              firstDate: DateTime(2020),
+                              lastDate: DateTime(2030),
+                            );
+
+                            if (picked != null) {
+                              setState(() {
+                                selectedDate = picked;
+                                _dateController.text =
+                                "${picked.day.toString().padLeft(2, '0')}/"
+                                    "${picked.month.toString().padLeft(2, '0')}/"
+                                    "${picked.year}";
+                              });
+                            }
+                          },
+                          decoration: const InputDecoration(
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            hintText: "Select Date",
+                            hintStyle: TextStyle(
+                              color: Color(0xFF9CA3AF),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            suffixIcon: Icon(
+                              Icons.calendar_month,
+                              size: 20,
+                              color: Color(0xFF6D6D6D),
+                            ),
                           ),
                         ),
-                        style: TextStyle(fontSize: 14),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Container(
-                      height: 48,
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      height: 40,
+                      width: 120,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(8),
@@ -407,7 +497,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: isResetEnabled ? Colors.red : Colors.grey.shade300,
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
                       onPressed: isResetEnabled
@@ -427,65 +517,102 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                     ),
 
                     const SizedBox(width: 12),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _userPermissions?.canCreateReservation ?? false
-                            ? const Color(0xFF1877F2)
-                            : Colors.grey.shade400,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: _userPermissions?.canCreateReservation ?? false
+                            ? const LinearGradient(
+                          begin: Alignment(0.51, 1.00),
+                          end: Alignment(0.04, -0.20),
+                          colors: [
+                            Color(0xFFFF3849),
+                            Color(0xFFFF5362),
+                          ],
+                        )
+                            : LinearGradient(
+                          colors: [
+                            Colors.grey.shade400,
+                            Colors.grey.shade400,
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      onPressed: () {
-                        if (_userPermissions?.canCreateReservation ?? false) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => CreateReservationScreen(
-                                pin: widget.pin,
-                                token: widget.token,
-                                restaurantId: widget.restaurantId,
-                                restaurantName: widget.restaurantName,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () {
+                          if (_userPermissions?.canCreateReservation ?? false) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => CreateReservationScreen(
+                                  pin: widget.pin,
+                                  token: widget.token,
+                                  restaurantId: widget.restaurantId,
+                                  restaurantName: widget.restaurantName,
+                                ),
+                              ),
+                            );
+                          } else {
+                            AreaMovementNotifier.showPopup(
+                              context: context,
+                              fromArea: '',
+                              toArea: '',
+                              tableName: 'Reservation',
+                              customMessage: "No permission to create reservation",
+                            );
+                          }
+                        },
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.add,
+                              size: 18,
+                              color: Colors.white,
+                            ),
+                            SizedBox(width: 6),
+                            Text(
+                              "Create Reservation",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
-                          );
-                        } else {
-                          AreaMovementNotifier.showPopup(
-                            context: context,
-                            fromArea: '',
-                            toArea: '',
-                            tableName: 'Reservation',
-                            customMessage: "No permission to create reservation",
-                          );
-                        }
-                      },
-                      icon: const Icon(Icons.add, size: 16, color: Colors.white),
-                      label: const Text(
-                        "Create Reservation",
-                        style: TextStyle(color: Colors.white, fontSize: 14),
+                          ],
+                        ),
                       ),
-                    ),
+                    )
                   ],
                 ),
-                const SizedBox(height: 10),
+                // const SizedBox(height: 10),
                 // Table Container
                 Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    // borderRadius: BorderRadius.only(
-                    //   topLeft: Radius.circular(16),
-                    //   topRight: Radius.circular(16),
-                    // ),
-                  ),
-                  padding: const EdgeInsets.fromLTRB(10, 20, 10, 70),
+                  // decoration: BoxDecoration(
+                  //   color: Colors.white,
+                  //   // borderRadius: BorderRadius.only(
+                  //   //   topLeft: Radius.circular(16),
+                  //   //   topRight: Radius.circular(16),
+                  //   // ),
+                  // ),
+                  padding: const EdgeInsets.fromLTRB(3, 25, 3, 0),
                   child: Column(
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                        height: 50,
                         decoration: const BoxDecoration(
-                          color: Color(0xFFE7F5FD),
+                          color: Color(0xFF2A3558),
                           borderRadius: BorderRadius.only(
-                            topLeft: Radius.circular(10),
-                            topRight: Radius.circular(10),
+                            topLeft: Radius.circular(8),
+                            topRight: Radius.circular(8),
                           ),
                         ),
                         child: Row(
@@ -532,10 +659,13 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                             final status = data['reservation_status']?.toLowerCase() ?? '';
                             final isRowDisabled = status.toLowerCase() == 'expired' || status.toLowerCase() == 'cancelled' || status.toLowerCase() == 'seated';
                             return Container(
-                              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFAFDFF),
-                                border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+                              padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 10),
+                              decoration: const BoxDecoration(
+                                border: Border(
+                                  bottom: BorderSide(
+                                    color: Color(0xFFE0E0E0),
+                                  ),
+                                ),
                               ),
                               child: Row(
                                 children: [
@@ -637,80 +767,163 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                       ),
 
                       const SizedBox(height: 4),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            filteredReservations.length == _reservations.length
-                                ? "Total Reservations: ${_reservations.length}"
-                                : "Showing ${filteredReservations.length} of ${_reservations.length} Reservations",
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
+                      Container(
+                        height: 50,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFF5F5F5),
+                          borderRadius: BorderRadius.only(
+                            bottomLeft: Radius.circular(8),
+                            bottomRight: Radius.circular(8),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              filteredReservations.length == _reservations.length
+                                  ? "Total Reservations: ${_reservations.length}"
+                                  : "Showing ${filteredReservations.length} of ${_reservations.length} Reservations",
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
                             ),
-                          ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              SizedBox(
-                                width: 80,
-                                height: 40,
-                                child: OutlinedButton(
-                                  onPressed: currentPage > 1 ? () => setState(() => currentPage--) : null,
-                                  style: OutlinedButton.styleFrom(
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                                    padding: EdgeInsets.zero,
-                                  ),
-                                  child: const Text("Previous", style: TextStyle(color: Colors.black)),
+
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                border: Border.all(
+                                  color: const Color(0xFFEFEFEF),
                                 ),
+                                borderRadius: BorderRadius.circular(4),
                               ),
-                              const SizedBox(width: 5),
-                              ..._buildPaginationButtons(totalPages),
-                              const SizedBox(width: 5),
-                              SizedBox(
-                                width: 80,
-                                height: 40,
-                                child: OutlinedButton(
-                                  onPressed: currentPage < totalPages ? () => setState(() => currentPage++) : null,
-                                  style: OutlinedButton.styleFrom(
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                                    padding: EdgeInsets.zero,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  GestureDetector(
+                                    onTap: currentPage > 1
+                                        ? () => setState(() => currentPage--)
+                                        : null,
+                                    child: _paginationTextButton("Previous"),
                                   ),
-                                  child: const Text("Next", style: TextStyle(color: Colors.black)),
-                                ),
+
+                                  GestureDetector(
+                                    onTap: () => setState(() => currentPage = 1),
+                                    child: _pageButton(
+                                      1,
+                                      selected: currentPage == 1,
+                                    ),
+                                  ),
+
+                                  if (totalPages >= 2)
+                                    GestureDetector(
+                                      onTap: () => setState(() => currentPage = 2),
+                                      child: _pageButton(
+                                        2,
+                                        selected: currentPage == 2,
+                                      ),
+                                    ),
+
+                                  if (totalPages >= 3)
+                                    GestureDetector(
+                                      onTap: () => setState(() => currentPage = 3),
+                                      child: _pageButton(
+                                        3,
+                                        selected: currentPage == 3,
+                                      ),
+                                    ),
+
+                                  if (totalPages > 4)
+                                    _paginationTextButton("..."),
+
+                                  if (totalPages > 4)
+                                    GestureDetector(
+                                      onTap: () => setState(() => currentPage = totalPages),
+                                      child: _pageButton(
+                                        totalPages,
+                                        selected: currentPage == totalPages,
+                                      ),
+                                    ),
+
+                                  GestureDetector(
+                                    onTap: currentPage < totalPages
+                                        ? () => setState(() => currentPage++)
+                                        : null,
+                                    child: _paginationTextButton("Next"),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ],
-                      ),
+                            ),
+                          ],
+                        ),
+                      )
                     ],
                   ),
                 ),
               ],
             ),
           ),
-
-          // BottomNavBar(
-          //   selectedIndex: 3,
-          //   onItemTapped: (index) {
-          //     NavigationHelper.handleNavigation(
-          //       context,
-          //       3,
-          //       index,
-          //       widget.pin,
-          //       widget.token,
-          //       widget.restaurantId,
-          //       widget.restaurantName,
-          //       _userPermissions,
-          //     );
-          //   },
-          //   userPermissions: _userPermissions,
-          // ),
-        ],
+      ))],
       ),
     );
   }
 }
+Widget _paginationTextButton(String text) {
+  return Container(
+    height: 32,
+    padding: const EdgeInsets.symmetric(horizontal: 12),
+    decoration: const BoxDecoration(
+      border: Border(
+        right: BorderSide(
+          color: Color(0xFFEFEFEF),
+        ),
+      ),
+    ),
+    alignment: Alignment.center,
+    child: Text(
+      text,
+      style: const TextStyle(
+        color: Color(0xFF727272),
+        fontSize: 11,
+      ),
+    ),
+  );
+}
+
+Widget _pageButton(
+    int page, {
+      bool selected = false,
+    }) {
+  return Container(
+    width: 28,
+    height: 32,
+    decoration: BoxDecoration(
+      color: selected
+          ? const Color(0xFFFF4D20)
+          : Colors.white,
+      border: const Border(
+        right: BorderSide(
+          color: Color(0xFFEFEFEF),
+        ),
+      ),
+    ),
+    alignment: Alignment.center,
+    child: Text(
+      '$page',
+      style: TextStyle(
+        color: selected
+            ? Colors.white
+            : const Color(0xFF727272),
+        fontSize: 11,
+        fontWeight:
+        selected ? FontWeight.w600 : FontWeight.w400,
+      ),
+    ),
+  );
+}
+
 Color? _getStatusColor(String status) {
   switch (status.toLowerCase()) {
     case 'seated':
@@ -745,7 +958,7 @@ Widget _buildStatusBadge(String status) {
 
   return Container(
     width: 100,
-    padding: const EdgeInsets.symmetric(vertical: 2),
+    padding: const EdgeInsets.symmetric(vertical: 3),
     alignment: Alignment.center,
     decoration: BoxDecoration(
       color: color.withAlpha(51),
@@ -781,7 +994,7 @@ class _TableHeaderCell extends StatelessWidget {
       child: Center(
         child: Text(
           label,
-          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.black87),
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.white),
           textAlign: TextAlign.center,
         ),
       ),

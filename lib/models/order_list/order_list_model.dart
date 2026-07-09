@@ -39,6 +39,7 @@ class OrderlistModel {
   num? serviceChargeValue;
   num? serviceChargePercentage;
   num? tipAmount;
+  List<CouponDetail>? couponDetails;
   OrderlistModel({
     this.completedByUserId,
     this.orderId,
@@ -73,6 +74,7 @@ class OrderlistModel {
     this.serviceChargeValue,
     this.serviceChargePercentage,
     this.tipAmount,
+    this.couponDetails,
   });
 
   factory OrderlistModel.fromJson(Map<String, dynamic> json) {
@@ -123,8 +125,22 @@ class OrderlistModel {
       num.tryParse(json['service_charge_percentage']?.toString() ?? "0") ?? 0,
       tipAmount:
       num.tryParse(json['tip_amt']?.toString() ?? "0") ?? 0,
+      couponDetails: (json['coupon_details'] as List?)
+          ?.map((e) => CouponDetail.fromJson(e))
+          .toList(),
     );
   }
+
+// 👇 Add here
+  num get totalCouponDiscount {
+    if (couponDetails == null || couponDetails!.isEmpty) {
+      return 0;
+    }
+
+    return couponDetails!
+        .fold<num>(0, (sum, item) => sum + (item.value ?? 0));
+  }
+
 }
 
 // ================== KOT MODEL =====================
@@ -339,5 +355,21 @@ extension LineItemUpdateMapping on LineItem {
       //     .toList() ??
       //     [],
     };
+  }
+}
+class CouponDetail {
+  final String? code;
+  final num? value;
+
+  CouponDetail({
+    this.code,
+    this.value,
+  });
+
+  factory CouponDetail.fromJson(Map<String, dynamic> json) {
+    return CouponDetail(
+      code: json["code"],
+      value: num.tryParse(json["value"].toString()) ?? 0,
+    );
   }
 }

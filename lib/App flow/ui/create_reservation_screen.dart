@@ -45,6 +45,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   final ScrollController _areaScrollController = ScrollController();
   UserPermissions? _userPermissions;
   final ReservationRepository _reservationRepository = ReservationRepository();
+  // final ScrollController _areaScrollController = ScrollController();
 
   String selectedSlot = '';
   String selectedMeal = '';
@@ -626,7 +627,50 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   void dispose() {
     _priorityController.dispose();
     _priorityFocusNode.dispose();
+    _areaScrollController.dispose();
     super.dispose();
+  }
+
+
+  void _scrollLeft() {
+    _areaScrollController.animateTo(
+      (_areaScrollController.offset - 120).clamp(
+        0.0,
+        _areaScrollController.position.maxScrollExtent,
+      ),
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  void _scrollRight() {
+    _areaScrollController.animateTo(
+      (_areaScrollController.offset + 120).clamp(
+        0.0,
+        _areaScrollController.position.maxScrollExtent,
+      ),
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+  Widget _scrollButton({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return IconButton(
+      onPressed: onTap,
+      icon: Icon(icon),
+      style: IconButton.styleFrom(
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
+        shape: const CircleBorder(),
+        side: BorderSide(
+          color: Colors.grey.shade300,
+        ),
+        elevation: 2,
+        minimumSize: const Size(30, 30),
+      ),
+    );
   }
 
   @override
@@ -831,65 +875,88 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
             ),
           )
               : Container(
-            height: 40,
-            constraints: const BoxConstraints(maxWidth: 340),
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+            height: 48,
+            width: 380,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(8),
             ),
-            child:
-            areas.isEmpty
-                ? const Center(child: Text("No areas available"))
-                : SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              controller: _areaScrollController,
-              child: Row(
-                children:
-                areas.map((area) {
-                  final bool isSelected = selectedArea == area;
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 2.0,
-                    ),
-                    child: TextButton(
-                      onPressed:
-                          () => setState(
-                            () => selectedArea = area,
-                      ),
-                      style: TextButton.styleFrom(
-                        backgroundColor:
-                        isSelected
-                            ? const Color(0xFFFD6464)
-                            : Colors.transparent,
-                        foregroundColor:
-                        isSelected
-                            ? Colors.white
-                            : Colors.black87,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 15.0,
-                          vertical: 13.0,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                            5,
-                          ),
-                        ),
-                        textStyle: const TextStyle(
-                          fontWeight: FontWeight.w500,
-                          fontSize: 12.5,
-                        ),
-                        minimumSize: Size.zero,
-                        tapTargetSize:
-                        MaterialTapTargetSize.shrinkWrap,
-                        visualDensity: VisualDensity.compact,
-                      ),
-                      child: Text(area),
-                    ),
-                  );
-                }).toList(),
+            child: areas.isEmpty
+                ? const Center(
+              child: Text(
+                "No areas available",
+                style: TextStyle(fontSize: 13),
               ),
+            )
+                : Row(
+              children: [
+                _scrollButton(
+                  icon: Icons.keyboard_arrow_left,
+                  onTap: _scrollLeft,
+                ),
+
+                const SizedBox(width: 6),
+
+                Expanded(
+                  child: ClipRect(
+                    child: SingleChildScrollView(
+                      controller: _areaScrollController,
+                      scrollDirection: Axis.horizontal,
+                      physics: const NeverScrollableScrollPhysics(), // Scroll only with arrows
+                      child: Row(
+                        children: areas.map((area) {
+                          final isSelected = selectedArea == area;
+
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 3),
+                            child: TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  selectedArea = area;
+                                });
+                              },
+                              style: TextButton.styleFrom(
+                                backgroundColor: isSelected
+                                    ? const Color(0xFFFD6464)
+                                    : Colors.transparent,
+                                foregroundColor: isSelected
+                                    ? Colors.white
+                                    : Colors.black87,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 10,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                minimumSize: const Size(0, 32),
+                                tapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: Text(
+                                area,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 6),
+
+                _scrollButton(
+                  icon: Icons.keyboard_arrow_right,
+                  onTap: _scrollRight,
+                ),
+              ],
             ),
           ),
 
@@ -1549,7 +1616,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                const SizedBox(height: 28),
+                  const SizedBox(height: 28),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [

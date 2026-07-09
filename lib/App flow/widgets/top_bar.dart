@@ -390,46 +390,46 @@ class _TopBarState extends State<TopBar> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        const Text("Customer :", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF111827))),
-                        const SizedBox(width: 8),
-                        SizedBox(
-                          width: 170,
-                          height: 38,
-                          child: TextField(
-                            controller: _customerPhoneController,
-                            keyboardType: TextInputType.phone,
-                            style: const TextStyle(fontSize: 13),
-                            onChanged: widget.onCustomerPhoneChanged,
-                            decoration: InputDecoration(
-                              hintText: "Mobile number",
-                              hintStyle: const TextStyle(fontSize: 12, color: Color(0xFFAAAAAA)),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFD1D5DB))),
-                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF4F7CFF), width: 1.5)),
-                              filled: true,
-                              fillColor: Colors.white,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: widget.onAddCustomer,
-                          child: Container(
-                            height: 38,
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            decoration: BoxDecoration(color: const Color(0xFF1A2B4A), borderRadius: BorderRadius.circular(8)),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.add, color: Colors.white, size: 16),
-                                SizedBox(width: 4),
-                                Text("Add", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 350),
 
+                        // const Text("Customer :", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF111827))),
+                        // const SizedBox(width: 8),
+                        // SizedBox(
+                        //   width: 170,
+                        //   height: 38,
+                        //   child: TextField(
+                        //     controller: _customerPhoneController,
+                        //     keyboardType: TextInputType.phone,
+                        //     style: const TextStyle(fontSize: 13),
+                        //     onChanged: widget.onCustomerPhoneChanged,
+                        //     decoration: InputDecoration(
+                        //       hintText: "Mobile number",
+                        //       hintStyle: const TextStyle(fontSize: 12, color: Color(0xFFAAAAAA)),
+                        //       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        //       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFD1D5DB))),
+                        //       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF4F7CFF), width: 1.5)),
+                        //       filled: true,
+                        //       fillColor: Colors.white,
+                        //     ),
+                        //   ),
+                        // ),
+                        // const SizedBox(width: 8),
+                        // GestureDetector(
+                        //   onTap: widget.onAddCustomer,
+                        //   child: Container(
+                        //     height: 38,
+                        //     padding: const EdgeInsets.symmetric(horizontal: 16),
+                        //     decoration: BoxDecoration(color: const Color(0xFF1A2B4A), borderRadius: BorderRadius.circular(8)),
+                        //     child: const Row(
+                        //       mainAxisSize: MainAxisSize.min,
+                        //       children: [
+                        //         Icon(Icons.add, color: Colors.white, size: 16),
+                        //         SizedBox(width: 4),
+                        //         Text("Add", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                        //       ],
+                        //     ),
+                        //   ),
+                        // ),
+                        const SizedBox(width: 650),
                         // Order Type Dropdown
                         Container(
                           width: 165,

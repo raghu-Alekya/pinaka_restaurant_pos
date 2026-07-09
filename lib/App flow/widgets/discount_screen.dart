@@ -88,21 +88,45 @@ class _DiscountPopupState extends State<DiscountPopup> {
 
 
   void _onKeypadTap(String value) {
-    if (isNCSelected) return; // 🔒 HARD BLOCK
+    if (isNCSelected) return;
 
-    setState(() {
-      if (value == 'Clear') {
-        discountController.clear();
-      } else if (value == '⌫') {
-        if (discountController.text.isNotEmpty) {
-          discountController.text =
-              discountController.text.substring(
-                  0, discountController.text.length - 1);
+    if (value == 'Clear') {
+      discountController.clear();
+    } else if (value == '⌫') {
+      if (discountController.text.isNotEmpty) {
+        final raw = discountController.text.replaceAll('.00', '');
+
+        if (raw.isNotEmpty) {
+          final updated = raw.substring(0, raw.length - 1);
+
+          if (updated.isEmpty) {
+            discountController.clear();
+          } else if (selectedType == DiscountType.amount) {
+            discountController.text =
+            '${int.parse(updated).toString()}.00';
+          } else {
+            discountController.text = updated;
+          }
         }
+      }
+    } else {
+      if (selectedType == DiscountType.amount) {
+        final raw = discountController.text.replaceAll('.00', '');
+        final updated = raw + value;
+
+        discountController.text =
+        '${int.parse(updated).toString()}.00';
       } else {
         discountController.text += value;
       }
-    });
+    }
+
+    discountController.selection = TextSelection.fromPosition(
+      TextPosition(offset: discountController.text.length),
+    );
+
+    _calculateNewPayable();
+    setState(() {});
   }
   void _calculateNewPayable() {
     if (isNCSelected) {
@@ -113,7 +137,10 @@ class _DiscountPopupState extends State<DiscountPopup> {
       return;
     }
 
-    final value = double.tryParse(discountController.text) ?? 0;
+    final value = double.tryParse(
+      discountController.text.replaceAll('.00', ''),
+    ) ??
+        0;
 
     setState(() {
       if (selectedType == DiscountType.percent) {
@@ -149,9 +176,14 @@ class _DiscountPopupState extends State<DiscountPopup> {
       _showError('Select discount reason');
       return;
     }
-
-    final inputValue = double.tryParse(discountController.text) ?? 0;
-
+    final inputValue = double.tryParse(
+      discountController.text.replaceAll('.00', ''),
+    ) ??
+        0;
+// Show with 2 decimal places
+    if (selectedType == DiscountType.amount) {
+      discountController.text = inputValue.toStringAsFixed(2);
+    }
     debugPrint('➡️ inputValue = $inputValue');
     debugPrint('➡️ selectedType = $selectedType');
     debugPrint('➡️ isNCSelected = $isNCSelected');
@@ -417,7 +449,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
       children: [
         _amountBox(
           'Payable Amount',
-          '₹${payableAmount.toStringAsFixed(0)}',
+          '₹${payableAmount.toStringAsFixed(2)}',
           readOnly: true,
         ),
 
@@ -425,7 +457,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
 
         _amountBox(
           'New Payable Amount',
-          '₹${newPayableAmount.toStringAsFixed(0)}',
+          '₹${newPayableAmount.toStringAsFixed(2)}',
           readOnly: true,
         ),
       ],

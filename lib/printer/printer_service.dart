@@ -390,6 +390,7 @@ class Printer {
         ScaffoldMessenger.of(context as BuildContext).showSnackBar(
           const SnackBar(
             content: Text("No printer selected"),
+            backgroundColor: Colors.red,
           ),
         );
         return;

@@ -1109,13 +1109,11 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                               "₹${(orderModel.grossTotal ?? 0).toDouble().toStringAsFixed(2)}",
                                               fontWeight: FontWeight.w500,
                                             ),
-
                                             paymentRow(
                                               "Coupon / Discounts",
-                                              "-₹${(orderModel.discount ?? 0).toDouble().toStringAsFixed(2)}",
+                                              "-₹${orderModel.totalCouponDiscount.toDouble().toStringAsFixed(2)}",
                                               color: Colors.green,
                                             ),
-
                                             ShaderMask(
                                               shaderCallback: (Rect bounds) {
                                                 return LinearGradient(

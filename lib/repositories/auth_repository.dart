@@ -64,6 +64,8 @@ class AuthRepository {
             data["currency_symbol"]?.toString() ?? "₹";
 
         await SessionManager.saveToken(token);
+        await SessionManager.saveCurrencySymbol(currencySymbol);
+
 
         await loginDao.insertLogin(
           pin,
