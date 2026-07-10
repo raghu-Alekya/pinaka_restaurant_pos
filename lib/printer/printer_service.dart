@@ -9,9 +9,9 @@ import 'package:thermal_printer/esc_pos_utils_platform/src/pos_column.dart';
 import 'package:thermal_printer/esc_pos_utils_platform/src/pos_styles.dart';
 
 import 'printer_settings.dart';
+import '../utils/SessionManager.dart';
 
 class Printer {
-
   static Future<void> printBill({
     required String orderId,
     required String tableName,
@@ -25,6 +25,7 @@ class Printer {
     required double serviceCharge,
     required double netPayable,
     required BuildContext context,
+    bool isCopy = false,
   }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -34,41 +35,32 @@ class Printer {
       debugPrint("store_gst => ${prefs.getString('store_gst')}");
 
       final restaurantName =
-          prefs.getString('store_name') ?? 'Restaurant';
+          prefs.getString('store_name') ?? 'Pinaka restaurant';
 
-      final address =
-          prefs.getString('store_address') ?? '';
+      String address = prefs.getString('store_address') ?? '';
+      if (address.isEmpty) address = 'raidurg metro, hitech city';
 
-      final phone =
-          prefs.getString('store_phone') ?? '';
+      String phone = prefs.getString('store_phone') ?? '';
+      if (phone.isEmpty) phone = '9892829282';
 
-      final gstNumber =
-          prefs.getString('store_gst') ?? '';
+      String gstNumber =
+          prefs.getString('store_gstin') ?? prefs.getString('store_gst') ?? '';
+      if (gstNumber.isEmpty) gstNumber = '33AAACI1607G2Z5';
 
       List<int> bytes = [];
 
-      final profile =
-      await CapabilityProfile.load(name: 'XP-N160I');
+      final profile = await CapabilityProfile.load(name: 'XP-N160I');
 
-      final generator = Generator(
-        PaperSize.mm80,
-        profile,
-      );
+      final generator = Generator(PaperSize.mm80, profile);
+      bytes += generator.setGlobalFont(PosFontType.fontA);
 
       // =========================
       // Restaurant Header
       // =========================
 
-      // =========================
-// HEADER
-// =========================
-
       bytes += generator.text(
-        "**** CUST-INVOICE ****",
-        styles: const PosStyles(
-          align: PosAlign.center,
-          bold: true,
-        ),
+        isCopy ? "**** COPY OF CUST-INVOICE ****" : "**** CUST-INVOICE ****",
+        styles: const PosStyles(align: PosAlign.center, bold: true),
       );
 
       bytes += generator.text(
@@ -84,105 +76,76 @@ class Printer {
       if (address.isNotEmpty) {
         bytes += generator.text(
           address,
-          styles: const PosStyles(
-            align: PosAlign.center,
-          ),
+          styles: const PosStyles(align: PosAlign.center),
         );
       }
 
       if (gstNumber.isNotEmpty) {
         bytes += generator.text(
-          "GSTIN: $gstNumber",
-          styles: const PosStyles(
-            align: PosAlign.center,
-          ),
+          "GST NO : $gstNumber",
+          styles: const PosStyles(align: PosAlign.center),
         );
       }
 
       if (phone.isNotEmpty) {
         bytes += generator.text(
           "Ph: $phone",
-          styles: const PosStyles(
-            align: PosAlign.center,
-          ),
+          styles: const PosStyles(align: PosAlign.center),
         );
       }
 
-      bytes += generator.hr();
+      bytes += generator.hr(ch: '=');
 
-      // customer detail
-
-      // bytes += generator.text(
-      //   "Name : ${customerName ?? '-'}",
-      // );
+      final permissions = await SessionManager.loadPermissions();
+      final role = permissions?.role ?? 'administrator';
 
       bytes += generator.row([
         PosColumn(
-          width: 6,
-          text: "Date : ${DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now())}",
+          width: 7,
+          text: "Date: ${DateFormat('dd/MM/yy HH:mm').format(DateTime.now())}",
         ),
         PosColumn(
-          width: 6,
-          text: "Dine In : $tableName",
-          styles: const PosStyles(
-            align: PosAlign.right,
-          ),
+          width: 5,
+          text: "Dine In: $tableName",
+          styles: const PosStyles(align: PosAlign.right, bold: true),
         ),
       ]);
 
       bytes += generator.row([
+        PosColumn(width: 6, text: "Role: $role"),
         PosColumn(
           width: 6,
-          text: "Cashier : $cashierName",
-        ),
-        PosColumn(
-          width: 6,
-          text: "Order Id : $orderId",
-          styles: const PosStyles(
-            align: PosAlign.right,
-          ),
+          text: "Bill No.: $orderId",
+          styles: const PosStyles(align: PosAlign.right),
         ),
       ]);
 
-      bytes += generator.hr();
+      bytes += generator.hr(ch: '=');
 
       // =========================
       // Item Header
       // =========================
 
       bytes += generator.row([
-        PosColumn(
-          width: 6,
-          text: "Item Name",
-          styles: const PosStyles(bold: true),
-        ),
+        PosColumn(width: 6, text: "Item", styles: const PosStyles(bold: true)),
         PosColumn(
           width: 2,
-          text: "Qty",
-          styles: const PosStyles(
-            bold: true,
-            align: PosAlign.center,
-          ),
+          text: "Qty.",
+          styles: const PosStyles(bold: true, align: PosAlign.center),
         ),
         PosColumn(
           width: 2,
           text: "Price",
-          styles: const PosStyles(
-            bold: true,
-            align: PosAlign.right,
-          ),
+          styles: const PosStyles(bold: true, align: PosAlign.right),
         ),
         PosColumn(
           width: 2,
           text: "Amount",
-          styles: const PosStyles(
-            bold: true,
-            align: PosAlign.right,
-          ),
+          styles: const PosStyles(bold: true, align: PosAlign.right),
         ),
       ]);
 
-      bytes += generator.hr();
+      bytes += generator.hr(ch: '=');
       // =========================
       // Items
       // =========================
@@ -210,151 +173,135 @@ class Printer {
         // Print modifiers
         if (item['modifiers'] != null &&
             (item['modifiers'] as List).isNotEmpty) {
-
           for (final modifier in (item['modifiers'] as List)) {
             bytes += generator.text(
               "   + $modifier",
-              styles: const PosStyles(
-                align: PosAlign.left,
-              ),
+              styles: const PosStyles(align: PosAlign.left),
             );
           }
         }
       }
 
-      bytes += generator.hr();
+      bytes += generator.hr(ch: '=');
 
       // =========================
       // Summary
       // =========================
 
+      int totalQty = 0;
+      for (final item in items) {
+        totalQty += int.tryParse(item['qty'].toString()) ?? 0;
+      }
+
       bytes += generator.row([
-        PosColumn(width: 8, text: "Gross Total"),
         PosColumn(
-          width: 4,
-          text: grossTotal.toStringAsFixed(2),
+          width: 6,
+          text: "Total Qty: $totalQty",
+          styles: const PosStyles(align: PosAlign.right),
+        ),
+        PosColumn(
+          width: 6,
+          text: "Sub Total  ${grossTotal.toStringAsFixed(2)}",
           styles: const PosStyles(align: PosAlign.right),
         ),
       ]);
 
-// Coupon
+      // Coupon
       if (couponDiscount > 0) {
         bytes += generator.row([
-          PosColumn(width: 8, text: "Coupon"),
+          PosColumn(width: 6, text: ""),
           PosColumn(
-            width: 4,
-            text: "-${couponDiscount.toStringAsFixed(2)}",
+            width: 6,
+            text: "Coupon  -${couponDiscount.toStringAsFixed(2)}",
             styles: const PosStyles(align: PosAlign.right),
           ),
         ]);
       }
 
-// Merchant Discount
+      // Merchant Discount
       if (merchantDiscount != 0) {
         bytes += generator.row([
+          PosColumn(width: 6, text: ""),
           PosColumn(
-            width: 8,
-            text: "Merchant Discount",
-          ),
-          PosColumn(
-            width: 4,
-            text: merchantDiscount.toStringAsFixed(2),
-            styles: const PosStyles(
-              align: PosAlign.right,
-            ),
+            width: 6,
+            text: "Merchant Discount  ${merchantDiscount.toStringAsFixed(2)}",
+            styles: const PosStyles(align: PosAlign.right),
           ),
         ]);
       }
 
-// Tax
+      // Tax
       if (taxAmount > 0) {
         final cgst = taxAmount / 2;
         final sgst = taxAmount / 2;
 
         bytes += generator.row([
-          PosColumn(width: 8, text: "CGST @ 2.5%"),
+          PosColumn(width: 6, text: ""),
           PosColumn(
-            width: 4,
-            text: cgst.toStringAsFixed(2),
-            styles: const PosStyles(
-              align: PosAlign.right,
-            ),
+            width: 6,
+            text: "CGST@2.5%  ${cgst.toStringAsFixed(2)}",
+            styles: const PosStyles(align: PosAlign.right),
           ),
         ]);
 
         bytes += generator.row([
-          PosColumn(width: 8, text: "SGST @ 2.5%"),
+          PosColumn(width: 6, text: ""),
           PosColumn(
-            width: 4,
-            text: sgst.toStringAsFixed(2),
-            styles: const PosStyles(
-              align: PosAlign.right,
-            ),
-          ),
-        ]);
-      }
-
-// Service Charge
-      // Service Charge
-      if (serviceCharge > 0) {
-        bytes += generator.row([
-          PosColumn(
-            width: 8,
-            text: "Service Charge",
-          ),
-          PosColumn(
-            width: 4,
-            text: serviceCharge.toStringAsFixed(2),
-            styles: const PosStyles(
-              align: PosAlign.right,
-            ),
-          ),
-        ]);
-      }
-
-// Tip
-      if (tipAmount > 0) {
-        bytes += generator.row([
-          PosColumn(width: 8, text: "Tip"),
-          PosColumn(
-            width: 4,
-            text: tipAmount.toStringAsFixed(2),
+            width: 6,
+            text: "SGST@2.5%  ${sgst.toStringAsFixed(2)}",
             styles: const PosStyles(align: PosAlign.right),
           ),
         ]);
       }
-      bytes += generator.hr();
 
-      final grandTotal = netPayable.roundToDouble();
-      final roundOff = grandTotal - netPayable;
+      // Service Charge
+      if (serviceCharge > 0) {
+        bytes += generator.row([
+          PosColumn(width: 6, text: ""),
+          PosColumn(
+            width: 6,
+            text: "Service Charge  ${serviceCharge.toStringAsFixed(2)}",
+            styles: const PosStyles(align: PosAlign.right),
+          ),
+        ]);
+      }
+
+      // Tip
+      if (tipAmount > 0) {
+        bytes += generator.row([
+          PosColumn(width: 6, text: ""),
+          PosColumn(
+            width: 6,
+            text: "Tip  ${tipAmount.toStringAsFixed(2)}",
+            styles: const PosStyles(align: PosAlign.right),
+          ),
+        ]);
+      }
+      bytes += generator.hr(ch: '=');
+
+      final rawTotal = grossTotal - couponDiscount - merchantDiscount + taxAmount + serviceCharge + tipAmount;
+      final roundOff = netPayable > 0 ? (netPayable - rawTotal) : 0.0;
+      final grandTotal = netPayable;
 
       bytes += generator.row([
+        PosColumn(width: 6, text: ""),
         PosColumn(
-          width: 8,
-          text: "Round Off",
-        ),
-        PosColumn(
-          width: 4,
-          text: roundOff.toStringAsFixed(2),
-          styles: const PosStyles(
-            align: PosAlign.right,
-          ),
+          width: 6,
+          text: "Round off  ${roundOff.toStringAsFixed(2)}",
+          styles: const PosStyles(align: PosAlign.right),
         ),
       ]);
 
-      bytes += generator.hr();
+      bytes += generator.hr(ch: '=');
 
       bytes += generator.row([
         PosColumn(
-          width: 8,
+          width: 6,
           text: "Grand Total",
-          styles: const PosStyles(
-            bold: true,
-            height: PosTextSize.size2,
-          ),
+          styles: const PosStyles(bold: true, height: PosTextSize.size2),
         ),
         PosColumn(
-          width: 4,
+          width: 6,
           text: grandTotal.toStringAsFixed(2),
           styles: const PosStyles(
             bold: true,
@@ -363,21 +310,16 @@ class Printer {
           ),
         ),
       ]);
-      bytes += generator.hr();
+      bytes += generator.hr(ch: '=');
 
       bytes += generator.text(
-        "Thank You Visit Again..!!",
-        styles: const PosStyles(
-          align: PosAlign.center,
-          bold: true,
-        ),
+        "Thank You Visit Again...!",
+        styles: const PosStyles(align: PosAlign.center, bold: true),
       );
 
       bytes += generator.text(
         "Service charge is optional",
-        styles: const PosStyles(
-          align: PosAlign.center,
-        ),
+        styles: const PosStyles(align: PosAlign.center),
       );
       bytes += generator.feed(2);
       bytes += generator.cut();
@@ -396,12 +338,9 @@ class Printer {
         return;
       }
 
-      await printerSettings.printTicket(
-        bytes,
-        generator,
-      );
+      await printerSettings.printTicket(bytes, generator);
     } catch (e) {
       debugPrint("Print Bill Error: $e");
     }
   }
-  }
+}

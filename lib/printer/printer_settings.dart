@@ -278,9 +278,9 @@ class PrinterSettings {
         PrinterType.usb;
     printer.isBle = false;
     _currentStatus =
-    ((printer.typePrinter == PrinterType.bluetooth ||
+    (((printer.typePrinter == PrinterType.bluetooth ||
         printer.typePrinter == PrinterType.network) &&
-        printer.address != "")
+        printer.address != "") || (printer.typePrinter == PrinterType.usb && Platform.isWindows))
         ? BTStatus.connected
         : BTStatus.none;
     selectedPrinter = printer;
@@ -290,7 +290,9 @@ class PrinterSettings {
     if (selectedPrinter != null) {
       if ((device.address != selectedPrinter!.address) ||
           (device.typePrinter == PrinterType.usb &&
-              selectedPrinter!.vendorId != device.vendorId)) {
+              (Platform.isWindows
+                  ? selectedPrinter!.deviceName != device.deviceName
+                  : selectedPrinter!.vendorId != device.vendorId))) {
         await PrinterManager.instance.disconnect(
           type: selectedPrinter!.typePrinter,
         );
@@ -304,6 +306,12 @@ class PrinterSettings {
     if (selectedPrinter == null) return false;
     switch (selectedPrinter!.typePrinter) {
       case PrinterType.usb:
+        if (Platform.isWindows) {
+          // On Windows, spooler-based USB printers do not require or maintain a persistent hardware connection.
+          // They print directly to the printer queue by name, so we can treat connection as always successful.
+          _currentStatus = BTStatus.connected;
+          return true;
+        }
         await printerManager.connect(
           type: selectedPrinter!.typePrinter,
           model: UsbPrinterInput(

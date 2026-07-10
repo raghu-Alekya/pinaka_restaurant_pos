@@ -1,5 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
+import 'package:thermal_printer/esc_pos_utils_platform/src/capability_profile.dart';
+import 'package:thermal_printer/esc_pos_utils_platform/src/enums.dart';
+import 'package:thermal_printer/esc_pos_utils_platform/src/generator.dart';
+import 'package:thermal_printer/esc_pos_utils_platform/src/pos_column.dart';
+import 'package:thermal_printer/esc_pos_utils_platform/src/pos_styles.dart';
+import '../../printer/printer_settings.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/widgets/transer_kot.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/widgets/void_items.dart';
 import 'package:pinaka_restaurant_pos/blocs/Bloc%20Logic/kot_bloc.dart';
@@ -243,6 +250,169 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       }
     });
   }
+
+  Future<void> _printSelectedKot() async {
+    if (_selectedKot == null || _selectedTable == null) {
+      debugPrint("Print KOT: _selectedKot or _selectedTable is null");
+      return;
+    }
+
+    final selectedKotOrder = _selectedKotOrder();
+    if (selectedKotOrder == null) {
+      debugPrint("Print KOT: selectedKotOrder is null");
+      return;
+    }
+
+    try {
+      final profile = await CapabilityProfile.load(name: 'XP-N160I');
+      final generator = Generator(PaperSize.mm80, profile);
+
+      List<int> bytes = [];
+      final displayKotNo = _selectedKot!.replaceAll('KOT#', '');
+
+      bytes += generator.text(
+        "COPY OF KOT - $displayKotNo",
+        styles: const PosStyles(
+          align: PosAlign.center,
+          bold: true,
+          height: PosTextSize.size3,
+          width: PosTextSize.size2,
+        ),
+      );
+
+      bytes += generator.text(
+        "Dine In",
+        styles: const PosStyles(align: PosAlign.center, bold: true),
+      );
+
+      bytes += generator.hr();
+      // table row
+
+      final tableName = (_selectedTable?['table_name'] ?? '').toString();
+      bytes += generator.row([
+        PosColumn(
+          width: 7,
+          text:
+              "Date : ${DateFormat('dd/MM/yyyy hh:mm a').format(DateTime.now())}",
+        ),
+        PosColumn(
+          width: 5,
+          text: "Dine In : $tableName",
+          styles: const PosStyles(align: PosAlign.right, bold: true),
+        ),
+      ]);
+
+      // order /captain row
+      final orderId = (_selectedTable?['order_id'] ?? '').toString();
+      final captainName = (selectedKotOrder['order_by'] ?? _selectedTable?['captain_name'] ?? 'Admin').toString();
+
+      bytes += generator.row([
+        PosColumn(
+          width: 6,
+          text: "Order Id : $orderId",
+          styles: const PosStyles(bold: true),
+        ),
+        PosColumn(
+          width: 6,
+          text: "Captain : $captainName",
+          styles: const PosStyles(align: PosAlign.right),
+        ),
+      ]);
+
+      bytes += generator.hr();
+      //  header
+
+      bytes += generator.row([
+        PosColumn(width: 1, text: "S.No", styles: const PosStyles(bold: true)),
+        PosColumn(
+          width: 8,
+          text: "Item Name",
+          styles: const PosStyles(bold: true),
+        ),
+        PosColumn(
+          width: 3,
+          text: "Qty",
+          styles: const PosStyles(bold: true, align: PosAlign.right),
+        ),
+      ]);
+
+      bytes += generator.hr();
+
+      // items
+      int index = 1;
+
+      for (final item in _kotItems) {
+        final itemName = (item['item_name'] ?? item['name'] ?? '').toString();
+        final qty = (item['quantity'] ?? item['qty'] ?? 1).toString();
+        bytes += generator.row([
+          PosColumn(width: 1, text: index.toString()),
+          PosColumn(width: 8, text: itemName),
+          PosColumn(
+            width: 3,
+            text: "x $qty",
+            styles: const PosStyles(align: PosAlign.right),
+          ),
+        ]);
+
+        // Modifiers
+        if (item['modifiers'] != null && (item['modifiers'] is List) && (item['modifiers'] as List).isNotEmpty) {
+          bytes += generator.text(" + ${(item['modifiers'] as List).join(', ')}");
+        }
+
+        // Addons
+        if (item['addons'] != null && (item['addons'] is Map) && (item['addons'] as Map).isNotEmpty) {
+          final addons = item['addons'] as Map<String, dynamic>;
+
+          addons.forEach((name, details) {
+            bytes += generator.text("   * $name x${details['quantity']}");
+          });
+        }
+
+        index++;
+      }
+      //  footer
+
+      bytes += generator.hr();
+
+      bytes += generator.text(
+        "Note :",
+        styles: const PosStyles(align: PosAlign.left),
+      );
+
+      bytes += generator.feed(3);
+      bytes += generator.cut();
+
+      final printerSettings = PrinterSettings();
+      await printerSettings.loadPrinter();
+
+      if (printerSettings.selectedPrinter != null) {
+        await printerSettings.printTicket(bytes, generator);
+      } else {
+        debugPrint("KOT print: No printer selected");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                "No printer selected. Please set up a printer in settings.",
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint("KOT print error: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("KOT print failed: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   void _onResetPressed() {
     setState(() {
       // 🔍 Search reset
@@ -1286,7 +1456,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                     'Print KOT',
                     style: TextStyle(fontSize: 11), // ⬇ reduced
                   ),
-                  onPressed: _selectedKot != null ? () {} : null,
+                  onPressed: _selectedKot != null ? _printSelectedKot : null,
                 ),
 
                 if (normalizeOrderType(selectedOrderType) == "dinein") ...[

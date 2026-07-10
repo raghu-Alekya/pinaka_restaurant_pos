@@ -131,7 +131,7 @@ class _OrderPanelState extends State<OrderPanel> {
     required List<Map<String, dynamic>> items,
     required KotModel kot,
   }) async {
-    final profile = await CapabilityProfile.load();
+    final profile = await CapabilityProfile.load(name: 'XP-N160I');
     final generator = Generator(PaperSize.mm80, profile);
 
     List<int> bytes = [];
@@ -159,19 +159,23 @@ class _OrderPanelState extends State<OrderPanel> {
       PosColumn(
         width: 7,
         text:
-        "Date : ${DateFormat('dd/MM/yyyy hh:mm a').format(DateTime.now())}",
+            "Date : ${DateFormat('dd/MM/yyyy hh:mm a').format(DateTime.now())}",
       ),
       PosColumn(
         width: 5,
         text: "Dine In : $tableName",
-        styles: const PosStyles(align: PosAlign.right),
+        styles: const PosStyles(align: PosAlign.right, bold: true),
       ),
     ]);
 
     // order /captain row
 
     bytes += generator.row([
-      PosColumn(width: 6, text: "Order Id : $orderId"),
+      PosColumn(
+        width: 6,
+        text: "Order Id : $orderId",
+        styles: const PosStyles(bold: true),
+      ),
       PosColumn(
         width: 6,
         text: "Captain : $captainName",
@@ -183,7 +187,7 @@ class _OrderPanelState extends State<OrderPanel> {
     //  header
 
     bytes += generator.row([
-      PosColumn(width: 1, text: "S", styles: const PosStyles(bold: true)),
+      PosColumn(width: 1, text: "S.No", styles: const PosStyles(bold: true)),
       PosColumn(
         width: 8,
         text: "Item Name",
@@ -214,9 +218,7 @@ class _OrderPanelState extends State<OrderPanel> {
 
       // Modifiers
       if (item['modifiers'] != null && (item['modifiers'] as List).isNotEmpty) {
-        bytes += generator.text(
-          "  + ${(item['modifiers'] as List).join(', ')}",
-        );
+        bytes += generator.text(" + ${(item['modifiers'] as List).join(', ')}");
       }
 
       // Addons
@@ -246,7 +248,31 @@ class _OrderPanelState extends State<OrderPanel> {
     await printerSettings.loadPrinter();
 
     if (printerSettings.selectedPrinter != null) {
-      await printerSettings.printTicket(bytes, generator);
+      try {
+        await printerSettings.printTicket(bytes, generator);
+      } catch (e) {
+        debugPrint("KOT print error: $e");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("KOT print failed: $e"),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } else {
+      debugPrint("KOT print: No printer selected");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              "No printer selected. Please set up a printer in settings.",
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -1324,7 +1350,6 @@ class _OrderPanelState extends State<OrderPanel> {
   //     ),
   //   );
   // }
-
   @override
   Widget build(BuildContext context) {
     // 1️⃣ Trigger KOT loading for existing order
@@ -1381,7 +1406,9 @@ class _OrderPanelState extends State<OrderPanel> {
           }
 
           debugPrint("Total KOTs: ${state.kotList.length}");
-          debugPrint("Valid KOTs (not voided/transferred): ${state.kotList.where((k) => k.status?.toLowerCase() != 'voided' && k.status?.toLowerCase() != 'transferred').length}");
+          debugPrint(
+            "Valid KOTs (not voided/transferred): ${state.kotList.where((k) => k.status?.toLowerCase() != 'voided' && k.status?.toLowerCase() != 'transferred').length}",
+          );
 
           /// Repeat Order -> enabled if there's any valid KOT (not voided or transferred)
           final bool canRepeatOrder = hasAnyValidKot;
@@ -1400,7 +1427,7 @@ class _OrderPanelState extends State<OrderPanel> {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: const Color(0xFFE0E0E0), // Border color
-                width: 1,                     // Border width
+                width: 1, // Border width
               ),
             ),
             child: Column(
@@ -1452,9 +1479,12 @@ class _OrderPanelState extends State<OrderPanel> {
                                         ),
                                       ),
                                       TextSpan(
-                                        text: widget.isTakeAway
-                                            ? (state.orderId > 0 ? "#${state.orderId}" : "----")
-                                            : "#${state.orderId}",
+                                        text:
+                                            widget.isTakeAway
+                                                ? (state.orderId > 0
+                                                    ? "#${state.orderId}"
+                                                    : "----")
+                                                : "#${state.orderId}",
                                         style: const TextStyle(
                                           color: Color(0xFF152148),
                                           fontSize: 20,
@@ -1471,54 +1501,54 @@ class _OrderPanelState extends State<OrderPanel> {
                             /// Table + Guests
                             widget.isTakeAway
                                 ? Row(
-                              children: [
-                                const Icon(
-                                  Icons.calendar_month_outlined,
-                                  color: Color(0xff414141),
-                                  size: 22,
-                                ),
-                                const SizedBox(width: 8),
-                                const Text(
-                                  "Take Away",
-                                  style: TextStyle(
-                                    color: Color(0xFF002053),
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            )
+                                  children: [
+                                    const Icon(
+                                      Icons.calendar_month_outlined,
+                                      color: Color(0xff414141),
+                                      size: 22,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      "Take Away",
+                                      style: TextStyle(
+                                        color: Color(0xFF002053),
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                )
                                 : Row(
-                              children: [
-                                Image.asset(
-                                  "assets/dine.png",
-                                  width: 25,
-                                  height: 25,
+                                  children: [
+                                    Image.asset(
+                                      "assets/dine.png",
+                                      width: 25,
+                                      height: 25,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      "${state.zoneName}-${state.tableName}",
+                                      style: const TextStyle(
+                                        color: Color(0xff002053),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    const Icon(
+                                      Icons.people,
+                                      size: 18,
+                                      color: Colors.black54,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      "${state.guestDetails.guestCount}",
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  "${state.zoneName}-${state.tableName}",
-                                  style: const TextStyle(
-                                    color: Color(0xff002053),
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                const Icon(
-                                  Icons.people,
-                                  size: 18,
-                                  color: Colors.black54,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  "${state.guestDetails.guestCount}",
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
                           ],
                         ),
                       ),
@@ -1571,14 +1601,14 @@ class _OrderPanelState extends State<OrderPanel> {
                                 barrierDismissible: false,
                                 builder:
                                     (_) => const Center(
-                                  child: CircularProgressIndicator(),
-                                ),
+                                      child: CircularProgressIndicator(),
+                                    ),
                               );
 
                               try {
                                 final orderRepo = OrderRepository(
                                   baseUrl:
-                                  'https://merchantrestaurant.alektasolutions.com',
+                                      'https://merchantrestaurant.alektasolutions.com',
                                 );
 
                                 final orderState =
@@ -1596,13 +1626,16 @@ class _OrderPanelState extends State<OrderPanel> {
 
                                   await orderRepo.cancelTakeAwayOrder(
                                     parentOrderId: currentOrderId,
-                                    restaurantId: int.parse(orderState.restaurantId),
+                                    restaurantId: int.parse(
+                                      orderState.restaurantId,
+                                    ),
                                     token: widget.token,
                                   );
 
                                   AppLogger.info("TAKEAWAY CANCEL SUCCESS");
 
-                                  if (context.mounted && Navigator.canPop(context)) {
+                                  if (context.mounted &&
+                                      Navigator.canPop(context)) {
                                     Navigator.pop(context);
                                   }
 
@@ -1616,10 +1649,11 @@ class _OrderPanelState extends State<OrderPanel> {
                                     "Using bloc => ${context.read<OrderBloc>().hashCode}",
                                   );
 
-
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
-                                      content: Text("Takeaway order cancelled successfully"),
+                                      content: Text(
+                                        "Takeaway order cancelled successfully",
+                                      ),
                                       backgroundColor: Colors.red,
                                     ),
                                   );
@@ -1670,13 +1704,13 @@ class _OrderPanelState extends State<OrderPanel> {
                                     MaterialPageRoute(
                                       builder:
                                           (_) => TablesScreen(
-                                        loadedTables: tables,
-                                        pin: widget.pin,
-                                        token: widget.token,
-                                        restaurantId: widget.restaurantId,
-                                        restaurantName:
-                                        widget.restaurantName,
-                                      ),
+                                            loadedTables: tables,
+                                            pin: widget.pin,
+                                            token: widget.token,
+                                            restaurantId: widget.restaurantId,
+                                            restaurantName:
+                                                widget.restaurantName,
+                                          ),
                                     ),
                                   );
                                 } else {
@@ -1722,9 +1756,9 @@ class _OrderPanelState extends State<OrderPanel> {
                                 border: Border.all(
                                   width: 1,
                                   color:
-                                  hasOrder
-                                      ? const Color(0xFFFE2222)
-                                      : const Color(0x7FC0C0C0),
+                                      hasOrder
+                                          ? const Color(0xFFFE2222)
+                                          : const Color(0x7FC0C0C0),
                                 ),
                                 boxShadow: [
                                   BoxShadow(
@@ -1742,18 +1776,18 @@ class _OrderPanelState extends State<OrderPanel> {
                                     width: 18,
                                     height: 18,
                                     color:
-                                    hasOrder
-                                        ? const Color(0xFFFE2222)
-                                        : Colors.grey.shade700,
+                                        hasOrder
+                                            ? const Color(0xFFFE2222)
+                                            : Colors.grey.shade700,
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
                                     "Cancel",
                                     style: TextStyle(
                                       color:
-                                      hasOrder
-                                          ? const Color(0xFFFE2222)
-                                          : Colors.grey.shade700,
+                                          hasOrder
+                                              ? const Color(0xFFFE2222)
+                                              : Colors.grey.shade700,
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -1767,6 +1801,7 @@ class _OrderPanelState extends State<OrderPanel> {
                     ],
                   ),
                 ),
+
                 // const SizedBox(height: 2),
 
                 /// Main Content Area
@@ -2032,7 +2067,6 @@ class _OrderPanelState extends State<OrderPanel> {
                 //     ],
                 //   ),
                 // ),
-
                 Flexible(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2044,14 +2078,14 @@ class _OrderPanelState extends State<OrderPanel> {
                             BlocProvider<KotLineItemsBloc>(
                               create:
                                   (_) => KotLineItemsBloc(
-                                repository: VoidItemRepository(),
-                              ),
+                                    repository: VoidItemRepository(),
+                                  ),
                             ),
                             BlocProvider<UpdatekotBloc>(
                               create:
                                   (_) => UpdatekotBloc(
-                                repository: UpdatekotRepository(),
-                              ),
+                                    repository: UpdatekotRepository(),
+                                  ),
                             ),
                             BlocProvider.value(value: context.read<KotBloc>()),
                           ],
@@ -2142,93 +2176,93 @@ class _OrderPanelState extends State<OrderPanel> {
                                 child: Container(
                                   color: const Color(0xFFF1F1F3),
                                   child:
-                                  state.orderItems.isEmpty
-                                      ? const Center(
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          "No item Selected",
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
-                                            color: Color(0xFFB8B8B8),
-                                          ),
-                                        ),
-                                        SizedBox(height: 8),
-                                        Text(
-                                          "Please select item from Menu",
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
-                                            color: Color(0xFFB8B8B8),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  )
-                                      : OrderPanelList(
-                                    orderItems: state.orderItems,
-                                    addonPrices: widget.addonPrices,
-                                    onIncreaseQuantity: (index) {
-                                      final item =
-                                      state.orderItems[index];
-                                      context.read<OrderBloc>().add(
-                                        UpdateOrderItemQuantity(
-                                          index,
-                                          item.quantity + 1,
-                                        ),
-                                      );
-                                    },
-                                    onDecreaseQuantity: (index) {
-                                      final item =
-                                      state.orderItems[index];
-                                      if (item.quantity > 1) {
-                                        context.read<OrderBloc>().add(
-                                          UpdateOrderItemQuantity(
-                                            index,
-                                            item.quantity - 1,
-                                          ),
-                                        );
-                                      }
-                                    },
-                                    onModifiersChanged: (
-                                        index,
-                                        modifiers,
-                                        addOns,
-                                        note,
-                                        ) {
-                                      final fullAddOns =
-                                      <
-                                          String,
-                                          Map<String, dynamic>
-                                      >{};
-                                      addOns.forEach((name, qty) {
-                                        fullAddOns[name] = {
-                                          'quantity': qty,
-                                          'price':
-                                          widget
-                                              .addonPrices[name] ??
-                                              0,
-                                        };
-                                      });
+                                      state.orderItems.isEmpty
+                                          ? const Center(
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  "No item Selected",
+                                                  style: TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Color(0xFFB8B8B8),
+                                                  ),
+                                                ),
+                                                SizedBox(height: 8),
+                                                Text(
+                                                  "Please select item from Menu",
+                                                  style: TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Color(0xFFB8B8B8),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          )
+                                          : OrderPanelList(
+                                            orderItems: state.orderItems,
+                                            addonPrices: widget.addonPrices,
+                                            onIncreaseQuantity: (index) {
+                                              final item =
+                                                  state.orderItems[index];
+                                              context.read<OrderBloc>().add(
+                                                UpdateOrderItemQuantity(
+                                                  index,
+                                                  item.quantity + 1,
+                                                ),
+                                              );
+                                            },
+                                            onDecreaseQuantity: (index) {
+                                              final item =
+                                                  state.orderItems[index];
+                                              if (item.quantity > 1) {
+                                                context.read<OrderBloc>().add(
+                                                  UpdateOrderItemQuantity(
+                                                    index,
+                                                    item.quantity - 1,
+                                                  ),
+                                                );
+                                              }
+                                            },
+                                            onModifiersChanged: (
+                                              index,
+                                              modifiers,
+                                              addOns,
+                                              note,
+                                            ) {
+                                              final fullAddOns =
+                                                  <
+                                                    String,
+                                                    Map<String, dynamic>
+                                                  >{};
+                                              addOns.forEach((name, qty) {
+                                                fullAddOns[name] = {
+                                                  'quantity': qty,
+                                                  'price':
+                                                      widget
+                                                          .addonPrices[name] ??
+                                                      0,
+                                                };
+                                              });
 
-                                      context.read<OrderBloc>().add(
-                                        UpdateOrderItemDetails(
-                                          index: index,
-                                          modifiers: modifiers,
-                                          addOns: fullAddOns,
-                                          note: note,
-                                        ),
-                                      );
-                                    },
-                                    onRemoveItem: (index) {
-                                      context.read<OrderBloc>().add(
-                                        RemoveOrderItem(index),
-                                      );
-                                    },
-                                    token: widget.token,
-                                  ),
+                                              context.read<OrderBloc>().add(
+                                                UpdateOrderItemDetails(
+                                                  index: index,
+                                                  modifiers: modifiers,
+                                                  addOns: fullAddOns,
+                                                  note: note,
+                                                ),
+                                              );
+                                            },
+                                            onRemoveItem: (index) {
+                                              context.read<OrderBloc>().add(
+                                                RemoveOrderItem(index),
+                                              );
+                                            },
+                                            token: widget.token,
+                                          ),
                                 ),
                               ),
 
@@ -2247,7 +2281,7 @@ class _OrderPanelState extends State<OrderPanel> {
                                 ),
                                 child: Row(
                                   mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
                                       'Total Items: ${state.orderItems.length}',
@@ -2260,10 +2294,10 @@ class _OrderPanelState extends State<OrderPanel> {
                                     Text(
                                       state.orderItems
                                           .fold(
-                                        0.0,
+                                            0.0,
                                             (sum, item) =>
-                                        sum + item.totalWithAddons,
-                                      )
+                                                sum + item.totalWithAddons,
+                                          )
                                           .toStringAsFixed(2),
                                       style: const TextStyle(
                                         fontSize: 14,
@@ -2291,373 +2325,388 @@ class _OrderPanelState extends State<OrderPanel> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child:
-                  widget.isTakeAway
-                      ? _takeAwayCheckoutButton(hasOrder)
-                      : Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      Builder(
-                        builder: (scaffoldContext) {
-                          return BlocListener<OrderBloc, OrderState>(
-                            listenWhen:
-                                (prev, curr) =>
-                            prev.error != curr.error,
-                            listener: (context, state) {
-                              if (state.error != null &&
-                                  state.error!.isNotEmpty) {
-                                ScaffoldMessenger.of(scaffoldContext)
-                                  ..hideCurrentSnackBar()
-                                  ..showSnackBar(
-                                    SnackBar(
-                                      content: Text(state.error!),
-                                      duration: Duration(seconds: 1),
-                                      backgroundColor: Colors.red,
+                      widget.isTakeAway
+                          ? _takeAwayCheckoutButton(hasOrder)
+                          : Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              Builder(
+                                builder: (scaffoldContext) {
+                                  return BlocListener<OrderBloc, OrderState>(
+                                    listenWhen:
+                                        (prev, curr) =>
+                                            prev.error != curr.error,
+                                    listener: (context, state) {
+                                      if (state.error != null &&
+                                          state.error!.isNotEmpty) {
+                                        ScaffoldMessenger.of(scaffoldContext)
+                                          ..hideCurrentSnackBar()
+                                          ..showSnackBar(
+                                            SnackBar(
+                                              content: Text(state.error!),
+                                              duration: Duration(seconds: 1),
+                                              backgroundColor: Colors.red,
+                                            ),
+                                          );
+                                      }
+                                    },
+                                    child: orderButton(
+                                      'Repeat order',
+                                      canRepeatOrder
+                                          ? const Color(0xFF2563EB)
+                                          : Colors.grey,
+                                      isLoading: _isRepeatingOrder,
+                                      onPressed:
+                                          canRepeatOrder
+                                              ? () {
+                                                setState(() {
+                                                  _isRepeatingOrder = true;
+                                                });
+
+                                                final bloc =
+                                                    context.read<OrderBloc>();
+
+                                                if (bloc.state.orderId == 0) {
+                                                  ScaffoldMessenger.of(
+                                                    scaffoldContext,
+                                                  ).showSnackBar(
+                                                    const SnackBar(
+                                                      duration: Duration(
+                                                        seconds: 1,
+                                                      ),
+                                                      content: Text(
+                                                        "Order not found",
+                                                      ),
+                                                      backgroundColor:
+                                                          Colors.red,
+                                                    ),
+                                                  );
+                                                  setState(() {
+                                                    _isRepeatingOrder = false;
+                                                  });
+                                                  return;
+                                                }
+
+                                                bloc.add(
+                                                  RepeatKotOrder(
+                                                    orderId: bloc.state.orderId,
+                                                    restaurantId: int.parse(
+                                                      bloc.state.restaurantId,
+                                                    ),
+                                                    zoneId: bloc.state.zoneId,
+                                                    token: widget.token,
+                                                  ),
+                                                );
+
+                                                Future.delayed(
+                                                  const Duration(seconds: 2),
+                                                  () {
+                                                    if (mounted) {
+                                                      setState(() {
+                                                        _isRepeatingOrder =
+                                                            false;
+                                                      });
+                                                    }
+                                                  },
+                                                );
+                                              }
+                                              : null,
                                     ),
                                   );
-                              }
-                            },
-                            child: orderButton(
-                              'Repeat order',
-                              canRepeatOrder
-                                  ? const Color(0xFF2563EB)
-                                  : Colors.grey,
-                              isLoading: _isRepeatingOrder,
-                              onPressed:
-                              canRepeatOrder
-                                  ? () {
-                                setState(() {
-                                  _isRepeatingOrder = true;
-                                });
-
-                                final bloc =
-                                context.read<OrderBloc>();
-
-                                if (bloc.state.orderId == 0) {
-                                  ScaffoldMessenger.of(
-                                    scaffoldContext,
-                                  ).showSnackBar(
-                                    const SnackBar(
-                                      duration: Duration(
-                                        seconds: 1,
-                                      ),
-                                      content: Text(
-                                        "Order not found",
-                                      ),
-                                      backgroundColor: Colors.red,
-                                    ),
-                                  );
-                                  setState(() {
-                                    _isRepeatingOrder = false;
-                                  });
-                                  return;
-                                }
-
-                                bloc.add(
-                                  RepeatKotOrder(
-                                    orderId: bloc.state.orderId,
-                                    restaurantId: int.parse(
-                                      bloc.state.restaurantId,
-                                    ),
-                                    zoneId: bloc.state.zoneId,
-                                    token: widget.token,
-                                  ),
-                                );
-
-                                Future.delayed(
-                                  const Duration(seconds: 2),
-                                      () {
-                                    if (mounted) {
-                                      setState(() {
-                                        _isRepeatingOrder =
-                                        false;
-                                      });
-                                    }
-                                  },
-                                );
-                              }
-                                  : null,
-                            ),
-                          );
-                        },
-                      ),
-
-                      orderButton(
-                        'KOT Print',
-                        canPrintKot
-                            ? const Color(0xFFF97316)
-                            : Colors.grey,
-                        onPressed:
-                        canPrintKot
-                            ? () async {
-                          final orderBloc =
-                          context.read<OrderBloc>();
-                          final kotBloc =
-                          context.read<KotBloc>();
-                          final orderRepo = OrderRepository(
-                            baseUrl:
-                            'https://merchantrestaurant.alektasolutions.com',
-                          );
-
-                          if (state.orderItems.isEmpty) {
-                            ScaffoldMessenger.of(
-                              context,
-                            ).showSnackBar(
-                              const SnackBar(
-                                duration: Duration(seconds: 1),
-                                content: Text(
-                                  'No items to create KOT!',
-                                ),
-                                backgroundColor: Colors.red,
+                                },
                               ),
-                            );
-                            return;
-                          }
 
-                          showDialog(
-                            context: context,
-                            barrierDismissible: false,
-                            builder:
-                                (_) => const Center(
-                              child:
-                              CircularProgressIndicator(),
-                            ),
-                          );
+                              orderButton(
+                                'KOT Print',
+                                canPrintKot
+                                    ? const Color(0xFFF97316)
+                                    : Colors.grey,
+                                onPressed:
+                                    canPrintKot
+                                        ? () async {
+                                          final orderBloc =
+                                              context.read<OrderBloc>();
+                                          final kotBloc =
+                                              context.read<KotBloc>();
+                                          final orderRepo = OrderRepository(
+                                            baseUrl:
+                                                'https://merchantrestaurant.alektasolutions.com',
+                                          );
 
-                          try {
-                            final captainId = int.tryParse(
-                              this.widget.userId,
-                            );
-                            if (captainId == null ||
-                                widget.token.isEmpty) {
-                              throw Exception(
-                                'Invalid user session. Please check in again.',
-                              );
-                            }
+                                          if (state.orderItems.isEmpty) {
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                duration: Duration(seconds: 1),
+                                                content: Text(
+                                                  'No items to create KOT!',
+                                                ),
+                                                backgroundColor: Colors.red,
+                                              ),
+                                            );
+                                            return;
+                                          }
 
-                            final KotModel? kot =
-                            await orderRepo.createKOT(
-                              parentOrderId: state.orderId,
-                              kotId: "",
-                              items: state.orderItems,
-                              token: widget.token,
-                              restaurantId:
-                              orderBloc
-                                  .state
-                                  .restaurantId
-                                  .toString(),
-                              zoneId:
-                              orderBloc.state.zoneId,
-                              captainId: captainId,
-                            );
+                                          showDialog(
+                                            context: context,
+                                            barrierDismissible: false,
+                                            builder:
+                                                (_) => const Center(
+                                                  child:
+                                                      CircularProgressIndicator(),
+                                                ),
+                                          );
 
-                            Navigator.of(context).pop();
+                                          try {
+                                            final captainId = int.tryParse(
+                                              this.widget.userId,
+                                            );
+                                            if (captainId == null ||
+                                                widget.token.isEmpty) {
+                                              throw Exception(
+                                                'Invalid user session. Please check in again.',
+                                              );
+                                            }
 
-                            final permissions =
-                            await SessionManager.loadPermissions();
-                            final captainName =
-                                permissions?.displayName ?? '';
-                            if (kot != null) {
-                              debugPrint("CreateKOT Status = ${kot.status}");
-                              await printKot(
-                                kotNo: kot.kotNumber ?? '',
-                                orderId:
-                                kot.parentOrderId
-                                    .toString(),
-                                tableName:
-                                orderBloc.state.tableName,
-                                captainName: captainName,
-                                items:
-                                state.orderItems
-                                    .map(
-                                      (e) => {
-                                    "name": e.name,
-                                    "qty": e.quantity,
-                                    "modifiers":
-                                    e.modifiers
-                                        .toList(),
-                                    "addons": e.addOns,
-                                  },
-                                )
-                                    .toList(),
-                                kot: kot,
-                              );
-                              await KdsMqttPublisher.notifyKotCreated(
-                                restaurantId:
-                                orderBloc.state.restaurantId
-                                    .toString(),
-                                parentOrderId: state.orderId,
-                                zoneId: orderBloc.state.zoneId,
-                                zoneName:
-                                orderBloc.state.zoneName,
-                                orderType: widget.isTakeAway ? "Take Away" : "Dine-In",
-                                kot: kot,
-                                tableName:
-                                orderBloc.state.tableName,
-                              );
-                              // // ✅ Convert "created" to "Yet To Prepare" for immediate UI display
-                              final updatedKot = kot.copyWith(
-                                status: kot.status.toLowerCase() == "created"
-                                    ? "Yet To Prepare"
-                                    : kot.status,
-                              );
+                                            final KotModel? kot =
+                                                await orderRepo.createKOT(
+                                                  parentOrderId: state.orderId,
+                                                  kotId: "",
+                                                  items: state.orderItems,
+                                                  token: widget.token,
+                                                  restaurantId:
+                                                      orderBloc
+                                                          .state
+                                                          .restaurantId
+                                                          .toString(),
+                                                  zoneId:
+                                                      orderBloc.state.zoneId,
+                                                  captainId: captainId,
+                                                );
 
-                              orderBloc.add(AddKOT(updatedKot));
-                              kotBloc.add(AddKotToList(updatedKot)); // ✅ Use updatedKot here
+                                            Navigator.of(context).pop();
 
-                              orderBloc.add(ClearOrder());
+                                            final permissions =
+                                                await SessionManager.loadPermissions();
+                                            final captainName =
+                                                permissions?.displayName ?? '';
+                                            if (kot != null) {
+                                              debugPrint(
+                                                "CreateKOT Status = ${kot.status}",
+                                              );
+                                              await printKot(
+                                                kotNo: kot.kotNumber ?? '',
+                                                orderId:
+                                                    kot.parentOrderId
+                                                        .toString(),
+                                                tableName:
+                                                    orderBloc.state.tableName,
+                                                captainName: captainName,
+                                                items:
+                                                    state.orderItems
+                                                        .map(
+                                                          (e) => {
+                                                            "name": e.name,
+                                                            "qty": e.quantity,
+                                                            "modifiers":
+                                                                e.modifiers
+                                                                    .toList(),
+                                                            "addons": e.addOns,
+                                                          },
+                                                        )
+                                                        .toList(),
+                                                kot: kot,
+                                              );
+                                              await KdsMqttPublisher.notifyKotCreated(
+                                                restaurantId:
+                                                    orderBloc.state.restaurantId
+                                                        .toString(),
+                                                parentOrderId: state.orderId,
+                                                zoneId: orderBloc.state.zoneId,
+                                                zoneName:
+                                                    orderBloc.state.zoneName,
+                                                orderType:
+                                                    widget.isTakeAway
+                                                        ? "Take Away"
+                                                        : "Dine-In",
+                                                kot: kot,
+                                                tableName:
+                                                    orderBloc.state.tableName,
+                                              );
+                                              // // ✅ Convert "created" to "Yet To Prepare" for immediate UI display
+                                              final updatedKot = kot.copyWith(
+                                                status:
+                                                    kot.status.toLowerCase() ==
+                                                            "created"
+                                                        ? "Yet To Prepare"
+                                                        : kot.status,
+                                              );
 
-                              ScaffoldMessenger.of(
-                                context,
-                              ).showSnackBar(
-                                SnackBar(
-                                  content: SizedBox(
-                                    width: 400,
-                                    child: Row(
-                                      mainAxisAlignment:
-                                      MainAxisAlignment
-                                          .center,
-                                      children: [
-                                        const Icon(
-                                          Icons.check_circle,
-                                          color: Colors.white,
-                                          size: 20,
-                                        ),
-                                        const SizedBox(
-                                          width: 8,
-                                        ),
-                                        Text(
-                                          'KOT Created: ${kot.kotNumber}',
-                                          style:
-                                          const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight:
-                                            FontWeight
-                                                .w500,
-                                            color:
-                                            Colors
-                                                .white,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  duration: const Duration(
-                                    seconds: 4,
-                                  ),
-                                  behavior:
-                                  SnackBarBehavior.floating,
-                                  margin: EdgeInsets.only(
-                                    left: 400,
-                                    right: 400,
-                                    bottom:
-                                    MediaQuery.of(
-                                      context,
-                                    ).size.height *
-                                        0.90,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius:
-                                    BorderRadius.circular(
-                                      12,
-                                    ),
-                                  ),
-                                  backgroundColor: Colors.green,
-                                  elevation: 6,
-                                ),
-                              );
-                            }
-                          } catch (e) {
-                            if (Navigator.of(
-                              context,
-                              rootNavigator: true,
-                            ).canPop()) {
-                              Navigator.of(
-                                context,
-                                rootNavigator: true,
-                              ).pop();
-                            }
-                            final message = e
-                                .toString()
-                                .replaceFirst(
-                              "Exception: ",
-                              "",
-                            );
-                            ScaffoldMessenger.of(
-                              context,
-                            ).showSnackBar(
-                              SnackBar(
-                                content: Text(message),
-                                backgroundColor: Colors.red,
-                                behavior:
-                                SnackBarBehavior.floating,
-                                duration: const Duration(
-                                  seconds: 1,
-                                ),
+                                              orderBloc.add(AddKOT(updatedKot));
+                                              kotBloc.add(
+                                                AddKotToList(updatedKot),
+                                              ); // ✅ Use updatedKot here
+
+                                              orderBloc.add(ClearOrder());
+
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                SnackBar(
+                                                  content: SizedBox(
+                                                    width: 400,
+                                                    child: Row(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .center,
+                                                      children: [
+                                                        const Icon(
+                                                          Icons.check_circle,
+                                                          color: Colors.white,
+                                                          size: 20,
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 8,
+                                                        ),
+                                                        Text(
+                                                          'KOT Created: ${kot.kotNumber}',
+                                                          style:
+                                                              const TextStyle(
+                                                                fontSize: 16,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500,
+                                                                color:
+                                                                    Colors
+                                                                        .white,
+                                                              ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  duration: const Duration(
+                                                    seconds: 4,
+                                                  ),
+                                                  behavior:
+                                                      SnackBarBehavior.floating,
+                                                  margin: EdgeInsets.only(
+                                                    left: 400,
+                                                    right: 400,
+                                                    bottom:
+                                                        MediaQuery.of(
+                                                          context,
+                                                        ).size.height *
+                                                        0.90,
+                                                  ),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          12,
+                                                        ),
+                                                  ),
+                                                  backgroundColor: Colors.green,
+                                                  elevation: 6,
+                                                ),
+                                              );
+                                            }
+                                          } catch (e) {
+                                            if (Navigator.of(
+                                              context,
+                                              rootNavigator: true,
+                                            ).canPop()) {
+                                              Navigator.of(
+                                                context,
+                                                rootNavigator: true,
+                                              ).pop();
+                                            }
+                                            final message = e
+                                                .toString()
+                                                .replaceFirst(
+                                                  "Exception: ",
+                                                  "",
+                                                );
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              SnackBar(
+                                                content: Text(message),
+                                                backgroundColor: Colors.red,
+                                                behavior:
+                                                    SnackBarBehavior.floating,
+                                                duration: const Duration(
+                                                  seconds: 1,
+                                                ),
+                                              ),
+                                            );
+                                            AppLogger.error(message);
+                                          }
+                                        }
+                                        : null,
                               ),
-                            );
-                            AppLogger.error(message);
-                          }
-                        }
-                            : null,
-                      ),
 
-                      orderButton(
-                        'Checkout',
-                        canPay ? const Color(0xFF16A34A) : Colors.grey,
-                        onPressed:
-                        canPay
-                            ? () {
-                          AppLogger.info("Pay clicked - Dine In");
-                          debugPrint("💳 Navigating to PaymentScreen from Dine-In - isTakeAway: false");
-                          AppLogger.info("Pay clicked");
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder:
-                                  (_) => MultiBlocProvider(
-                                providers: [
-                                  BlocProvider.value(
-                                    value:
-                                    context
-                                        .read<
-                                        OrderBloc
-                                    >(),
-                                  ),
-                                  BlocProvider.value(
-                                    value:
-                                    context
-                                        .read<
-                                        PaymentBloc
-                                    >(),
-                                  ),
-                                  BlocProvider.value(
-                                    value:
-                                    context
-                                        .read<
-                                        RemoveDiscountBloc
-                                    >(),
-                                  ),
-                                ],
-                                child: PaymentScreen(
-                                  loadedTables:
-                                  widget.loadedTables,
-                                  pin: widget.pin,
-                                  token: widget.token,
-                                  restaurantId:
-                                  widget.restaurantId,
-                                  restaurantName:
-                                  widget.restaurantName,
-                                  zoneId: widget.zoneId,
-                                  isTakeAway: false,  // ✅ Explicitly false for Dine-In
-                                ),
+                              orderButton(
+                                'Checkout',
+                                canPay ? const Color(0xFF16A34A) : Colors.grey,
+                                onPressed:
+                                    canPay
+                                        ? () {
+                                          AppLogger.info(
+                                            "Pay clicked - Dine In",
+                                          );
+                                          debugPrint(
+                                            "💳 Navigating to PaymentScreen from Dine-In - isTakeAway: false",
+                                          );
+                                          AppLogger.info("Pay clicked");
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder:
+                                                  (_) => MultiBlocProvider(
+                                                    providers: [
+                                                      BlocProvider.value(
+                                                        value:
+                                                            context
+                                                                .read<
+                                                                  OrderBloc
+                                                                >(),
+                                                      ),
+                                                      BlocProvider.value(
+                                                        value:
+                                                            context
+                                                                .read<
+                                                                  PaymentBloc
+                                                                >(),
+                                                      ),
+                                                      BlocProvider.value(
+                                                        value:
+                                                            context
+                                                                .read<
+                                                                  RemoveDiscountBloc
+                                                                >(),
+                                                      ),
+                                                    ],
+                                                    child: PaymentScreen(
+                                                      loadedTables:
+                                                          widget.loadedTables,
+                                                      pin: widget.pin,
+                                                      token: widget.token,
+                                                      restaurantId:
+                                                          widget.restaurantId,
+                                                      restaurantName:
+                                                          widget.restaurantName,
+                                                      zoneId: widget.zoneId,
+                                                      isTakeAway:
+                                                          false, // ✅ Explicitly false for Dine-In
+                                                    ),
+                                                  ),
+                                            ),
+                                          );
+                                        }
+                                        : null,
                               ),
-                            ),
-                          );
-                        }
-                            : null,
-                      ),
-                    ],
-                  ),
+                            ],
+                          ),
                 ),
               ],
             ),
@@ -2709,11 +2758,11 @@ class _OrderPanelState extends State<OrderPanel> {
   }
 
   Widget actionButton(
-      String text,
-      String iconPath,
-      Color color, {
-        required VoidCallback onPressed,
-      }) => OutlinedButton.icon(
+    String text,
+    String iconPath,
+    Color color, {
+    required VoidCallback onPressed,
+  }) => OutlinedButton.icon(
     style: OutlinedButton.styleFrom(
       backgroundColor: const Color(0xFFF6F6F6),
       foregroundColor: color,
@@ -2727,10 +2776,10 @@ class _OrderPanelState extends State<OrderPanel> {
   );
 
   Widget elevatedActionButton(
-      String text,
-      String iconPath, {
-        required VoidCallback onPressed,
-      }) => ElevatedButton.icon(
+    String text,
+    String iconPath, {
+    required VoidCallback onPressed,
+  }) => ElevatedButton.icon(
     style: ElevatedButton.styleFrom(
       backgroundColor: const Color(0xFF152148),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -2781,142 +2830,142 @@ class _OrderPanelState extends State<OrderPanel> {
     final canCheckout = canPay && state.orderItems.isNotEmpty;
 
     return GestureDetector(
-      onTap: canCheckout
-          ? () async {
-        final orderRepo = OrderRepository(
-          baseUrl: 'https://merchantrestaurant.alektasolutions.com',
-        );
+      onTap:
+          canCheckout
+              ? () async {
+                final orderRepo = OrderRepository(
+                  baseUrl: 'https://merchantrestaurant.alektasolutions.com',
+                );
 
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (_) =>
-          const Center(child: CircularProgressIndicator()),
-        );
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder:
+                      (_) => const Center(child: CircularProgressIndicator()),
+                );
 
-        try {
-          final captainId = int.tryParse(widget.userId);
+                try {
+                  final captainId = int.tryParse(widget.userId);
 
-          if (captainId == null) {
-            throw Exception("Invalid user session");
-          }
+                  if (captainId == null) {
+                    throw Exception("Invalid user session");
+                  }
 
-          final existingKotId = state.kotList.isNotEmpty
-              ? state.kotList.first.kotId
-              : null;
+                  final existingKotId =
+                      state.kotList.isNotEmpty
+                          ? state.kotList.first.kotId
+                          : null;
 
-          if (existingKotId == null || existingKotId == 0) {
-            // FIRST TIME -> CREATE KOT
-            final kot = await orderRepo.createKOT(
-              parentOrderId: state.orderId,
-              kotId: "",
-              items: state.orderItems,
-              token: widget.token,
-              restaurantId: state.restaurantId,
-              zoneId: state.zoneId,
-              captainId: captainId,
-            );
+                  if (existingKotId == null || existingKotId == 0) {
+                    // FIRST TIME -> CREATE KOT
+                    final kot = await orderRepo.createKOT(
+                      parentOrderId: state.orderId,
+                      kotId: "",
+                      items: state.orderItems,
+                      token: widget.token,
+                      restaurantId: state.restaurantId,
+                      zoneId: state.zoneId,
+                      captainId: captainId,
+                    );
 
-            if (kot == null) {
-              throw Exception("Failed to generate KOT");
-            }
+                    if (kot == null) {
+                      throw Exception("Failed to generate KOT");
+                    }
 
-            debugPrint("KOT Status from API = ${kot.status}");
-            debugPrint("KOT JSON = ${kot.toJson()}");
+                    debugPrint("KOT Status from API = ${kot.status}");
+                    debugPrint("KOT JSON = ${kot.toJson()}");
 
-            orderBloc.add(AddKOT(kot));
-            orderBloc.add(SetTakeAwayKotId(kot.kotId));
-          } else {
-            // SECOND TIME -> UPDATE SAME KOT
-            await orderRepo.updateTakeAwayKot(
-              kotId: existingKotId,
-              parentOrderId: state.orderId,
-              restaurantId: int.parse(state.restaurantId),
-              captainId: captainId,
-              items: state.orderItems,
-              token: widget.token,
-            );
-          }
+                    orderBloc.add(AddKOT(kot));
+                    orderBloc.add(SetTakeAwayKotId(kot.kotId));
+                  } else {
+                    // SECOND TIME -> UPDATE SAME KOT
+                    await orderRepo.updateTakeAwayKot(
+                      kotId: existingKotId,
+                      parentOrderId: state.orderId,
+                      restaurantId: int.parse(state.restaurantId),
+                      captainId: captainId,
+                      items: state.orderItems,
+                      token: widget.token,
+                    );
+                  }
 
-          Navigator.pop(context);
+                  Navigator.pop(context);
 
-          debugPrint(
-              "💳 Navigating to PaymentScreen from Take Away - isTakeAway: true");
+                  debugPrint(
+                    "💳 Navigating to PaymentScreen from Take Away - isTakeAway: true",
+                  );
 
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => MultiBlocProvider(
-                providers: [
-                  BlocProvider.value(
-                    value: context.read<OrderBloc>(),
-                  ),
-                  BlocProvider.value(
-                    value: context.read<PaymentBloc>(),
-                  ),
-                  BlocProvider.value(
-                    value: context.read<RemoveDiscountBloc>(),
-                  ),
-                ],
-                child: PaymentScreen(
-                  loadedTables: widget.loadedTables,
-                  pin: widget.pin,
-                  token: widget.token,
-                  restaurantId: widget.restaurantId,
-                  restaurantName: widget.restaurantName,
-                  zoneId: widget.zoneId,
-                  isTakeAway: true,
-                ),
-              ),
-            ),
-          );
-        } catch (e) {
-          if (Navigator.canPop(context)) {
-            Navigator.pop(context);
-          }
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (_) => MultiBlocProvider(
+                            providers: [
+                              BlocProvider.value(
+                                value: context.read<OrderBloc>(),
+                              ),
+                              BlocProvider.value(
+                                value: context.read<PaymentBloc>(),
+                              ),
+                              BlocProvider.value(
+                                value: context.read<RemoveDiscountBloc>(),
+                              ),
+                            ],
+                            child: PaymentScreen(
+                              loadedTables: widget.loadedTables,
+                              pin: widget.pin,
+                              token: widget.token,
+                              restaurantId: widget.restaurantId,
+                              restaurantName: widget.restaurantName,
+                              zoneId: widget.zoneId,
+                              isTakeAway: true,
+                            ),
+                          ),
+                    ),
+                  );
+                } catch (e) {
+                  if (Navigator.canPop(context)) {
+                    Navigator.pop(context);
+                  }
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                e.toString().replaceFirst("Exception: ", ""),
-              ),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-          : null,
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        e.toString().replaceFirst("Exception: ", ""),
+                      ),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+              : null,
       child: Container(
         width: double.infinity,
         height: 55,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: canCheckout
-              ? const Color(0xFF086888)
-              : const Color(0xFFDEDEDE),
+          color:
+              canCheckout ? const Color(0xFF086888) : const Color(0xFFDEDEDE),
           borderRadius: BorderRadius.circular(14),
-          border: canCheckout
-              ? null
-              : Border.all(
-            color: const Color(0xFFC0C0C0),
-            width: 1,
-          ),
-          boxShadow: canCheckout
-              ? [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.15),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ]
-              : [],
+          border:
+              canCheckout
+                  ? null
+                  : Border.all(color: const Color(0xFFC0C0C0), width: 1),
+          boxShadow:
+              canCheckout
+                  ? [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.15),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                  : [],
         ),
         child: Text(
           "Check out",
           style: TextStyle(
-            color: canCheckout
-                ? Colors.white
-                : const Color(0xFFABABAB),
+            color: canCheckout ? Colors.white : const Color(0xFFABABAB),
             fontSize: 20,
             fontWeight: FontWeight.w500,
             height: 1.33,
@@ -2925,49 +2974,51 @@ class _OrderPanelState extends State<OrderPanel> {
       ),
     );
   }
+
   Widget orderButton(
-      String text,
-      Color color, {
-        VoidCallback? onPressed,
-        bool isLoading = false,
-        Color? textColor,
-      }) =>
-      Expanded(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2),
-          child: SizedBox(
-            height: 55,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: onPressed == null ? Colors.grey : color,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              onPressed: onPressed,
-              child: isLoading
-                  ? const SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              )
-                  : Text(
-                text,
-                style: TextStyle(
-                  color: textColor ??
-                      (onPressed == null
-                          ? const Color(0xFF757575) // Disabled text
-                          : Colors.white), // Enabled text
-                  fontSize: 14,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
+    String text,
+    Color color, {
+    VoidCallback? onPressed,
+    bool isLoading = false,
+    Color? textColor,
+  }) => Expanded(
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: SizedBox(
+        height: 55,
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: onPressed == null ? Colors.grey : color,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
             ),
           ),
+          onPressed: onPressed,
+          child:
+              isLoading
+                  ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                  : Text(
+                    text,
+                    style: TextStyle(
+                      color:
+                          textColor ??
+                          (onPressed == null
+                              ? const Color(0xFF757575) // Disabled text
+                              : Colors.white), // Enabled text
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
         ),
-      );
+      ),
+    ),
+  );
 }

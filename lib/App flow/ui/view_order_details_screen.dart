@@ -10,6 +10,7 @@ import '../../models/order_list/order_list_model.dart';
 import '../../repositories/cancel_order_list_repository.dart';
 import '../../repositories/order_list_repository.dart';
 import '../../utils/SessionManager.dart';
+import '../../printer/printer_service.dart';
 import '../widgets/navigationhelper.dart';
 import '../widgets/top_bar.dart';
 import '../widgets/bottom_nav_bar.dart';
@@ -1550,7 +1551,56 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                   ),
                                   padding: const EdgeInsets.symmetric(horizontal: 12),
                                 ),
-                                onPressed: () {},
+                                onPressed: () async {
+                                  try {
+                                    Map<String, Map<String, dynamic>> consolidated = {};
+                                    if (orderModel.kotOrders != null) {
+                                      for (var kot in orderModel.kotOrders!) {
+                                        if (kot.lineItems != null) {
+                                          for (var lineItem in kot.lineItems!) {
+                                            final name = lineItem.name ?? '';
+                                            final modifiers = lineItem.modifiers ?? [];
+                                            final key = "$name-${modifiers.join(',')}";
+                                            if (consolidated.containsKey(key)) {
+                                              final existing = consolidated[key]!;
+                                              final currentQty = int.tryParse(existing['qty'].toString()) ?? 0;
+                                              final addedQty = lineItem.quantity ?? 0;
+                                              final newQty = currentQty + addedQty;
+                                              existing['qty'] = newQty;
+                                              existing['amount'] = (double.tryParse(existing['price'].toString()) ?? 0.0) * newQty;
+                                            } else {
+                                              consolidated[key] = {
+                                                "name": name,
+                                                "qty": lineItem.quantity ?? 0,
+                                                "price": lineItem.itemPrice ?? 0.0,
+                                                "amount": lineItem.amount ?? 0.0,
+                                                "modifiers": modifiers,
+                                              };
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+
+                                    await Printer.printBill(
+                                      context: context,
+                                      orderId: orderModel.orderId.toString(),
+                                      tableName: orderModel.tableName ?? "",
+                                      cashierName: widget.userPermissions?.displayName ?? 'Admin',
+                                      items: consolidated.values.toList(),
+                                      grossTotal: (orderModel.grossTotal ?? 0).toDouble(),
+                                      couponDiscount: (orderModel.discount ?? 0).toDouble(),
+                                      merchantDiscount: (orderModel.merchantDiscount ?? 0).toDouble(),
+                                      tipAmount: (orderModel.tipAmount ?? 0).toDouble(),
+                                      taxAmount: (orderModel.totalTax ?? 0).toDouble(),
+                                      serviceCharge: (orderModel.serviceChargeValue ?? 0).toDouble(),
+                                      netPayable: (orderModel.netPayable ?? orderModel.netTotal ?? 0).toDouble(),
+                                      isCopy: true,
+                                    );
+                                  } catch (e) {
+                                    debugPrint("Print Bill Error: $e");
+                                  }
+                                },
                                 child: const Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [

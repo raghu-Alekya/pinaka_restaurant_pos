@@ -133,17 +133,23 @@ class _PrinterSetupState extends State<PrinterSetup> {
       // ❌ 1. HARD FILTER invalid devices
       if (device.name == null || device.name!.isEmpty) return;
 
-      // USB devices must have vendorId + productId
+      // USB devices must have vendorId + productId (on Windows, they are null and identified by name)
       if (defaultPrinterType == PrinterType.usb) {
-        if (device.vendorId == null || device.productId == null) {
-          return;
+        if (!Platform.isWindows) {
+          if (device.vendorId == null || device.productId == null) {
+            return;
+          }
         }
 
-        // optional: filter non-printers
+        // optional: filter non-printers (allow standard thermal/receipt printer names)
         final name = device.name!.toLowerCase();
         if (!name.contains('printer') &&
             !name.contains('xp') &&
-            !name.contains('thermal')) {
+            !name.contains('thermal') &&
+            !name.contains('rocket') &&
+            !name.contains('pos') &&
+            !name.contains('80mm') &&
+            !name.contains('58mm')) {
           return;
         }
       }
