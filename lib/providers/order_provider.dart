@@ -1,9 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/kitchen_order.dart';
+import '../models/void_kot.dart';
 import '../services/api_services.dart';
+import '../services/cancel_item_repository.dart';
 import '../services/kds_localstorage.dart';
 import '../services/kds_mqtt_service.dart';
 import '../utils/kds_logger.dart';
@@ -192,6 +195,7 @@ class OrderProvider extends ChangeNotifier {
     try {
 
       _updateAndSave(() {
+        print("========== START ORDER ==========");
 
         // Set checked (cancelled) items status to 'cancelled'
         for (final item in order.items) {
@@ -210,8 +214,50 @@ class OrderProvider extends ChangeNotifier {
 
         _notifyPos(order, 'Preparing');
       });
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token') ?? '';
+
+      final lineItemsResponse = await VoidItemRepository().getKotLineItems(
+        kotId: order.kotId!,
+        restaurantId: 1,
+        zoneId: order.zoneId!,
+        token: token,
+      );
+
+      final updatedItems = lineItemsResponse.items.map((item) {
+        final isCancelled = !remainingItems.any(
+              (e) => e['name'] == item.productName,
+        );
+
+        return LineItemUpdate(
+          id: item.id,
+          productId: item.productId,
+          quantity: isCancelled ? 0 : item.quantity,
+        );
+      }).toList();
+
+      final request = UpdatekotRequest(
+        lineItems: updatedItems,
+        metaData: [
+          MetaDataItem(
+            key: "flag_type",
+            value: "void_items",
+          ),
+          MetaDataItem(
+            key: "remarks",
+            value: "Cancelled from KDS",
+          ),
+        ],
+      );
+
+      await UpdatekotRepository().updatekot(
+        token: token,
+        kotId: order.kotId!,
+        request: request,
+      );
 
       await _apiService.startOrder(order);
+      print("Start API Success");
 
       return true;
     } catch (e, stack) {

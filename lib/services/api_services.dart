@@ -256,7 +256,7 @@ class OrderApiService {
       );
     }
 
-    KdsDebugLog.info('API success: $statusCode');
+    KdsDebugLog.info('update API success: $statusCode');
     KdsDebugLog.info('Response Status Code: ${response.statusCode}');
     KdsDebugLog.info('Response Body: ${response.body}');
     return jsonBody ?? {'success': true};
@@ -277,6 +277,11 @@ class OrderApiService {
         'Content-Type': 'application/json',
       },
     );
+    print("====================================");
+    print("Kitchen Display Orders API");
+    print("Status Code: ${response.statusCode}");
+    print("Response Body: ${response.body}");
+    print("====================================");
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw OrderApiException(
