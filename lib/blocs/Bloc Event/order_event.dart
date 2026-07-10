@@ -219,10 +219,12 @@ class RepeatKotOrder extends OrderEvent {
 class UpdateKotStatusInOrder extends OrderEvent {
   final String kotNumber;
   final String status;
+  final List<Map<String, dynamic>>? remainingItems;
 
   UpdateKotStatusInOrder({
     required this.kotNumber,
     required this.status,
+    this.remainingItems,
   });
 }
 /// 🔹 Update guest count (single Guestcount object)

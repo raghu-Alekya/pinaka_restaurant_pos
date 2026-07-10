@@ -225,7 +225,12 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
       ],
       child: BlocBuilder<KotBloc, KotState>(
         builder: (context, state) {
-          final kotList = widget.kots;
+          final kotList = widget.kots.where((kot) {
+            final status = kot.status.toLowerCase().trim();
+
+            return status != 'cancelled' &&
+                status != 'cancel';
+          }).toList();
 
           // Initialize expansion state for each KOT
           for (var kot in kotList) {
@@ -410,22 +415,22 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
 
                                           /// Status
                                           Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 4,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: _getStatusColor(kot.status),
-                                              borderRadius: BorderRadius.circular(12),
-                                            ),
-                                            child:Text(
-                                              getDisplayStatus(kot.status),
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 8,
+                                                vertical: 4,
                                               ),
-                                            )
+                                              decoration: BoxDecoration(
+                                                color: _getStatusColor(kot.status),
+                                                borderRadius: BorderRadius.circular(12),
+                                              ),
+                                              child:Text(
+                                                getDisplayStatus(kot.status),
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              )
                                           ),
 
                                           const SizedBox(width: 15),

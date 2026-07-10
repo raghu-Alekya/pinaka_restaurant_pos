@@ -112,6 +112,9 @@ class _OrderPanelState extends State<OrderPanel> {
         UpdateKotStatusInOrder(
           kotNumber: data['kot_number'].toString(),
           status: data['status'].toString(),
+          remainingItems: data['remaining_items'] != null
+              ? List<Map<String, dynamic>>.from(data['remaining_items'])
+              : null,
         ),
       );
     });

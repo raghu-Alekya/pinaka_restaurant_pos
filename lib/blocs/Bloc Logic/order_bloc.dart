@@ -1,5 +1,4 @@
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pinaka_restaurant_pos/models/mappers/repeat_kot_mapper.dart';
 import '../../models/order/KOT_model.dart';
@@ -62,8 +61,6 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
         // ✅ Clear order items only if it's a different order
         orderItems: isDifferentOrder ? [] : state.orderItems,
         // ❌ Don’t clear KOTs
-        // Clear previous order data for a new order
-        // orderItems: isDifferentOrder ? [] : state.orderItems,
         kotList: isDifferentOrder ? [] : state.kotList,
         // ✅ IMPORTANT: reset repeat order lock for new order/table
         // isKotRepeated: false,
@@ -91,7 +88,7 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
 
         // ✅ Clear items only if different table
         orderItems: isDifferentTable ? [] : state.orderItems,
-        kotList: state.kotList,
+        kotList: isDifferentTable ? [] : state.kotList,
 
         // ✅ IMPORTANT: reset repeat flag when table changes
         // isKotRepeated: false,
@@ -117,7 +114,6 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
             modifiers: item.modifiers,
             addOns: item.addOns,
             amount: item.amount,
-            hasOptions: item.hasOptions,
           )).toList();
 
           final guestDetails = Guestcount(guestCount: existingOrder.guestCount);
@@ -198,49 +194,10 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
       emit(state.copyWith(orderItems: updatedItems));
     });
 
-
-    // ✅ Register this event
-    on<SetTakeAwayOrder>((event, emit) {
-      debugPrint("========== SET TAKEAWAY ORDER ==========");
-      debugPrint("Received orderId: ${event.orderId}");
-      debugPrint("Received restaurantId: ${event.restaurantId}");
-
-      emit(
-        state.copyWith(
-          orderId: event.orderId,
-          restaurantId: event.restaurantId,
-        ),
-      );
-
-      debugPrint("State Updated -> orderId: ${event.orderId}");
-    });
-    on<SetTakeAwayKotId>((event, emit) {
-      emit(
-        state.copyWith(
-          takeAwayKotId: event.kotId,
-        ),
-      );
-    });
     /// Clear order
     on<ClearOrder>((event, emit) {
       AppLogger.info("🗑 Clearing all order items");
       emit(state.copyWith(orderItems: []));
-    });
-    on<ResetOrder>((event, emit) {
-      emit(OrderState(
-        orderItems: [],
-        kotList: [],
-        showKOTDropdown: true,
-        guestDetails: Guestcount(guestCount: 0),
-        orderId: 0,
-        tableId: 0,
-        zoneId: 0,
-        tableName: '',
-        zoneName: '',
-        restaurantId: '',
-        lastRepeatedKotIndex: -1,
-
-      ));
     });
 
     /// Cancel order
@@ -310,22 +267,6 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
         ..add(event.kot);
       AppLogger.info("Added KOT: ${event.kot.kotId}");
       emit(state.copyWith(kotList: updatedKOTs));
-    });
-    on<SetKotList>((event, emit) {
-      emit(
-        state.copyWith(
-          kotList: event.kots,
-        ),
-      );
-    });
-
-    on<RefreshKotList>((event, emit) {
-      debugPrint("RefreshKotList: ${event.kots.length}");
-      emit(
-        state.copyWith(
-          kotList: event.kots,
-        ),
-      );
     });
 
     /// Create KOT via API
@@ -398,6 +339,11 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
         if (kot.kotNumber == event.kotNumber) {
           return kot.copyWith(
             status: event.status,
+            items: event.remainingItems != null
+                ? event.remainingItems!
+                .map((e) => OrderItems.fromJson(e))
+                .toList()
+                : kot.items,
           );
         }
         return kot;
