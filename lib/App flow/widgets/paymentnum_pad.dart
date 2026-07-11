@@ -538,7 +538,7 @@ class _paymentsummaryState extends State<paymentsummary> {
           enteredAmountForLog < remainingBeforeThisTxn - 0.01;
       debugPrint(isPartialAttempt
           ? "🟠 PARTIAL PAYMENT — sending ₹${enteredAmountForLog.toStringAsFixed(2)} via create-payment (balance before this txn: ₹${remainingBeforeThisTxn.toStringAsFixed(2)})"
-          : "🟢 FULL PAYMENT — sending ₹${enteredAmountForLog.toStringAsFixed(2)} via create-payment");
+          : "🟢 FULL PAYMENT — sending $_currencySymbol${enteredAmountForLog.toStringAsFixed(2)} via create-payment");
 
       await _submitPayment();
     } finally {
@@ -1319,7 +1319,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                             child: Opacity(
                               opacity: payDisabled ? 0.5 : 1.0,
                               child: Container(
-                                height: 80,
+                                height: 90,
                                 decoration: BoxDecoration(
                                   color: payDisabled
                                       ? Colors.grey.shade300
@@ -1507,7 +1507,7 @@ class _paymentsummaryState extends State<paymentsummary> {
             ),
             alignment: Alignment.center,
             child: Text(
-              "₹${value.toStringAsFixed(2)}",
+              "$_currencySymbol${value.toStringAsFixed(2)}",
               style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -1702,18 +1702,18 @@ class _paymentsummaryState extends State<paymentsummary> {
           // accepted for this order, so the cashier can see how much has
           // already been collected. Purely additive: nothing is removed.
           if (_totalPaidAmount > 0)
-            // Padding(
-            //   padding: const EdgeInsets.only(top: 2),
-            //   child: Text(
-            //     "Paid $_currencySymbol${_totalPaidAmount.toStringAsFixed(2)}",
-            //     style: const TextStyle(
-            //       fontSize: 10,
-            //       fontWeight: FontWeight.w700,
-            //       color: Color(0xFF2E7D32),
-            //     ),
-            //   ),
-            // ),
-          const SizedBox(height: 7),
+          // Padding(
+          //   padding: const EdgeInsets.only(top: 2),
+          //   child: Text(
+          //     "Paid $_currencySymbol${_totalPaidAmount.toStringAsFixed(2)}",
+          //     style: const TextStyle(
+          //       fontSize: 10,
+          //       fontWeight: FontWeight.w700,
+          //       color: Color(0xFF2E7D32),
+          //     ),
+          //   ),
+          // ),
+            const SizedBox(height: 7),
           Stack(
             clipBehavior: Clip.none,
             children: [
@@ -2068,7 +2068,7 @@ class _paymentsummaryState extends State<paymentsummary> {
           ),
           isApplied: _isDiscountApplied,
           appliedText: discountController.text.isNotEmpty
-              ? "₹${discountController.text}"
+              ? "$_currencySymbol${discountController.text}"
               : null,
           onTap: _isDiscountApplied
               ? null
@@ -2229,7 +2229,7 @@ class _paymentsummaryState extends State<paymentsummary> {
           ),
           isApplied: _isTipApplied,
           appliedText:
-          _isTipApplied ? "₹${_tipAmount.toStringAsFixed(2)}" : null,
+          _isTipApplied ? "$_currencySymbol${_tipAmount.toStringAsFixed(2)}" : null,
           onTap: _isTipApplied
               ? null
               : () async {
@@ -2288,7 +2288,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                 const SnackBar(
                   content: Text('Tip removed successfully'),
                   duration: Duration(seconds: 1),
-                  backgroundColor: Colors.red,),
+                  backgroundColor: Colors.green,),
               );
             } else {
               ScaffoldMessenger.of(context).showSnackBar(

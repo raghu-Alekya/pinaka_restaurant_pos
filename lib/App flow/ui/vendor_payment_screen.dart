@@ -45,12 +45,13 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
   int currentPage = 1;
   int totalPages = 1;
   static const int rowsPerPage = 8;
+  String _currency = "₹";
   @override
   void initState() {
     super.initState();
     _loadVendorPayments();
     _loadPermissions();
-
+    _loadCurrency();   // <-- Add this
     selectedDate = DateTime.now();
 
     _datevendorController.text =
@@ -59,6 +60,16 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
         "${selectedDate!.year}";
 
   }
+  Future<void> _loadCurrency() async {
+    final currency = await SessionManager.getCurrencySymbol();
+
+    if (mounted) {
+      setState(() {
+        _currency = currency ?? "₹";
+      });
+    }
+  }
+
   Future<void> _loadPermissions() async {
     final savedPermissions = await SessionManager.loadPermissions();
     if (savedPermissions != null) {
@@ -705,7 +716,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                                     : payment.vendorName,
                                                 date: payment.paymentDate,
                                                 contact: payment.phoneNumber,
-                                                amount: "₹${(double.tryParse(payment.amount) ?? 0.0).toStringAsFixed(2)}",
+                                                amount: "$_currency${(double.tryParse(payment.amount) ?? 0.0).toStringAsFixed(2)}",
                                                 mode: payment.paymentMethod,
                                                 purpose: payment.purpose.isEmpty
                                                     ? "-"

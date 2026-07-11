@@ -65,12 +65,13 @@ class _HomeScreenState extends State<HomeScreen> {
   int activeOrdersCount = 0;
   double totalTipAmount = 0.0;
   double vendorcount = 0;
-
+  String _currency = "₹";
   @override
   void initState() {
     super.initState();
     _loadSavedPermissions();
     _startClock();
+    _loadCurrency();   // <-- Add this
     loadTableStatusCounts();
     loadReservationCounts();
     loadActiveOrdersCount();
@@ -80,7 +81,15 @@ class _HomeScreenState extends State<HomeScreen> {
     });
     _loadVendorCount();
   }
+  Future<void> _loadCurrency() async {
+    final currency = await SessionManager.getCurrencySymbol();
 
+    if (mounted) {
+      setState(() {
+        _currency = currency ?? "₹";
+      });
+    }
+  }
   void _startClock() {
     _updateTime();
     _clockTimer = Timer.periodic(
@@ -560,7 +569,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         width: 250,
                         child: _whiteModuleCard(
                           title: "Tips",
-                          count: "₹${totalTipAmount.toStringAsFixed(2)}",
+                          count: "$_currency${totalTipAmount.toStringAsFixed(2)}",
+                          // count: "₹${totalTipAmount.toStringAsFixed(2)}",
                           // count: totalTipAmount.toStringAsFixed(2),
                           countLabel: "Tips",
                           icon: Icons.account_balance_wallet_outlined,

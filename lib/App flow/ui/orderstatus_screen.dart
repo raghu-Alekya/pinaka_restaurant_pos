@@ -47,7 +47,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
   String? _selectedStatus;
   String? _selectedDate;
   Timer? _searchDebounce;
-
+  String _currency = "₹";
   final List<String> statusOptions = [
     'All',
     'Completed',
@@ -93,7 +93,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
 
     _searchController.addListener(() {
       _searchDebounce?.cancel();
-
+      _loadCurrency();   // <-- Add this
       _searchDebounce = Timer(const Duration(milliseconds: 300), () {
         setState(() {
           _searchQuery = _searchController.text.toLowerCase();
@@ -102,6 +102,15 @@ class _OrdersListTableState extends State<OrdersListTable> {
         });
       });
     });
+  }
+  Future<void> _loadCurrency() async {
+    final currency = await SessionManager.getCurrencySymbol();
+
+    if (mounted) {
+      setState(() {
+        _currency = currency ?? "₹";
+      });
+    }
   }
 
   Future<void> _loadPermissions() async {
@@ -698,7 +707,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                         // DataCell(Text(order.discount?.toStringAsFixed(2) ?? '0.00')),
                                         DataCell(
                                           Text(
-                                            "₹${order.netPayable?.toStringAsFixed(2) ?? '0.00'}",
+                                            "$_currency${order.netPayable?.toStringAsFixed(2) ?? '0.00'}",
                                           ),
                                         ),
                                         DataCell(

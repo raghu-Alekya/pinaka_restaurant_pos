@@ -7,6 +7,7 @@ import '../../blocs/Bloc Logic/discount_bloc.dart';
 import '../../blocs/Bloc Logic/payment_bloc.dart';
 import '../../blocs/Bloc State/discount_stata.dart';
 import '../../models/payment/discount_model.dart';
+import '../../utils/SessionManager.dart';
 enum DiscountType { percent, amount }
 
 class DiscountPopup extends StatefulWidget {
@@ -19,7 +20,7 @@ class DiscountPopup extends StatefulWidget {
   const DiscountPopup({
     super.key,
     required this.netPayable,
-     this.authToken,
+    this.authToken,
     required this.orderId,
     this.initialDiscount = 0.0,
 
@@ -40,12 +41,12 @@ class _DiscountPopupState extends State<DiscountPopup> {
   double payableAmount = 0; // original
   double newPayableAmount = 0;
   // final double grossTotal;
-
+  String _currency = "₹";
   @override
   @override
   void initState() {
     super.initState();
-
+    _loadCurrency();   // <-- Add this
     payableAmount = widget.netPayable;
     newPayableAmount = widget.netPayable;
 
@@ -62,7 +63,15 @@ class _DiscountPopupState extends State<DiscountPopup> {
   }
 
   bool _isLoaded = false;
+  Future<void> _loadCurrency() async {
+    final currency = await SessionManager.getCurrencySymbol();
 
+    if (mounted) {
+      setState(() {
+        _currency = currency ?? "₹";
+      });
+    }
+  }
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -449,7 +458,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
       children: [
         _amountBox(
           'Payable Amount',
-          '₹${payableAmount.toStringAsFixed(2)}',
+          '$_currency${payableAmount.toStringAsFixed(2)}',
           readOnly: true,
         ),
 
@@ -457,7 +466,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
 
         _amountBox(
           'New Payable Amount',
-          '₹${newPayableAmount.toStringAsFixed(2)}',
+          '$_currency${newPayableAmount.toStringAsFixed(2)}',
           readOnly: true,
         ),
       ],
@@ -545,7 +554,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
               decoration: InputDecoration(
                 prefixText: isNCSelected
                     ? ''
-                    : (selectedType == DiscountType.amount ? '₹ ' : ''),
+                    : (selectedType == DiscountType.amount ? '$_currency' : ''),
                 prefixStyle: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/order/coupon_model.dart';
 import '../../repositories/coupon_repository.dart';
+import '../../utils/SessionManager.dart';
 
 class Couponscreen extends StatefulWidget {
   final Function(String, double) onCouponApplied;
@@ -31,13 +32,22 @@ class _CouponscreenState extends State<Couponscreen> {
   List<CouponModel> availableCoupons = [];
   bool isLoading = true;
   bool _isApplying = false;
-
+  String _currency = "₹";
   @override
   void initState() {
     super.initState();
+    _loadCurrency();   // <-- Add this
     // _loadCoupons();
   }
+  Future<void> _loadCurrency() async {
+    final currency = await SessionManager.getCurrencySymbol();
 
+    if (mounted) {
+      setState(() {
+        _currency = currency ?? "₹";
+      });
+    }
+  }
   // Future<void> _loadCoupons() async {
   //   final repository = CouponRepository();
   //
@@ -185,35 +195,35 @@ class _CouponscreenState extends State<Couponscreen> {
                     ),
                   ),
                   const SizedBox(width: 12),
-        SizedBox(
-          height: 40,
-          child: ElevatedButton(
-            onPressed: _isApplying ? null : _applyCoupon,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4C5F7D),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(6),
-              ),
-            ),
-            child: _isApplying
-                ? const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
-            )
-                : const Text(
-              "Apply Coupon",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
+                  SizedBox(
+                    height: 40,
+                    child: ElevatedButton(
+                      onPressed: _isApplying ? null : _applyCoupon,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4C5F7D),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      ),
+                      child: _isApplying
+                          ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                          : const Text(
+                        "Apply Coupon",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
               SizedBox(height: 20),
@@ -256,7 +266,7 @@ class _CouponscreenState extends State<Couponscreen> {
                             Text(
                               coupon.discountType == 'percent'
                                   ? '${coupon.amount}% OFF'
-                                  : '₹${coupon.amount.toInt()} OFF',
+                                  : '$_currency${coupon.amount.toInt()} OFF',
                               style: const TextStyle(
                                 color: Colors.white70,
                                 fontSize: 11,

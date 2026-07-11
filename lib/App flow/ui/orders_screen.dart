@@ -39,6 +39,7 @@ import '../../repositories/void_item_repository.dart';
 import '../../services/kds_seivices.dart';
 import '../../utils/SessionManager.dart';
 import '../../utils/logger.dart';
+import '../widgets/confirmation_pop_up.dart';
 import '../widgets/orderlist_widget.dart';
 import '../widgets/view_all_kots.dart';
 import 'guest_details_popup.dart';
@@ -276,6 +277,130 @@ class _OrderPanelState extends State<OrderPanel> {
           ),
         );
       }
+    }
+  }
+  Future<void> _cancelOrder(int currentOrderId) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      final orderRepo = OrderRepository(
+        baseUrl: 'https://merchantrestaurant.alektasolutions.com',
+      );
+
+      final orderState = context.read<OrderBloc>().state;
+      final isTakeAway = widget.isTakeAway;
+
+      Map<String, dynamic>? responseJson;
+
+      // =====================
+      // TAKEAWAY FLOW
+      // =====================
+      if (isTakeAway) {
+        await orderRepo.cancelTakeAwayOrder(
+          parentOrderId: currentOrderId,
+          restaurantId: int.parse(orderState.restaurantId),
+          token: widget.token,
+        );
+
+        if (context.mounted && Navigator.canPop(context)) {
+          Navigator.pop(context);
+        }
+
+        context.read<OrderBloc>().add(
+          CancelOrder(
+            parentOrderId: currentOrderId,
+            token: widget.token,
+          ),
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Takeaway order cancelled successfully"),
+            backgroundColor: Colors.red,
+          ),
+        );
+
+        return;
+      }
+
+      // =====================
+      // DINE-IN FLOW
+      // =====================
+      responseJson = await orderRepo.cancelOrder(
+        parentOrderId: currentOrderId,
+        token: widget.token,
+        restaurantId: widget.restaurantId,
+        zoneId: widget.zoneId,
+      );
+
+      if (context.mounted && Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+
+      if (responseJson['status'] == 'cancelled') {
+        context.read<OrderBloc>().add(
+          CancelOrder(
+            parentOrderId: currentOrderId,
+            token: widget.token,
+          ),
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 1),
+            content: Text(
+              "Order ${responseJson['order_id']} cancelled successfully",
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+
+        final tableDao = TableDao();
+        final tables = await tableDao.getTablesByManagerPin(widget.pin);
+
+        if (!context.mounted) return;
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => TablesScreen(
+              loadedTables: tables,
+              pin: widget.pin,
+              token: widget.token,
+              restaurantId: widget.restaurantId,
+              restaurantName: widget.restaurantName,
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            duration: Duration(seconds: 1),
+            content: Text("Failed to cancel order"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted && Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 1),
+          content: Text(
+            e.toString().replaceFirst("Exception: ", ""),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -1580,9 +1705,8 @@ class _OrderPanelState extends State<OrderPanel> {
                           ),
                           const SizedBox(height: 12),
                           InkWell(
-                            onTap: () async {
-                              final currentOrderId =
-                                  context.read<OrderBloc>().state.orderId;
+                            onTap: () {
+                              final currentOrderId = context.read<OrderBloc>().state.orderId;
 
                               if (currentOrderId == 0) {
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -1594,158 +1718,45 @@ class _OrderPanelState extends State<OrderPanel> {
                                 );
                                 return;
                               }
-
-                              AppLogger.info(
-                                "Cancel order clicked → Order ID: $currentOrderId",
-                              );
-
                               showDialog(
                                 context: context,
                                 barrierDismissible: false,
-                                builder:
-                                    (_) => const Center(
-                                      child: CircularProgressIndicator(),
-                                    ),
+                                builder: (dialogContext) {
+                                  bool isLoading = false;
+
+                                  return StatefulBuilder(
+                                    builder: (context, setState) {
+                                      return ConfirmationPopup(
+                                        title: "Are you sure?",
+                                        message: widget.isTakeAway
+                                            ? "Do you want to really cancel this order?\nThis action cannot be undone."
+                                            : "Do you want to really delete the ",
+                                        highlightedText: widget.isTakeAway ? null : state.tableName,
+                                        trailingMessage: widget.isTakeAway
+                                            ? null
+                                            : "?\nThis will remove it from ${state.zoneName}.",
+                                        imagePath: "assets/warning_icon.png",
+                                        confirmButtonText: "Yes, Cancel!",
+                                        cancelButtonText: "No, Keep It",
+                                        primaryColor: const Color(0xFFD83434),
+                                        gradientColor: const Color(0xFFFCE9E9),
+                                        isLoading: isLoading,
+                                        onCancel: () {
+                                          Navigator.pop(dialogContext);
+                                        },
+                                        onConfirm: () async {
+                                          setState(() {
+                                            isLoading = true;
+                                          });
+
+                                          Navigator.pop(dialogContext);
+                                          await _cancelOrder(currentOrderId);
+                                        },
+                                      );
+                                    },
+                                  );
+                                },
                               );
-
-                              try {
-                                final orderRepo = OrderRepository(
-                                  baseUrl:
-                                      'https://merchantrestaurant.alektasolutions.com',
-                                );
-
-                                final orderState =
-                                    context.read<OrderBloc>().state;
-
-                                final isTakeAway = widget.isTakeAway;
-
-                                Map<String, dynamic>? responseJson;
-
-                                // =====================
-                                // TAKEAWAY FLOW
-                                // =====================
-                                if (isTakeAway) {
-                                  AppLogger.info("TAKEAWAY CANCEL START");
-
-                                  await orderRepo.cancelTakeAwayOrder(
-                                    parentOrderId: currentOrderId,
-                                    restaurantId: int.parse(
-                                      orderState.restaurantId,
-                                    ),
-                                    token: widget.token,
-                                  );
-
-                                  AppLogger.info("TAKEAWAY CANCEL SUCCESS");
-
-                                  if (context.mounted &&
-                                      Navigator.canPop(context)) {
-                                    Navigator.pop(context);
-                                  }
-
-                                  context.read<OrderBloc>().add(
-                                    CancelOrder(
-                                      parentOrderId: currentOrderId,
-                                      token: widget.token,
-                                    ),
-                                  );
-                                  debugPrint(
-                                    "Using bloc => ${context.read<OrderBloc>().hashCode}",
-                                  );
-
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        "Takeaway order cancelled successfully",
-                                      ),
-                                      backgroundColor: Colors.red,
-                                    ),
-                                  );
-
-                                  return;
-                                }
-                                // =====================
-                                // DINE-IN FLOW
-                                // =====================
-                                responseJson = await orderRepo.cancelOrder(
-                                  parentOrderId: currentOrderId,
-                                  token: widget.token,
-                                  restaurantId: widget.restaurantId,
-                                  zoneId: widget.zoneId,
-                                );
-
-                                if (context.mounted &&
-                                    Navigator.canPop(context)) {
-                                  Navigator.pop(context);
-                                }
-
-                                if (responseJson['status'] == 'cancelled') {
-                                  context.read<OrderBloc>().add(
-                                    CancelOrder(
-                                      parentOrderId: currentOrderId,
-                                      token: widget.token,
-                                    ),
-                                  );
-
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      duration: const Duration(seconds: 1),
-                                      content: Text(
-                                        "Order ${responseJson['order_id']} cancelled successfully",
-                                      ),
-                                      backgroundColor: Colors.red,
-                                    ),
-                                  );
-
-                                  final tableDao = TableDao();
-                                  final tables = await tableDao
-                                      .getTablesByManagerPin(widget.pin);
-
-                                  if (!context.mounted) return;
-
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder:
-                                          (_) => TablesScreen(
-                                            loadedTables: tables,
-                                            pin: widget.pin,
-                                            token: widget.token,
-                                            restaurantId: widget.restaurantId,
-                                            restaurantName:
-                                                widget.restaurantName,
-                                          ),
-                                    ),
-                                  );
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      duration: Duration(seconds: 1),
-                                      content: Text("Failed to cancel order"),
-                                      backgroundColor: Colors.red,
-                                    ),
-                                  );
-                                }
-                              } catch (e) {
-                                if (context.mounted &&
-                                    Navigator.canPop(context)) {
-                                  Navigator.pop(context);
-                                }
-
-                                AppLogger.error("Cancel order API error: $e");
-
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    duration: const Duration(seconds: 1),
-                                    content: Text(
-                                      e.toString().replaceFirst(
-                                        "Exception: ",
-                                        "",
-                                      ),
-                                    ),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
-                              }
                             },
                             borderRadius: BorderRadius.circular(8),
                             child: Container(
@@ -1759,9 +1770,9 @@ class _OrderPanelState extends State<OrderPanel> {
                                 border: Border.all(
                                   width: 1,
                                   color:
-                                      hasOrder
-                                          ? const Color(0xFFFE2222)
-                                          : const Color(0x7FC0C0C0),
+                                  hasOrder
+                                      ? const Color(0xFFFE2222)
+                                      : const Color(0x7FC0C0C0),
                                 ),
                                 boxShadow: [
                                   BoxShadow(
@@ -1779,18 +1790,18 @@ class _OrderPanelState extends State<OrderPanel> {
                                     width: 18,
                                     height: 18,
                                     color:
-                                        hasOrder
-                                            ? const Color(0xFFFE2222)
-                                            : Colors.grey.shade700,
+                                    hasOrder
+                                        ? const Color(0xFFFE2222)
+                                        : Colors.grey.shade700,
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
                                     "Cancel",
                                     style: TextStyle(
                                       color:
-                                          hasOrder
-                                              ? const Color(0xFFFE2222)
-                                              : Colors.grey.shade700,
+                                      hasOrder
+                                          ? const Color(0xFFFE2222)
+                                          : Colors.grey.shade700,
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
                                     ),

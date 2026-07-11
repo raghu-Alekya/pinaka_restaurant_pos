@@ -429,10 +429,10 @@ class _TopBarState extends State<TopBar> {
                         //     ),
                         //   ),
                         // ),
-                        const SizedBox(width: 650),
+                        const SizedBox(width: 625),
                         // Order Type Dropdown
                         Container(
-                          width: 165,
+                          width: 235,
                           height: 40,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 12,
@@ -982,7 +982,7 @@ class _TopBarState extends State<TopBar> {
             Navigator.pop(context);
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Failed to load employees'),
-                backgroundColor: Colors.green,
+                backgroundColor: Colors.red,
                 duration: Duration(seconds: 1),
               ),
             );
@@ -1126,47 +1126,58 @@ class _TopBarState extends State<TopBar> {
   Widget _buildProfileSection() {
     final avatarUrl = widget.userPermissions?.avatar;
 
+    final bool isPayment = widget.isPaymentScreen;
+
     return Container(
-      height: 55,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      height: isPayment ? 42 : 55,
+      padding: EdgeInsets.symmetric(
+        horizontal: isPayment ? 10 : 14,
+      ),
       decoration: ShapeDecoration(
         color: Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
         ),
-        shadows: [
+        shadows: const [
           BoxShadow(
             color: Color(0x26000000),
             blurRadius: 4,
             offset: Offset(0, 0),
-            spreadRadius: 0,
-          )
+          ),
         ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           CircleAvatar(
-            radius: 20,
+            radius: isPayment ? 15 : 20,
             backgroundColor: Colors.grey.shade200,
             backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
                 ? NetworkImage(avatarUrl)
                 : const AssetImage('assets/loginname.png') as ImageProvider,
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: isPayment ? 8 : 12),
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 widget.userPermissions?.displayName ?? "username",
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(
-                    0xFF2C2B2B)),
+                style: TextStyle(
+                  fontSize: isPayment ? 11 : 14,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF2C2B2B),
+                ),
               ),
-              const SizedBox(height: 2),
+              SizedBox(height: isPayment ? 1 : 2),
               Text(
                 widget.userPermissions?.role ?? "role",
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                style: TextStyle(
+                  fontSize: isPayment ? 9 : 12,
+                  color: Colors.grey.shade600,
+                  height: 1,
+                ),
               ),
             ],
           ),

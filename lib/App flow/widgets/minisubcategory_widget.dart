@@ -786,6 +786,7 @@ import '../../repositories/minisubcategory_repository.dart';
 import '../../repositories/modifier_repository.dart';
 import '../../repositories/order_repository.dart';
 import '../../repositories/variant_repository.dart';
+import '../../utils/SessionManager.dart';
 import '../widgets/variant_popup.dart';
 
 class MiniSubCategoryWidget extends StatefulWidget {
@@ -848,7 +849,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
     const Color(0xFFFEE8C2),
     const Color(0xFFFFFFFF),
   ];
-
+  String _currency = "₹";
   @override
   void initState() {
     super.initState();
@@ -856,12 +857,21 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
     orderRepository = OrderRepository(
       baseUrl: AppConstants.baseDomain,
     );
+    _loadCurrency();   // <-- Add this
     // Auto-select folder or fetch direct products after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _autoSelectAndLoad();
     });
   }
+  Future<void> _loadCurrency() async {
+    final currency = await SessionManager.getCurrencySymbol();
 
+    if (mounted) {
+      setState(() {
+        _currency = currency ?? "₹";
+      });
+    }
+  }
   @override
   void didUpdateWidget(covariant MiniSubCategoryWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -1746,7 +1756,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                '₹${item.price.toStringAsFixed(2)}',
+                                '$_currency${item.price.toStringAsFixed(2)}',
                                 style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,

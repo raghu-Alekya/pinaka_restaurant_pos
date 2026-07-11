@@ -47,6 +47,14 @@ class AreaPopup extends StatefulWidget {
 /// and UI building for area name input and creation.
 class _AreaPopupState extends State<AreaPopup> {
   @override
+  void initState() {
+    super.initState();
+
+    widget.areaNameController.addListener(() {
+      if (mounted) setState(() {});
+    });
+  }
+  @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: widget.togglePopup,
@@ -61,63 +69,85 @@ class _AreaPopupState extends State<AreaPopup> {
                 bottom: MediaQuery.of(context).viewInsets.bottom, // Adjust for keyboard
               ),
               child: Container(
-                width: 280,
+                width: 340,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  gradient: const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Color(0xFFECFFEC),
+                      Colors.white,
+                    ],
+                    stops: [0.35, 1.0],
+                  ),
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black12, blurRadius: 5),
+                  border: const Border(
+                    top: BorderSide(
+                      color: Color(0xFF1F9724),
+                      width: 4,
+                    ),
+                  ),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x4C4C5F7D),
+                      blurRadius: 10,
+                      offset: Offset(0, 1),
+                    ),
                   ],
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Stack(
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Align(
-                          alignment: Alignment.center,
-                          child: Padding(
-                            padding: const EdgeInsets.only(
-                              top: 25,
-                              right: 25,
-                              bottom: 20,
+
+                        Container(
+                          width: 46,
+                          height: 46,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: const Color(0xFF1F9724),
                             ),
-                            child: Text(
-                              "Let’s Create an Area/Zone",
-                              style: TextStyle(
-                                fontFamily: 'Inter',
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                              ),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Image.asset(
+                              'assets/table_area.png',
+                              fit: BoxFit.contain,
                             ),
                           ),
                         ),
-                        Positioned(
-                          right: 0,
-                          top: 0,
-                          child: GestureDetector(
-                            onTap: widget.togglePopup,
-                            child: Container(
-                              width: 20,
-                              height: 20,
-                              decoration: BoxDecoration(
-                                color: Color(0xFFF86157),
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Color(0x3F000000),
-                                    blurRadius: 11,
-                                  ),
-                                ],
+
+                        const SizedBox(width: 14),
+
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+
+                              Text(
+                                "Create a Area/Zone",
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
-                              child: Icon(
-                                Icons.close,
-                                color: Colors.white,
-                                size: 18,
+
+                              SizedBox(height: 4),
+
+                              Text(
+                                "Create a zone to organize tables and manage seating",
+                                style: TextStyle(
+                                  color: Color(0xFF6E6E6E),
+                                  fontSize: 14,
+                                ),
                               ),
-                            ),
+                            ],
                           ),
                         ),
                       ],
@@ -125,38 +155,63 @@ class _AreaPopupState extends State<AreaPopup> {
                     SizedBox(height: 5),
                     Text(
                       "Area/Zone",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                     SizedBox(height: 5),
                     Container(
-                      height: 45,
-                      padding: EdgeInsets.symmetric(horizontal: 10),
+                      height: 46,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(color: Color(0xFFECEBEB)),
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: [BoxShadow(color: Color(0x19000000))],
+                        color: const Color(0xFFF6F6F6),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFFF1F1F1),
+                        ),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x26000000),
+                            blurRadius: 2,
+                          ),
+                        ],
                       ),
                       child: Row(
                         children: [
-                          SizedBox(width: 8),
+
                           Expanded(
                             child: TextField(
                               controller: widget.areaNameController,
-                              style: TextStyle(
-                                fontSize: 12,
+                              style: const TextStyle(
+                                fontSize: 14,
                                 fontWeight: FontWeight.w500,
                               ),
-                              decoration: InputDecoration(
-                                hintText: 'Type an Area/Zone name',
+                              decoration: const InputDecoration(
                                 border: InputBorder.none,
+                                hintText: "Type a Area/Zone name",
+                                hintStyle: TextStyle(
+                                  color: Color(0xFFA19999),
+                                  fontSize: 14,
+                                ),
                                 isDense: true,
                               ),
                             ),
                           ),
+
+                          if (widget.areaNameController.text.isNotEmpty)
+                            InkWell(
+                              onTap: () {
+                                setState(() {
+                                  widget.areaNameController.clear();
+                                });
+                              },
+                              child: const Icon(
+                                Icons.close,
+                                color: Colors.red,
+                                size: 20,
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -178,54 +233,69 @@ class _AreaPopupState extends State<AreaPopup> {
                       ),
                     SizedBox(height: 7),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        ElevatedButton(
-                          onPressed: widget.isLoading ? null : () {
-                            setState(() {
-                              widget.areaNameController.clear();
-                            });
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.grey[100],
-                            foregroundColor: Color(0xFF4C5F7D),
-                            padding: EdgeInsets.symmetric(horizontal: 14, vertical: 3),
-                            minimumSize: Size(0, 30),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        SizedBox(
+                          width: 130,
+                          height: 40,
+                          child: OutlinedButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                            },
+                            // onPressed: widget.isLoading
+                            //     ? null
+                            //     : () {
+                            //   setState(() {
+                            //     widget.areaNameController.clear();
+                            //   });
+                            // },
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor: const Color(0xFFF6F6F6),
+                              side: const BorderSide(
+                                color: Color(0xFFC3C3C3),
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: const Text(
+                              "Cancel",
+                              style: TextStyle(
+                                color: Color(0xFF535353),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
-                          child: Text("Clear", style: TextStyle(fontSize: 12)),
                         ),
                         SizedBox(width: 7),
-                        ElevatedButton(
-                          onPressed: widget.isLoading ? null : widget.createArea,
-                          style: ButtonStyle(
-                            backgroundColor: WidgetStateProperty.resolveWith<Color>(
-                                  (Set<WidgetState> states) {
-                                return Colors.red;
-                              },
+                        SizedBox(
+                          width: 130,
+                          height: 40,
+                          child: ElevatedButton(
+                            onPressed: widget.isLoading ? null : widget.createArea,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF1F9724),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              elevation: 0,
                             ),
-                            foregroundColor: WidgetStateProperty.all<Color>(Colors.white),
-                            padding: WidgetStateProperty.all<EdgeInsets>(
-                              const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
+                            child: widget.isLoading
+                                ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                                : const Text(
+                              "Create",
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
                             ),
-                            minimumSize: WidgetStateProperty.all<Size>(const Size(0, 30)),
-                            shape: WidgetStateProperty.all<RoundedRectangleBorder>(
-                              RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                          ),
-                          child: widget.isLoading
-                              ? const SizedBox(
-                            width: 15,
-                            height: 15,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                              backgroundColor: Colors.transparent,
-                            ),
-                          )
-                              : const Text(
-                            "Create",
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                           ),
                         ),
                       ],

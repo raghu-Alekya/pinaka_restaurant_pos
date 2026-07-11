@@ -47,7 +47,9 @@ class VariantPopupContent extends StatefulWidget {
 class _VariantPopupContentState extends State<VariantPopupContent> {
   /// ✅ variationId → quantity
   final Map<int, int> _quantityMap = {};
-
+  bool get _hasSelectedVariants {
+    return _quantityMap.values.any((qty) => qty > 0);
+  }
   @override
   void initState() {
     super.initState();
@@ -275,13 +277,17 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
               height: 45,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF386EDA),
+                  backgroundColor: _hasSelectedVariants
+                      ? const Color(0xFF386EDA)
+                      : Colors.grey.shade400,
                   foregroundColor: Colors.white,
+                  disabledBackgroundColor: Colors.grey.shade400,
+                  disabledForegroundColor: Colors.white70,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                onPressed: _addVariantsToOrder,
+                onPressed: _hasSelectedVariants ? _addVariantsToOrder : null,
                 child: const Text(
                   'Done',
                   style:

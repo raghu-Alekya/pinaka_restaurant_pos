@@ -53,7 +53,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
   bool _justUpdated = false;
   double? _previousNetPayable;
   bool _kotUpdatedOnce = false;
-
+  String _currency = "₹";
   String? selectedReason;
   final TextEditingController _remarksController = TextEditingController();
 
@@ -100,8 +100,18 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
     _ordersFuture = _orderRepo.fetchOrders(widget.token);
     _orderStatusRepo = OrderstatusRepository();
     _loadPermissions();
-
+    _loadCurrency();   // <-- Add this
   }
+  Future<void> _loadCurrency() async {
+    final currency = await SessionManager.getCurrencySymbol();
+
+    if (mounted) {
+      setState(() {
+        _currency = currency ?? "₹";
+      });
+    }
+  }
+
   Future<void> _loadVoidedItemsForKot(KotOrder kot) async {
     if (_lastFetchedKotId == kot.kotOrderId) return;
 
@@ -161,7 +171,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                         'Reason: ${item.remarks}',
                   ),
                   trailing: Text(
-                    '₹${item.itemTotal.toStringAsFixed(2)}',
+                    '$_currency${item.itemTotal.toStringAsFixed(2)}',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 );
@@ -772,7 +782,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                                           ),
                                           child:  _summaryRow(
                                             "KOT #${_selectedKot?.kotOrderId ?? '-'} - Amount",
-                                            "₹${(_selectedKot?.lineItems ?? [])
+                                            "$_currency${(_selectedKot?.lineItems ?? [])
                                                 .fold<double>(
                                               0.0,
                                                   (sum, item) => sum + (item.totalWoTax ?? 0),
@@ -832,7 +842,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                                           ),
                                           child: _summaryRow(
                                             "KOT #${_selectedKot?.kotOrderId ?? '-'} - Amount",
-                                            "₹${(_editedKotItems[_selectedKotId] ?? [])
+                                            "$_currency${(_editedKotItems[_selectedKotId] ?? [])
                                                 .fold<double>(0.0, (sum, i) => sum + (i.totalWoTax ?? 0))
                                                 .toStringAsFixed(2)}",
                                             bold: true,
@@ -864,7 +874,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                           Expanded(
                             child: _infoRow(
                               "Order Net Payable",
-                              "₹${(order.orderPrevTotal ?? 0).toStringAsFixed(2)}",
+                              "$_currency${(order.orderPrevTotal ?? 0).toStringAsFixed(2)}",
                               bold: true,
                               labelColor: Colors.black87,
                               valueColor: Colors.black87,
@@ -877,7 +887,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                           Expanded(
                             child: _infoRow(
                               "Order Updated Net Payable",
-                              "₹${_dynamicNetPayable.toStringAsFixed(2)}",
+                              "$_currency${_dynamicNetPayable.toStringAsFixed(2)}",
                               bold: true,
                               labelColor: Colors.black87,
                               valueColor: Colors.black87, //  second value color valueColor: Color(0xFF086888),
@@ -1296,7 +1306,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         Expanded(
           flex: 1,
           child: Text(
-            "₹${(item.totalWoTax ?? 0).toStringAsFixed(2)}",
+            "$_currency${(item.totalWoTax ?? 0).toStringAsFixed(2)}",
           ),
         ),
       ],
@@ -1345,7 +1355,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         Expanded(
           flex: 1,
           child: Text(
-            "₹${item.itemTotal.toStringAsFixed(2)}",
+            "$_currency${item.itemTotal.toStringAsFixed(2)}",
             style: const TextStyle(
               color: Color(0xFFB9B9B9),
               // decoration: TextDecoration.lineThrough,
@@ -1565,7 +1575,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                           Expanded(
                             flex: 1,
                             child: Text(
-                              isVoided ? "₹0.00" : "₹${(item.totalWoTax ?? 0).toStringAsFixed(2)}",
+                              isVoided ? "_currencySymbol0.00" : "$_currency${(item.totalWoTax ?? 0).toStringAsFixed(2)}",
                               style: TextStyle(color: isVoided ? Colors.red : Colors.black),
                             ),
                           ),

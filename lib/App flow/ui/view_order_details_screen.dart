@@ -57,6 +57,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
   VoidedItemsResponse? voidedItemsResponse;
   bool isVoidedLoading = false;
   int? selectedKotOrderId;
+  String _currency = "₹";
 
 
   void _onKotSelected(int kotId) {
@@ -75,6 +76,16 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
     _userPermissions = widget.userPermissions;
     _ordersFuture = _orderRepo.fetchOrders(widget.token);
     _loadPermissions();
+    _loadCurrency();   // <-- Add this
+  }
+  Future<void> _loadCurrency() async {
+    final currency = await SessionManager.getCurrencySymbol();
+
+    if (mounted) {
+      setState(() {
+        _currency = currency ?? "₹";
+      });
+    }
   }
 
   void _onItemTapped(int index) {
@@ -1107,12 +1118,12 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
                                             paymentRow(
                                               "Gross Total",
-                                              "₹${(orderModel.grossTotal ?? 0).toDouble().toStringAsFixed(2)}",
+                                              "$_currency${(orderModel.grossTotal ?? 0).toDouble().toStringAsFixed(2)}",
                                               fontWeight: FontWeight.w500,
                                             ),
                                             paymentRow(
                                               "Coupon / Discounts",
-                                              "-₹${orderModel.totalCouponDiscount.toDouble().toStringAsFixed(2)}",
+                                              "-$_currency${orderModel.totalCouponDiscount.toDouble().toStringAsFixed(2)}",
                                               color: Colors.green,
                                             ),
                                             ShaderMask(
@@ -1141,7 +1152,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
                                             paymentRow(
                                               "Sub Total",
-                                              "₹${(orderModel.subTotal ?? 0).toDouble().toStringAsFixed(2)}",
+                                              "$_currency${(orderModel.subTotal ?? 0).toDouble().toStringAsFixed(2)}",
                                             ),
 
                                             paymentRow(
@@ -1156,7 +1167,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                               padding: const EdgeInsets.only(left: 36),
                                               child: paymentRow(
                                                 "CGST 2.5%",
-                                                "₹${((orderModel.totalTax ?? 0) / 2).toStringAsFixed(2)}",
+                                                "$_currency${((orderModel.totalTax ?? 0) / 2).toStringAsFixed(2)}",
                                                 fontSize: 10,
                                                 color: Colors.grey,
                                               ),
@@ -1166,7 +1177,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                               padding: const EdgeInsets.only(left: 36),
                                               child: paymentRow(
                                                 "SGST 2.5%",
-                                                "₹${((orderModel.totalTax ?? 0) / 2).toStringAsFixed(2)}",
+                                                "$_currency${((orderModel.totalTax ?? 0) / 2).toStringAsFixed(2)}",
                                                 fontSize: 10,
                                                 color: Colors.grey,
                                               ),
@@ -1175,7 +1186,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
                                             paymentRow(
                                               "Tax @Alcohol Nil (Price inclusive of Excise Duty)",
-                                              "₹0.00",
+                                              "_currencySymbol0.00",
                                               fontSize: 12,
                                               color: Colors.grey,
                                               fontWeight: FontWeight.w700,
@@ -1212,7 +1223,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
                                             paymentRow(
                                               "Total Tax",
-                                              "₹${(orderModel.totalTax ?? 0).toDouble().toStringAsFixed(2)}",
+                                              "$_currency${(orderModel.totalTax ?? 0).toDouble().toStringAsFixed(2)}",
                                             ),
 
                                             ShaderMask(
@@ -1241,26 +1252,26 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
                                             paymentRow(
                                               "Net Total",
-                                              "₹${(orderModel.netTotal ?? 0).toStringAsFixed(2)}",
+                                              "$_currency${(orderModel.netTotal ?? 0).toStringAsFixed(2)}",
                                               fontWeight: FontWeight.bold,
                                             ),
 
                                             paymentRow(
                                               "Merchant Discount",
-                                              "-₹${(orderModel.merchantDiscount ?? 0).toDouble().toStringAsFixed(2)}",
+                                              "-$_currency${(orderModel.merchantDiscount ?? 0).toDouble().toStringAsFixed(2)}",
                                               color: Colors.blue,
                                             ),
                                             if ((orderModel.tipAmount ?? 0) > 0)
                                               paymentRow(
                                                 "Tip Amount",
-                                                "₹${(orderModel.tipAmount ?? 0).toDouble().toStringAsFixed(2)}",
+                                                "$_currency${(orderModel.tipAmount ?? 0).toDouble().toStringAsFixed(2)}",
                                                 color: Colors.green,
                                               ),
 
                                             if ((orderModel.serviceChargeValue ?? 0) > 0)
                                               paymentRow(
                                                 "Service Charges",
-                                                "₹${(orderModel.serviceChargeValue ?? 0).toDouble().toStringAsFixed(2)}",
+                                                "$_currency${(orderModel.serviceChargeValue ?? 0).toDouble().toStringAsFixed(2)}",
                                                 color: Colors.blue,
                                               ),
 
@@ -1296,7 +1307,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
                                             paymentRow(
                                               "Net Payable",
-                                              "₹${(orderModel.netPayable ?? 0).toDouble().toStringAsFixed(2)}",
+                                              "$_currency${(orderModel.netPayable ?? 0).toDouble().toStringAsFixed(2)}",
                                               fontWeight: FontWeight.bold,
                                               fontSize: 15,
                                             ),
@@ -1393,7 +1404,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                               style: TextStyle(fontSize: 14),
                                             ),
                                             Text(
-                                              "₹${orderModel.orderPrevTotal?.toStringAsFixed(2) ?? '0.00'}",
+                                              "$_currency${orderModel.orderPrevTotal?.toStringAsFixed(2) ?? '0.00'}",
                                               style: const TextStyle(
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.w500,

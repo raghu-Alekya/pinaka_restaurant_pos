@@ -45,7 +45,18 @@ class _TipPopupState extends State<TipPopup> {
   }
   void _onNumberPressed(String value) {
     setState(() {
-      _tipController.text += value;
+      String currentText = _tipController.text.replaceAll(',', '');
+
+      // Remove .00 before appending a new digit
+      if (currentText.contains('.')) {
+        currentText = currentText.split('.').first;
+      }
+
+      currentText += value;
+
+      final amount = double.tryParse(currentText) ?? 0.0;
+      _tipController.text = amount.toStringAsFixed(2);
+
       selectedTip = null;
     });
   }
@@ -59,10 +70,24 @@ class _TipPopupState extends State<TipPopup> {
 
   void _onBackspace() {
     setState(() {
-      if (_tipController.text.isNotEmpty) {
-        _tipController.text =
-            _tipController.text.substring(0, _tipController.text.length - 1);
+      String currentText = _tipController.text;
+
+      if (currentText.contains('.')) {
+        currentText = currentText.split('.').first;
       }
+
+      if (currentText.isNotEmpty) {
+        currentText = currentText.substring(0, currentText.length - 1);
+
+        if (currentText.isEmpty) {
+          _tipController.clear();
+        } else {
+          _tipController.text =
+              (double.tryParse(currentText) ?? 0).toStringAsFixed(2);
+        }
+      }
+
+      selectedTip = null;
     });
   }
 
@@ -163,7 +188,7 @@ class _TipPopupState extends State<TipPopup> {
         ),
         child: Text(
           // value.toString(),
-          "$_currencySymbol$value",
+          "$_currencySymbol${value.toDouble().toStringAsFixed(2)}",
           style: const TextStyle(
             color: Colors.white,
             fontSize: 18,
@@ -250,10 +275,10 @@ class _TipPopupState extends State<TipPopup> {
                 ],
               ),
 
-              const Text(
-                "Add tip for",
-                style: TextStyle(color: Colors.grey, fontSize: 14),
-              ),
+              // const Text(
+              //   "Add tip for",
+              //   style: TextStyle(color: Colors.grey, fontSize: 14),
+              // ),
               const SizedBox(height: 50),
 
               // ---------- Body ----------
