@@ -30,6 +30,7 @@ class OrderPanelList extends StatelessWidget {
     required this.token,
   }) : super(key: key);
 
+
   void _showModifierPopup(BuildContext context, int index) async {
     final item = orderItems[index];
     final result = await showDialog<Map<String, dynamic>>(
@@ -70,7 +71,9 @@ class OrderPanelList extends StatelessWidget {
       separatorBuilder: (_, __) => const Divider(height: 0),
       itemBuilder: (context, index) {
         final item = orderItems[index];
-
+        print("Item Name: ${item.name}");
+        // print("Variation Name: ${item.variationName}");
+        // print("Product Name: ${item.productName}");
         return Dismissible(
           key: ValueKey('${item.name}-$index'),
           direction: DismissDirection.endToStart,

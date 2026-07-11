@@ -265,4 +265,41 @@ class VendorPaymentRepository {
       rethrow;
     }
   }
+  Future<Map<String, dynamic>> updateVendorPayment({
+    required String token,
+    required int vendorPaymentId,
+    required int vendorId,
+    required String invoiceNo,
+    required double amount,
+    required String paymentMethod,
+    required String purpose,
+    required String notes,
+  }) async {
+    final response = await http.post(
+      Uri.parse(
+        "${AppConstants.baseApiPath}/vendor_payments/update-vendor-payment",
+      ),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
+      },
+      body: jsonEncode({
+        "vendor_payment_id": vendorPaymentId,
+        "vendor_id": vendorId,
+        "invoice_no": invoiceNo,
+        "amount": amount,
+        "payment_method": paymentMethod,
+        "purpose": purpose,
+        "notes": notes,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200 && data["success"] == true) {
+      return Map<String, dynamic>.from(data);
+    }
+
+    throw Exception(data["message"] ?? "Failed to update vendor payment");
+  }
 }

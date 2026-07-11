@@ -79,9 +79,18 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
       final variant = widget.product.variants.firstWhere(
             (v) => v.variationId == entry.key,
       );
-
+      print("=========== VARIANT DEBUG ===========");
+      print("Parent Product ID : ${widget.product.id}");
+      print("Parent Product Name : ${widget.product.name}");
+      print("Variation ID : ${variant.variationId}");
+      print("Variation Name : ${variant.name}");
+      print("Variation Price : ${variant.price}");
+      print("Quantity : ${entry.value}");
+      print("Combined Name : ${widget.product.name} - ${variant.name}");
+      print("=====================================");
       final orderItem = OrderItems(
-        name: '${widget.product.name} - ${variant.name}',
+        // name: '${widget.product.name} - ${variant.name}',
+        name: variant.name,
         price: variant.price,
         quantity: entry.value,
         modifiers: [],

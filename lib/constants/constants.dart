@@ -14,6 +14,8 @@ class AppConstants {
   // Authentication
   static String get authTokenEndpoint =>
       '$baseApiPath/token';
+  static String get getKotStatusCountEndpoint =>
+      '$baseApiPath/kot/get-kot-status-count';
 
   static String get empOrderPinValidationEndpoint =>
       '$baseApiPath/emp-order-pin-validation';

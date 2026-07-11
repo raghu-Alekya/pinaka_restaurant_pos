@@ -293,7 +293,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         PosColumn(
           width: 7,
           text:
-              "Date : ${DateFormat('dd/MM/yyyy hh:mm a').format(DateTime.now())}",
+          "Date : ${DateFormat('dd/MM/yyyy hh:mm a').format(DateTime.now())}",
         ),
         PosColumn(
           width: 5,
@@ -713,119 +713,135 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: false,
-      backgroundColor: const Color(0xFFF1F1F3),
-      appBar: TopBar(
-        token: widget.token,
-        pin: widget.pin,
-        restaurantId: widget.restaurantId,
-        restaurantName: widget.restaurantName,
-        userPermissions: _userPermissions,
-        isHomeScreen: false,
-        onPermissionsReceived: (permissions) async {
-          setState(() {
-            _userPermissions = permissions;
-            _selectedUser = {
-              "id": permissions.userId,
-              "name": permissions.displayName,
-              "role": permissions.role,
-            };
-            _selectedTableIndex = null;
-            _selectedTable = null;
-            _selectedKot = null;
-            _kotItems.clear();
-          });
-          await _fetchOrders();
-        },
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHeader(),
-          Expanded(
+        resizeToAvoidBottomInset: false,
+        backgroundColor: Color(0xFFE4E9F9),
+        appBar: TopBar(
+          token: widget.token,
+          pin: widget.pin,
+          restaurantId: widget.restaurantId,
+          restaurantName: widget.restaurantName,
+          userPermissions: _userPermissions,
+          isHomeScreen: false,
+          onPermissionsReceived: (permissions) async {
+            setState(() {
+              _userPermissions = permissions;
+              _selectedUser = {
+                "id": permissions.userId,
+                "name": permissions.displayName,
+                "role": permissions.role,
+              };
+              _selectedTableIndex = null;
+              _selectedTable = null;
+              _selectedKot = null;
+              _kotItems.clear();
+            });
+            await _fetchOrders();
+          },
+        ),
+
+
+        body: Padding(
+            padding: const EdgeInsets.all(12),
             child: Container(
-              margin: const EdgeInsets.only(left: 4, right: 14),
-              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFFFE5EDFF),
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x26000000),
+                    blurRadius: 10,
+                    offset: Offset(0, 2),
+                  ),
+                ],
               ),
-              child: Row(
+              child:  Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  _buildHeader(),
                   Expanded(
-                    flex: 4,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Container(
+                      margin: const EdgeInsets.only(left: 10, right: 10,bottom: 10),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFE5EDFF),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
                         children: [
-                          const SizedBox(height: 12),
-
-                          // ✅ KOT LIST HEADER (Beige)
-                          _buildKotListHeader(),
-
-                          // const SizedBox(height: 8),
-
-                          // ✅ WHITE CONTAINER BELOW HEADER
                           Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.white,               // 🔥 White like image
-                                borderRadius: BorderRadius.circular(3),
+                            flex: 4,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 2),
+
+                                  // ✅ KOT LIST HEADER (Beige)
+                                  _buildKotListHeader(),
+
+                                  // const SizedBox(height: 8),
+
+                                  // ✅ WHITE CONTAINER BELOW HEADER
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.all(14),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,               // 🔥 White like image
+                                        borderRadius: BorderRadius.only(bottomRight: Radius.circular(8),bottomLeft: Radius.circular(8) ),
+                                      ),
+                                      child: _buildTableList(),             // 🔥 Grid inside
+                                    ),
+                                  ),
+                                ],
                               ),
-                              child: _buildTableList(),             // 🔥 Grid inside
+                            ),
+                          ),
+
+
+                          Expanded(
+                            flex: 4,
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 0),
+                              child: _buildOrderDetails(),
                             ),
                           ),
                         ],
                       ),
                     ),
                   ),
-
-
-                  Expanded(
-                    flex: 4,
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 10),
-                      child: _buildOrderDetails(),
-                    ),
-                  ),
                 ],
               ),
-            ),
-          ),
-        ],
-      ),
-      // bottomNavigationBar: BottomNavBar(
-      //   selectedIndex: 2,
-      //   onItemTapped: (index) {
-      //     NavigationHelper.handleNavigation(
-      //       context,
-      //       2,
-      //       index,
-      //       widget.pin,
-      //       widget.token,
-      //       widget.restaurantId,
-      //       widget.restaurantName,
-      //       _userPermissions,
-      //     );
-      //   },
-      //   userPermissions: _userPermissions,
-      // ),
-    );
+              // bottomNavigationBar: BottomNavBar(
+              //   selectedIndex: 2,
+              //   onItemTapped: (index) {
+              //     NavigationHelper.handleNavigation(
+              //       context,
+              //       2,
+              //       index,
+              //       widget.pin,
+              //       widget.token,
+              //       widget.restaurantId,
+              //       widget.restaurantName,
+              //       _userPermissions,
+              //     );
+              //   },
+              //   userPermissions: _userPermissions,
+              // ),
+            )));
   }
   Widget _buildKotListHeader() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 17),
       decoration: BoxDecoration(
         color: const Color(0xFFFFF5E8),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.only(topRight: Radius.circular(8),topLeft: Radius.circular(8) ),
       ),
       child: const Text(
         "KOT list",
         style: TextStyle(
-          fontSize: 15,
+          fontSize: 16,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -840,11 +856,11 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     }
 
     return Container(
-      height: 40,
+      height: 47,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: const Color(0xFF0C6FDB),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
@@ -991,11 +1007,11 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
             children: [
               /// 🔥 Order Type Tabs
               Container(
-                height: 38,
+                height: 48,
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(10),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.05),
@@ -1061,11 +1077,11 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       child: Opacity(
         opacity: isResetEnabled ? 1.0 : 0.5, // 🔒 visual disabled effect
         child: Container(
-          height: 40,
+          height: 47,
           padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
             color: isResetEnabled ? Colors.red : Colors.grey.shade300,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: isResetEnabled ? Colors.red : Colors.grey.shade300,
             ),
@@ -1101,25 +1117,58 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   Widget _buildSearchBar() {
     return SizedBox(
       width: 260,
-      child: TextField(
-        controller: _searchController,
-        onChanged: (value) => setState(() => searchQuery = value.toLowerCase()),
-        decoration: InputDecoration(
-          hintText: "Order ID or Table No",
-          prefixIcon: Icon(Icons.search, size: 18),
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: EdgeInsets.symmetric(horizontal: 10),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide.none,
+      child: Container(
+        height: 44,
+        decoration: ShapeDecoration(
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            side: const BorderSide(
+              color: Color(0xFFD4EBFF), // Border color
+              width: 0.5,
+            ),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          shadows: const [
+            BoxShadow(
+              color: Color(0x4204347F),
+              blurRadius: 5,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: TextField(
+          controller: _searchController,
+          cursorColor: Colors.black,
+          onChanged: (value) =>
+              setState(() => searchQuery = value.toLowerCase()),
+          decoration: const InputDecoration(
+            border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
+            prefixIcon: Icon(
+              Icons.search,
+              size: 18,
+              color: Colors.black54,
+            ),
+            hintText: "Order ID or Table No",
+            hintStyle: TextStyle(
+              color: Color(0xFFC3C2C2),
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          style: const TextStyle(
+            fontSize: 14,
+            color: Colors.black,
           ),
         ),
-        style: TextStyle(fontSize: 14),
       ),
     );
   }
-
   Widget _buildTableList() {
     final tables = filteredTables;
     if (tables.isEmpty) {
@@ -1167,9 +1216,9 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
           },
           child: Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: const Color(0xFFD4EBFF), // ✅ #D4EBFF
+                color: const Color(0xFFD4EBFF),// ✅ #D4EBFF
                 width: 1.2,
               ),
             ),
@@ -1245,10 +1294,10 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       constraints: const BoxConstraints(
         minHeight: 160, // 🔼 increase height here
       ),
-      padding: const EdgeInsets.all(13),
+      padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: isSelected ? const Color(0xFF0C6FDB) : Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1393,7 +1442,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: const Color(0xFFC2DFFF),
-              borderRadius: BorderRadius.circular(3),
+              borderRadius: BorderRadius.only(topRight: Radius.circular(8),topLeft: Radius.circular(8) ), // borderRadius: BorderRadius.circular(6)
             ),
             child: Row(
               children: [
@@ -1544,7 +1593,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: const Color(0xFFFFFFFF),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.only(bottomRight: Radius.circular(8),bottomLeft: Radius.circular(8) ), // borderRadius: BorderRadius.circular(6)
               ),
               child:
               hasTable && kots.isNotEmpty

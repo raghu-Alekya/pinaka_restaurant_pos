@@ -15,11 +15,13 @@ import '../../blocs/Bloc Logic/checkin_bloc.dart';
 import '../../blocs/Bloc Logic/order_bloc.dart';
 import '../../blocs/Bloc Logic/order_list_bloc.dart';
 import '../../blocs/Bloc State/attendance_state.dart';
+import '../../blocs/Bloc State/order_state.dart';
 import '../../models/UserPermissions.dart';
 import '../../models/tip_model.dart';
 import '../../repositories/TIP_repository.dart';
 import '../../repositories/checkin_repository.dart';
 import '../../repositories/employee_repository.dart';
+import '../../repositories/kot_status_count_repository.dart';
 import '../../repositories/order_list_repository.dart';
 import '../../repositories/table_status_count_repository.dart';
 import '../../repositories/vendor_payment_repository.dart';
@@ -66,12 +68,15 @@ class _HomeScreenState extends State<HomeScreen> {
   double totalTipAmount = 0.0;
   double vendorcount = 0;
   String _currency = "₹";
+  int kotStatusCount = 0;
+  int kotCustomerCount = 0;
   @override
   void initState() {
     super.initState();
     _loadSavedPermissions();
     _startClock();
     _loadCurrency();   // <-- Add this
+    loadKotStatusCount();
     loadTableStatusCounts();
     loadReservationCounts();
     loadActiveOrdersCount();
@@ -88,6 +93,29 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _currency = currency ?? "₹";
       });
+    }
+  }
+  Future<void> loadKotStatusCount() async {
+    try {
+      final repository = KotStatusCountRepository(
+        token: widget.token,
+      );
+
+      final result = await repository.fetchKotStatusCount(
+        restaurantId: int.parse(widget.restaurantId),
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        kotStatusCount = result.statusCount;
+        kotCustomerCount = result.customerCount;
+      });
+
+      debugPrint("KOT Status Count: ${result.statusCount}");
+      debugPrint("Customer Count: ${result.customerCount}");
+    } catch (e) {
+      debugPrint("KOT Status Count Error: $e");
     }
   }
   void _startClock() {
@@ -407,65 +435,70 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     const SizedBox(width: 16),
 
-                    SizedBox(
-                      width: 250,
-                      child: _moduleCard(
-                          title: "Take Aways",
-                          subtitle: "Walk-in Orders",
-                          count: "0",
-                          countLabel: "Active",
-                          color: const Color(0xff5FCB89),
-                          gradient: const RadialGradient(
-                            center: Alignment(0.82, 0.85),
-                            radius: 1.18,
-                            colors: [
-                              Color(0xFF79D89E),
-                              Color(0xFF5CB87A),
-                            ],
-                          ),
-                          boxShadows: const [
-                            BoxShadow(
-                              color: Color(0x141C2333),
-                              blurRadius: 6,
-                              offset: Offset(0, 2),
-                            ),
-                            BoxShadow(
-                              color: Color(0x995CB87A),
-                              blurRadius: 20,
-                              offset: Offset(0, 6),
-                            ),
-                          ],
-                          icon: Icons.inventory_2_outlined,
-                          onTap: () {
-                            final orderBloc = context.read<OrderBloc>();
-                            final state = orderBloc.state;
+                    BlocBuilder<OrderBloc, OrderState>(
+                      builder: (context, state) {
+                        final activeOrderCount = state.orderItems.isNotEmpty ? "1" : "0";
 
-                            // No active order -> clear stale data
-                            if (state.orderItems.isEmpty) {
-                              debugPrint("🧹 No active order found. Resetting OrderBloc.");
-                              orderBloc.add(ResetOrder());
-                            } else {
-                              debugPrint(
-                                "✅ Active takeaway order found. orderId: ${state.orderId}, items: ${state.orderItems.length}",
-                              );
-                            }
-
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => DashboardScreen(
-                                  pin: widget.pin,
-                                  token: widget.token,
-                                  restaurantId: widget.restaurantId,
-                                  restaurantName: widget.restaurantName,
-                                  userPermissions: widget.userPermissions,
-                                  isTakeAway: true,
-                                ),
+                        return SizedBox(
+                          width: 250,
+                          child: _moduleCard(
+                            title: "Take Aways",
+                            subtitle: "Walk-in Orders",
+                            count: activeOrderCount,
+                            countLabel: "Active",
+                            color: const Color(0xff5FCB89),
+                            gradient: const RadialGradient(
+                              center: Alignment(0.82, 0.85),
+                              radius: 1.18,
+                              colors: [
+                                Color(0xFF79D89E),
+                                Color(0xFF5CB87A),
+                              ],
+                            ),
+                            boxShadows: const [
+                              BoxShadow(
+                                color: Color(0x141C2333),
+                                blurRadius: 6,
+                                offset: Offset(0, 2),
                               ),
-                            );
-                          }                      ),
-                    ),
+                              BoxShadow(
+                                color: Color(0x995CB87A),
+                                blurRadius: 20,
+                                offset: Offset(0, 6),
+                              ),
+                            ],
+                            icon: Icons.inventory_2_outlined,
+                            onTap: () {
+                              final orderBloc = context.read<OrderBloc>();
+                              final state = orderBloc.state;
 
+                              if (state.orderItems.isEmpty) {
+                                debugPrint("🧹 No active order found. Resetting OrderBloc.");
+                                orderBloc.add(ResetOrder());
+                              } else {
+                                debugPrint(
+                                  "✅ Active takeaway order found. orderId: ${state.orderId}, items: ${state.orderItems.length}",
+                                );
+                              }
+
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => DashboardScreen(
+                                    pin: widget.pin,
+                                    token: widget.token,
+                                    restaurantId: widget.restaurantId,
+                                    restaurantName: widget.restaurantName,
+                                    userPermissions: widget.userPermissions,
+                                    isTakeAway: true,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    ),
                     const SizedBox(width: 16),
 
                     SizedBox(
@@ -511,7 +544,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       width: 250,
                       child: _whiteModuleCard(
                         title: "KOT Status",
-                        count: "8",
+                        count: kotStatusCount.toString(),
                         countLabel: "In Kitchen",
                         icon: Icons.restaurant_menu,
                         iconColor: Colors.red,

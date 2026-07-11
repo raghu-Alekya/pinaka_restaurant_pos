@@ -170,20 +170,30 @@ class _AddVendorPayoutDialogState extends State<AddVendorPayoutDialog> {
 
       print("TOKEN:");
       print(widget.token);
+      Map<String, dynamic> response;
 
-      final response = await _repository.createVendorPayment(
-        token: widget.token,
-        vendorId: selectedVendorId ?? 0,
-        invoiceNo: invoiceController.text.trim(),
-        amount: double.tryParse(
-          amountController.text.trim(),
-        ) ??
-            0.0,
-        paymentMethod: selectedPaymentMode ?? "Cash",
-        purpose: selectedPurpose ?? "Expenses",
-        notes: notesController.text.trim(),
-      );
-
+      if (widget.editData == null) {
+        response = await _repository.createVendorPayment(
+          token: widget.token,
+          vendorId: selectedVendorId!,
+          invoiceNo: invoiceController.text.trim(),
+          amount: double.tryParse(amountController.text.trim()) ?? 0,
+          paymentMethod: selectedPaymentMode!,
+          purpose: selectedPurpose!,
+          notes: notesController.text.trim(),
+        );
+      } else {
+        response = await _repository.updateVendorPayment(
+          token: widget.token,
+          vendorPaymentId: widget.editData!.vendorPaymentId,
+          vendorId: selectedVendorId!,
+          invoiceNo: invoiceController.text.trim(),
+          amount: double.tryParse(amountController.text.trim()) ?? 0,
+          paymentMethod: selectedPaymentMode!,
+          purpose: selectedPurpose!,
+          notes: notesController.text.trim(),
+        );
+      }
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -248,9 +258,11 @@ class _AddVendorPayoutDialogState extends State<AddVendorPayoutDialog> {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              const Text(
-                "Add Vendor Payout",
-                style: TextStyle(
+              Text(
+                widget.editData == null
+                    ? "Add Vendor Payout"
+                    : "Edit Vendor Payout",
+                style: const TextStyle(
                   color: Color(0xFF1E2939),
                   fontSize: 24,
                   fontWeight: FontWeight.w700,
@@ -515,8 +527,8 @@ class _AddVendorPayoutDialogState extends State<AddVendorPayoutDialog> {
                             strokeWidth: 2,
                           ),
                         )
-                            : const Text(
-                          "Save",
+                            :  Text(
+                          widget.editData == null ? "Save" : "Update",
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 16,
