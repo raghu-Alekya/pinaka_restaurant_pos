@@ -103,7 +103,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
               _navButton(
                 title: "QUEUE", //"Pending KOTs",
                 view: KotView.pending,
-                icon: Icons.format_list_bulleted,
+                icon: Icons.hourglass_bottom,
                 isSelected: widget.selectedView == KotView.pending,
                 count: widget.pendingCount,
                 onTap: () => widget.onViewChanged(KotView.pending),
@@ -111,7 +111,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
               _navButton(
                 title: "Active KOTs",
                 view: KotView.active,
-                icon: Icons.restaurant,
+                icon: Icons.bolt,
                 isSelected: widget.selectedView == KotView.active,
                 count: widget.activeCount,
                 onTap: () => widget.onViewChanged(KotView.active),

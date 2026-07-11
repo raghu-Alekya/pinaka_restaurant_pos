@@ -236,24 +236,27 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xffe2e8f0)),
       ),
-      padding: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 4),
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.only(top: 1, bottom: 4),
-            child: Row(
-              children: [
-                Text(
-                  "New KOT's(${filteredOrders.length.toString().padLeft(2, '0')})",
-                  style: GoogleFonts.montserrat(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xff1E293B),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: SizedBox(
+              height: 52,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    "New KOT's(${filteredOrders.length.toString().padLeft(2, '0')})",
+                    style: GoogleFonts.montserrat(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xff1E293B),
+                    ),
                   ),
-                ),
-                const Spacer(),
-                _filterButtonGroup(),
-              ],
+                  const Spacer(),
+                  _filterButtonGroup(),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 2),
@@ -307,6 +310,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
 
   Widget _filterButtonGroup() {
     return Container(
+      width: 510,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -322,51 +326,58 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
         ],
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          _filterButton(
-            title: "All",
-            selected: selectedFilter == OrderTypeFilter.all,
-            icon: Icons.grid_view,
-            iconColor: const Color(0xff2F4376),
-            onTap: () {
-              setState(() {
-                selectedFilter = OrderTypeFilter.all;
-              });
-            },
+          Expanded(
+            child: _filterButton(
+              title: "All",
+              selected: selectedFilter == OrderTypeFilter.all,
+              icon: Icons.grid_view,
+              iconColor: const Color(0xff2F4376),
+              onTap: () {
+                setState(() {
+                  selectedFilter = OrderTypeFilter.all;
+                });
+              },
+            ),
           ),
-          _filterButton(
-            title: "Dine-In",
-            selected: selectedFilter == OrderTypeFilter.dineIn,
-            icon: Icons.restaurant,
-            iconColor: Colors.orange,
-            onTap: () {
-              setState(() {
-                selectedFilter = OrderTypeFilter.dineIn;
-              });
-            },
+          Expanded(
+            child: _filterButton(
+              title: "Dine-In",
+              selected: selectedFilter == OrderTypeFilter.dineIn,
+              icon: Icons.restaurant,
+              iconColor: Colors.orange,
+              onTap: () {
+                setState(() {
+                  selectedFilter = OrderTypeFilter.dineIn;
+                });
+              },
+            ),
           ),
-          _filterButton(
-            title: "Takeaways",
-            selected: selectedFilter == OrderTypeFilter.takeaway,
-            icon: Icons.shopping_bag_outlined,
-            iconColor: Colors.blueGrey,
-            onTap: () {
-              setState(() {
-                selectedFilter = OrderTypeFilter.takeaway;
-              });
-            },
+          Expanded(
+            child: _filterButton(
+              title: "Takeaways",
+              selected: selectedFilter == OrderTypeFilter.takeaway,
+              icon: Icons.shopping_bag_outlined,
+              iconColor: Colors.blueGrey,
+              onTap: () {
+                setState(() {
+                  selectedFilter = OrderTypeFilter.takeaway;
+                });
+              },
+            ),
           ),
-          _filterButton(
-            title: "Online Orders",
-            selected: selectedFilter == OrderTypeFilter.online,
-            icon: Icons.delivery_dining,
-            iconColor: Colors.green,
-            onTap: () {
-              setState(() {
-                selectedFilter = OrderTypeFilter.online;
-              });
-            },
+          Expanded(
+            child: _filterButton(
+              title: "Online Orders",
+              selected: selectedFilter == OrderTypeFilter.online,
+              icon: Icons.delivery_dining,
+              iconColor: Colors.green,
+              onTap: () {
+                setState(() {
+                  selectedFilter = OrderTypeFilter.online;
+                });
+              },
+            ),
           ),
         ],
       ),
@@ -383,14 +394,14 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         decoration: BoxDecoration(
           color: selected ? const Color(0xff2F4376) : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (icon != null)
               Icon(icon, size: 16, color: selected ? Colors.white : iconColor),
@@ -400,6 +411,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
               style: TextStyle(
                 color: selected ? Colors.white : Colors.black87,
                 fontWeight: FontWeight.w500,
+                fontSize: 12,
               ),
             ),
           ],
@@ -602,9 +614,22 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                           ),
 
                           Text(
-                            DateFormat(
-                              "MMM dd, yyyy | hh:mm a",
-                            ).format(DateTime.now()),
+                            (() {
+                              DateTime? kt;
+                              final rawTime = order['kotTime'];
+                              if (rawTime is DateTime) {
+                                kt = rawTime;
+                              } else if (rawTime is String) {
+                                kt = DateTime.tryParse(rawTime);
+                                if (kt == null) {
+                                  try {
+                                    kt = DateFormat('yyyy-MM-dd hh:mm a').parse(rawTime);
+                                  } catch (_) {}
+                                }
+                              }
+                              kt ??= DateTime.now();
+                              return DateFormat("MMM dd, yyyy | hh:mm a").format(kt);
+                            })(),
                             style: TextStyle(
                               fontSize: isCardZoomedOut ? 10 : 12,
                               color: Colors.grey.shade600,

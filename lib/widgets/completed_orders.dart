@@ -87,28 +87,32 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
 
     // Order Type Filter
     bool matchType = false;
-    if (selectedOrderType == 'All') {
+    final selType = selectedOrderType.toLowerCase();
+    final ordType = order.orderType.toLowerCase();
+    if (selType == 'all') {
       matchType = true;
-    } else if (selectedOrderType.toLowerCase().contains('dine')) {
-      matchType = order.orderType.toLowerCase().contains('dine');
-    } else if (selectedOrderType.toLowerCase().contains('take')) {
-      matchType = order.orderType.toLowerCase().contains('take');
-    } else if (selectedOrderType.toLowerCase().contains('online')) {
-      matchType = order.orderType.toLowerCase().contains('online');
+    } else if (selType.contains('dine')) {
+      matchType = ordType.contains('dine');
+    } else if (selType.contains('take')) {
+      matchType = ordType.contains('take');
+    } else if (selType.contains('online')) {
+      matchType = ordType.contains('online');
     } else {
-      matchType = order.orderType.toLowerCase().contains(
-        selectedOrderType.toLowerCase(),
-      );
+      matchType = ordType.contains(selType);
     }
 
     // Date Filter
     bool matchDate = true;
-    if (selectedDate != null && order.finishedDateTime != null) {
-      final orderDate = order.finishedDateTime!;
-      matchDate =
-          orderDate.year == selectedDate!.year &&
-          orderDate.month == selectedDate!.month &&
-          orderDate.day == selectedDate!.day;
+    if (selectedDate != null) {
+      if (order.kotDateTime != null) {
+        final orderDate = order.kotDateTime!;
+        matchDate =
+            orderDate.year == selectedDate!.year &&
+            orderDate.month == selectedDate!.month &&
+            orderDate.day == selectedDate!.day;
+      } else {
+        matchDate = false;
+      }
     }
 
     // Duration Filter
@@ -178,29 +182,37 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
       isLoading = true;
     });
 
+    final fromDateParam = selectedDate != null
+        ? DateTime(
+            selectedDate!.year,
+            selectedDate!.month,
+            selectedDate!.day,
+          )
+        : DateTime(
+            DateTime.now().year,
+            DateTime.now().month,
+            DateTime.now().day,
+          );
+    final toDateParam = selectedDate != null
+        ? DateTime(
+            selectedDate!.year,
+            selectedDate!.month,
+            selectedDate!.day,
+          ).add(const Duration(days: 1))
+        : DateTime.now();
+
+    debugPrint("--- CompletedOrdersScreen: loadOrders ---");
+    debugPrint("Selected Date Filter: $selectedDate");
+    debugPrint("Querying API from_date: $fromDateParam, to_date: $toDateParam");
+
     try {
       final fetched = await getCompletedOrders(
         token: widget.token,
         restaurantId: widget.restaurantId,
         page: 1,
         perPage: 1000,
-
-        // Default: today
-        fromDate:
-            selectedDate != null
-                ? DateTime(
-                  selectedDate!.year,
-                  selectedDate!.month,
-                  selectedDate!.day,
-                )
-                : DateTime(
-                  DateTime.now().year,
-                  DateTime.now().month,
-                  DateTime.now().day,
-                ),
-
-        // Default: today
-        toDate: DateTime.now(),
+        fromDate: fromDateParam,
+        toDate: toDateParam,
         orderType: null,
         status: null,
       );
@@ -223,6 +235,9 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
   }
 
   void applyFilters() {
+    debugPrint("--- CompletedOrdersScreen: applyFilters ---");
+    debugPrint("Total orders fetched from API: ${allOrders.length}");
+
     filteredOrders =
         allOrders.where((order) {
           // Search Filter
@@ -233,18 +248,18 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
 
           // Order Type Filter
           bool matchType = false;
-          if (selectedOrderType == 'All') {
+          final selType = selectedOrderType.toLowerCase();
+          final ordType = order.orderType.toLowerCase();
+          if (selType == 'all') {
             matchType = true;
-          } else if (selectedOrderType.toLowerCase().contains('dine')) {
-            matchType = order.orderType.toLowerCase().contains('dine');
-          } else if (selectedOrderType.toLowerCase().contains('take')) {
-            matchType = order.orderType.toLowerCase().contains('take');
-          } else if (selectedOrderType.toLowerCase().contains('online')) {
-            matchType = order.orderType.toLowerCase().contains('online');
+          } else if (selType.contains('dine')) {
+            matchType = ordType.contains('dine');
+          } else if (selType.contains('take')) {
+            matchType = ordType.contains('take');
+          } else if (selType.contains('online')) {
+            matchType = ordType.contains('online');
           } else {
-            matchType = order.orderType.toLowerCase().contains(
-              selectedOrderType.toLowerCase(),
-            );
+            matchType = ordType.contains(selType);
           }
 
           // Status Filter
@@ -256,12 +271,16 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
 
           // Date Filter
           bool matchDate = true;
-          if (selectedDate != null && order.finishedDateTime != null) {
-            final orderDate = order.finishedDateTime!;
-            matchDate =
-                orderDate.year == selectedDate!.year &&
-                orderDate.month == selectedDate!.month &&
-                orderDate.day == selectedDate!.day;
+          if (selectedDate != null) {
+            if (order.kotDateTime != null) {
+              final orderDate = order.kotDateTime!;
+              matchDate =
+                  orderDate.year == selectedDate!.year &&
+                  orderDate.month == selectedDate!.month &&
+                  orderDate.day == selectedDate!.day;
+            } else {
+              matchDate = false;
+            }
           }
 
           // Duration Filter
@@ -294,6 +313,11 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
               matchDuration;
         }).toList();
 
+    debugPrint("Orders after applying filters: ${filteredOrders.length}");
+    for (var o in filteredOrders) {
+      debugPrint(" - KOT #${o.kotNumber} | Received Time (parsed kotDateTime): ${o.kotDateTime} (Original string: ${o.kotTime})");
+    }
+
     currentPage = 1;
     applyPagination();
   }
@@ -322,6 +346,7 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
 
   Widget _filterButtonGroup() {
     return Container(
+      width: 510,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -337,35 +362,42 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
         ],
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          _filterButton(
-            title: "All",
-            selected: selectedFilter == OrderTypeFilter.all,
-            icon: Icons.grid_view,
-            iconColor: const Color(0xff2F4376),
-            onTap: () => setFilter(OrderTypeFilter.all),
+          Expanded(
+            child: _filterButton(
+              title: "All",
+              selected: selectedFilter == OrderTypeFilter.all,
+              icon: Icons.grid_view,
+              iconColor: const Color(0xff2F4376),
+              onTap: () => setFilter(OrderTypeFilter.all),
+            ),
           ),
-          _filterButton(
-            title: "Dine-In",
-            selected: selectedFilter == OrderTypeFilter.dineIn,
-            icon: Icons.restaurant,
-            iconColor: Colors.orange,
-            onTap: () => setFilter(OrderTypeFilter.dineIn),
+          Expanded(
+            child: _filterButton(
+              title: "Dine-In",
+              selected: selectedFilter == OrderTypeFilter.dineIn,
+              icon: Icons.restaurant,
+              iconColor: Colors.orange,
+              onTap: () => setFilter(OrderTypeFilter.dineIn),
+            ),
           ),
-          _filterButton(
-            title: "Takeaways",
-            selected: selectedFilter == OrderTypeFilter.takeaway,
-            icon: Icons.shopping_bag_outlined,
-            iconColor: Colors.blueGrey,
-            onTap: () => setFilter(OrderTypeFilter.takeaway),
+          Expanded(
+            child: _filterButton(
+              title: "Takeaways",
+              selected: selectedFilter == OrderTypeFilter.takeaway,
+              icon: Icons.shopping_bag_outlined,
+              iconColor: Colors.blueGrey,
+              onTap: () => setFilter(OrderTypeFilter.takeaway),
+            ),
           ),
-          _filterButton(
-            title: "Online Orders",
-            selected: selectedFilter == OrderTypeFilter.online,
-            icon: Icons.delivery_dining,
-            iconColor: Colors.green,
-            onTap: () => setFilter(OrderTypeFilter.online),
+          Expanded(
+            child: _filterButton(
+              title: "Online Orders",
+              selected: selectedFilter == OrderTypeFilter.online,
+              icon: Icons.delivery_dining,
+              iconColor: Colors.green,
+              onTap: () => setFilter(OrderTypeFilter.online),
+            ),
           ),
         ],
       ),
@@ -382,14 +414,14 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         decoration: BoxDecoration(
           color: selected ? const Color(0xff2F4376) : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (icon != null)
               Icon(icon, size: 16, color: selected ? Colors.white : iconColor),
@@ -399,6 +431,7 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
               style: TextStyle(
                 color: selected ? Colors.white : Colors.black87,
                 fontWeight: FontWeight.w500,
+                fontSize: 12,
               ),
             ),
           ],
@@ -413,65 +446,65 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
       children: [
         // Row 1: Title, Search Bar, Order Filters
         Padding(
-          padding: const EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 12,
-            bottom: 4,
-          ),
-          child: Row(
-            children: [
-              if (!widget.isEmbedded) ...[
-                InkWell(
-                  onTap: () => Navigator.pop(context),
-                  child: const Icon(
-                    Icons.arrow_back,
-                    size: 24,
-                    color: Color(0xff222222),
+          //padding: const EdgeInsets.only(top: 2, bottom: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: SizedBox(
+            height: 52,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                if (!widget.isEmbedded) ...[
+                  InkWell(
+                    onTap: () => Navigator.pop(context),
+                    child: const Icon(
+                      Icons.arrow_back,
+                      size: 24,
+                      color: Color(0xff222222),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                ],
+                const Text(
+                  "KOT History",
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xff1E293B),
                   ),
                 ),
-                const SizedBox(width: 10),
-              ],
-              const Text(
-                "KOT History",
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xff1E293B),
-                ),
-              ),
-              const SizedBox(width: 30),
-              Expanded(
-                child: SizedBox(
-                  height: 42,
-                  child: TextField(
-                    onChanged: (value) {
-                      searchText = value;
-                      applyFilters();
-                    },
-                    decoration: InputDecoration(
-                      hintText: "Search Order ID or KOT ID...",
-                      prefixIcon: const Icon(Icons.search, size: 20),
-                      filled: true,
-                      fillColor: const Color(0xfff8fafc),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
+                const SizedBox(width: 30),
+                Expanded(
+                  child: SizedBox(
+                    height: 42,
+                    child: TextField(
+                      onChanged: (value) {
+                        searchText = value;
+                        applyFilters();
+                      },
+                      decoration: InputDecoration(
+                        hintText: "Search Order ID or KOT ID...",
+                        prefixIcon: const Icon(Icons.search, size: 20),
+                        filled: true,
+                        fillColor: const Color(0xfff8fafc),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 30),
-              _filterButtonGroup(),
-            ],
+                const SizedBox(width: 30),
+                _filterButtonGroup(),
+              ],
+            ),
           ),
         ),
 
@@ -520,7 +553,9 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Text(
-                        _dateController.text.isEmpty ? "Select Date" : _dateController.text,
+                        _dateController.text.isEmpty
+                            ? "Select Date"
+                            : _dateController.text,
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
@@ -659,31 +694,44 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
               const Spacer(),
 
               // Stats
-              _summaryCard(
-                title: "Total KOT's",
-                value: "$totalKotsCount",
-                color: const Color(0xff1E40AF),
-                bgColor: const Color(0xffEFF6FF),
-                borderColor: const Color(0xffBFDBFE),
-                icon: Icons.list_alt,
-              ),
-              const SizedBox(width: 12),
-              _summaryCard(
-                title: "Completed",
-                value: "$completedKotsCount",
-                color: const Color(0xff15803D),
-                bgColor: const Color(0xffF0FDF4),
-                borderColor: const Color(0xffBBF7D0),
-                icon: Icons.check_circle,
-              ),
-              const SizedBox(width: 12),
-              _summaryCard(
-                title: "Cancelled",
-                value: "$cancelledKotsCount",
-                color: const Color(0xffB91C1C),
-                bgColor: const Color(0xffFEF2F2),
-                borderColor: const Color(0xffFCA5A5),
-                icon: Icons.cancel,
+              SizedBox(
+                width: 510,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _summaryCard(
+                        title: "Total KOT's",
+                        value: "$totalKotsCount",
+                        color: const Color(0xff1E40AF),
+                        bgColor: const Color(0xffEFF6FF),
+                        borderColor: const Color(0xffBFDBFE),
+                        icon: Icons.list_alt,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _summaryCard(
+                        title: "Completed",
+                        value: "$completedKotsCount",
+                        color: const Color(0xff15803D),
+                        bgColor: const Color(0xffF0FDF4),
+                        borderColor: const Color(0xffBBF7D0),
+                        icon: Icons.check_circle,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _summaryCard(
+                        title: "Cancelled",
+                        value: "$cancelledKotsCount",
+                        color: const Color(0xffB91C1C),
+                        bgColor: const Color(0xffFEF2F2),
+                        borderColor: const Color(0xffFCA5A5),
+                        icon: Icons.cancel,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -703,6 +751,17 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
                     ? const Center(
                       child: CircularProgressIndicator(
                         color: Color(0xff2F4376),
+                      ),
+                    )
+                    : filteredOrders.isEmpty
+                    ? const Center(
+                      child: Text(
+                        "No KOT's fond for the sorted Date",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey,
+                        ),
                       ),
                     )
                     : LayoutBuilder(
@@ -848,9 +907,9 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
                                         // Ord. Received
                                         DataCell(
                                           Text(
-                                            order.finishedTime.isEmpty
+                                            order.kotTime.isEmpty
                                                 ? "-"
-                                                : order.finishedTime,
+                                                : order.kotTime,
                                           ),
                                         ),
 
@@ -1220,7 +1279,7 @@ Widget _summaryCard({
       border: Border.all(color: borderColor, width: 1),
     ),
     child: Row(
-      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
           "$title : ",

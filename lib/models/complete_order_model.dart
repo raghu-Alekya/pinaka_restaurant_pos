@@ -14,6 +14,8 @@ class CompletedOrderModel {
   final int restaurantId;
   final bool canRecall;
   final DateTime? finishedDateTime;
+  final String kotTime;
+  final DateTime? kotDateTime;
 
   CompletedOrderModel({
     required this.orderId,
@@ -29,24 +31,105 @@ class CompletedOrderModel {
     required this.restaurantId,
     required this.canRecall,
     this.finishedDateTime,
+    required this.kotTime,
+    this.kotDateTime,
   });
 
   factory CompletedOrderModel.fromJson(
       Map<String, dynamic> json,
       ) {
-    DateTime? parsedDate;
+    DateTime? parsedFinishedDate;
 
     try {
       final finishedTime =
           json['finished_time']?.toString() ?? '';
 
       if (finishedTime.isNotEmpty) {
-        parsedDate = DateFormat(
-          'yyyy-MM-dd hh:mm a',
-        ).parse(finishedTime);
+        parsedFinishedDate = DateTime.tryParse(finishedTime);
+        if (parsedFinishedDate == null) {
+          final formats = [
+            'd MMMM, yyyy h:mm a',
+            'dd MMMM, yyyy h:mm a',
+            'd MMMM, yyyy hh:mm a',
+            'dd MMMM, yyyy hh:mm a',
+            'd MMM, yyyy h:mm a',
+            'dd MMM, yyyy h:mm a',
+            'yyyy-MM-dd hh:mm a',
+            'yyyy-MM-dd HH:mm:ss',
+            'yyyy-MM-dd HH:mm',
+            'dd-MM-yyyy hh:mm a',
+            'dd/MM/yyyy hh:mm a',
+            'yyyy-MM-dd',
+          ];
+          for (final fmt in formats) {
+            try {
+              parsedFinishedDate = DateFormat(fmt).parse(finishedTime);
+              break;
+            } catch (_) {}
+          }
+        }
       }
     } catch (e) {
-      print('Date Parse Error: $e');
+      print('Finished Date Parse Error: $e');
+    }
+
+    final prepTime = json['prep_time']?.toString() ?? '';
+    String kotTimeStr = '';
+    DateTime? parsedKotDate;
+
+    try {
+      final rawKotTime =
+          json['kot_time']?.toString() ?? json['time']?.toString() ?? '';
+
+      if (rawKotTime.isNotEmpty) {
+        kotTimeStr = rawKotTime;
+        parsedKotDate = DateTime.tryParse(rawKotTime);
+        if (parsedKotDate == null) {
+          final formats = [
+            'd MMMM, yyyy h:mm a',
+            'dd MMMM, yyyy h:mm a',
+            'd MMMM, yyyy hh:mm a',
+            'dd MMMM, yyyy hh:mm a',
+            'd MMM, yyyy h:mm a',
+            'dd MMM, yyyy h:mm a',
+            'yyyy-MM-dd hh:mm a',
+            'yyyy-MM-dd HH:mm:ss',
+            'yyyy-MM-dd HH:mm',
+            'dd-MM-yyyy hh:mm a',
+            'dd/MM/yyyy hh:mm a',
+            'yyyy-MM-dd',
+          ];
+          for (final fmt in formats) {
+            try {
+              parsedKotDate = DateFormat(fmt).parse(rawKotTime);
+              break;
+            } catch (_) {}
+          }
+        }
+      }
+    } catch (e) {
+      print('KOT Date Parse Error: $e');
+    }
+
+    // Calculate KOT received date by subtracting prep time from finished date
+    if (parsedKotDate == null && parsedFinishedDate != null && prepTime.isNotEmpty) {
+      try {
+        final match = RegExp(r'(\d+)').firstMatch(prepTime);
+        if (match != null) {
+          final minutes = int.tryParse(match.group(1) ?? '');
+          if (minutes != null) {
+            parsedKotDate = parsedFinishedDate.subtract(Duration(minutes: minutes));
+            kotTimeStr = DateFormat('d MMMM, yyyy h:mm a').format(parsedKotDate);
+          }
+        }
+      } catch (e) {
+        print('Error subtracting prep time: $e');
+      }
+    }
+
+    if (kotTimeStr.isEmpty) {
+      kotTimeStr = json['finished_time']?.toString() ?? '';
+      parsedKotDate = parsedFinishedDate;
     }
 
     return CompletedOrderModel(
@@ -62,7 +145,9 @@ class CompletedOrderModel {
       status: json['status'] ?? '',
       restaurantId: json['restaurant_id'] ?? 0,
       canRecall: json['can_recall'] ?? false,
-      finishedDateTime: parsedDate,
+      finishedDateTime: parsedFinishedDate,
+      kotTime: kotTimeStr,
+      kotDateTime: parsedKotDate,
     );
   }
 
@@ -80,6 +165,7 @@ class CompletedOrderModel {
       'status': status,
       'restaurant_id': restaurantId,
       'can_recall': canRecall,
+      'kot_time': kotTime,
     };
   }
 }
