@@ -120,9 +120,22 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
     } catch (e) {
       if (!mounted) return;
 
+      String errorMessage = "invalid please enter valid pin";
+      final errorStr = e.toString();
+
+      if (errorStr.contains("SocketException") || errorStr.contains("Host lookup failed")) {
+        errorMessage = "Network error. Please check your internet connection.";
+      } else if (errorStr.contains("not authorized")) {
+        errorMessage = "You are not authorized to access the Kitchen Display System.";
+      }
+
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(e.toString())));
+      ).showSnackBar(SnackBar(
+        content: Text(errorMessage),
+        backgroundColor: Colors.red.shade800,
+        behavior: SnackBarBehavior.floating,
+      ));
     }
 
     if (!mounted) return;
