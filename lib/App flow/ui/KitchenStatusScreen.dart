@@ -760,12 +760,12 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                   _buildHeader(),
                   Expanded(
                     child: Container(
-                      margin: const EdgeInsets.only(left: 10, right: 10,bottom: 10),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFE5EDFF),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      margin: const EdgeInsets.only(left: 5, right: 5,bottom: 16),
+                      // padding: const EdgeInsets.all(14),
+                      // decoration: BoxDecoration(
+                      //   color: const Color(0xFFFFFFFF), //FE5EDFF
+                      //   borderRadius: BorderRadius.circular(12),
+                      // ),
                       child: Row(
                         children: [
                           Expanded(
@@ -787,13 +787,23 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                                     child: Container(
                                       padding: const EdgeInsets.all(14),
                                       decoration: BoxDecoration(
-                                        color: Colors.white,               // 🔥 White like image
-                                        borderRadius: BorderRadius.only(bottomRight: Radius.circular(8),bottomLeft: Radius.circular(8) ),
+                                        color: filteredTables.isNotEmpty
+                                            ? Colors.white
+                                            : const Color(0xFFF3F3F3),
+                                        // color: Color(0xFFF3F3F3),
+                                        borderRadius: const BorderRadius.only(
+                                          bottomRight: Radius.circular(8),
+                                          bottomLeft: Radius.circular(8),
+                                        ),
+                                        border: Border(
+                                          bottom: BorderSide(color: Color(0xFFD8D8D8)),
+                                          left: BorderSide(color: Color(0xFFD8D8D8)),
+                                          right: BorderSide(color: Color(0xFFD8D8D8)),
+                                        ),
                                       ),
-                                      child: _buildTableList(),             // 🔥 Grid inside
+                                      child: _buildTableList(),
                                     ),
-                                  ),
-                                ],
+                                  ),                                ],
                               ),
                             ),
                           ),
@@ -833,10 +843,19 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   Widget _buildKotListHeader() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 17),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       decoration: BoxDecoration(
         color: const Color(0xFFFFF5E8),
-        borderRadius: BorderRadius.only(topRight: Radius.circular(8),topLeft: Radius.circular(8) ),
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(8),
+          topRight: Radius.circular(8),
+        ),
+        border: Border(
+          top: BorderSide(color: Color(0xFFD8D8D8)),
+          left: BorderSide(color: Color(0xFFD8D8D8)),
+          right: BorderSide(color: Color(0xFFD8D8D8)),
+        ),
+        // borderRadius: BorderRadius.only(topRight: Radius.circular(8),topLeft: Radius.circular(8) ),
       ),
       child: const Text(
         "KOT list",
@@ -1171,6 +1190,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   }
   Widget _buildTableList() {
     final tables = filteredTables;
+    final bool hasTableData = tables.isNotEmpty;
     if (tables.isEmpty) {
       return const Center(child: Text('No orders found'));
     }
@@ -1428,8 +1448,11 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     final bool hasTable = _selectedTable != null;
     final List<String> kots =
         (_selectedTable?['kots'] as List<dynamic>?)?.cast<String>() ?? [];
+// ✅ Add it here
+    final bool hasData = hasTable && kots.isNotEmpty;
 
     return Container(
+      margin: const EdgeInsets.only(left: 0, right: 7,bottom: 0),
       decoration: BoxDecoration(
         // color: Colors.white,
         borderRadius: BorderRadius.circular(3),
@@ -1442,6 +1465,11 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: const Color(0xFFC2DFFF),
+              border: Border(
+                top: BorderSide(color: Color(0xFFD8D8D8)),
+                left: BorderSide(color: Color(0xFFD8D8D8)),
+                right: BorderSide(color: Color(0xFFD8D8D8)),
+              ),
               borderRadius: BorderRadius.only(topRight: Radius.circular(8),topLeft: Radius.circular(8) ), // borderRadius: BorderRadius.circular(6)
             ),
             child: Row(
@@ -1592,7 +1620,15 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFFFFF),
+                color: hasData
+                    ? Colors.white
+                    : const Color(0xFFF3F3F3),
+                // color: const Color(0xFFF3F3F3),
+                border: Border(
+                  bottom: BorderSide(color: Color(0xFFD8D8D8)),
+                  left: BorderSide(color: Color(0xFFD8D8D8)),
+                  right: BorderSide(color: Color(0xFFD8D8D8)),
+                ),
                 borderRadius: BorderRadius.only(bottomRight: Radius.circular(8),bottomLeft: Radius.circular(8) ), // borderRadius: BorderRadius.circular(6)
               ),
               child:

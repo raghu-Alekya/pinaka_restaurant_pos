@@ -1575,8 +1575,12 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                           Expanded(
                             flex: 1,
                             child: Text(
-                              isVoided ? "_currencySymbol0.00" : "$_currency${(item.totalWoTax ?? 0).toStringAsFixed(2)}",
-                              style: TextStyle(color: isVoided ? Colors.red : Colors.black),
+                              isVoided
+                                  ? "${_currency}0.00"
+                                  : "${_currency}${(item.totalWoTax ?? 0).toStringAsFixed(2)}",
+                              style: TextStyle(
+                                color: isVoided ? Colors.red : Colors.black,
+                              ),
                             ),
                           ),
                         ],
