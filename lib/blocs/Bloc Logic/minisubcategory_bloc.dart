@@ -16,18 +16,47 @@ class MiniSubCategoryBloc
   final MiniSubCategoryRepository repository;
   Set<int> expandedFolderIds = {};
   final Map<int, List<MiniSubCategory>> _cache = {};   // MiniSubCategoryBloc
-  // final Map<int, List<Product>> _cache = {};            // ProductBloc         // ProductBloc
 
+  // The last successfully loaded data, kept around so the bloc never has
+  // to fall back to a blank Loading/Error state once we have SOMETHING
+  // to show. This is intentionally NOT cleared by ResetMiniSubCategory.
+  MiniSubCategoryLoaded? _lastLoaded;
+
+  // Which subcategory is currently "active" (most recently requested).
+  // Used to ignore stale async results if the user has already moved on
+  // to a different subcategory tab before an older fetch resolves.
+  int? _activeSubCategoryId;
+
+  // Guards against firing duplicate background refreshes for the same id.
+  final Set<int> _inFlightRefresh = {};
 
   MiniSubCategoryBloc({required this.repository})
       : super(MiniSubCategoryInitial()) {
     on<FetchMiniSubCategories>(_onFetchMiniSubCategories);
     on<ToggleFolder>(_onToggleFolder);
     on<SelectProduct>(_onSelectProduct);
-    // ✅ Reset event
+    on<MiniSubCategoryBackgroundFetchSucceeded>(_onBackgroundFetchSucceeded);
+    on<MiniSubCategoryBackgroundFetchFailed>(_onBackgroundFetchFailed);
+
+    // ✅ Reset event — clears only transient UI state now, NOT the cache.
+    // Clearing `_cache` here used to mean every sidebar category tap threw
+    // away previously-loaded (and offline-usable) data, forcing a fresh
+    // network fetch — and a raw error dump if that fetch failed offline.
     on<ResetMiniSubCategory>((event, emit) {
       expandedFolderIds.clear();
-      _cache.clear();               // ✅ ADD THIS — purge stale session data
+      // Intentionally NOT touching `_cache` or `_lastLoaded` — whatever
+      // was already loaded stays available (and on screen) so switching
+      // categories/subcategories never blanks the UI or forces a refetch
+      // of data we already have.
+    });
+
+    // ✅ True full reset — only for logout / new session.
+    on<ClearMiniSubCategoryCache>((event, emit) {
+      expandedFolderIds.clear();
+      _cache.clear();
+      _lastLoaded = null;
+      _activeSubCategoryId = null;
+      _inFlightRefresh.clear();
       emit(MiniSubCategoryInitial());
     });
 
@@ -35,7 +64,8 @@ class MiniSubCategoryBloc
     stream.listen((state) {
       print("BLoC State Changed: $state");
       if (state is MiniSubCategoryLoaded) {
-        print("Loaded MiniSubCategories:");
+        print("Loaded MiniSubCategories (isRefreshing=${state.isRefreshing}, "
+            "isOffline=${state.isOffline}):");
         for (var mini in state.miniSubCategories) {
           print(
               "- ${mini.name} (Folder: ${mini.isFolder}, Products: ${mini.products.length})");
@@ -49,41 +79,146 @@ class MiniSubCategoryBloc
       FetchMiniSubCategories event,
       Emitter<MiniSubCategoryState> emit,
       ) async {
+    final id = event.subCategoryId;
+    _activeSubCategoryId = id;
 
-    // Return cached data immediately
-    if (_cache.containsKey(event.subCategoryId)) {
+    // 1) Cache hit -> instant, no Loading state at all, zero flicker.
+    if (_cache.containsKey(id)) {
       print("📦 MiniSubCategories loaded from cache");
 
-      emit(
-        MiniSubCategoryLoaded(
-          miniSubCategories: _cache[event.subCategoryId]!,
-          expandedFolderIds: Set.from(expandedFolderIds),
-        ),
+      final loaded = MiniSubCategoryLoaded(
+        miniSubCategories: _cache[id]!,
+        expandedFolderIds: Set.from(expandedFolderIds),
       );
+      _lastLoaded = loaded;
+      emit(loaded);
+
+      // Keep it fresh silently — never blocks or replaces what's on screen
+      // unless the data actually changed.
+      _refreshInBackground(id);
       return;
     }
 
-    emit(MiniSubCategoryLoading());
+    // 2) No cache for this id yet.
+    if (_lastLoaded != null) {
+      // Keep whatever is already on screen visible — just flag that a
+      // newer subcategory is being fetched. No spinner, no blank screen.
+      emit(_lastLoaded!.copyWith(isRefreshing: true, isOffline: false));
+    } else {
+      // Genuinely nothing to show yet (first fetch of the whole session).
+      emit(MiniSubCategoryLoading());
+    }
 
     try {
       final miniSubCategories =
-      await repository.fetchMiniSubCategories(event.subCategoryId);
+      await repository.fetchMiniSubCategories(id);
+
+      if (isClosed || _activeSubCategoryId != id) {
+        // User already moved to a different subcategory — still cache the
+        // result for later, just don't touch the UI with it now.
+        _cache[id] = miniSubCategories;
+        return;
+      }
 
       // Save to cache
-      _cache[event.subCategoryId] = miniSubCategories;
+      _cache[id] = miniSubCategories;
 
-      emit(
-        MiniSubCategoryLoaded(
-          miniSubCategories: miniSubCategories,
-          expandedFolderIds: Set.from(expandedFolderIds),
-        ),
+      final loaded = MiniSubCategoryLoaded(
+        miniSubCategories: miniSubCategories,
+        expandedFolderIds: Set.from(expandedFolderIds),
       );
+      _lastLoaded = loaded;
+      emit(loaded);
     } catch (e, stack) {
       print("Error fetching mini-subcategories: $e\n$stack");
 
-      emit(MiniSubCategoryError(e.toString()));
+      if (isClosed || _activeSubCategoryId != id) return; // stale, ignore
+
+      if (_lastLoaded != null) {
+        // Don't blank the screen with a raw error — keep the last good
+        // content visible and simply flag that we're offline/stale.
+        emit(_lastLoaded!.copyWith(isRefreshing: false, isOffline: true));
+      } else {
+        // Truly nothing cached anywhere and the very first fetch failed.
+        emit(MiniSubCategoryError(_friendlyError(e)));
+      }
     }
   }
+
+  /// Fire-and-forget silent refresh for an already-cached subcategory.
+  /// Never shows a spinner and never blanks the screen — only updates the
+  /// UI if the refreshed data actually differs from what's cached, and
+  /// only if that subcategory is still the one being viewed.
+  void _refreshInBackground(int id) {
+    if (_inFlightRefresh.contains(id)) return;
+    _inFlightRefresh.add(id);
+
+    repository.fetchMiniSubCategories(id).then((data) {
+      _inFlightRefresh.remove(id);
+      if (isClosed) return;
+      add(MiniSubCategoryBackgroundFetchSucceeded(id, data));
+    }).catchError((_) {
+      _inFlightRefresh.remove(id);
+      if (isClosed) return;
+      add(MiniSubCategoryBackgroundFetchFailed(id));
+    });
+  }
+
+  void _onBackgroundFetchSucceeded(
+      MiniSubCategoryBackgroundFetchSucceeded event,
+      Emitter<MiniSubCategoryState> emit,
+      ) {
+    final previouslyCached = _cache[event.subCategoryId];
+    final changed = !_sameMiniSubCategoryIds(
+      previouslyCached,
+      event.miniSubCategories,
+    );
+
+    _cache[event.subCategoryId] = event.miniSubCategories;
+
+    if (changed && _activeSubCategoryId == event.subCategoryId) {
+      final loaded = MiniSubCategoryLoaded(
+        miniSubCategories: event.miniSubCategories,
+        expandedFolderIds: Set.from(expandedFolderIds),
+      );
+      _lastLoaded = loaded;
+      emit(loaded);
+    }
+  }
+
+  void _onBackgroundFetchFailed(
+      MiniSubCategoryBackgroundFetchFailed event,
+      Emitter<MiniSubCategoryState> emit,
+      ) {
+    // Cached data is already on screen and stays exactly as it is —
+    // nothing to do here besides logging (e.g. transient offline blip
+    // while silently refreshing an already-visited subcategory).
+    print(
+        "Background refresh failed for subcategory ${event.subCategoryId} "
+            "(offline?) — keeping cached data as-is.");
+  }
+
+  bool _sameMiniSubCategoryIds(
+      List<MiniSubCategory>? a, List<MiniSubCategory> b) {
+    if (a == null) return false;
+    if (a.length != b.length) return false;
+    final idsA = a.map((e) => e.id).toSet();
+    final idsB = b.map((e) => e.id).toSet();
+    return idsA.length == idsB.length && idsA.containsAll(idsB);
+  }
+
+  /// Keeps the raw ClientException/SocketException text out of the UI for
+  /// the one case where we truly have nothing else to show.
+  String _friendlyError(Object e) {
+    final msg = e.toString();
+    if (msg.contains('SocketException') ||
+        msg.contains('Failed host lookup') ||
+        msg.contains('Connection failed')) {
+      return "You're offline. Please check your internet connection.";
+    }
+    return "Something went wrong loading items. Please try again.";
+  }
+
   void _onToggleFolder(ToggleFolder event, Emitter<MiniSubCategoryState> emit) {
     print("Event: ToggleFolder -> ${event.miniSubCategoryId}");
     if (state is MiniSubCategoryLoaded) {
@@ -97,7 +232,10 @@ class MiniSubCategoryBloc
         print("Folder Expanded: ${event.miniSubCategoryId}");
       }
 
-      emit(currentState.copyWith(expandedFolderIds: Set.from(expandedFolderIds)));
+      final updated =
+      currentState.copyWith(expandedFolderIds: Set.from(expandedFolderIds));
+      _lastLoaded = updated;
+      emit(updated);
     }
   }
 
