@@ -1102,6 +1102,164 @@ import '../../repositories/variant_repository.dart';
 import '../../utils/SessionManager.dart';
 import '../widgets/variant_popup.dart';
 
+import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
+
+class ImageLoadingDots extends StatefulWidget {
+  const ImageLoadingDots({
+    super.key,
+    this.dotSize = 8,
+    this.spacing = 5,
+    this.color = const Color(0xFFFF9900),
+    this.duration = const Duration(milliseconds: 1200),
+  });
+
+  final double dotSize;
+  final double spacing;
+  final Color color;
+  final Duration duration;
+
+  @override
+  State<ImageLoadingDots> createState() => _ImageLoadingDotsState();
+}
+
+class _ImageLoadingDotsState extends State<ImageLoadingDots>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: widget.duration,
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(3, (i) {
+            final phase = (i * 0.22) % 1.0;
+            final t = (_controller.value + phase) % 1.0;
+
+            final scale = 0.45 +
+                0.55 *
+                    (0.5 + 0.5 * math.sin(t * math.pi * 2));
+
+            return Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: widget.spacing / 2,
+              ),
+              child: Transform.scale(
+                scale: scale,
+                child: Container(
+                  width: widget.dotSize,
+                  height: widget.dotSize,
+                  decoration: BoxDecoration(
+                    color: widget.color,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: widget.color.withOpacity(0.45),
+                        blurRadius: 4,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
+}
+
+
+class PromoImageLoading extends StatelessWidget {
+  const PromoImageLoading({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const ColoredBox(
+      color: Colors.black,
+      child: Center(
+        child: ImageLoadingDots(
+          dotSize: 10,
+          spacing: 6,
+          color: Color(0xFFFFB04D),
+        ),
+      ),
+    );
+  }
+}
+
+
+class ProductImageLoading extends StatelessWidget {
+  const ProductImageLoading({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color(0xFFF2F4F7),
+      alignment: Alignment.center,
+      child: const ImageLoadingDots(
+        dotSize: 6,
+        spacing: 4,
+        color: Color(0xFFFF9900),
+      ),
+    );
+  }
+}
+
+
+class BlockImageLoading extends StatelessWidget {
+  const BlockImageLoading({
+    super.key,
+    this.message,
+  });
+
+  final String? message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const ImageLoadingDots(
+            dotSize: 9,
+            spacing: 5,
+          ),
+          if (message != null) ...[
+            const SizedBox(height: 14),
+            Text(
+              message!,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+
 class MiniSubCategoryWidget extends StatefulWidget {
   final List<MiniSubCategory> subCategories;
   final Category section;
@@ -2114,10 +2272,15 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
                               fit: BoxFit.cover,
                               fadeInDuration: const Duration(milliseconds: 120),
                               memCacheWidth: 160,
-                              placeholder: (_, __) => Container(
+                              // placeholder: (_, __) => Container(
+                              //   width: 80,
+                              //   height: 80,
+                              //   color: const Color(0xFFF2F2F2),
+                              // ),
+                              placeholder: (_, __) => const SizedBox(
                                 width: 80,
                                 height: 80,
-                                color: const Color(0xFFF2F2F2),
+                                child: ProductImageLoading(),
                               ),
                               errorWidget: (_, __, ___) =>
                               const Icon(Icons.fastfood, size: 40),
@@ -2245,6 +2408,4 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
   }
 }
 
-/// Small helper so background futures are clearly "fire and forget"
-/// without triggering "unhandled future" lints.
 void unawaited(Future<void> future) {}

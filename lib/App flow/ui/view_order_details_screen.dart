@@ -140,15 +140,24 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
     setState(() => isVoidedLoading = true);
 
     try {
+      print('🔄 Loading voided items for KOT: $kotOrderId');
+
       final result = await OrderstatusRepository().fetchVoidedItems(
         kotOrderId: kotOrderId,
-        token:  widget.token,
+        token: widget.token,
       );
+
+      print('✅ Voided items loaded successfully');
+      print('📊 Voided items count: ${result.items.length}');
+      for (var item in result.items) {
+        print('   - ${item.product}: ${item.origQty} → ${item.newQty}');
+      }
 
       setState(() {
         voidedItemsResponse = result;
       });
     } catch (e) {
+      print('❌ Error loading voided items: $e');
       debugPrint("Voided fetch error: $e");
     } finally {
       setState(() => isVoidedLoading = false);
@@ -1016,7 +1025,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
                                               const SizedBox(height: 4),
 
-                                              // Customer Phone
+                                              // Customer PhoneF
                                               Row(
                                                 // mainAxisAlignment:
                                                 // MainAxisAlignment
@@ -1622,7 +1631,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                     ),
                                     SizedBox(width: 8),
                                     Text(
-                                      "Print Bill",
+                                      "Print Billlllll",
                                       style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
@@ -1833,14 +1842,59 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
           ///  Items List (SCROLLABLE)
 // ---------------- NORMAL ITEMS LIST ----------------
+//           Expanded(
+//             child: ListView.builder(
+//               padding: EdgeInsets.zero,
+//               itemCount: normalItems.length + voidedItems.length,
+//               itemBuilder: (context, index) {
+//                 final bool isNormal = index < normalItems.length;
+//                 final bool isLast =
+//                     index == (normalItems.length + voidedItems.length - 1);
+//                 if (isVoidedLoading && showVoided) {
+//                   return const Padding(
+//                     padding: EdgeInsets.all(12),
+//                     child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+//                   );
+//                 }
+//
+//                 return Container(
+//                   padding: isNormal
+//                       ? const EdgeInsets.symmetric(vertical: 8, horizontal: 16)
+//                       : const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+//                   decoration: BoxDecoration(
+//                     color: isNormal ? Colors.white : Colors.grey.shade200, // optional
+//                     border: const Border(
+//                       bottom: BorderSide(color: Color(0xFFB9B9B9)),
+//                       left: BorderSide(color: Color(0xFFB9B9B9)),
+//                       right: BorderSide(color: Color(0xFFB9B9B9)),
+//                     ),
+//                     borderRadius: isLast
+//                         ? const BorderRadius.only(
+//                       bottomLeft: Radius.circular(8),
+//                       bottomRight: Radius.circular(8),
+//                     )
+//                         : BorderRadius.zero,
+//                   ),
+//                   child: isNormal
+//                       ? _buildNormalRow(normalItems[index], index)
+//                       : _buildVoidedRow(
+//                     voidedItems[index - normalItems.length],
+//                     index,
+//                   ),
+//                 );
+//               },
+//             ),
+//           )
+
+
           Expanded(
             child: ListView.builder(
               padding: EdgeInsets.zero,
               itemCount: normalItems.length + voidedItems.length,
               itemBuilder: (context, index) {
                 final bool isNormal = index < normalItems.length;
-                final bool isLast =
-                    index == (normalItems.length + voidedItems.length - 1);
+                final bool isLast = index == (normalItems.length + voidedItems.length - 1);
+
                 if (isVoidedLoading && showVoided) {
                   return const Padding(
                     padding: EdgeInsets.all(12),
@@ -1848,12 +1902,18 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                   );
                 }
 
+                // ✅ For voided items, we need to check if they were cancelled
+                // Voided items are already considered "cancelled" in the context of the UI
+                final bool isCancelled = isNormal
+                    ? _isItemCancelled(normalItems[index])
+                    : true; // Voided items are always shown as cancelled
+
                 return Container(
-                  padding: isNormal
-                      ? const EdgeInsets.symmetric(vertical: 8, horizontal: 16)
-                      : const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                   decoration: BoxDecoration(
-                    color: isNormal ? Colors.white : Colors.grey.shade200, // optional
+                    color: isNormal
+                        ? (isCancelled ? Colors.red.shade50 : Colors.white)
+                        : Colors.grey.shade200,
                     border: const Border(
                       bottom: BorderSide(color: Color(0xFFB9B9B9)),
                       left: BorderSide(color: Color(0xFFB9B9B9)),
@@ -1875,9 +1935,8 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                 );
               },
             ),
-          )
-
-// ---------------- DELETED ITEMS ----------------
+          ),
+          // ---------------- DELETED ITEMS ----------------
 //           if (orderModel.isUpdated?.toLowerCase() == 'yes') ...[
 //             const SizedBox(height: 12),
 //             const Divider(),
@@ -1955,66 +2014,183 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
       ),
     );
   }
+
   Widget _buildNormalRow(Map<String, dynamic> item, int index) {
     final modifierNames = extractModifierNames(item);
 
+    // ✅ Check if item is cancelled from the API response with debug prints
+    final String? isCancelledValue = item['is_cancelled']?.toString();
+    final bool isCancelled = isCancelledValue?.toLowerCase() == 'yes';
+
+    // ✅ Print to console for debugging
+    print('🔍 Item: ${item['name']}');
+    print('🔍 is_cancelled value from API: ${item['is_cancelled']}');
+    print('🔍 isCancelled boolean: $isCancelled');
+    print('🔍 Full item data: $item');
+    print('---');
+
     return Row(
       children: [
-        Expanded(flex: 1, child: Text("${index + 1}")),
+        // Serial Number
+        Expanded(
+          flex: 1,
+          child: Text(
+            "${index + 1}",
+            style: TextStyle(
+              decoration: isCancelled ? TextDecoration.lineThrough : null,
+              color: isCancelled ? Colors.red.shade700 : Colors.black,
+              fontWeight: isCancelled ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+        ),
+
+        // Item Name + Modifiers
         Expanded(
           flex: 3,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(item['name'] ?? "-",
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      item['name'] ?? "-",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        decoration: isCancelled ? TextDecoration.lineThrough : null,
+                        color: isCancelled ? Colors.red.shade700 : Colors.black,
+                      ),
+                    ),
+                  ),
+                  if (isCancelled) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade100,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: Colors.red.shade300,
+                          width: 0.5,
+                        ),
+                      ),
+                      child: Text(
+                        'VOID',
+                        style: TextStyle(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.red.shade700,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
               if (modifierNames.isNotEmpty)
                 Text(
                   modifierNames.join(", "),
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isCancelled ? Colors.red.shade400 : Colors.grey,
+                    decoration: isCancelled ? TextDecoration.lineThrough : null,
+                  ),
                 ),
             ],
           ),
         ),
-        Expanded(flex: 2, child: Text("${item['qty']} x ${item['item_price']}")),
+
+        // Quantity
+        Expanded(
+          flex: 2,
+          child: Text(
+            "${item['qty']} x ${item['item_price']}",
+            style: TextStyle(
+              decoration: isCancelled ? TextDecoration.lineThrough : null,
+              color: isCancelled ? Colors.red.shade700 : Colors.black,
+            ),
+          ),
+        ),
+
+        // Amount
         Expanded(
           flex: 1,
-          child: Text(item['total_wo_tax']?.toStringAsFixed(2) ?? "-"),
+          child: Text(
+            item['total_wo_tax']?.toStringAsFixed(2) ?? "-",
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              decoration: isCancelled ? TextDecoration.lineThrough : null,
+              color: isCancelled ? Colors.red.shade700 : Colors.black,
+            ),
+          ),
         ),
       ],
     );
   }
+
   Widget _buildVoidedRow(VoidedItem item, int index) {
+    // Voided items are always considered cancelled
+    final bool isCancelled = true;
+
     return Row(
       children: [
         Expanded(
           flex: 1,
           child: Text(
             "${index + 1}",
-            style: const TextStyle(
-              color: Color(0xFFB9B9B9),
-              // decoration: TextDecoration.lineThrough,
+            style: TextStyle(
+              decoration: isCancelled ? TextDecoration.lineThrough : null,
+              color: isCancelled ? Colors.red.shade700 : const Color(0xFFB9B9B9),
             ),
           ),
         ),
         Expanded(
           flex: 3,
-          child: Text(
-            item.product,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              color:  Color(0xFFB9B9B9),
-              // decoration: TextDecoration.lineThrough,
-            ),
+          child: Row(
+            children: [
+              Flexible(
+                child: Text(
+                  item.product,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    decoration: isCancelled ? TextDecoration.lineThrough : null,
+                    color: isCancelled ? Colors.red.shade700 : const Color(0xFFB9B9B9),
+                  ),
+                ),
+              ),
+              if (isCancelled) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade100,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: Colors.red.shade300,
+                      width: 0.5,
+                    ),
+                  ),
+                  child: Text(
+                    'VOID',
+                    style: TextStyle(
+                      fontSize: 8,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.red.shade700,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
         Expanded(
           flex: 2,
           child: Text(
             "${item.origQty}",
-            style: const TextStyle(
-              color:  Color(0xFFB9B9B9),
-              // decoration: TextDecoration.lineThrough,
+            style: TextStyle(
+              decoration: isCancelled ? TextDecoration.lineThrough : null,
+              color: isCancelled ? Colors.red.shade700 : const Color(0xFFB9B9B9),
             ),
           ),
         ),
@@ -2022,9 +2198,10 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
           flex: 1,
           child: Text(
             "${item.itemTotal.toStringAsFixed(2)}",
-            style: const TextStyle(
-              color: Color(0xFFB9B9B9),
-              // decoration: TextDecoration.lineThrough,
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              decoration: isCancelled ? TextDecoration.lineThrough : null,
+              color: isCancelled ? Colors.red.shade700 : const Color(0xFFB9B9B9),
             ),
           ),
         ),
@@ -2032,4 +2209,15 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
     );
   }
 
+// ✅ Helper to check if item is cancelled
+// ✅ Helper to check if item is cancelled
+  bool _isItemCancelled(Map<String, dynamic> item) {
+    // Check for is_cancelled field in the item
+    if (item.containsKey('is_cancelled')) {
+      final isCancelled = item['is_cancelled']?.toString()?.toLowerCase();
+      return isCancelled == 'yes' || isCancelled == 'true';
+    }
+
+    return false;
+  }
 }

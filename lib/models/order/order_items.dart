@@ -17,6 +17,9 @@ class OrderItems {
   // ✅ NEW – tax class from backend (food / beverages)
   final String? taxClass;
 
+  // ✅ NEW - isCancelled field
+  final String isCancelled; // 'yes' or 'no'
+
   OrderItems({
     required this.productId,
     this.variationId, // ✅ optional
@@ -26,11 +29,13 @@ class OrderItems {
     this.modifiers = const [],
     this.addOns = const {},
     this.note = '',
-     this.section,
+    this.section,
     this.taxClass,
     this.hasOptions = false,
-    required this.amount,// default false
+    required this.amount,
+    this.isCancelled = 'no', // ✅ Added with default value
   });
+
   String get itemName => name;
 
   /// ✅ Total including add-ons (multiplies add-ons per item quantity)
@@ -73,10 +78,12 @@ class OrderItems {
       imagepath: '',
       subCategories: [],
     );
+
     /// 🔹 tax class from WooCommerce Tax API
     final taxClass = (json['class'] as String?)?.trim();
 
-// fallback
+    // ✅ Parse isCancelled from JSON
+    final isCancelled = json['is_cancelled']?.toString() ?? 'no';
 
     return OrderItems(
       productId: json['productId'] ?? 0,
@@ -86,21 +93,18 @@ class OrderItems {
           'Unknown',
       quantity: json['quantity'] ?? 1,
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
-        //  ✅ amount includes modifier price
-    amount: (json['amount'] as num?)?.toDouble() ??
-        (((json['price'] as num?)?.toDouble() ?? 0.0) * (json['quantity'] ?? 1)),
-
-    addOns: addOns,
+      //  ✅ amount includes modifier price
+      amount: (json['amount'] as num?)?.toDouble() ??
+          (((json['price'] as num?)?.toDouble() ?? 0.0) * (json['quantity'] ?? 1)),
+      addOns: addOns,
       modifiers: modifiers,
       note: json['note']?.toString() ?? '',
       section: section,
       taxClass: taxClass,
       hasOptions: json['hasOptions'] ?? false,
+      isCancelled: isCancelled, // ✅ Added
     );
   }
-
-
-
 
   Map<String, dynamic> toJson() {
     final serializedAddOns = addOns.map((key, value) => MapEntry(key, {
@@ -119,7 +123,7 @@ class OrderItems {
       'note': note,
       'tax_class': taxClass,
       'hasOptions': hasOptions,
-      // 'section': section.toJson(),
+      'is_cancelled': isCancelled, // ✅ Added to JSON
       // ✅ SAFE: only include section if not null
       if (section != null) 'section': section!.toJson(),
     };
@@ -138,11 +142,11 @@ class OrderItems {
     Category? section,
     String? taxClass,
     bool? hasOptions,
-
+    String? isCancelled, // ✅ Added
   }) {
     return OrderItems(
       productId: productId ?? this.productId,
-      variationId: variationId ?? this.variationId, // ✅ include here
+      variationId: variationId ?? this.variationId,
       name: name ?? this.name,
       quantity: quantity ?? this.quantity,
       amount: amount ?? this.amount,
@@ -151,8 +155,9 @@ class OrderItems {
       addOns: addOns ?? Map<String, Map<String, dynamic>>.from(this.addOns),
       note: note ?? this.note,
       section: section ?? this.section,
-        taxClass: taxClass ?? this.taxClass,
+      taxClass: taxClass ?? this.taxClass,
       hasOptions: hasOptions ?? this.hasOptions,
+      isCancelled: isCancelled ?? this.isCancelled, // ✅ Added
     );
   }
 }

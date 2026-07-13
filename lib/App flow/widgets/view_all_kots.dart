@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -63,15 +64,38 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
   final Map<String, bool> _kotExpanded = {};
   int _previousOrderItemCount = 0;
 
+  // 🔴 FIX: local mirror of the KOT list, kept in sync with the bloc's
+  // latest state so cancel/void status updates show up automatically,
+  // without waiting for the parent to pass a new `widget.kots`.
+  late List<KotModel> _kots;
+
+  // 🔴 FIX: lightweight auto-refresh timer so KOT statuses (e.g. an item
+  // getting voided/cancelled from elsewhere) stay "live" without the
+  // user needing to tap/expand anything.
+  Timer? _refreshTimer;
+  static const Duration _autoRefreshInterval = Duration(seconds: 5);
 
   @override
   void initState() {
     super.initState();
+    _kots = widget.kots; // seed with whatever the parent gave us initially
     _fetchKots();
+    _startAutoRefresh(); // 🔴 FIX
     // ✅ NEW: report initial expansion state to the parent on first build
     // so the parent's _showKotList stays in sync from the start.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       widget.onToggle?.call(_expanded);
+    });
+  }
+
+  // 🔴 FIX: starts a periodic silent refetch so status changes (void/cancel/
+  // preparing/ready/served) reflect automatically, live.
+  void _startAutoRefresh() {
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer.periodic(_autoRefreshInterval, (_) {
+      if (mounted) {
+        _fetchKots();
+      }
     });
   }
 
@@ -88,13 +112,24 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
   void didUpdateWidget(covariant ViewAllKOTDropdown oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.parentOrderId != widget.parentOrderId) {
+      _kots = widget.kots; // 🔴 FIX: reseed local mirror on order change
       _fetchKots();
       _kotExpanded.clear();
       _expanded = false;
       // ✅ NEW: keep parent in sync when we reset expansion on order change
       widget.onToggle?.call(_expanded);
+    } else if (!identical(oldWidget.kots, widget.kots)) {
+      // 🔴 FIX: parent handed us a fresh list (e.g. it refetched) — take it.
+      _kots = widget.kots;
     }
   }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel(); // 🔴 FIX: stop polling when widget goes away
+    super.dispose();
+  }
+
   Map<String, String> extractZoneNames(dynamic zoneResponse) {
     // ✅ CASE 1: API already returns List<Map>
     if (zoneResponse is List) {
@@ -113,20 +148,15 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
 
     return {};
   }
+
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'preparing':
         return Colors.orange;
-
       case 'ready':
         return Colors.green;
-
       case 'served':
         return Colors.red;
-
-    // case 'cancelled':
-    //   return Colors.red;
-
       default:
         return Colors.grey;
     }
@@ -168,6 +198,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
 
     return zoneMap;
   }
+
   String getDisplayStatus(String status) {
     switch (status.toLowerCase().trim()) {
       case 'kot processed':
@@ -175,27 +206,20 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
       case 'yet to prepare':
       case 'yet_to_prepare':
         return 'YET TO PREPARE';
-
       case 'preparing':
         return 'PREPARING';
-
       case 'ready':
         return 'READY';
-
       case 'served':
         return 'SERVED';
-
       default:
         return status.toUpperCase();
     }
   }
 
-
-
-
   @override
   Widget build(BuildContext context) {
-    if (widget.kots.isEmpty) {
+    if (_kots.isEmpty && widget.kots.isEmpty) {
       return const SizedBox.shrink();
     }
     return MultiBlocListener(
@@ -222,14 +246,30 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
             }
           },
         ),
+        // 🔴 FIX: whenever KotBloc emits a fresh list (from _fetchKots(),
+        // whether triggered by our own timer, a void action, a transfer,
+        // etc.) mirror it into `_kots` so the UI updates live — no manual
+        // action required.
+        BlocListener<KotBloc, KotState>(
+          listener: (context, state) {
+            final freshKots = _extractKotsFromState(state);
+            if (freshKots != null) {
+              setState(() {
+                _kots = freshKots;
+              });
+            }
+          },
+        ),
       ],
       child: BlocBuilder<KotBloc, KotState>(
         builder: (context, state) {
-          final kotList = widget.kots.where((kot) {
-            final status = kot.status.toLowerCase().trim();
+          // 🔴 FIX: prefer the bloc's live state over the (possibly stale)
+          // widget.kots/​_kots mirror, falling back gracefully.
+          final sourceKots = _extractKotsFromState(state) ?? _kots;
 
-            return status != 'cancelled' &&
-                status != 'cancel';
+          final kotList = sourceKots.where((kot) {
+            final status = kot.status.toLowerCase().trim();
+            return status != 'cancelled' && status != 'cancel';
           }).toList();
 
           // Initialize expansion state for each KOT
@@ -280,20 +320,6 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
               ),
 
               // Expanded KOT content
-              // ─────────────────────────────────────────────────────────
-              // FIX: This used to be wrapped with Positioned (in the
-              // parent) + a fixed maxHeight: 500 + an inner fixed
-              // SizedBox(height: 450). That rigid 500px block is what
-              // caused "BOTTOM OVERFLOWED BY n PIXELS": it doesn't fit
-              // in the space actually available once the order list,
-              // totals bar, and action buttons are laid out too.
-              //
-              // Now: no fixed height. We give it a *capped* height via
-              // ConstrainedBox(maxHeight: 320) and let it shrink to fit
-              // its content (mainAxisSize.min). Collapsed state stays
-              // exactly as small as the header bar — no item rows are
-              // ever shown unless that specific KOT row is tapped open.
-              // ─────────────────────────────────────────────────────────
               if (_expanded) const SizedBox(height: 16),
               if (_expanded)
                 ConstrainedBox(
@@ -311,13 +337,10 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                       decoration: BoxDecoration(
                         color: kCardBg,
                         borderRadius: BorderRadius.circular(10),
-                        // ✅ Border
                         border: Border.all(
                           color: Colors.black.withOpacity(0.08),
                           width: 1,
                         ),
-
-                        // ✅ Shadow
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withOpacity(0.10),
@@ -377,7 +400,6 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                       ),
                                       child: Row(
                                         children: [
-
                                           /// KOT Number
                                           Container(
                                             padding: const EdgeInsets.symmetric(
@@ -398,43 +420,37 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                               ),
                                             ),
                                           ),
-
                                           const SizedBox(width: 12),
-
                                           /// Time
                                           Text(
-                                            DateFormat('hh:mma').format(kot.time), // 12:35PM
+                                            DateFormat('hh:mma').format(kot.time),
                                             style: const TextStyle(
                                               fontWeight: FontWeight.w500,
                                               fontSize: 13,
                                               color: Colors.black87,
                                             ),
                                           ),
-
                                           const Spacer(),
-
                                           /// Status
                                           Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 8,
-                                                vertical: 4,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: _getStatusColor(kot.status),
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
+                                            child: Text(
+                                              getDisplayStatus(kot.status),
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
                                               ),
-                                              decoration: BoxDecoration(
-                                                color: _getStatusColor(kot.status),
-                                                borderRadius: BorderRadius.circular(12),
-                                              ),
-                                              child:Text(
-                                                getDisplayStatus(kot.status),
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              )
+                                            ),
                                           ),
-
                                           const SizedBox(width: 15),
-
                                           /// Void Button
                                           InkWell(
                                             onTap: () async {
@@ -496,6 +512,12 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                     );
                                                   },
                                                 );
+                                                // 🔴 FIX: after the void dialog closes (whatever the
+                                                // outcome), immediately refetch so the status/strike-through
+                                                // reflects without needing another manual action.
+                                                if (context.mounted) {
+                                                  _fetchKots();
+                                                }
                                               } else if (state is KotLineItemsError) {
                                                 ScaffoldMessenger.of(context).showSnackBar(
                                                   SnackBar(
@@ -524,9 +546,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                               ),
                                             ),
                                           ),
-
                                           const SizedBox(width: 15),
-
                                           /// Transfer Button
                                           InkWell(
                                             onTap: () async {
@@ -655,7 +675,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                               ),
                                               child: Center(
                                                 child: Image.asset(
-                                                  "assets/transfer.png", // use your transfer asset
+                                                  "assets/transfer.png",
                                                   height: 18,
                                                   width: 18,
                                                   color: Colors.white,
@@ -663,9 +683,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                               ),
                                             ),
                                           ),
-
                                           const SizedBox(width: 10),
-
                                           /// Expand Icon
                                           Icon(
                                             isOpen
@@ -677,7 +695,6 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                       ),
                                     ),
                                   ),
-
                                   // ─────────── KOT BODY ───────────
                                   if (isOpen)
                                     Container(
@@ -688,7 +705,6 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                       child: Column(
                                         children: [
                                           const SizedBox(height: 10),
-
                                           // Items Table Container
                                           Container(
                                             decoration: BoxDecoration(
@@ -705,52 +721,102 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                   final index = entry.key;
                                                   final item = entry.value;
 
+                                                  // ✅ CHECK IF ITEM IS CANCELLED
+                                                  final bool isCancelled = (item.isCancelled?.toLowerCase() == 'yes');
+
                                                   return Column(
                                                     children: [
-                                                      Padding(
+                                                      Container(
                                                         padding: const EdgeInsets.symmetric(
                                                           horizontal: 14,
                                                           vertical: 10,
                                                         ),
+                                                        decoration: BoxDecoration(
+                                                          color: isCancelled ? Colors.red.shade50 : Colors.transparent,
+                                                          borderRadius: BorderRadius.circular(8),
+                                                          border: isCancelled
+                                                              ? Border.all(color: Colors.red.shade200, width: 0.5)
+                                                              : null,
+                                                        ),
                                                         child: Row(
                                                           children: [
+                                                            // Serial Number
                                                             SizedBox(
                                                               width: 30,
-                                                              child: Text("${index + 1}"),
-                                                            ),
-
-                                                            Expanded(
                                                               child: Text(
-                                                                item.name,
-                                                                style: const TextStyle(
-                                                                  fontSize: 14,
+                                                                "${index + 1}",
+                                                                style: TextStyle(
+                                                                  decoration: isCancelled ? TextDecoration.lineThrough : null,
+                                                                  color: isCancelled ? Colors.red.shade700 : Colors.black87,
+                                                                  fontWeight: isCancelled ? FontWeight.w700 : FontWeight.w500,
+                                                                  fontSize: isCancelled ? 13 : 14,
                                                                 ),
                                                               ),
                                                             ),
 
-                                                            SizedBox(
-                                                              width: 40,
-                                                              child: Center(
-                                                                child: Text("${item.quantity}"),
+                                                            // Item Name
+                                                            Expanded(
+                                                              child: Row(
+                                                                children: [
+                                                                  Flexible(
+                                                                    child: Text(
+                                                                      item.itemName ?? item.name ?? '',
+                                                                      style: TextStyle(
+                                                                        fontSize: 14,
+                                                                        decoration: isCancelled ? TextDecoration.lineThrough : null,
+                                                                        color: isCancelled ? Colors.red.shade700 : Colors.black87,
+                                                                        fontWeight: isCancelled ? FontWeight.w600 : FontWeight.normal,
+                                                                      ),
+                                                                      overflow: TextOverflow.ellipsis,
+                                                                    ),
+                                                                  ),
+                                                                ],
                                                               ),
                                                             ),
 
+                                                            // Quantity
+                                                            SizedBox(
+                                                              width: 40,
+                                                              child: Center(
+                                                                child: Container(
+                                                                  decoration: BoxDecoration(
+                                                                    color: isCancelled ? Colors.red.shade100 : Colors.transparent,
+                                                                    borderRadius: BorderRadius.circular(4),
+                                                                  ),
+                                                                  padding: isCancelled ? const EdgeInsets.symmetric(horizontal: 6, vertical: 2) : null,
+                                                                  child: Text(
+                                                                    "${item.quantity ?? 0}",
+                                                                    style: TextStyle(
+                                                                      decoration: isCancelled ? TextDecoration.lineThrough : null,
+                                                                      color: isCancelled ? Colors.red.shade700 : Colors.black87,
+                                                                      fontWeight: isCancelled ? FontWeight.w700 : FontWeight.w500,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ),
+
+                                                            // Amounts
                                                             SizedBox(
                                                               width: 80,
                                                               child: Column(
                                                                 crossAxisAlignment: CrossAxisAlignment.end,
                                                                 children: [
                                                                   Text(
-                                                                    item.totalWithAddons.toStringAsFixed(2),
-                                                                    style: const TextStyle(
-                                                                      fontWeight: FontWeight.bold,
+                                                                    (item.totalWithAddons ?? 0).toStringAsFixed(2),
+                                                                    style: TextStyle(
+                                                                      fontWeight: isCancelled ? FontWeight.w800 : FontWeight.bold,
+                                                                      decoration: isCancelled ? TextDecoration.lineThrough : null,
+                                                                      color: isCancelled ? Colors.red.shade700 : Colors.black87,
+                                                                      fontSize: isCancelled ? 13 : 14,
                                                                     ),
                                                                   ),
                                                                   Text(
-                                                                    item.amount.toStringAsFixed(2),
-                                                                    style: const TextStyle(
+                                                                    (item.amount ?? 0).toStringAsFixed(2),
+                                                                    style: TextStyle(
                                                                       fontSize: 11,
-                                                                      color: Colors.grey,
+                                                                      color: isCancelled ? Colors.red.shade400 : Colors.grey.shade500,
+                                                                      decoration: isCancelled ? TextDecoration.lineThrough : null,
                                                                     ),
                                                                   ),
                                                                 ],
@@ -759,10 +825,9 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                           ],
                                                         ),
                                                       ),
-                                                      const Divider(height: 1),
+                                                      const Divider(height: 1, color: Color(0xFFE8E8E8)),
                                                     ],
-                                                  );
-                                                }),
+                                                  );                                                }),
                                               ],
                                             ),
                                           ),
@@ -790,7 +855,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                   kot.items
                                                       .fold<double>(
                                                     0,
-                                                        (sum, e) => sum + e.totalWithAddons,
+                                                        (sum, e) => sum + (e.totalWithAddons ?? 0),
                                                   )
                                                       .toStringAsFixed(2),
                                                   style: const TextStyle(
@@ -819,6 +884,26 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
       ),
     );
   }
+
+  // 🔴 FIX: single place to pull a fresh List<KotModel> out of KotState,
+  // whatever its concrete success subclass is called. Adjust the class
+  // name / field name below to match your actual kot_state.dart if it
+  // differs from this guess (e.g. `KotLoaded`, `KotFetchSuccess`, etc.
+  // with a `.kots` field).
+  List<KotModel>? _extractKotsFromState(KotState state) {
+    try {
+      final dynamic dynState = state;
+      final dynamic maybeKots = dynState.kots;
+      if (maybeKots is List<KotModel>) {
+        return maybeKots;
+      }
+    } catch (_) {
+      // state doesn't carry a `.kots` field (e.g. Loading/Initial/Error) —
+      // fall back to whatever we already have.
+    }
+    return null;
+  }
+
   Widget _kotActionButton({
     required String text,
     required Color bgColor,
@@ -827,14 +912,14 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
     required VoidCallback onTap,
   }) {
     return SizedBox(
-      height: 32, // ✅ same height like image
+      height: 32,
       child: ElevatedButton.icon(
         onPressed: onTap,
         icon: Image.asset(
-          "assets/icon/Void.png", // 🔥 your asset path
+          "assets/icon/Void.png",
           height: 16,
           width: 16,
-          color: iconColor, // optional (works only for single-color png/svg)
+          color: iconColor,
         ),
         label: Text(
           text,
@@ -846,14 +931,13 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
         ),
         style: ElevatedButton.styleFrom(
           backgroundColor: bgColor,
-          elevation: 0, // ✅ flat like image
+          elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8), // ✅ rounded like image
+            borderRadius: BorderRadius.circular(8),
           ),
         ),
       ),
     );
   }
-
 }

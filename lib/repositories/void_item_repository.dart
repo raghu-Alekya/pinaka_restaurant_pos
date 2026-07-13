@@ -25,6 +25,12 @@ class VoidItemRepository {
       },
     );
 
+    // Print status code
+    print("Status Code: ${response.statusCode}");
+
+    // Print raw response body
+    print("get-line-items Response Body: ${response.body}");
+
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
 

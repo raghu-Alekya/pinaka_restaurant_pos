@@ -38,6 +38,7 @@ class KotItem {
   final double price;
   double amount;
   final List<String> modifiers;
+  final String isCancelled; // ✅ ADDED: 'yes' or 'no'
 
   KotItem({
     required this.id,
@@ -48,6 +49,7 @@ class KotItem {
     required this.price,
     required this.amount,
     required this.modifiers,
+    this.isCancelled = 'no', // ✅ ADDED with default
   });
 
   factory KotItem.fromJson(Map<String, dynamic> json) {
@@ -62,6 +64,7 @@ class KotItem {
       modifiers: (json["modifiers"] as List? ?? [])
           .map((e) => e.toString())
           .toList(),
+      isCancelled: json["is_cancelled"]?.toString() ?? 'no', // ✅ PARSE
     );
   }
 
@@ -74,6 +77,7 @@ class KotItem {
     double? price,
     double? amount,
     List<String>? modifiers,
+    String? isCancelled, // ✅ ADDED
   }) {
     return KotItem(
       id: id ?? this.id,
@@ -84,108 +88,13 @@ class KotItem {
       price: price ?? this.price,
       amount: amount ?? this.amount,
       modifiers: modifiers ?? List<String>.from(this.modifiers),
+      isCancelled: isCancelled ?? this.isCancelled, // ✅ ADDED
     );
   }
-
-
 }
-// class VoidItemSelectionRequest {
-//   final int kotId;
-//   final int restaurantId;
-//   final int zoneId;
-//   final List<VoidItemRequest> items;
-//   final String remarks;
-//
-//   VoidItemSelectionRequest({
-//     required this.kotId,
-//     required this.restaurantId,
-//     required this.zoneId,
-//     required this.items,
-//     required this.remarks,
-//   });
-//
-//   Map<String, dynamic> toJson() {
-//     return {
-//       "kot_id": kotId,
-//       "restaurant_id": restaurantId,
-//       "zone_id": zoneId,
-//       "items": items.map((e) => e.toJson()).toList(),
-//       "remarks": remarks,
-//     };
-//   }
-// }
-//
-// class VoidItemRequest {
-//   final int itemId;
-//   final bool isVoid;
-//
-//   VoidItemRequest({
-//     required this.itemId,
-//     required this.isVoid,
-//   });
-//
-//   Map<String, dynamic> toJson() {
-//     return {
-//       "item_id": itemId,
-//       "void": isVoid,
-//     };
-//   }
-// }
-// class VoidItemSelectionResponse {
-//   final int restaurantId;
-//   final int zoneId;
-//   final int kotId;
-//   final String kotNumber;
-//   final String newKotTotal;
-//   final VoidPayload payload;
-//
-//   VoidItemSelectionResponse({
-//     required this.restaurantId,
-//     required this.zoneId,
-//     required this.kotId,
-//     required this.kotNumber,
-//     required this.newKotTotal,
-//     required this.payload,
-//   });
-//
-//   factory VoidItemSelectionResponse.fromJson(Map<String, dynamic> json) {
-//     return VoidItemSelectionResponse(
-//       restaurantId: json["restaurant_id"] ?? 0,
-//       zoneId: json["zone_id"] ?? 0,
-//       kotId: json["kot_id"] ?? 0,
-//       kotNumber: json["kot_number"] ?? "",
-//       newKotTotal: json["new_kot_total"]?.toString() ?? "0",
-//       payload: VoidPayload.fromJson(json["payload"] ?? {}),
-//     );
-//   }
-// }
-//
-// class VoidPayload {
-//   final String flagType;
-//   final int restaurantId;
-//   final int zoneId;
-//   final List<dynamic> lineItems; // you can change to model later
-//   final String remarks;
-//
-//   VoidPayload({
-//     required this.flagType,
-//     required this.restaurantId,
-//     required this.zoneId,
-//     required this.lineItems,
-//     required this.remarks,
-//   });
-//
-//   factory VoidPayload.fromJson(Map<String, dynamic> json) {
-//     return VoidPayload(
-//       flagType: json["flag_type"] ?? "",
-//       restaurantId: json["restaurant_id"] ?? 0,
-//       zoneId: json["zone_id"] ?? 0,
-//       lineItems: json["line_items"] ?? [],
-//       remarks: json["remarks"] ?? "",
-//     );
-//   }
-// }
-//
+
+// ─── Other classes remain unchanged ───
+
 class UpdatekotRequest {
   final List<LineItemUpdate> lineItems;
   final List<MetaDataItem> metaData;
@@ -221,7 +130,6 @@ class LineItemUpdate {
   };
 }
 
-
 class MetaDataItem {
   final String key;
   final dynamic value;
@@ -236,6 +144,7 @@ class MetaDataItem {
     "value": value,
   };
 }
+
 class UpdatekotResponse {
   final int id;
   final String status;
