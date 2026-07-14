@@ -79,7 +79,7 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
 
   String? selectedZone;
   String? selectedTable;
-
+  String? _selectedTable;
   final ScrollController _tableScrollController = ScrollController();
   final ScrollController _itemsScrollController = ScrollController();
 
@@ -545,8 +545,21 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
                 );
               },
               style: ButtonStyle(
-                backgroundColor: MaterialStateProperty.all(
-                  const Color(0xFFFE6464),
+                backgroundColor: MaterialStateProperty.resolveWith<Color>(
+                      (states) {
+                    if (states.contains(MaterialState.disabled)) {
+                      return Colors.grey.shade400; // Disabled color
+                    }
+                    return const Color(0xFFFE6464); // Enabled color
+                  },
+                ),
+                foregroundColor: MaterialStateProperty.resolveWith<Color>(
+                      (states) {
+                    if (states.contains(MaterialState.disabled)) {
+                      return Colors.white70;
+                    }
+                    return Colors.white;
+                  },
                 ),
                 shape: MaterialStateProperty.all(
                   RoundedRectangleBorder(
@@ -587,7 +600,7 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
           if (state is KotTransferFailure) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(state.error),
-                backgroundColor: Colors.green,
+                backgroundColor: Colors.red,
                 duration: Duration(seconds: 1),),
             );
           }

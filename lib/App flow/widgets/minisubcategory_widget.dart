@@ -1312,6 +1312,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
   static final Map<int, List<Modifier>> _modifierCache = {};
   static final Map<int, List<Variant>> _variantCache = {};
   static final Map<int, List<Product>> _productCache = {};
+  static final Set<int> _inFlightPrefetch = {};
 
   late OrderRepository orderRepository;
   bool _isCreatingTakeAwayOrder = false;
@@ -1330,7 +1331,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       baseUrl: AppConstants.baseDomain,
     );
     _loadCurrency();
-
+    _prefetchAllSubCategoryProducts(widget.subCategories);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _switchSubCategory(widget.subCategories, widget.tappedSubCategoryId);
@@ -1358,6 +1359,13 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           _switchSubCategory(widget.subCategories, widget.tappedSubCategoryId);
+        }
+      });
+    }
+    if (oldWidget.subCategories != widget.subCategories) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _prefetchAllSubCategoryProducts(widget.subCategories);
         }
       });
     }
@@ -1621,6 +1629,26 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
             .then((vars) => _variantCache[item.id] = vars)
             .catchError((_) {});
       }
+    }
+  }
+  void _prefetchAllSubCategoryProducts(List<MiniSubCategory> subCategories) {
+    for (final category in subCategories) {
+      if (_productCache.containsKey(category.id) || _inFlightPrefetch.contains(category.id)) {
+        continue;
+      }
+      _inFlightPrefetch.add(category.id);
+      widget.fetchProducts(category.id).then((products) {
+        _inFlightPrefetch.remove(category.id);
+        if (mounted) {
+          final updated = category.isFolder ? _applyVegTagging(category.name, products) : products;
+          _productCache[category.id] = updated;
+          _precacheProductImages(updated);
+          _prefetchModifiersAndVariants(updated);
+        }
+      }).catchError((e) {
+        _inFlightPrefetch.remove(category.id);
+        debugPrint("[MiniSubCategoryWidget] Background prefetch failed for id ${category.id}: $e");
+      });
     }
   }
 

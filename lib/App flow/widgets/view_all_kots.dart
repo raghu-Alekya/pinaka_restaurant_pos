@@ -293,7 +293,12 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
                     color: const Color(0xFF152148),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(8),
+                      topRight: const Radius.circular(8),
+                      bottomLeft: Radius.circular(_expanded ? 0 : 8),
+                      bottomRight: Radius.circular(_expanded ? 0 : 8),
+                    ),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -320,12 +325,13 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
               ),
 
               // Expanded KOT content
-              if (_expanded) const SizedBox(height: 16),
+              if (_expanded)
+                // const SizedBox(height: 10),
               if (_expanded)
                 ConstrainedBox(
                   constraints: const BoxConstraints(
-                    maxHeight: 320,
-                    minHeight: 320,
+                    maxHeight: 360,
+                    minHeight: 360,
                   ),
                   child: Material(
                     elevation: 8,
@@ -333,20 +339,23 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                     borderRadius: BorderRadius.circular(10),
                     child: Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
                         color: kCardBg,
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: const BorderRadius.only(
+                          bottomLeft: Radius.circular(10),
+                          bottomRight: Radius.circular(10),
+                        ),
                         border: Border.all(
-                          color: Colors.black.withOpacity(0.08),
-                          width: 1,
+                          color: const Color(0xFF1A3C71),
+                          width: 1.5,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.10),
-                            blurRadius: 12,
-                            spreadRadius: 2,
-                            offset: const Offset(0, 4),
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 0,
+                            spreadRadius: 0,
+                            offset: const Offset(0, 0),
                           ),
                         ],
                       ),
@@ -372,8 +381,18 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                             return Container(
                               margin: const EdgeInsets.only(bottom: 12),
                               decoration: BoxDecoration(
-                                color: Colors.transparent,
-                                borderRadius: BorderRadius.circular(12),
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: const Color(0xffC6D4F5),
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(.08),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  )
+                                ],
                               ),
                               child: Column(
                                 children: [
@@ -388,15 +407,13 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                       height: 52,
                                       padding: const EdgeInsets.symmetric(horizontal: 10),
                                       decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(10),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withOpacity(0.08),
-                                            blurRadius: 6,
-                                            offset: const Offset(0, 2),
-                                          ),
-                                        ],
+                                        color: const Color(0xffEEF2FF),
+                                        borderRadius: BorderRadius.only(
+                                          topLeft: Radius.circular(14),
+                                          topRight: Radius.circular(14),
+                                          bottomLeft: Radius.circular(isOpen ? 0 : 14),
+                                          bottomRight: Radius.circular(isOpen ? 0 : 14),
+                                        ),
                                       ),
                                       child: Row(
                                         children: [
@@ -407,23 +424,24 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                               vertical: 6,
                                             ),
                                             decoration: BoxDecoration(
-                                              color: const Color(0xffF2F2F2),
-                                              borderRadius: BorderRadius.circular(6),
+                                              color: const Color(0xff0D47A1),
+                                              borderRadius: BorderRadius.circular(8),
                                             ),
                                             child: Text(
                                               (kot.kotNumber?.isNotEmpty ?? false)
                                                   ? kot.kotNumber!
                                                   : "KOT#${kot.kotId}",
                                               style: const TextStyle(
-                                                fontSize: 11,
+                                                color: Colors.white,
                                                 fontWeight: FontWeight.w700,
+                                                fontSize: 12,
                                               ),
                                             ),
                                           ),
                                           const SizedBox(width: 12),
                                           /// Time
                                           Text(
-                                            DateFormat('hh:mma').format(kot.time),
+                                            DateFormat('hh:mm a').format(kot.time),
                                             style: const TextStyle(
                                               fontWeight: FontWeight.w500,
                                               fontSize: 13,
@@ -434,20 +452,43 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                           /// Status
                                           Container(
                                             padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 4,
+                                              horizontal: 12,
+                                              vertical: 6,
                                             ),
                                             decoration: BoxDecoration(
-                                              color: _getStatusColor(kot.status),
-                                              borderRadius: BorderRadius.circular(12),
-                                            ),
-                                            child: Text(
-                                              getDisplayStatus(kot.status),
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                              borderRadius: BorderRadius.circular(8),
+                                              border: Border.all(
+                                                color: _getStatusColor(kot.status),
                                               ),
+                                              boxShadow: const [
+                                                BoxShadow(
+                                                  color: Colors.black12,
+                                                  blurRadius: 3,
+                                                ),
+                                              ],
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Container(
+                                                  height: 8,
+                                                  width: 8,
+                                                  decoration: BoxDecoration(
+                                                    color: _getStatusColor(kot.status),
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Text(
+                                                  getDisplayStatus(kot.status),
+                                                  style: TextStyle(
+                                                    color: _getStatusColor(kot.status),
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 10,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
                                           const SizedBox(width: 15),
@@ -530,8 +571,8 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                             },
                                             borderRadius: BorderRadius.circular(8),
                                             child: Container(
-                                              height: 34,
-                                              width: 34,
+                                              height: 28,
+                                              width: 28,
                                               decoration: BoxDecoration(
                                                 color: Colors.red,
                                                 borderRadius: BorderRadius.circular(8),
@@ -667,8 +708,8 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                             },
                                             borderRadius: BorderRadius.circular(8),
                                             child: Container(
-                                              height: 34,
-                                              width: 34,
+                                              height: 28,
+                                              width: 28,
                                               decoration: BoxDecoration(
                                                 color: const Color(0xFF4CAF50),
                                                 borderRadius: BorderRadius.circular(8),
@@ -676,8 +717,8 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                               child: Center(
                                                 child: Image.asset(
                                                   "assets/transfer.png",
-                                                  height: 18,
-                                                  width: 18,
+                                                  height: 14,
+                                                  width: 14,
                                                   color: Colors.white,
                                                 ),
                                               ),
@@ -699,12 +740,46 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                   if (isOpen)
                                     Container(
                                       decoration: BoxDecoration(
-                                        color: kKotHeaderBg,
+                                        color: Colors.white,
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: Column(
                                         children: [
-                                          const SizedBox(height: 10),
+                                          Container(
+                                            height: 45,
+                                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                                            decoration: const BoxDecoration(
+                                              color: Colors.white,
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+
+                                                Text(
+                                                  "Total Items: ${kot.items.length}",
+                                                  style: const TextStyle(
+                                                    color: Color(0xff0D47A1),
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 16,
+                                                  ),
+                                                ),
+
+                                                Text(
+                                                  kot.items
+                                                      .fold<double>(
+                                                      0,
+                                                          (sum,e)=>sum+(e.totalWithAddons??0))
+                                                      .toStringAsFixed(2),
+                                                  style: const TextStyle(
+                                                    color: Color(0xff0D47A1),
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize:18,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          // const SizedBox(height: 10),
                                           // Items Table Container
                                           Container(
                                             decoration: BoxDecoration(
@@ -713,7 +788,16 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                 bottomLeft: Radius.circular(10),
                                                 bottomRight: Radius.circular(10),
                                               ),
-                                              border: Border.all(color: const Color(0xffE4E4E4)),
+                                              border: Border(
+                                                top: BorderSide(
+                                                  color: Color(0xffE4E4E4),
+                                                  width: 1,
+                                                ),
+                                                bottom: BorderSide(
+                                                  color: Color(0xffE4E4E4),
+                                                  width: 1,
+                                                ),
+                                              ),
                                             ),
                                             child: Column(
                                               children: [
@@ -728,8 +812,8 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                     children: [
                                                       Container(
                                                         padding: const EdgeInsets.symmetric(
-                                                          horizontal: 14,
-                                                          vertical: 10,
+                                                          horizontal: 20,
+                                                          vertical: 5,
                                                         ),
                                                         decoration: BoxDecoration(
                                                           color: isCancelled ? Colors.red.shade50 : Colors.transparent,
@@ -825,47 +909,51 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                           ],
                                                         ),
                                                       ),
-                                                      const Divider(height: 1, color: Color(0xFFE8E8E8)),
+                                                      if (index != kot.items.length - 1)
+                                                      const Divider(
+                                                        thickness: 1,
+                                                        height: 1,
+                                                        color: Color(0xffECECEC),
+                                                      ),
                                                     ],
                                                   );                                                }),
                                               ],
                                             ),
                                           ),
-                                          Container(
-                                            height: 36,
-                                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                                            decoration: const BoxDecoration(
-                                              color: Color(0xff0D4E94),
-                                              borderRadius: BorderRadius.only(
-                                                bottomLeft: Radius.circular(10),
-                                                bottomRight: Radius.circular(10),
-                                              ),
-                                            ),
-                                            child: Row(
-                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                              children: [
-                                                Text(
-                                                  "Total Items: ${kot.items.length}",
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                                Text(
-                                                  kot.items
-                                                      .fold<double>(
-                                                    0,
-                                                        (sum, e) => sum + (e.totalWithAddons ?? 0),
-                                                  )
-                                                      .toStringAsFixed(2),
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          )
+                                          // Container(
+                                          //   height: 52,
+                                          //   padding: const EdgeInsets.symmetric(horizontal: 18),
+                                          //   decoration: const BoxDecoration(
+                                          //     color: Colors.white,
+                                          //   ),
+                                          //   child: Row(
+                                          //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          //     children: [
+                                          //
+                                          //       Text(
+                                          //         "Total Items: ${kot.items.length}",
+                                          //         style: const TextStyle(
+                                          //           color: Color(0xff0D47A1),
+                                          //           fontWeight: FontWeight.bold,
+                                          //           fontSize: 16,
+                                          //         ),
+                                          //       ),
+                                          //
+                                          //       Text(
+                                          //         kot.items
+                                          //             .fold<double>(
+                                          //             0,
+                                          //                 (sum,e)=>sum+(e.totalWithAddons??0))
+                                          //             .toStringAsFixed(2),
+                                          //         style: const TextStyle(
+                                          //           color: Color(0xff0D47A1),
+                                          //           fontWeight: FontWeight.bold,
+                                          //           fontSize:18,
+                                          //         ),
+                                          //       ),
+                                          //     ],
+                                          //   ),
+                                          // ),
                                         ],
                                       ),
                                     ),

@@ -1,3 +1,5 @@
+//order_screen
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -113,7 +115,8 @@ class _OrderPanelState extends State<OrderPanel> {
         UpdateKotStatusInOrder(
           kotNumber: data['kot_number'].toString(),
           status: data['status'].toString(),
-          remainingItems: data['remaining_items'] != null
+          remainingItems:
+          data['remaining_items'] != null
               ? List<Map<String, dynamic>>.from(data['remaining_items'])
               : null,
         ),
@@ -125,6 +128,47 @@ class _OrderPanelState extends State<OrderPanel> {
   void dispose() {
     _mqttSubscription?.cancel();
     super.dispose();
+  }
+
+  List<String> _wrapText(String text, int maxLength) {
+    if (text.isEmpty) return [''];
+    List<String> lines = [];
+    List<String> words = text.split(' ');
+    String currentLine = '';
+
+    for (String word in words) {
+      if (word.isEmpty) continue;
+
+      if (word.length > maxLength) {
+        if (currentLine.isNotEmpty) {
+          lines.add(currentLine);
+          currentLine = '';
+        }
+        int start = 0;
+        while (start < word.length) {
+          int end = start + maxLength;
+          if (end > word.length) {
+            end = word.length;
+          }
+          lines.add(word.substring(start, end));
+          start = end;
+        }
+        continue;
+      }
+
+      if (currentLine.isEmpty) {
+        currentLine = word;
+      } else if (currentLine.length + 1 + word.length <= maxLength) {
+        currentLine += ' ' + word;
+      } else {
+        lines.add(currentLine);
+        currentLine = word;
+      }
+    }
+    if (currentLine.isNotEmpty) {
+      lines.add(currentLine);
+    }
+    return lines.isEmpty ? [''] : lines;
   }
 
   Future<void> printKot({
@@ -139,6 +183,7 @@ class _OrderPanelState extends State<OrderPanel> {
     final generator = Generator(PaperSize.mm80, profile);
 
     List<int> bytes = [];
+    bytes += [27, 32, 0]; // Reset character spacing to 0 right at the start
     final displayKotNo = kotNo.replaceAll('KOT#', '');
 
     bytes += generator.text(
@@ -151,78 +196,189 @@ class _OrderPanelState extends State<OrderPanel> {
       ),
     );
 
+    final orderType = widget.isTakeAway ? "Take Away" : "Dine In";
+
     bytes += generator.text(
-      "Dine In",
+      orderType,
       styles: const PosStyles(align: PosAlign.center, bold: true),
     );
 
     bytes += generator.hr();
     // table row
 
-    bytes += generator.row([
-      PosColumn(
-        width: 7,
-        text:
-        "Date : ${DateFormat('dd/MM/yyyy hh:mm a').format(DateTime.now())}",
-      ),
-      PosColumn(
-        width: 5,
-        text: "Dine In : $tableName",
-        styles: const PosStyles(align: PosAlign.right, bold: true),
-      ),
-    ]);
+    final dateText =
+        "Date: ${DateFormat('dd/MM/yyyy hh:mm a').format(DateTime.now())}";
+    final dineInText = "$orderType: $tableName";
+
+    if ((dateText.length + dineInText.length) < 45) {
+      bytes += generator.row([
+        PosColumn(
+          width: 7,
+          text: dateText,
+          styles: const PosStyles(bold: true),
+        ),
+        PosColumn(
+          width: 5,
+          text: dineInText,
+          styles: const PosStyles(align: PosAlign.right, bold: true),
+        ),
+      ]);
+    } else {
+      bytes += generator.text(
+        dateText,
+        styles: const PosStyles(align: PosAlign.left, bold: true),
+      );
+      bytes += generator.text(
+        dineInText,
+        styles: const PosStyles(align: PosAlign.left, bold: true),
+      );
+    }
+
+    // add a row of space between date row and Order id row
+    bytes += [27, 74, 16];
 
     // order /captain row
 
-    bytes += generator.row([
-      PosColumn(
-        width: 6,
-        text: "Order Id : $orderId",
-        styles: const PosStyles(bold: true),
-      ),
-      PosColumn(
-        width: 6,
-        text: "Captain : $captainName",
-        styles: const PosStyles(align: PosAlign.right),
-      ),
-    ]);
+    final orderIdText = "Order Id: $orderId";
+    final captainText = "Captain: $captainName";
+
+    if ((orderIdText.length + captainText.length) < 45) {
+      bytes += generator.row([
+        PosColumn(
+          width: 5,
+          text: orderIdText,
+          styles: const PosStyles(bold: true),
+        ),
+        PosColumn(
+          width: 7,
+          text: captainText,
+          styles: const PosStyles(align: PosAlign.right, bold: true),
+        ),
+      ]);
+    } else {
+      bytes += generator.text(
+        orderIdText,
+        styles: const PosStyles(align: PosAlign.left, bold: true),
+      );
+      bytes += generator.text(
+        captainText,
+        styles: const PosStyles(align: PosAlign.left, bold: true),
+      );
+    }
 
     bytes += generator.hr();
     //  header
 
+    // Set character spacing to 3 dots for items and headers
+    bytes += [27, 32, 3];
+
     bytes += generator.row([
-      PosColumn(width: 1, text: "S.No", styles: const PosStyles(bold: true)),
+      PosColumn(width: 2, text: "S.No", styles: const PosStyles(bold: true)),
       PosColumn(
         width: 8,
         text: "Item Name",
         styles: const PosStyles(bold: true),
       ),
       PosColumn(
-        width: 3,
+        width: 2,
         text: "Qty",
         styles: const PosStyles(bold: true, align: PosAlign.right),
       ),
     ]);
 
+    bytes += [
+      27,
+      32,
+      0,
+    ]; // Temporarily reset character spacing to 0 for divider
     bytes += generator.hr();
+    bytes += [27, 32, 3]; // Set character spacing back to 3 for items
 
     // items
     int index = 1;
 
     for (final item in items) {
+      final nameLines = _wrapText(item['name'].toString(), 22);
+
       bytes += generator.row([
-        PosColumn(width: 1, text: index.toString()),
-        PosColumn(width: 8, text: item['name'].toString()),
         PosColumn(
-          width: 3,
+          width: 2,
+          text: index.toString(),
+          styles: const PosStyles(
+            bold: true,
+            height: PosTextSize.size2,
+            width: PosTextSize.size1,
+          ),
+        ),
+        PosColumn(
+          width: 8,
+          text: nameLines.first,
+          styles: const PosStyles(
+            bold: true,
+            height: PosTextSize.size2,
+            width: PosTextSize.size1,
+          ),
+        ),
+        PosColumn(
+          width: 2,
           text: "x ${item['qty']}",
-          styles: const PosStyles(align: PosAlign.right),
+          styles: const PosStyles(
+            align: PosAlign.right,
+            bold: true,
+            height: PosTextSize.size2,
+            width: PosTextSize.size1,
+          ),
         ),
       ]);
 
+      // Print remaining lines of item name aligned underneath
+      for (int i = 1; i < nameLines.length; i++) {
+        bytes += generator.row([
+          PosColumn(
+            width: 2,
+            text: "",
+            styles: const PosStyles(
+              bold: true,
+              height: PosTextSize.size2,
+              width: PosTextSize.size1,
+            ),
+          ),
+          PosColumn(
+            width: 8,
+            text: nameLines[i],
+            styles: const PosStyles(
+              bold: true,
+              height: PosTextSize.size2,
+              width: PosTextSize.size1,
+            ),
+          ),
+          PosColumn(
+            width: 2,
+            text: "",
+            styles: const PosStyles(
+              align: PosAlign.right,
+              bold: true,
+              height: PosTextSize.size2,
+              width: PosTextSize.size1,
+            ),
+          ),
+        ]);
+      }
+
       // Modifiers
       if (item['modifiers'] != null && (item['modifiers'] as List).isNotEmpty) {
-        bytes += generator.text(" + ${(item['modifiers'] as List).join(', ')}");
+        bytes += generator.row([
+          PosColumn(width: 2, text: ""),
+          PosColumn(
+            width: 10,
+            text: " + ${(item['modifiers'] as List).join(', ')}",
+            styles: const PosStyles(
+              bold: true,
+              height: PosTextSize.size2,
+              width: PosTextSize.size1,
+            ),
+          ),
+        ]);
       }
 
       // Addons
@@ -230,13 +386,47 @@ class _OrderPanelState extends State<OrderPanel> {
         final addons = item['addons'] as Map<String, dynamic>;
 
         addons.forEach((name, details) {
-          bytes += generator.text("   * $name x${details['quantity']}");
+          bytes += generator.row([
+            PosColumn(width: 2, text: ""),
+            PosColumn(
+              width: 10,
+              text: "   * $name x${details['quantity']}",
+              styles: const PosStyles(
+                bold: true,
+                height: PosTextSize.size2,
+                width: PosTextSize.size1,
+              ),
+            ),
+          ]);
         });
       }
+
+      // Item Note / Remarks
+      final note = (item['note'] ?? item['remarks'] ?? '').toString();
+      if (note.isNotEmpty) {
+        bytes += generator.row([
+          PosColumn(width: 2, text: ""),
+          PosColumn(
+            width: 10,
+            text: " Note: $note",
+            styles: const PosStyles(
+              bold: true,
+              height: PosTextSize.size2,
+              width: PosTextSize.size1,
+            ),
+          ),
+        ]);
+      }
+
+      // Thin spacing between item rows (10 dots = 1.25mm)
+      bytes += [27, 74, 16];
 
       index++;
     }
     //  footer
+
+    // Restore standard character spacing (0 dots) for footer and hr dividers
+    bytes += [27, 32, 0];
 
     bytes += generator.hr();
 
@@ -279,13 +469,12 @@ class _OrderPanelState extends State<OrderPanel> {
       }
     }
   }
+
   Future<void> _cancelOrder(int currentOrderId) async {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const Center(
-        child: CircularProgressIndicator(),
-      ),
+      builder: (_) => const Center(child: CircularProgressIndicator()),
     );
 
     try {
@@ -313,10 +502,7 @@ class _OrderPanelState extends State<OrderPanel> {
         }
 
         context.read<OrderBloc>().add(
-          CancelOrder(
-            parentOrderId: currentOrderId,
-            token: widget.token,
-          ),
+          CancelOrder(parentOrderId: currentOrderId, token: widget.token),
         );
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -345,10 +531,7 @@ class _OrderPanelState extends State<OrderPanel> {
 
       if (responseJson['status'] == 'cancelled') {
         context.read<OrderBloc>().add(
-          CancelOrder(
-            parentOrderId: currentOrderId,
-            token: widget.token,
-          ),
+          CancelOrder(parentOrderId: currentOrderId, token: widget.token),
         );
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -369,7 +552,8 @@ class _OrderPanelState extends State<OrderPanel> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => TablesScreen(
+            builder:
+                (_) => TablesScreen(
               loadedTables: tables,
               pin: widget.pin,
               token: widget.token,
@@ -395,9 +579,7 @@ class _OrderPanelState extends State<OrderPanel> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           duration: const Duration(seconds: 1),
-          content: Text(
-            e.toString().replaceFirst("Exception: ", ""),
-          ),
+          content: Text(e.toString().replaceFirst("Exception: ", "")),
           backgroundColor: Colors.red,
         ),
       );
@@ -1710,7 +1892,8 @@ class _OrderPanelState extends State<OrderPanel> {
                           const SizedBox(height: 12),
                           InkWell(
                             onTap: () {
-                              final currentOrderId = context.read<OrderBloc>().state.orderId;
+                              final currentOrderId =
+                                  context.read<OrderBloc>().state.orderId;
 
                               if (currentOrderId == 0) {
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -1732,11 +1915,16 @@ class _OrderPanelState extends State<OrderPanel> {
                                     builder: (context, setState) {
                                       return ConfirmationPopup(
                                         title: "Are you sure?",
-                                        message: widget.isTakeAway
+                                        message:
+                                        widget.isTakeAway
                                             ? "Do you want to really cancel this order?\nThis action cannot be undone."
                                             : "Do you want to really delete the ",
-                                        highlightedText: widget.isTakeAway ? null : state.tableName,
-                                        trailingMessage: widget.isTakeAway
+                                        highlightedText:
+                                        widget.isTakeAway
+                                            ? null
+                                            : state.tableName,
+                                        trailingMessage:
+                                        widget.isTakeAway
                                             ? null
                                             : "?\nThis will remove it from ${state.zoneName}.",
                                         imagePath: "assets/warning_icon.png",

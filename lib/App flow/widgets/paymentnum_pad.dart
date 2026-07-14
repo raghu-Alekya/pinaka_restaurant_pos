@@ -2356,7 +2356,7 @@ class _paymentsummaryState extends State<paymentsummary> {
         child: Opacity(
           opacity: enabled ? 1.0 : 0.4,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
             decoration: BoxDecoration(
               // ── Only change: gradient when applied, white when not ──
               gradient: isApplied ? _tileGradient(iconBg) : null,

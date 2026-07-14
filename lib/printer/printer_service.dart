@@ -280,8 +280,9 @@ class Printer {
       bytes += generator.hr(ch: '=');
 
       final rawTotal = grossTotal - couponDiscount - merchantDiscount + taxAmount + serviceCharge + tipAmount;
-      final roundOff = netPayable > 0 ? (netPayable - rawTotal) : 0.0;
-      final grandTotal = netPayable;
+      final roundedNetPayable = netPayable.roundToDouble();
+      final roundOff = roundedNetPayable > 0 ? (roundedNetPayable - rawTotal) : 0.0;
+      final grandTotal = roundedNetPayable;
 
       bytes += generator.row([
         PosColumn(width: 6, text: ""),
@@ -344,3 +345,4 @@ class Printer {
     }
   }
 }
+

@@ -122,12 +122,33 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
           children: [
             /// HEADER
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Choose Variants',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Choose Variants',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.product.name.length > 25
+                          ? '${widget.product.name.substring(0, 25)}...'
+                          : widget.product.name,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ),
+
                 Container(
                   width: 30,
                   height: 30,
@@ -136,8 +157,11 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
-                    icon: const Icon(Icons.close,
-                        color: Colors.white, size: 16),
+                    icon: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 16,
+                    ),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                     onPressed: () {
@@ -148,7 +172,6 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
                 ),
               ],
             ),
-
             const SizedBox(height: 25),
 
             /// VARIANTS LIST
@@ -181,6 +204,10 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
                     final variant = widget.product.variants[index];
                     final quantity =
                         _quantityMap[variant.variationId] ?? 0;
+                    final displayVariantName = variant.name
+                        .replaceFirst(widget.product.name, '')
+                        .replaceFirst('-', '')
+                        .trim();
 
                     return Container(
                       width: 170,
@@ -214,10 +241,12 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
                           // Text(widget.product.name,
                           //     textAlign: TextAlign.center),
                           Text(
-                            variant.name.length > 12
-                                ? '${variant.name.substring(0, 12)}...'
-                                : variant.name,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                            displayVariantName.length > 12
+                                ? '${displayVariantName.substring(0, 12)}...'
+                                : displayVariantName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
                             textAlign: TextAlign.center,
                           ),
                           Text(

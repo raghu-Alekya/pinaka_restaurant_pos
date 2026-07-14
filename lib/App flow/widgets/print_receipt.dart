@@ -52,63 +52,65 @@ class _PrintReciptState extends State<PrintRecipt> {
     _selectedOption = 'Printer';
   }
 
-  void _onDonePressed() async {
-    // 1️⃣ Validation
-    if (_selectedOption == 'Email') {
-      final email = _emailController.text.trim();
-      if (email.isEmpty || !email.contains("@")) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Please enter a valid email address"),
-            duration: Duration(seconds: 1),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
+  void _onDonePressed({bool isNoReceipt = false}) async {
+    if (!isNoReceipt) {
+      // 1️⃣ Validation
+      if (_selectedOption == 'Email') {
+        final email = _emailController.text.trim();
+        if (email.isEmpty || !email.contains("@")) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Please enter a valid email address"),
+              duration: Duration(seconds: 1),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
       }
-    }
 
-    if (_selectedOption == 'SMS') {
-      final sms = _smsController.text.trim();
-      if (sms.isEmpty || sms.length != 10) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Please enter a valid phone number"),
-            duration: Duration(seconds: 1),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
+      if (_selectedOption == 'SMS') {
+        final sms = _smsController.text.trim();
+        if (sms.isEmpty || sms.length != 10) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Please enter a valid phone number"),
+              duration: Duration(seconds: 1),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
       }
-    }
 
-    // ✅ Print receipt when Printer is selected
-    if (_selectedOption == 'Printer') {
-      try {
-        await Printer.printBill(
-          context: context,
-          orderId: widget.paymentSummary.orderId.toString(),
-          tableName: widget.paymentSummary.tableName,
-          cashierName: widget.cashierName,
-          items: widget.paymentSummary.lineItems.map((item) {
-            return {
-              "name": item.name,
-              "qty": item.qty,
-              "price": item.price,
-              "amount": item.total,
-              "modifiers": item.modifiers,
-            };
-          }).toList(),
-          grossTotal: widget.paymentSummary.grossTotal,
-          couponDiscount: widget.paymentSummary.coupons,
-          merchantDiscount: widget.paymentSummary.discount,
-          tipAmount: widget.paymentSummary.tipAmount,
-          taxAmount: widget.paymentSummary.tax,
-          serviceCharge: widget.paymentSummary.serviceChargeValue,
-          netPayable: widget.paymentSummary.netTotal,
-        );
-      } catch (e) {
-        debugPrint("Print failed: $e");
+      // ✅ Print receipt when Printer is selected
+      if (_selectedOption == 'Printer') {
+        try {
+          await Printer.printBill(
+            context: context,
+            orderId: widget.paymentSummary.orderId.toString(),
+            tableName: widget.paymentSummary.tableName,
+            cashierName: widget.cashierName,
+            items: widget.paymentSummary.lineItems.map((item) {
+              return {
+                "name": item.name,
+                "qty": item.qty,
+                "price": item.price,
+                "amount": item.total,
+                "modifiers": item.modifiers,
+              };
+            }).toList(),
+            grossTotal: widget.paymentSummary.grossTotal,
+            couponDiscount: widget.paymentSummary.coupons,
+            merchantDiscount: widget.paymentSummary.discount,
+            tipAmount: widget.paymentSummary.tipAmount,
+            taxAmount: widget.paymentSummary.tax,
+            serviceCharge: widget.paymentSummary.serviceChargeValue,
+            netPayable: widget.paymentSummary.netTotal,
+          );
+        } catch (e) {
+          debugPrint("Print failed: $e");
+        }
       }
     }
 
@@ -282,14 +284,14 @@ class _PrintReciptState extends State<PrintRecipt> {
                   label: 'No Receipt',
                   color: const Color(0xFFECEEF2),
                   textColor: const Color(0xFF4C5F7D),
-                  onTap: _onDonePressed,
+                  onTap: () => _onDonePressed(isNoReceipt: true),
                 ),
                 const SizedBox(width: 20),
                 _buildDialogButton(
                   label: 'Done',
                   color: const Color(0xFF1BA672),
                   textColor: Colors.white,
-                  onTap: _onDonePressed,
+                  onTap: () => _onDonePressed(isNoReceipt: false),
                 ),
               ],
             ),

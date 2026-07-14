@@ -861,6 +861,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../printer/printer_setup_screen.dart';
+import '../../printer/printer_db_helper.dart';
 
 class SettingsScreen extends StatefulWidget {
   final String token;
@@ -916,6 +917,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   };
   final ImagePicker _picker = ImagePicker();
   String _selectedLabel = "General";
+  String? _connectedPrinterName;
 
   @override
   void initState() {
@@ -924,6 +926,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
     print("User ID: ${widget.userId}");
     print("Display Name: ${widget.displayName}");
     _loadSavedSettings();
+    _loadConnectedPrinter();
+  }
+
+  Future<void> _loadConnectedPrinter() async {
+    try {
+      final printerData = await PrinterDBHelper().getPrinterFromDB();
+      if (printerData.isNotEmpty) {
+        setState(() {
+          _connectedPrinterName = printerData.first['deviceName'] ?? printerData.first['device_name'];
+        });
+      } else {
+        setState(() {
+          _connectedPrinterName = null;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error loading connected printer: $e");
+    }
   }
 
   Future<void> _loadSavedSettings() async {
@@ -1530,34 +1550,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
+                      children: [
+                        const Text(
                           "Printer Settings",
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        SizedBox(height: 4),
-                        Text(
-                          "Connected Printer",
-                          style: TextStyle(color: Colors.black54),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Text(
+                              "Connected Printer: ",
+                              style: TextStyle(color: Colors.black54),
+                            ),
+                            Text(
+                              _connectedPrinterName ?? "None",
+                              style: TextStyle(
+                                color: _connectedPrinterName != null
+                                    ? Colors.green
+                                    : Colors.black54,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
                   ElevatedButton(
                     onPressed: () async {
-                      final result = await Navigator.push(
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const  PrinterSetup(),
+                          builder: (_) => const PrinterSetup(),
                         ),
                       );
-
-                      if (result == true) {
-                        setState(() {});
-                      }
+                      _loadConnectedPrinter();
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF007BFF),

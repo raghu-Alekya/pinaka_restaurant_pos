@@ -238,7 +238,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
     final currentData = filteredReservations.skip(startIndex).take(entriesPerPage).toList();
 
     return Scaffold(
-      backgroundColor: Color(0xFFE4E9F9),
+      backgroundColor: const Color(0xFFF6F6F6),
       appBar: TopBar(
         token: widget.token,
         pin: widget.pin,
@@ -592,17 +592,14 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                     )
                   ],
                 ),
-                // const SizedBox(height: 10),
+                const SizedBox(height: 10),
                 // Table Container
                 Container(
-                  // decoration: BoxDecoration(
-                  //   color: Colors.white,
-                  //   // borderRadius: BorderRadius.only(
-                  //   //   topLeft: Radius.circular(16),
-                  //   //   topRight: Radius.circular(16),
-                  //   // ),
-                  // ),
-                  padding: const EdgeInsets.fromLTRB(3, 25, 3, 0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFEFEF),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  clipBehavior: Clip.antiAlias,
                   child: Column(
                     children: [
                       Container(

@@ -311,7 +311,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFE4E9F9),
+      backgroundColor: const Color(0xFFF6F6F6),
       body: SafeArea(
         child: Column(
           children: [

@@ -10,8 +10,11 @@ import '../../utils/SessionManager.dart';
 import '../widgets/ReservationMergePopup.dart';
 import '../widgets/ReservationUnmergePopup.dart';
 import '../widgets/area_movement_notifier.dart';
+import '../widgets/confirmation_pop_up.dart';
 import '../widgets/top_bar.dart';
 import 'package:flutter/services.dart';
+
+import 'home_screen.dart';
 
 class CreateReservationScreen extends StatefulWidget {
   final String pin;
@@ -71,12 +74,23 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   bool _isCalendarLoading = false;
   late String _originalSelectedTable;
   late String _originalSelectedSlot;
-
+  bool _hasUnsavedChanges = false;
   @override
   void initState() {
     super.initState();
     _loadPermissions();
+    _peopleController.addListener(_markDirty);
+    _nameController.addListener(_markDirty);
+    _contactController.addListener(_markDirty);
+    _priorityController.addListener(_markDirty);
+  }
 
+  void _markDirty() {
+    if (!_hasUnsavedChanges) {
+      setState(() {
+        _hasUnsavedChanges = true;
+      });
+    }
     if (widget.isEditMode && widget.reservationData != null) {
       final data = widget.reservationData!;
       _peopleController.text = data['people'] ?? '';
@@ -304,7 +318,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
     setState(() => _isLoading = true);
     _saveReservation().whenComplete(() => setState(() => _isLoading = false));
   }
-
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -510,7 +523,27 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                   backgroundColor: Colors.redAccent,
                   child: Icon(Icons.close, color: Colors.white, size: 16),
                 ),
-                onPressed: () {
+                onPressed: () async {
+                  if (_hasUnsavedChanges) {
+                    final result = await showDialog<bool>(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (_) => ConfirmationPopup(
+                      title: "Discard Reservation?",
+                      message:
+                      "You have unsaved reservation details. Do you want to leave this page?",
+                        imagePath: "assets/warning_icon.png",
+                      isLoading: false,
+                      cancelButtonText: "Stay",
+                      confirmButtonText: "Leave",
+                      onCancel: () => Navigator.pop(context, false),
+                      onConfirm: () => Navigator.pop(context, true),
+                    )
+                    );
+
+                    if (result != true) return;
+                  }
+
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
@@ -684,23 +717,26 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
         restaurantId: widget.restaurantId,
         restaurantName: widget.restaurantName,
         userPermissions: _userPermissions,
-        onPermissionsReceived: (permissions) {
-          setState(() {
-            _userPermissions = permissions;
-          });
+        onHomePressed: () async {
+          if (!_hasUnsavedChanges) return true;
 
-          if (!(permissions.canCreateReservation)) {
-            PermissionHandler.handleNoPermission(
-              context,
-              fallbackScreen: ReservationListScreen(
-                pin: widget.pin,
-                token: widget.token,
-                restaurantId: widget.restaurantId,
-                restaurantName: widget.restaurantName,
-              ),
-              customMessage: "You don't have permission to create reservations.",
-            );
-          }
+          final result = await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => ConfirmationPopup(
+              title: "Discard Reservation?",
+              message:
+              "You have unsaved reservation details. Do you want to leave this page?",
+              imagePath: "assets/warning_icon.png",
+              isLoading: false,
+              cancelButtonText: "Stay",
+              confirmButtonText: "Leave",
+              onCancel: () => Navigator.pop(context, false),
+              onConfirm: () => Navigator.pop(context, true),
+            ),
+          );
+
+          return result ?? false;
         },
       ),
       body: Padding(
@@ -768,8 +804,30 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
               borderRadius: BorderRadius.circular(10),
             ),
             child: InkWell(
-              onTap: () {
-                Navigator.pop(context);
+              onTap: () async {
+                if (_hasUnsavedChanges) {
+                  final result = await showDialog<bool>(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (_) => ConfirmationPopup(
+                      title: "Discard Reservation?",
+                      message:
+                      "You have unsaved reservation details. Do you want to leave this page?",
+                      imagePath: "assets/warning_icon.png",
+                      isLoading: false,
+                      cancelButtonText: "Stay",
+                      confirmButtonText: "Leave",
+                      onCancel: () => Navigator.pop(context, false),
+                      onConfirm: () => Navigator.pop(context, true),
+                    ),
+                  );
+
+                  if (result == true) {
+                    Navigator.pop(context);
+                  }
+                } else {
+                  Navigator.pop(context);
+                }
               },
               borderRadius: BorderRadius.circular(10),
               child: Row(
@@ -834,6 +892,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                       selectedDate = picked;
                       selectedSlot = '';
                       _isLoadingSlots = true;
+                      _hasUnsavedChanges = true;
                     });
 
                     await _fetchSlotsAndMeals();
@@ -875,9 +934,9 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
             ),
           )
               : Container(
-            height: 48,
-            width: 380,
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            height: 44,
+            width: 350,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(10),
@@ -915,6 +974,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                               onPressed: () {
                                 setState(() {
                                   selectedArea = area;
+                                  _hasUnsavedChanges = true;
                                 });
                               },
                               style: TextButton.styleFrom(
@@ -1033,7 +1093,9 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
         TextField(
           controller: controller,
           onChanged: (_) {
-            setState(() {});
+            setState(() {
+              _hasUnsavedChanges = true;
+            });
           },
           focusNode: focusNode,
           keyboardType: keyboardType,
@@ -1330,6 +1392,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                           selectedTables.clear();
                           selectedTables.add(tableName);
                         }
+                        _hasUnsavedChanges = true; // <-- Mark form as modified
                       });
                     },
                     onLongPress: () {

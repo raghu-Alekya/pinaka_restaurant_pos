@@ -58,7 +58,7 @@ class TopBar extends StatefulWidget implements PreferredSizeWidget {
   final LayerLink? searchLink;
   final ValueChanged<String>? onSearchChanged;
   final VoidCallback? onSearchTap;
-
+  final Future<bool> Function()? onHomePressed;
   const TopBar({
     Key? key,
     required this.token,
@@ -87,6 +87,7 @@ class TopBar extends StatefulWidget implements PreferredSizeWidget {
     this.searchLink,
     this.onSearchChanged,
     this.onSearchTap,
+    this.onHomePressed,
   }) : super(key: key);
 
   @override
@@ -575,7 +576,15 @@ class _TopBarState extends State<TopBar> {
 
   Widget _buildHomeButton() {
     return GestureDetector(
-      onTap: () {
+      onTap: () async {
+        bool shouldNavigate = true;
+
+        if (widget.onHomePressed != null) {
+          shouldNavigate = await widget.onHomePressed!();
+        }
+
+        if (!shouldNavigate) return;
+
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(

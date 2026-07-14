@@ -120,7 +120,7 @@ class _TipsScreenState extends State<TipsScreen> {
   Widget build(BuildContext context) {
     final int totalOrders = tipsData?.orders.length ?? 0;
     return Scaffold(
-      backgroundColor: const Color(0xFFE4E9F9),
+      backgroundColor: const Color(0xFFF6F6F6),
       appBar: TopBar(
         token: widget.token,
         pin: widget.pin,restaurantId: widget.restaurantId,
@@ -143,8 +143,7 @@ class _TipsScreenState extends State<TipsScreen> {
       body: Padding(
         padding: const EdgeInsets.all(16.0), //  space from all sides
         child: Container(
-          width: MediaQuery.of(context).size.width,
-          height: MediaQuery.of(context).size.height,
+          width: double.infinity,
           clipBehavior: Clip.antiAlias,
           decoration: ShapeDecoration(
             color: Colors.white,
@@ -357,10 +356,11 @@ class _TipsScreenState extends State<TipsScreen> {
               /// Remaining screen content
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 32,vertical: 0),
+                  padding: const EdgeInsets.symmetric(horizontal: 24,vertical: 0),
                   child: Container(
+                    margin: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: const Color(0xFFF2F2F2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Column(
@@ -461,6 +461,7 @@ class _TipsScreenState extends State<TipsScreen> {
                               );
 
                               return ListView.builder(
+                                padding: const EdgeInsets.only(bottom: 8),
                                 itemCount: currentPageOrders.length,
                                 itemBuilder: (context, index) {
                                   final tip = currentPageOrders[index];
@@ -556,6 +557,7 @@ class _TipsScreenState extends State<TipsScreen> {
                               ),
 
                               Container(
+                                margin: const EdgeInsets.only(right: 5),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   border: Border.all(

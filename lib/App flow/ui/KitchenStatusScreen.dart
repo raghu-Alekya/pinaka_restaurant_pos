@@ -250,6 +250,46 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       }
     });
   }
+  List<String> _wrapText(String text, int maxLength) {
+    if (text.isEmpty) return [''];
+    List<String> lines = [];
+    List<String> words = text.split(' ');
+    String currentLine = '';
+
+    for (String word in words) {
+      if (word.isEmpty) continue;
+
+      if (word.length > maxLength) {
+        if (currentLine.isNotEmpty) {
+          lines.add(currentLine);
+          currentLine = '';
+        }
+        int start = 0;
+        while (start < word.length) {
+          int end = start + maxLength;
+          if (end > word.length) {
+            end = word.length;
+          }
+          lines.add(word.substring(start, end));
+          start = end;
+        }
+        continue;
+      }
+
+      if (currentLine.isEmpty) {
+        currentLine = word;
+      } else if (currentLine.length + 1 + word.length <= maxLength) {
+        currentLine += ' ' + word;
+      } else {
+        lines.add(currentLine);
+        currentLine = word;
+      }
+    }
+    if (currentLine.isNotEmpty) {
+      lines.add(currentLine);
+    }
+    return lines.isEmpty ? [''] : lines;
+  }
 
   Future<void> _printSelectedKot() async {
     if (_selectedKot == null || _selectedTable == null) {
@@ -268,6 +308,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       final generator = Generator(PaperSize.mm80, profile);
 
       List<int> bytes = [];
+      bytes += [27, 32, 0]; // Reset character spacing to 0 right at the start
       final displayKotNo = _selectedKot!.replaceAll('KOT#', '');
 
       bytes += generator.text(
@@ -289,54 +330,100 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       // table row
 
       final tableName = (_selectedTable?['table_name'] ?? '').toString();
-      bytes += generator.row([
-        PosColumn(
-          width: 7,
-          text:
-          "Date : ${DateFormat('dd/MM/yyyy hh:mm a').format(DateTime.now())}",
-        ),
-        PosColumn(
-          width: 5,
-          text: "Dine In : $tableName",
-          styles: const PosStyles(align: PosAlign.right, bold: true),
-        ),
-      ]);
+      final dateText = "Date: ${DateFormat('dd/MM/yyyy hh:mm a').format(DateTime.now())}";
+      final dineInText = "Dine In: $tableName";
+
+      if ((dateText.length + dineInText.length) < 45) {
+        bytes += generator.row([
+          PosColumn(
+            width: 7,
+            text: dateText,
+            styles: const PosStyles(bold: true),
+          ),
+          PosColumn(
+            width: 5,
+            text: dineInText,
+            styles: const PosStyles(align: PosAlign.right, bold: true),
+          ),
+        ]);
+      } else {
+        bytes += generator.text(
+          dateText,
+          styles: const PosStyles(align: PosAlign.left, bold: true),
+        );
+        bytes += generator.text(
+          dineInText,
+          styles: const PosStyles(align: PosAlign.left, bold: true),
+        );
+      }
+
+      // add a row of space between date row and Order id row
+      bytes += [27, 74, 16];
 
       // order /captain row
       final orderId = (_selectedTable?['order_id'] ?? '').toString();
       final captainName = (selectedKotOrder['order_by'] ?? _selectedTable?['captain_name'] ?? 'Admin').toString();
+      final orderIdText = "Order Id: $orderId";
+      final captainText = "Captain: $captainName";
 
-      bytes += generator.row([
-        PosColumn(
-          width: 6,
-          text: "Order Id : $orderId",
-          styles: const PosStyles(bold: true),
-        ),
-        PosColumn(
-          width: 6,
-          text: "Captain : $captainName",
-          styles: const PosStyles(align: PosAlign.right),
-        ),
-      ]);
+      if ((orderIdText.length + captainText.length) < 45) {
+        bytes += generator.row([
+          PosColumn(
+            width: 5,
+            text: orderIdText,
+            styles: const PosStyles(bold: true),
+          ),
+          PosColumn(
+            width: 7,
+            text: captainText,
+            styles: const PosStyles(align: PosAlign.right, bold: true),
+          ),
+        ]);
+      } else {
+        bytes += generator.text(
+          orderIdText,
+          styles: const PosStyles(align: PosAlign.left, bold: true),
+        );
+        bytes += generator.text(
+          captainText,
+          styles: const PosStyles(align: PosAlign.left, bold: true),
+        );
+      }
 
       bytes += generator.hr();
       //  header
 
+      // Set character spacing to 3 dots for items and headers
+      bytes += [27, 32, 3];
+
       bytes += generator.row([
-        PosColumn(width: 1, text: "S.No", styles: const PosStyles(bold: true)),
+        PosColumn(
+          width: 2,
+          text: "S.No",
+          styles: const PosStyles(
+            bold: true,
+          ),
+        ),
         PosColumn(
           width: 8,
           text: "Item Name",
-          styles: const PosStyles(bold: true),
+          styles: const PosStyles(
+            bold: true,
+          ),
         ),
         PosColumn(
-          width: 3,
+          width: 2,
           text: "Qty",
-          styles: const PosStyles(bold: true, align: PosAlign.right),
+          styles: const PosStyles(
+            bold: true,
+            align: PosAlign.right,
+          ),
         ),
       ]);
 
+      bytes += [27, 32, 0]; // Temporarily reset character spacing to 0 for divider
       bytes += generator.hr();
+      bytes += [27, 32, 3]; // Set character spacing back to 3 for items
 
       // items
       int index = 1;
@@ -344,19 +431,86 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       for (final item in _kotItems) {
         final itemName = (item['item_name'] ?? item['name'] ?? '').toString();
         final qty = (item['quantity'] ?? item['qty'] ?? 1).toString();
+        final nameLines = _wrapText(itemName, 22);
+
         bytes += generator.row([
-          PosColumn(width: 1, text: index.toString()),
-          PosColumn(width: 8, text: itemName),
           PosColumn(
-            width: 3,
+            width: 2,
+            text: index.toString(),
+            styles: const PosStyles(
+              bold: true,
+              height: PosTextSize.size2,
+              width: PosTextSize.size1,
+            ),
+          ),
+          PosColumn(
+            width: 8,
+            text: nameLines.first,
+            styles: const PosStyles(
+              bold: true,
+              height: PosTextSize.size2,
+              width: PosTextSize.size1,
+            ),
+          ),
+          PosColumn(
+            width: 2,
             text: "x $qty",
-            styles: const PosStyles(align: PosAlign.right),
+            styles: const PosStyles(
+              align: PosAlign.right,
+              bold: true,
+              height: PosTextSize.size2,
+              width: PosTextSize.size1,
+            ),
           ),
         ]);
 
+        for (int i = 1; i < nameLines.length; i++) {
+          bytes += generator.row([
+            PosColumn(
+              width: 2,
+              text: "",
+              styles: const PosStyles(
+                bold: true,
+                height: PosTextSize.size2,
+                width: PosTextSize.size1,
+              ),
+            ),
+            PosColumn(
+              width: 8,
+              text: nameLines[i],
+              styles: const PosStyles(
+                bold: true,
+                height: PosTextSize.size2,
+                width: PosTextSize.size1,
+              ),
+            ),
+            PosColumn(
+              width: 2,
+              text: "",
+              styles: const PosStyles(
+                align: PosAlign.right,
+                bold: true,
+                height: PosTextSize.size2,
+                width: PosTextSize.size1,
+              ),
+            ),
+          ]);
+        }
+
         // Modifiers
         if (item['modifiers'] != null && (item['modifiers'] is List) && (item['modifiers'] as List).isNotEmpty) {
-          bytes += generator.text(" + ${(item['modifiers'] as List).join(', ')}");
+          bytes += generator.row([
+            PosColumn(width: 2, text: ""),
+            PosColumn(
+              width: 10,
+              text: " + ${(item['modifiers'] as List).join(', ')}",
+              styles: const PosStyles(
+                bold: true,
+                height: PosTextSize.size2,
+                width: PosTextSize.size1,
+              ),
+            ),
+          ]);
         }
 
         // Addons
@@ -364,13 +518,47 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
           final addons = item['addons'] as Map<String, dynamic>;
 
           addons.forEach((name, details) {
-            bytes += generator.text("   * $name x${details['quantity']}");
+            bytes += generator.row([
+              PosColumn(width: 2, text: ""),
+              PosColumn(
+                width: 10,
+                text: "   * $name x${details['quantity']}",
+                styles: const PosStyles(
+                  bold: true,
+                  height: PosTextSize.size2,
+                  width: PosTextSize.size1,
+                ),
+              ),
+            ]);
           });
         }
+
+        // Item Note / Remarks
+        final note = (item['note'] ?? item['remarks'] ?? '').toString();
+        if (note.isNotEmpty) {
+          bytes += generator.row([
+            PosColumn(width: 2, text: ""),
+            PosColumn(
+              width: 10,
+              text: " Note: $note",
+              styles: const PosStyles(
+                bold: true,
+                height: PosTextSize.size2,
+                width: PosTextSize.size1,
+              ),
+            ),
+          ]);
+        }
+
+        // Thin spacing between item rows (16 dots = 2mm)
+        bytes += [27, 74, 16];
 
         index++;
       }
       //  footer
+
+      // Restore standard character spacing (0 dots) for footer and hr dividers
+      bytes += [27, 32, 0];
 
       bytes += generator.hr();
 
@@ -714,7 +902,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
         resizeToAvoidBottomInset: false,
-        backgroundColor: Color(0xFFE4E9F9),
+        backgroundColor: const Color(0xFFF6F6F6),
         appBar: TopBar(
           token: widget.token,
           pin: widget.pin,
@@ -760,8 +948,8 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                   _buildHeader(),
                   Expanded(
                     child: Container(
-                      margin: const EdgeInsets.only(left: 5, right: 5,bottom: 16),
-                      // padding: const EdgeInsets.all(14),
+                      margin: const EdgeInsets.only(left: 5, right: 5,bottom: 12),
+                      // padding: const EdgeInsets.all(8),
                       // decoration: BoxDecoration(
                       //   color: const Color(0xFFFFFFFF), //FE5EDFF
                       //   borderRadius: BorderRadius.circular(12),
@@ -812,7 +1000,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                           Expanded(
                             flex: 4,
                             child: Padding(
-                              padding: const EdgeInsets.only(top: 0),
+                              padding: const EdgeInsets.only(top: 0, bottom: 0),
                               child: _buildOrderDetails(),
                             ),
                           ),
@@ -845,7 +1033,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF5E8),
+        color: const Color(0xFFFFDFAC),
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(8),
           topRight: Radius.circular(8),
@@ -875,7 +1063,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     }
 
     return Container(
-      height: 47,
+      height: 45,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: const Color(0xFF0C6FDB),
@@ -917,6 +1105,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
 
   Widget _buildOrderTypeButton(String title) {
     bool isEnabled = true;
+
     if (normalizeOrderType(title) == "takeaways" ||
         normalizeOrderType(title) == "onlineorders") {
       isEnabled = _userPermissions?.canViewOrderTypes ?? false;
@@ -925,7 +1114,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     bool isSelected =
         normalizeOrderType(title) == normalizeOrderType(selectedOrderType);
 
-    return GestureDetector(
+    return InkWell(
       onTap: () {
         if (isEnabled) {
           setState(() {
@@ -946,30 +1135,34 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
           );
         }
       },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              color:
-              isEnabled
-                  ? (isSelected ? Colors.red : Colors.black)
-                  : Colors.grey,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(12),
+            topRight: Radius.circular(12),
+          ),
+          border: Border(
+            bottom: BorderSide(
+              color: isSelected && isEnabled
+                  ? const Color(0xFFFF4D20)
+                  : Colors.transparent,
+              width: 4,
             ),
           ),
-          const SizedBox(height: 4),
-          AnimatedContainer(
-            duration: Duration(milliseconds: 200),
-            height: 3,
-            width: isSelected && isEnabled ? 40 : 0,
-            decoration: BoxDecoration(
-              color: isEnabled ? Colors.red : Colors.grey.shade400,
-              borderRadius: BorderRadius.circular(2),
-            ),
+        ),
+        child: Text(
+          title,
+          style: TextStyle(
+            color: isEnabled
+                ? (isSelected ? const Color(0xFFFF4D20) : Colors.black)
+                : Colors.grey,
+            fontWeight:
+            isSelected ? FontWeight.w600 : FontWeight.w500,
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1026,10 +1219,14 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
             children: [
               /// 🔥 Order Type Tabs
               Container(
-                height: 48,
+                height: 45,
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 decoration: BoxDecoration(
                   color: Colors.white,
+                  border: Border.all(
+                    color: const Color(0xFFD4EBFF), // Border color
+                    width: 1,
+                  ),
                   borderRadius: BorderRadius.circular(10),
                   boxShadow: [
                     BoxShadow(
@@ -1096,7 +1293,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       child: Opacity(
         opacity: isResetEnabled ? 1.0 : 0.5, // 🔒 visual disabled effect
         child: Container(
-          height: 47,
+          height: 45,
           padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
             color: isResetEnabled ? Colors.red : Colors.grey.shade300,
@@ -1142,7 +1339,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
           color: Colors.white,
           shape: RoundedRectangleBorder(
             side: const BorderSide(
-              color: Color(0xFFD4EBFF), // Border color
+              color: Color(0xFFD4EBFF),
               width: 0.5,
             ),
             borderRadius: BorderRadius.circular(12),
@@ -1158,20 +1355,23 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         child: TextField(
           controller: _searchController,
           cursorColor: Colors.black,
+          textAlignVertical: TextAlignVertical.center,
           onChanged: (value) =>
               setState(() => searchQuery = value.toLowerCase()),
           decoration: const InputDecoration(
             border: InputBorder.none,
             enabledBorder: InputBorder.none,
             focusedBorder: InputBorder.none,
-            contentPadding: EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 12,
-            ),
+            isDense: true,
+            contentPadding: EdgeInsets.zero,
             prefixIcon: Icon(
               Icons.search,
               size: 18,
               color: Colors.black54,
+            ),
+            prefixIconConstraints: BoxConstraints(
+              minWidth: 40,
+              minHeight: 44,
             ),
             hintText: "Order ID or Table No",
             hintStyle: TextStyle(
@@ -1192,15 +1392,15 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     final tables = filteredTables;
     final bool hasTableData = tables.isNotEmpty;
     if (tables.isEmpty) {
-      return const Center(child: Text('No orders found'));
+      return const Center(child: Text('No orders found',  style: TextStyle(color: Colors.grey, fontSize: 16),));
     }
 
     return GridView.builder(
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        childAspectRatio: 1.7,
+        crossAxisCount: 2,
+        childAspectRatio: 2.2,
         crossAxisSpacing: 5,
-        mainAxisSpacing: 10,
+        mainAxisSpacing: 8,
       ),
       itemCount: tables.length,
       itemBuilder: (context, index) {
@@ -1312,9 +1512,9 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       ) {
     return Container(
       constraints: const BoxConstraints(
-        minHeight: 160, // 🔼 increase height here
+        minHeight: 100, // 🔼 increase height here
       ),
-      padding: const EdgeInsets.all(6),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: isSelected ? const Color(0xFF0C6FDB) : Colors.white,
         borderRadius: BorderRadius.circular(6),
@@ -1390,7 +1590,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                     kotCount: kotCount,
                   ),
                   if ((order['remaining_count'] ?? 0) > 0) ...[
-                    const SizedBox(width: 5),
+                    // const SizedBox(width: 5),
                     Text(
                       "+${order['remaining_count']}",
                       style: TextStyle(
@@ -1422,8 +1622,8 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     isSelected ? const Color(0xFFD8E9FB) : const Color(0xFF81ACEF);
 
     return Container(
-      width: 35,
-      height: 35,
+      width: 30,
+      height: 30,
       decoration: BoxDecoration(
         color: isSecondary ? secondaryColor : primaryColor,
         shape: BoxShape.circle,
@@ -1462,7 +1662,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: const Color(0xFFC2DFFF),
               border: Border(

@@ -233,7 +233,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFE4E9F9),
+      backgroundColor: const Color(0xFFF6F6F6),
       appBar: TopBar(
         token: widget.token,
         pin: widget.pin,
