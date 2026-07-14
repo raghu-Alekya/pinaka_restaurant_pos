@@ -202,7 +202,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
                       ),
                     ),
                     Text(
-                      _role.toLowerCase().startsWith("role-")
+                      _role.toLowerCase().startsWith("Role-")
                           ? _role
                           : "role- $_role",
                       style: const TextStyle(
