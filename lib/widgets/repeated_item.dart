@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 
-import '../services/repeateditem_apiservices.dart';
+import '../providers/order_provider.dart';
 
 class RepeatedItem {
   final String name;
@@ -34,49 +36,21 @@ class RepeatedItemsScreen extends StatefulWidget {
 }
 
 class _RepeatedItemsScreenState extends State<RepeatedItemsScreen> {
-  List<RepeatedItem> items = [];
   bool isLoading = true;
   String lastUpdated = "";
-  // static const items = <RepeatedItem>[
-  //   RepeatedItem(name: "Chicken Biryani", count: 6, veg: false, borderColor: Color(0xffE74C3C)),
-  //   RepeatedItem(name: "Rumali Roti", count: 10, veg: true, borderColor: Color(0xff1F5FBF)),
-  //   RepeatedItem(name: "Paneer Biryani", count: 2, veg: true, borderColor: Color(0xffE0A400)),
-  //   RepeatedItem(name: "Chicken Tikka", count: 4, veg: false, borderColor: Color(0xff2E8B57)),
-  //   RepeatedItem(name: "Dragon Chicken", count: 3, veg: false, borderColor: Color(0xffE91E63)),
-  //   RepeatedItem(name: "Paneer Curry", count: 3, veg: true, borderColor: Color(0xffE0A400)),
-  //   RepeatedItem(name: "Apollo Fish", count: 2, veg: true, borderColor: Color(0xff2E8B57)),
-  //   RepeatedItem(name: "Shrimp Pan Fry", count: 2, veg: false, borderColor: Color(0xff2E8B57)),
-  //   RepeatedItem(name: "Tandoori Roti", count: 14, veg: true, borderColor: Color(0xff1F5FBF)),
-  //   RepeatedItem(name: "Paneer Masala", count: 3, veg: true, borderColor: Color(0xffFF7043)),
-  //   RepeatedItem(name: "Butter Chicken", count: 3, veg: false, borderColor: Color(0xff90A4AE)),
-  //   RepeatedItem(name: "Butter Naan", count: 8, veg: true, borderColor: Color(0xffE0A400)),
-  //   RepeatedItem(name: "Kadai Chicken", count: 4, veg: false, borderColor: Color(0xff90A4AE)),
-  //   RepeatedItem(name: "Dal Tadka", count: 2, veg: true, borderColor: Color(0xff1F5FBF)),
-  //   RepeatedItem(name: "Veg Biryani", count: 4, veg: true, borderColor: Color(0xffE0A400)),
-  //   RepeatedItem(name: "Crispy Corn", count: 2, veg: true, borderColor: Color(0xff2E8B57)),
-  //   RepeatedItem(name: "Kadai Paneer", count: 6, veg: true, borderColor: Color(0xffE91E63)),
-  //   RepeatedItem(name: "Fish Fry", count: 5, veg: false, borderColor: Color(0xffFF7043)),
-  // ];
 
   @override
   void initState() {
     super.initState();
-    loadRepeatedItems();
-    _updateLastUpdated();
+    lastUpdated = DateFormat('hh:mm a').format(DateTime.now());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      loadRepeatedItems();
+    });
   }
 
   @override
   void dispose() {
-    // _timer?.cancel();
     super.dispose();
-  }
-
-  void _updateLastUpdated() {
-    if (!mounted) return;
-
-    setState(() {
-      // lastUpdated = DateTime.now() as String;
-    });
   }
 
   Future<void> loadRepeatedItems() async {
@@ -87,27 +61,11 @@ class _RepeatedItemsScreenState extends State<RepeatedItemsScreen> {
     });
 
     try {
-      final response = await getKitchenItemsCount(
-        token: widget.token,
-        restaurantId: widget.restaurantId,
-      );
-
+      await context.read<OrderProvider>().loadExistingOrders();
       if (!mounted) return;
-
-      items =
-          response.map<RepeatedItem>((e) {
-            final bool isVeg = e['is_veg'] ?? true;
-
-            return RepeatedItem(
-              name: e['item_name'] ?? '',
-              count: e['quantity'] ?? 0,
-              veg: isVeg,
-              borderColor:
-                  isVeg ? const Color(0xff2DB347) : const Color(0xffC61D1D),
-            );
-          }).toList();
-
-      _updateLastUpdated();
+      setState(() {
+        lastUpdated = DateFormat('hh:mm a').format(DateTime.now());
+      });
     } catch (e) {
       debugPrint(e.toString());
     }
@@ -121,6 +79,48 @@ class _RepeatedItemsScreenState extends State<RepeatedItemsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final orderProvider = context.watch<OrderProvider>();
+
+    final summaryOrders = orderProvider.orders.where((o) {
+      return o.status == 'Preparing';
+    });
+
+    final Map<String, int> nameToCount = {};
+    final Map<String, bool> nameToVeg = {};
+
+    for (final order in summaryOrders) {
+      for (final item in order.items) {
+        final itemStatus = item.status.toLowerCase();
+        if (itemStatus == 'cancelled' || itemStatus == 'cancel') {
+          continue;
+        }
+
+        final name = item.name;
+        nameToCount[name] = (nameToCount[name] ?? 0) + item.qty;
+        nameToVeg[name] = item.isVeg;
+      }
+    }
+
+    final computedItems = nameToCount.entries.map((entry) {
+      final name = entry.key;
+      final count = entry.value;
+      final isVeg = nameToVeg[name] ?? true;
+      return RepeatedItem(
+        name: name,
+        count: count,
+        veg: isVeg,
+        borderColor: isVeg ? const Color(0xff2DB347) : const Color(0xffC61D1D),
+      );
+    }).toList();
+
+    computedItems.sort((a, b) {
+      final countCompare = b.count.compareTo(a.count);
+      if (countCompare != 0) return countCompare;
+      return a.name.compareTo(b.name);
+    });
+
+    final items = computedItems;
+
     final content = Column(
       children: [
         Row(
@@ -146,7 +146,7 @@ class _RepeatedItemsScreenState extends State<RepeatedItemsScreen> {
                   ),
                 ),
                 const Text(
-                  "Items appearing in multiple pending KOTs",
+                  "Cumulative summary of preparing KOT items",
                   style: TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               ],
@@ -273,7 +273,7 @@ class _RepeatedItemsScreenState extends State<RepeatedItemsScreen> {
               SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  "Count indicate the number of items pending KOT's that contain the item.",
+                  "Counts indicate the total quantity of items across all preparing KOTs.",
                 ),
               ),
             ],

@@ -185,6 +185,8 @@ class _MyAppState extends State<MyApp> {
             await prefs.remove('restaurant_id');
             await prefs.remove('emp_login_pin');
             await prefs.remove('emp_login_pin_str');
+            await prefs.remove('display_name');
+            await prefs.remove('role');
 
             _orderProvider?.dispose();
 

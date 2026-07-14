@@ -6,15 +6,25 @@ class OrderItem {
   final int qty;
   String status;
   final String note;
+  final bool isVeg;
 
   OrderItem({
     required this.name,
     required this.qty,
     this.status = 'New',
     this.note = '',
+    this.isVeg = true,
   });
 
   factory OrderItem.fromJson(Map<String, dynamic> json) {
+    final rawIsVeg = json['is_veg'] ?? json['isVeg'] ?? json['veg'];
+    final bool isVeg = rawIsVeg == null
+        ? true
+        : (rawIsVeg == true ||
+            rawIsVeg == 1 ||
+            rawIsVeg.toString().toLowerCase() == 'true' ||
+            rawIsVeg.toString() == '1');
+
     return OrderItem(
       name: json['name']?.toString() ??
           json['item_name']?.toString() ??
@@ -24,6 +34,7 @@ class OrderItem {
           1,
       status: json['status']?.toString() ?? 'New',
       note: json['note']?.toString() ?? '',
+      isVeg: isVeg,
     );
   }
 
@@ -32,6 +43,7 @@ class OrderItem {
     'qty': qty,
     'status': status,
     'note': note,
+    'is_veg': isVeg,
   };
 }
 
@@ -206,6 +218,7 @@ class KitchenOrder {
       'qty': item.qty,
       'status': item.status,
       'note': item.note,
+      'is_veg': item.isVeg,
     })
         .toList(),
   };

@@ -10,7 +10,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'active_orderscreen.dart';
 import 'providers/order_provider.dart';
 import 'services/kds_mqtt_service.dart';
-import 'services/repeateditem_apiservices.dart';
 
 class KitchenDashboardScreen extends StatefulWidget {
   final String token;
@@ -39,7 +38,6 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
   final Map<String, List<bool>> selectedItemsMap = {};
 
   KotView selectedView = KotView.pending;
-  int _repeatedItemsCount = 0;
   bool isZoomedOut = true;
   final Set<String> zoomedKotIds = {};
 
@@ -49,29 +47,9 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<OrderProvider>().loadExistingOrders();
     });
-    _fetchRepeatedItemsCount();
     _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       context.read<OrderProvider>().loadExistingOrders();
-      _fetchRepeatedItemsCount();
     });
-
-    _fetchRepeatedItemsCount();
-  }
-
-  Future<void> _fetchRepeatedItemsCount() async {
-    try {
-      final response = await getKitchenItemsCount(
-        token: widget.token,
-        restaurantId: widget.restaurantId,
-      );
-      if (mounted) {
-        setState(() {
-          _repeatedItemsCount = response.length;
-        });
-      }
-    } catch (e) {
-      debugPrint("Failed to fetch repeated items count: $e");
-    }
   }
 
   @override
@@ -83,6 +61,21 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final orderProvider = context.watch<OrderProvider>();
+
+    // Calculate repeatedCount (Summary items count) dynamically
+    final summaryOrders = orderProvider.orders.where((o) {
+      return o.status == 'Preparing';
+    });
+    final Set<String> summaryItemNames = {};
+    for (final order in summaryOrders) {
+      for (final item in order.items) {
+        final itemStatus = item.status.toLowerCase();
+        if (itemStatus != 'cancelled' && itemStatus != 'cancel') {
+          summaryItemNames.add(item.name);
+        }
+      }
+    }
+    final summaryItemsCount = summaryItemNames.length;
 
     final orders = orderProvider.pendingOrders;
 
@@ -157,7 +150,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
               activeCount:
                   orderProvider.preparingOrders.length +
                   orderProvider.readyOrders.length,
-              repeatedCount: _repeatedItemsCount,
+              repeatedCount: summaryItemsCount,
             ),
             Expanded(
               child: Padding(

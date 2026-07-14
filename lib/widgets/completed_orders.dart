@@ -898,9 +898,11 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
                                         // Table No.
                                         DataCell(
                                           Text(
-                                            order.tableName.isEmpty
-                                                ? "-"
-                                                : order.tableName,
+                                            order.orderType.toLowerCase().contains('take')
+                                                ? "N/A"
+                                                : (order.tableName.isEmpty
+                                                    ? "-"
+                                                    : order.tableName),
                                           ),
                                         ),
 
@@ -916,9 +918,12 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
                                         // Prep Time
                                         DataCell(
                                           Text(
-                                            order.prepTime.isEmpty
-                                                ? "-"
-                                                : order.prepTime,
+                                            order.status.toLowerCase() == 'cancelled' ||
+                                                    order.status.toLowerCase() == 'cancel'
+                                                ? "N/A"
+                                                : (order.prepTime.isEmpty
+                                                    ? "-"
+                                                    : order.prepTime),
                                           ),
                                         ),
 
@@ -929,113 +934,151 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
 
                                         // Action
                                         DataCell(
-                                          order.canRecall
-                                              ? InkWell(
-                                                onTap: () async {
-                                                  final api = OrderApiService(
-                                                    getToken:
-                                                        () async =>
-                                                            widget.token,
-                                                    restaurantId:
-                                                        widget.restaurantId,
-                                                  );
-
-                                                  await api.updateKotOrderStatus(
-                                                    orderId: order.kotOrderId,
-                                                    parentId: order.orderId,
-                                                    zoneId:
-                                                        order
-                                                            .zoneId, // <-- must exist
-                                                    restaurantId:
-                                                        order.restaurantId,
-                                                    status: "preparing",
-                                                  );
-                                                  debugPrint(
-                                                    "Restaurant ID: ${order.restaurantId}",
-                                                  );
-                                                  debugPrint(
-                                                    "Zone ID: ${order.zoneId}",
-                                                  );
-                                                  debugPrint(
-                                                    "Order ID: ${order.orderId}",
-                                                  );
-                                                  // Refresh KDS orders
-                                                  await context
-                                                      .read<OrderProvider>()
-                                                      .loadExistingOrders();
-
-                                                  // if (!mounted) return;
-
-                                                  if (!mounted) return;
-
-                                                  if (widget.isEmbedded) {
-                                                    widget.onRecallSuccess
-                                                        ?.call();
-                                                  } else {
-                                                    Navigator.pushReplacement(
-                                                      context,
-                                                      MaterialPageRoute(
-                                                        builder:
-                                                            (
-                                                              _,
-                                                            ) => ActiveOrdersScreen(
-                                                              token:
-                                                                  widget.token,
-                                                              restaurantId:
-                                                                  widget
-                                                                      .restaurantId,
-                                                            ),
-                                                      ),
-                                                    );
-                                                  }
-                                                },
-                                                child: Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 12,
-                                                        vertical: 8,
-                                                      ),
+                                          order.status.toLowerCase() == 'cancelled' ||
+                                                  order.status.toLowerCase() == 'cancel'
+                                              ? Container(
+                                                  padding: const EdgeInsets.symmetric(
+                                                    vertical: 8,
+                                                  ),
                                                   decoration: BoxDecoration(
-                                                    color: const Color(
-                                                      0xff2563EB,
-                                                    ),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          4,
-                                                        ),
+                                                    color: Colors.grey.shade400,
+                                                    borderRadius: BorderRadius.circular(4),
                                                   ),
-                                                  child: Row(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    children: const [
-                                                      Icon(
-                                                        Icons.refresh,
-                                                        size: 14,
-                                                        color: Colors.white,
-                                                      ),
-                                                      SizedBox(width: 6),
-                                                      Text(
-                                                        "Recall/Alter",
-                                                        style: TextStyle(
+                                                  child: SizedBox(
+                                                    width: 130,
+                                                    child: Row(
+                                                      mainAxisAlignment: MainAxisAlignment.center,
+                                                      children: const [
+                                                        Icon(
+                                                          Icons.not_interested,
+                                                          size: 14,
                                                           color: Colors.white,
-                                                          fontSize: 12,
-                                                          fontWeight:
-                                                              FontWeight.bold,
+                                                        ),
+                                                        SizedBox(width: 6),
+                                                        Text(
+                                                          "Couldn't Alter",
+                                                          style: TextStyle(
+                                                            color: Colors.white,
+                                                            fontSize: 12,
+                                                            fontWeight: FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                )
+                                              : (order.canRecall
+                                                  ? InkWell(
+                                                      onTap: () async {
+                                                        final api = OrderApiService(
+                                                          getToken:
+                                                              () async =>
+                                                                  widget.token,
+                                                          restaurantId:
+                                                              widget.restaurantId,
+                                                        );
+
+                                                        await api.updateKotOrderStatus(
+                                                          orderId: order.kotOrderId,
+                                                          parentId: order.orderId,
+                                                          zoneId:
+                                                              order
+                                                                  .zoneId, // <-- must exist
+                                                          restaurantId:
+                                                              order.restaurantId,
+                                                          status: "preparing",
+                                                        );
+                                                        debugPrint(
+                                                          "Restaurant ID: ${order.restaurantId}",
+                                                        );
+                                                        debugPrint(
+                                                          "Zone ID: ${order.zoneId}",
+                                                        );
+                                                        debugPrint(
+                                                          "Order ID: ${order.orderId}",
+                                                        );
+                                                        // Refresh KDS orders
+                                                        await context
+                                                            .read<OrderProvider>()
+                                                            .loadExistingOrders();
+
+                                                        // if (!mounted) return;
+
+                                                        if (!mounted) return;
+
+                                                        if (widget.isEmbedded) {
+                                                          widget.onRecallSuccess
+                                                              ?.call();
+                                                        } else {
+                                                          Navigator.pushReplacement(
+                                                            context,
+                                                            MaterialPageRoute(
+                                                              builder:
+                                                                  (
+                                                                    _,
+                                                                  ) => ActiveOrdersScreen(
+                                                                    token:
+                                                                        widget.token,
+                                                                    restaurantId:
+                                                                        widget
+                                                                            .restaurantId,
+                                                                  ),
+                                                            ),
+                                                          );
+                                                        }
+                                                      },
+                                                      child: Container(
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              vertical: 8,
+                                                            ),
+                                                        decoration: BoxDecoration(
+                                                          color: const Color(
+                                                            0xff2563EB,
+                                                          ),
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                4,
+                                                              ),
+                                                        ),
+                                                        child: SizedBox(
+                                                          width: 130,
+                                                          child: Row(
+                                                            mainAxisAlignment: MainAxisAlignment.center,
+                                                            children: const [
+                                                              Icon(
+                                                                Icons.refresh,
+                                                                size: 14,
+                                                                color: Colors.white,
+                                                              ),
+                                                              SizedBox(width: 6),
+                                                              Text(
+                                                                "Recall/Alter",
+                                                                style: TextStyle(
+                                                                  color: Colors.white,
+                                                                  fontSize: 12,
+                                                                  fontWeight:
+                                                                      FontWeight.bold,
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
                                                         ),
                                                       ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              )
-                                              : const Center(
-                                                child: Text(
-                                                  "-",
-                                                  style: TextStyle(
-                                                    color: Colors.grey,
-                                                    fontSize: 16,
-                                                  ),
-                                                ),
-                                              ),
+                                                    )
+                                                  : const Center(
+                                                      child: SizedBox(
+                                                        width: 130,
+                                                        child: Text(
+                                                          "-",
+                                                          textAlign: TextAlign.center,
+                                                          style: TextStyle(
+                                                            color: Colors.grey,
+                                                            fontSize: 16,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    )),
                                         ),
                                       ],
                                     );
@@ -1185,13 +1228,15 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
         isCompleted ? const Color(0xff065F46) : const Color(0xff991B1B);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      width: 110,
+      height: 22,
+      alignment: Alignment.center,
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
             isCompleted ? Icons.check_circle : Icons.cancel,

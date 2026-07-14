@@ -33,7 +33,7 @@ class TopBarWidget extends StatefulWidget {
 
 class _TopBarWidgetState extends State<TopBarWidget> {
   String _displayName = "IDAA Restaurant";
-  String _role = "I am manager";
+  String _role = "Manager";
 
   @override
   void initState() {
@@ -51,7 +51,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
       final role =
           prefs.getString("role") ??
           prefs.getString("employee_role") ??
-          "I am manager";
+          "Manager";
       if (mounted) {
         setState(() {
           _displayName = name;
@@ -202,7 +202,9 @@ class _TopBarWidgetState extends State<TopBarWidget> {
                       ),
                     ),
                     Text(
-                      _role,
+                      _role.toLowerCase().startsWith("role-")
+                          ? _role
+                          : "role- $_role",
                       style: const TextStyle(
                         fontSize: 10,
                         color: Color(0xff64748b),

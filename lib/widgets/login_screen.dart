@@ -104,6 +104,8 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
       await prefs.setInt("restaurant_id", response.data.restaurantId);
       await prefs.setInt("emp_login_pin", int.tryParse(enteredPin) ?? 0);
       await prefs.setString("emp_login_pin_str", enteredPin);
+      await prefs.setString("display_name", response.data.restaurantName);
+      await prefs.setString("role", response.data.role);
 
       ScaffoldMessenger.of(
         context,
@@ -123,19 +125,21 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
       String errorMessage = "invalid please enter valid pin";
       final errorStr = e.toString();
 
-      if (errorStr.contains("SocketException") || errorStr.contains("Host lookup failed")) {
+      if (errorStr.contains("SocketException") ||
+          errorStr.contains("Host lookup failed")) {
         errorMessage = "Network error. Please check your internet connection.";
       } else if (errorStr.contains("not authorized")) {
-        errorMessage = "You are not authorized to access the Kitchen Display System.";
+        errorMessage =
+            "You are not authorized to access the Kitchen Display System.";
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(
-        content: Text(errorMessage),
-        backgroundColor: Colors.red.shade800,
-        behavior: SnackBarBehavior.floating,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red.shade800,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
 
     if (!mounted) return;
@@ -182,7 +186,10 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
                         Image.asset(_images[index], fit: BoxFit.cover),
                         AnimatedSwitcher(
                           duration: const Duration(milliseconds: 700),
-                          transitionBuilder: (Widget child, Animation<double> animation) {
+                          transitionBuilder: (
+                            Widget child,
+                            Animation<double> animation,
+                          ) {
                             final offsetAnimation = Tween<Offset>(
                               begin: const Offset(-1.0, 0.0),
                               end: Offset.zero,
@@ -194,7 +201,9 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
                           },
                           child: Container(
                             key: ValueKey<int>(index),
-                            padding: const EdgeInsets.symmetric(horizontal: 150),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 150,
+                            ),
                             alignment: Alignment.bottomCenter,
                             margin: const EdgeInsets.only(bottom: 40),
                             child: Text(
@@ -257,59 +266,75 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
                               NumberPad(onKeyPressed: _onKeyPressed),
                               const SizedBox(height: 25),
                               ElevatedButton(
-                                onPressed: isLoading
-                                    ? null
-                                    : () {
-                                  if (enteredPin.length == 6) {
-                                    _login();
-                                  } else {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('PIN must be exactly 6 digits'),
-                                        duration: Duration(seconds: 1),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                },
+                                onPressed:
+                                    isLoading
+                                        ? null
+                                        : () {
+                                          if (enteredPin.length == 6) {
+                                            _login();
+                                          } else {
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  'PIN must be exactly 6 digits',
+                                                ),
+                                                duration: Duration(seconds: 1),
+                                                backgroundColor: Colors.red,
+                                              ),
+                                            );
+                                          }
+                                        },
                                 style: ButtonStyle(
-                                  backgroundColor: WidgetStateProperty.resolveWith<Color>(
-                                        (Set<WidgetState> states) {
-                                      if (states.contains(WidgetState.disabled)) {
+                                  backgroundColor:
+                                      WidgetStateProperty.resolveWith<Color>((
+                                        Set<WidgetState> states,
+                                      ) {
+                                        if (states.contains(
+                                          WidgetState.disabled,
+                                        )) {
+                                          return Colors.red;
+                                        }
                                         return Colors.red;
-                                      }
-                                      return Colors.red;
-                                    },
-                                  ),
-                                  foregroundColor: WidgetStateProperty.all<Color>(Colors.white),
+                                      }),
+                                  foregroundColor:
+                                      WidgetStateProperty.all<Color>(
+                                        Colors.white,
+                                      ),
                                   padding: WidgetStateProperty.all<EdgeInsets>(
                                     const EdgeInsets.symmetric(vertical: 13),
                                   ),
-                                  shape: WidgetStateProperty.all<RoundedRectangleBorder>(
+                                  shape: WidgetStateProperty.all<
+                                    RoundedRectangleBorder
+                                  >(
                                     RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                   ),
-                                  minimumSize: WidgetStateProperty.all<Size>(Size(screenWidth * 0.29, 25)),
-                                ),
-                                child: isLoading
-                                    ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                    backgroundColor: Colors.transparent,
-                                  ),
-                                )
-                                    : const Text(
-                                  "Login",
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
+                                  minimumSize: WidgetStateProperty.all<Size>(
+                                    Size(screenWidth * 0.29, 25),
                                   ),
                                 ),
+                                child:
+                                    isLoading
+                                        ? const SizedBox(
+                                          width: 24,
+                                          height: 24,
+                                          child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                            strokeWidth: 2,
+                                            backgroundColor: Colors.transparent,
+                                          ),
+                                        )
+                                        : const Text(
+                                          "Login",
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
                               ),
                             ],
                           ),

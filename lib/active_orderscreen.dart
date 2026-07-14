@@ -234,6 +234,12 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                     //color: const Color(0xffF59E0B), //
                     color: const Color(0xFFFF0000),
                     child: DragTarget<Map<String, dynamic>>(
+                      onWillAcceptWithDetails: (details) {
+                        final status =
+                            details.data['status']?.toString().toLowerCase() ??
+                            '';
+                        return status == 'ready';
+                      },
                       onAcceptWithDetails: (details) {
                         final orderId = details.data['id']?.toString() ?? '';
 
@@ -280,6 +286,12 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                     title: "Ready",
                     color: const Color(0xff2563EB),
                     child: DragTarget<Map<String, dynamic>>(
+                      onWillAcceptWithDetails: (details) {
+                        final status =
+                            details.data['status']?.toString().toLowerCase() ??
+                            '';
+                        return status == 'preparing';
+                      },
                       onAcceptWithDetails: (details) {
                         final orderId = details.data['id']?.toString() ?? '';
                         orderProvider.updateOrderStatus(orderId, 'Ready');
@@ -497,6 +509,13 @@ class _ExpandableActiveOrderCard extends StatefulWidget {
 class _ExpandableActiveOrderCardState
     extends State<_ExpandableActiveOrderCard> {
   bool _expanded = false;
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -635,107 +654,120 @@ class _ExpandableActiveOrderCardState
                 ),
               ),
               const Divider(height: 1),
-              ...items.asMap().entries.map((entry) {
-                final item = Map<String, dynamic>.from(entry.value as Map);
-                final name = item['name']?.toString() ?? '';
-                final qty = item['qty'] ?? 1;
-                final note = item['note']?.toString() ?? '';
-                final isLast = entry.key == items.length - 1;
+              Container(
+                constraints: const BoxConstraints(maxHeight: 180),
+                child: Scrollbar(
+                  controller: _scrollController,
+                  thumbVisibility: true,
+                  child: SingleChildScrollView(
+                    controller: _scrollController,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: items.asMap().entries.map((entry) {
+                        final item = Map<String, dynamic>.from(entry.value as Map);
+                        final name = item['name']?.toString() ?? '';
+                        final qty = item['qty'] ?? 1;
+                        final note = item['note']?.toString() ?? '';
+                        final isLast = entry.key == items.length - 1;
 
-                return Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  name,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color:
-                                        item['status']
-                                                        ?.toString()
-                                                        .toLowerCase() ==
-                                                    'cancelled' ||
+                        return Column(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          name,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                            color:
                                                 item['status']
-                                                        ?.toString()
-                                                        .toLowerCase() ==
-                                                    'cancel'
-                                            ? Colors.red
-                                            : Colors.black87,
-                                    decoration:
-                                        item['status']
-                                                        ?.toString()
-                                                        .toLowerCase() ==
-                                                    'cancelled' ||
+                                                                ?.toString()
+                                                                .toLowerCase() ==
+                                                            'cancelled' ||
+                                                        item['status']
+                                                                ?.toString()
+                                                                .toLowerCase() ==
+                                                            'cancel'
+                                                    ? Colors.red
+                                                    : Colors.black87,
+                                            decoration:
                                                 item['status']
-                                                        ?.toString()
-                                                        .toLowerCase() ==
-                                                    'cancel'
-                                            ? TextDecoration.lineThrough
-                                            : null,
-                                  ),
-                                ),
-                                if (note.isNotEmpty)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 2),
-                                    child: Text(
-                                      '($note)',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.grey.shade500,
-                                      ),
+                                                                ?.toString()
+                                                                .toLowerCase() ==
+                                                            'cancelled' ||
+                                                        item['status']
+                                                                ?.toString()
+                                                                .toLowerCase() ==
+                                                            'cancel'
+                                                    ? TextDecoration.lineThrough
+                                                    : null,
+                                          ),
+                                        ),
+                                        if (note.isNotEmpty)
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 2),
+                                            child: Text(
+                                              '($note)',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.grey.shade500,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
                                     ),
                                   ),
-                              ],
+                                  Text(
+                                    'X $qty',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color:
+                                          item['status']?.toString().toLowerCase() ==
+                                                      'cancelled' ||
+                                                  item['status']
+                                                          ?.toString()
+                                                          .toLowerCase() ==
+                                                      'cancel'
+                                              ? Colors.red
+                                              : Colors.black87,
+                                      decoration:
+                                          item['status']?.toString().toLowerCase() ==
+                                                      'cancelled' ||
+                                                  item['status']
+                                                          ?.toString()
+                                                          .toLowerCase() ==
+                                                      'cancel'
+                                              ? TextDecoration.lineThrough
+                                              : null,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          Text(
-                            'X $qty',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color:
-                                  item['status']?.toString().toLowerCase() ==
-                                              'cancelled' ||
-                                          item['status']
-                                                  ?.toString()
-                                                  .toLowerCase() ==
-                                              'cancel'
-                                      ? Colors.red
-                                      : Colors.black87,
-                              decoration:
-                                  item['status']?.toString().toLowerCase() ==
-                                              'cancelled' ||
-                                          item['status']
-                                                  ?.toString()
-                                                  .toLowerCase() ==
-                                              'cancel'
-                                      ? TextDecoration.lineThrough
-                                      : null,
-                            ),
-                          ),
-                        ],
-                      ),
+                            if (!isLast)
+                              Divider(
+                                height: 1,
+                                thickness: 0.5,
+                                color: Colors.grey.shade200,
+                              ),
+                          ],
+                        );
+                      }).toList(),
                     ),
-                    if (!isLast)
-                      Divider(
-                        height: 1,
-                        thickness: 0.5,
-                        color: Colors.grey.shade200,
-                      ),
-                  ],
-                );
-              }),
+                  ),
+                ),
+              ),
             ],
           ],
         ),
