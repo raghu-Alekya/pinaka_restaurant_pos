@@ -29,6 +29,18 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
   OrderTypeFilter selectedFilter = OrderTypeFilter.all;
   KotView selectedView = KotView.active;
 
+  final ScrollController _preparingScrollController = ScrollController();
+  final ScrollController _readyScrollController = ScrollController();
+  final ScrollController _servedScrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _preparingScrollController.dispose();
+    _readyScrollController.dispose();
+    _servedScrollController.dispose();
+    super.dispose();
+  }
+
   List<Map<String, dynamic>> filterOrders(List<Map<String, dynamic>> orders) {
     switch (selectedFilter) {
       case OrderTypeFilter.all:
@@ -251,31 +263,36 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                               color: Colors.orange,
                               title: "Preparing...",
                             )
-                            : ListView.builder(
-                              padding: EdgeInsets.zero,
-                              itemCount: preparingOrders.length,
-                              itemBuilder: (context, index) {
-                                final order = preparingOrders[index];
+                            : Scrollbar(
+                                controller: _preparingScrollController,
+                                thumbVisibility: true,
+                                child: ListView.builder(
+                                  controller: _preparingScrollController,
+                                  padding: EdgeInsets.zero,
+                                  itemCount: preparingOrders.length,
+                                  itemBuilder: (context, index) {
+                                    final order = preparingOrders[index];
 
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 8),
-                                  child: Draggable<Map<String, dynamic>>(
-                                    data: order,
-                                    feedback: Material(
-                                      child: SizedBox(
-                                        width: 250,
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 8),
+                                      child: Draggable<Map<String, dynamic>>(
+                                        data: order,
+                                        feedback: Material(
+                                          child: SizedBox(
+                                            width: 250,
+                                            child: _buildOrderCard(order),
+                                          ),
+                                        ),
+                                        childWhenDragging: Opacity(
+                                          opacity: 0.3,
+                                          child: _buildOrderCard(order),
+                                        ),
                                         child: _buildOrderCard(order),
                                       ),
-                                    ),
-                                    childWhenDragging: Opacity(
-                                      opacity: 0.3,
-                                      child: _buildOrderCard(order),
-                                    ),
-                                    child: _buildOrderCard(order),
-                                  ),
-                                );
-                              },
-                            );
+                                    );
+                                  },
+                                ),
+                              );
                       },
                     ),
                   ),
@@ -304,29 +321,34 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                           );
                         }
 
-                        return ListView.builder(
-                          padding: EdgeInsets.zero,
-                          itemCount: readyOrders.length,
-                          itemBuilder: (_, index) {
-                            final order = readyOrders[index];
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Draggable<Map<String, dynamic>>(
-                                data: order,
-                                feedback: Material(
-                                  child: SizedBox(
-                                    width: 250,
+                        return Scrollbar(
+                          controller: _readyScrollController,
+                          thumbVisibility: true,
+                          child: ListView.builder(
+                            controller: _readyScrollController,
+                            padding: EdgeInsets.zero,
+                            itemCount: readyOrders.length,
+                            itemBuilder: (_, index) {
+                              final order = readyOrders[index];
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Draggable<Map<String, dynamic>>(
+                                  data: order,
+                                  feedback: Material(
+                                    child: SizedBox(
+                                      width: 250,
+                                      child: _buildOrderCard(order),
+                                    ),
+                                  ),
+                                  childWhenDragging: Opacity(
+                                    opacity: 0.3,
                                     child: _buildOrderCard(order),
                                   ),
-                                ),
-                                childWhenDragging: Opacity(
-                                  opacity: 0.3,
                                   child: _buildOrderCard(order),
                                 ),
-                                child: _buildOrderCard(order),
-                              ),
-                            );
-                          },
+                              );
+                            },
+                          ),
                         );
                       },
                     ),
@@ -356,15 +378,20 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                           );
                         }
 
-                        return ListView.builder(
-                          padding: EdgeInsets.zero,
-                          itemCount: servedOrders.length,
-                          itemBuilder: (_, index) {
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: _buildOrderCard(servedOrders[index]),
-                            );
-                          },
+                        return Scrollbar(
+                          controller: _servedScrollController,
+                          thumbVisibility: true,
+                          child: ListView.builder(
+                            controller: _servedScrollController,
+                            padding: EdgeInsets.zero,
+                            itemCount: servedOrders.length,
+                            itemBuilder: (_, index) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: _buildOrderCard(servedOrders[index]),
+                              );
+                            },
+                          ),
                         );
                       },
                     ),
