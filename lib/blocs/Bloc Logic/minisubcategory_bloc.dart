@@ -75,6 +75,10 @@ class MiniSubCategoryBloc
     });
   }
 
+  bool hasCacheFor(int subCategoryId) => _cache.containsKey(subCategoryId);
+  List<MiniSubCategory>? getCacheFor(int subCategoryId) => _cache[subCategoryId];
+  void saveToCache(int subCategoryId, List<MiniSubCategory> data) => _cache[subCategoryId] = data;
+
   Future<void> _onFetchMiniSubCategories(
       FetchMiniSubCategories event,
       Emitter<MiniSubCategoryState> emit,

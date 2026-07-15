@@ -8,6 +8,7 @@ import '../../blocs/Bloc Logic/payment_bloc.dart';
 import '../../blocs/Bloc Logic/tax_bloc.dart';
 import '../../blocs/Bloc State/payment_state.dart';
 import '../../local database/database_helper.dart';
+import '../../models/payment/payment_summary_model.dart';
 import '../../repositories/tax_repository.dart';
 import '../../utils/SessionManager.dart';
 
@@ -74,6 +75,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
       debugPrint("   - isTakeAway: ${widget.isTakeAway}");
 
       if (orderId != null && orderId > 0) {
+        // Reset the payment state to prevent displaying previous checkout values
+        context.read<PaymentBloc>().add(ResetPayment());
+
         final orderType = widget.isTakeAway ? "Take Away" : "Dine In";
         debugPrint("💳 Loading payment summary for Order ID: $orderId (Type: $orderType)");
 
@@ -131,9 +135,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
     return BlocBuilder<PaymentBloc, PaymentState>(
       builder: (context, state) {
-        final paymentSummary = state is PaymentSummaryLoaded ? state.summary : null;
-        final merchantDiscount = state is PaymentSummaryLoaded ? state.merchantDiscount : 0.0;
         final orderId = context.read<OrderBloc>().state.orderId ?? 0;
+        final bool isStateValid = state is PaymentSummaryLoaded && state.summary.orderId == orderId;
+        final rawSummary = isStateValid ? state.summary : null;
+        final merchantDiscount = isStateValid ? state.merchantDiscount : 0.0;
+        final PaymentSummary? paymentSummary = rawSummary != null ? rawSummary.copyWith(
+          discount: merchantDiscount.abs(),
+          coupons: _couponAmount > 0 ? _couponAmount : rawSummary.coupons,
+          netTotal: _grandTotal ?? rawSummary.netTotal,
+          tipAmount: _tipAmount > 0 ? _tipAmount : rawSummary.tipAmount,
+        ) : null;
 
         final hasCouponApplied =
             _couponAmount > 0 ||

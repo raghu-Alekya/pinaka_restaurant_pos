@@ -76,9 +76,13 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
       if (state is PaymentSummaryLoaded) {
         final current = state as PaymentSummaryLoaded;
 
+        final updatedSummary = current.summary.copyWith(
+          discount: event.value,
+        );
+
         emit(
           PaymentSummaryLoaded(
-            summary: current.summary,
+            summary: updatedSummary,
             selectedMethod: current.selectedMethod,
             merchantDiscount: event.value,
             isNoCharge: event.isNoCharge,

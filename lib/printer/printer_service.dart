@@ -206,61 +206,59 @@ class Printer {
         ),
       ]);
 
-      // Coupon
-      if (couponDiscount > 0) {
-        bytes += generator.row([
-          PosColumn(width: 6, text: ""),
-          PosColumn(
-            width: 6,
-            text: "Coupon  -${couponDiscount.toStringAsFixed(2)}",
-            styles: const PosStyles(align: PosAlign.right),
-          ),
-        ]);
-      }
-
-      // Merchant Discount
-      if (merchantDiscount != 0) {
-        bytes += generator.row([
-          PosColumn(width: 6, text: ""),
-          PosColumn(
-            width: 6,
-            text: "Merchant Discount  ${merchantDiscount.toStringAsFixed(2)}",
-            styles: const PosStyles(align: PosAlign.right),
-          ),
-        ]);
-      }
-
       // Tax
       if (taxAmount > 0) {
         final cgst = taxAmount / 2;
         final sgst = taxAmount / 2;
 
         bytes += generator.row([
-          PosColumn(width: 6, text: ""),
+          PosColumn(width: 8, text: "CGST@2.5%"),
           PosColumn(
-            width: 6,
-            text: "CGST@2.5%  ${cgst.toStringAsFixed(2)}",
+            width: 4,
+            text: cgst.toStringAsFixed(2),
             styles: const PosStyles(align: PosAlign.right),
           ),
         ]);
 
         bytes += generator.row([
-          PosColumn(width: 6, text: ""),
+          PosColumn(width: 8, text: "SGST@2.5%"),
           PosColumn(
-            width: 6,
-            text: "SGST@2.5%  ${sgst.toStringAsFixed(2)}",
+            width: 4,
+            text: sgst.toStringAsFixed(2),
+            styles: const PosStyles(align: PosAlign.right),
+          ),
+        ]);
+      }
+      // Coupon
+      if (couponDiscount.abs() > 0) {
+        bytes += generator.row([
+          PosColumn(width: 8, text: "Coupon"),
+          PosColumn(
+            width: 4,
+            text: "-${couponDiscount.abs().toStringAsFixed(2)}",
             styles: const PosStyles(align: PosAlign.right),
           ),
         ]);
       }
 
+      // Merchant Discount
+      if (merchantDiscount.abs() > 0) {
+        bytes += generator.row([
+          PosColumn(width: 8, text: "Merchant Discount"),
+          PosColumn(
+            width: 4,
+            text: "-${merchantDiscount.abs().toStringAsFixed(2)}",
+            styles: const PosStyles(align: PosAlign.right),
+          ),
+        ]);
+      }
       // Service Charge
       if (serviceCharge > 0) {
         bytes += generator.row([
-          PosColumn(width: 6, text: ""),
+          PosColumn(width: 8, text: "Service Charge"),
           PosColumn(
-            width: 6,
-            text: "Service Charge  ${serviceCharge.toStringAsFixed(2)}",
+            width: 4,
+            text: serviceCharge.toStringAsFixed(2),
             styles: const PosStyles(align: PosAlign.right),
           ),
         ]);
@@ -269,19 +267,26 @@ class Printer {
       // Tip
       if (tipAmount > 0) {
         bytes += generator.row([
-          PosColumn(width: 6, text: ""),
+          PosColumn(width: 8, text: "Tip"),
           PosColumn(
-            width: 6,
-            text: "Tip  ${tipAmount.toStringAsFixed(2)}",
+            width: 4,
+            text: tipAmount.toStringAsFixed(2),
             styles: const PosStyles(align: PosAlign.right),
           ),
         ]);
       }
       bytes += generator.hr(ch: '=');
 
-      final rawTotal = grossTotal - couponDiscount - merchantDiscount + taxAmount + serviceCharge + tipAmount;
+      final rawTotal =
+          grossTotal -
+          couponDiscount.abs() -
+          merchantDiscount.abs() +
+          taxAmount +
+          serviceCharge +
+          tipAmount;
       final roundedNetPayable = netPayable.roundToDouble();
-      final roundOff = roundedNetPayable > 0 ? (roundedNetPayable - rawTotal) : 0.0;
+      final roundOff =
+          roundedNetPayable > 0 ? (roundedNetPayable - rawTotal) : 0.0;
       final grandTotal = roundedNetPayable;
 
       bytes += generator.row([
@@ -345,4 +350,3 @@ class Printer {
     }
   }
 }
-

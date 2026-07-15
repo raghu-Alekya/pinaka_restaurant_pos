@@ -1088,7 +1088,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../blocs/Bloc Event/order_event.dart';
+import '../../blocs/Bloc Logic/minisubcategory_bloc.dart';
 import '../../blocs/Bloc Logic/order_bloc.dart';
+import '../../blocs/Bloc Logic/subcategory_bloc.dart';
+import '../../blocs/Bloc State/subcategory_states.dart';
 import '../../constants/constants.dart';
 import '../../models/category/items_model.dart';
 import '../../models/category/minisubcategory_model.dart';
@@ -1335,6 +1338,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _switchSubCategory(widget.subCategories, widget.tappedSubCategoryId);
+        _prefetchAllCategoryData();
       }
     });
   }
@@ -1353,19 +1357,17 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
   void didUpdateWidget(covariant MiniSubCategoryWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // Subcategory tab changed -> switch content. Never spinner: instant if
-    // cached, otherwise keep the current screen until the fetch resolves.
-    if (oldWidget.tappedSubCategoryId != widget.tappedSubCategoryId) {
+    final bool subCategoryChanged = oldWidget.tappedSubCategoryId != widget.tappedSubCategoryId;
+    final bool subCategoriesListChanged = oldWidget.subCategories != widget.subCategories;
+
+    if (subCategoryChanged || subCategoriesListChanged) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           _switchSubCategory(widget.subCategories, widget.tappedSubCategoryId);
-        }
-      });
-    }
-    if (oldWidget.subCategories != widget.subCategories) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _prefetchAllSubCategoryProducts(widget.subCategories);
+          if (subCategoriesListChanged) {
+            _prefetchAllSubCategoryProducts(widget.subCategories);
+          }
+          _prefetchAllCategoryData();
         }
       });
     }
@@ -1649,6 +1651,55 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
         _inFlightPrefetch.remove(category.id);
         debugPrint("[MiniSubCategoryWidget] Background prefetch failed for id ${category.id}: $e");
       });
+    }
+  }
+
+  void _prefetchAllCategoryData() async {
+    final subState = context.read<SubCategoryBloc>().state;
+    if (subState is! SubCategoryLoaded) return;
+
+    final miniSubBloc = context.read<MiniSubCategoryBloc>();
+
+    for (final sub in subState.subcategories) {
+      final subId = sub.id;
+      if (!miniSubBloc.hasCacheFor(subId)) {
+        try {
+          final folders = await widget.repository.fetchMiniSubCategories(subId);
+          miniSubBloc.saveToCache(subId, folders);
+          for (final folder in folders) {
+            if (!_productCache.containsKey(folder.id) && !_inFlightPrefetch.contains(folder.id)) {
+              _inFlightPrefetch.add(folder.id);
+              widget.fetchProducts(folder.id).then((products) {
+                _inFlightPrefetch.remove(folder.id);
+                final updated = folder.isFolder ? _applyVegTagging(folder.name, products) : products;
+                _productCache[folder.id] = updated;
+                _precacheProductImages(updated);
+                _prefetchModifiersAndVariants(updated);
+              }).catchError((_) {
+                _inFlightPrefetch.remove(folder.id);
+              });
+            }
+          }
+        } catch (e) {
+          debugPrint("[MiniSubCategoryWidget] Background prefetch failed for subcategory tab $subId: $e");
+        }
+      } else {
+        final folders = miniSubBloc.getCacheFor(subId) ?? [];
+        for (final folder in folders) {
+          if (!_productCache.containsKey(folder.id) && !_inFlightPrefetch.contains(folder.id)) {
+            _inFlightPrefetch.add(folder.id);
+            widget.fetchProducts(folder.id).then((products) {
+              _inFlightPrefetch.remove(folder.id);
+              final updated = folder.isFolder ? _applyVegTagging(folder.name, products) : products;
+              _productCache[folder.id] = updated;
+              _precacheProductImages(updated);
+              _prefetchModifiersAndVariants(updated);
+            }).catchError((_) {
+              _inFlightPrefetch.remove(folder.id);
+            });
+          }
+        }
+      }
     }
   }
 
