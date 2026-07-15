@@ -6,7 +6,10 @@ import '../../blocs/Bloc Logic/auth_bloc.dart';
 import '../../constants/constants.dart';
 import '../../local database/table_dao.dart';
 import '../../models/UserPermissions.dart';
+import '../../repositories/employee_repository.dart';
+import '../../utils/GlobalReservationMonitor.dart';
 import '../../utils/SessionManager.dart';
+import '../../utils/ShiftMonitor.dart';
 import '../widgets/number_pad.dart';
 import '../widgets/pin_input.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -141,6 +144,17 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
                 print(
                   "✅ Saved Restaurant ID => ${state.restaurantId}",
                 );
+                // 👇 START SHIFT MONITOR HERE
+                final shiftMonitor = ShiftMonitor(
+                  employeeRepository: EmployeeRepository(),
+                  token: state.token,
+                );
+
+                shiftMonitor.startMonitoring();
+
+                // 👇 Reservation monitor (optional, if needed)
+                GlobalReservationMonitor().start(state.token);
+
 
                 final tableDao = TableDao();
                 final tables = await tableDao.getTablesByManagerPin(state.pin);

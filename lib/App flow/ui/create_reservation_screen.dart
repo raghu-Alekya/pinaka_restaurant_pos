@@ -83,6 +83,49 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
     _nameController.addListener(_markDirty);
     _contactController.addListener(_markDirty);
     _priorityController.addListener(_markDirty);
+    print("initState called");
+    if (widget.isEditMode && widget.reservationData != null) {
+      final data = widget.reservationData!;
+      _peopleController.text = data['people'] ?? '';
+      _nameController.text = data['name'] ?? '';
+      _contactController.text = data['phone'] ?? '';
+      _priorityController.text = data['priority'] ?? '';
+
+      selectedSlot = data['time'] ?? '';
+      _originalSelectedSlot = selectedSlot;
+      _originalSelectedTable = data['table'] ?? '';
+
+      try {
+        selectedDate = DateFormat('yyyy-MM-dd').parse(data['date'] ?? '');
+      } catch (_) {
+        selectedDate = DateTime.now();
+      }
+
+      selectedTables = {_originalSelectedTable};
+      selectedArea = data['area'] ?? selectedArea;
+    } else {
+      _originalSelectedSlot = '';
+      _originalSelectedTable = '';
+    }
+
+    _priorityFocusNode.addListener(() {
+      if (_priorityFocusNode.hasFocus) {
+        _showOverlay(context);
+      } else {
+        _removeOverlay();
+      }
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FocusManager.instance.addListener(() {
+        if (! _priorityFocusNode.hasFocus) {
+          _removeOverlay();
+        }
+      });
+    });
+    _loadZones();
+    _fetchSlotsAndMeals().then((_) {
+      _fetchTables();
+    });
   }
 
   void _markDirty() {
@@ -523,27 +566,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                   backgroundColor: Colors.redAccent,
                   child: Icon(Icons.close, color: Colors.white, size: 16),
                 ),
-                onPressed: () async {
-                  if (_hasUnsavedChanges) {
-                    final result = await showDialog<bool>(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (_) => ConfirmationPopup(
-                      title: "Discard Reservation?",
-                      message:
-                      "You have unsaved reservation details. Do you want to leave this page?",
-                        imagePath: "assets/warning_icon.png",
-                      isLoading: false,
-                      cancelButtonText: "Stay",
-                      confirmButtonText: "Leave",
-                      onCancel: () => Navigator.pop(context, false),
-                      onConfirm: () => Navigator.pop(context, true),
-                    )
-                    );
-
-                    if (result != true) return;
-                  }
-
+                onPressed: () {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(

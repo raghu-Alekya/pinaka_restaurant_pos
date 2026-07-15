@@ -499,7 +499,7 @@ class _TipsScreenState extends State<TipsScreen> {
                                         Expanded(
                                           child: Center(
                                             child: Text(
-                                              '#${tip.orderId}',
+                                              '${tip.orderId}',
                                               style: const TextStyle(
                                                 fontSize: 14,
                                                 color: Color(0xFF3D3D3D),

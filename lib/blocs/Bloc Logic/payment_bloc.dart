@@ -12,6 +12,7 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
 
   PaymentBloc(this.repository) : super(PaymentInitial()) {
     on<LoadPaymentSummary>((event, emit) async {
+      emit(PaymentInitial());      // clear previous data
       emit(PaymentLoading());
 
       try {

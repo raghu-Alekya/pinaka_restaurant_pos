@@ -60,7 +60,9 @@ class KotModel {
       ),
       time: parseTime(parseString(json['time'])),
       status: parseString(json['status'], 'Pending'),
-      items: parseItems(json['line_items']),
+      items: parseItems(
+        json['line_items'] ?? json['items'],
+      ),
       parentOrderId: parseInt(json['parent_order_id']),
       captainId: parseInt(json['captain_id']),
       guestCount: parseInt(json['guest_count']),

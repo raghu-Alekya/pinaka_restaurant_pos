@@ -541,8 +541,8 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F1F3),
-
+      // backgroundColor: const Color(0xFFF1F1F3),
+      backgroundColor: const Color(0xFFF6F6F6),
 
       appBar: TopBar(
         token: widget.token,
@@ -700,7 +700,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
                           //  Order ID value
                           Text(
-                            "#${widget.orderId}",
+                            "${widget.orderId}",
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -750,7 +750,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                               child: Container(
                                 margin: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFE5EFFF),
+                                  color: const Color(0xFFF6F6F6),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Stack(
@@ -803,7 +803,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                               child: Container(
                                 margin: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFE5EFFF),
+                                  color: const Color(0xFFF6F6F6),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Stack(
@@ -1120,12 +1120,12 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 // deleted (from API)
     final voidedItems = _currentVoidedItems;
 
-
+    // backgroundColor: const Color(0xFFF6F6F6),
     return Container(
       margin: const EdgeInsets.all(8),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: const Color(0xFFE5EFFF),
+        color: const Color(0xFFF6F6F6),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Container(

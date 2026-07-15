@@ -504,7 +504,30 @@ class _paymentsummaryState extends State<paymentsummary> {
       }
 
       final double enteredAmount = double.tryParse(amount) ?? 0.0;
+      // Restrict Card payment to Net Payable / Remaining Payable
+      if (mode == "Card") {
+        final double remainingPayable = _getCurrentNetPayable();
 
+        if (enteredAmount > remainingPayable) {
+          setState(() {
+            selectedPaymentMode = mode;
+            isCashSelected = false;
+            tenderAmountError =
+            "Card payment cannot exceed the Net Payable amount.";
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                "Card payment cannot exceed the Net Payable amount.",
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+
+          return;
+        }
+      }
       if (enteredAmount <= 0) {
         setState(() {
           selectedPaymentMode = mode;

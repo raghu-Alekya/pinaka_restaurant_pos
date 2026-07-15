@@ -207,17 +207,26 @@ class OrderRepository {
       AppLogger.debug("KOT API Response Body: ${response.body}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = jsonDecode(response.body);
+        final data = Map<String, dynamic>.from(jsonDecode(response.body));
 
         return KotModel(
           kotId: data['kot_id'] ?? 0,
           kotNumber: data['kot_number'] ?? '',
           time: DateTime.now(),
           status: 'created',
-          items: items,
+
+          // ✅ Parse items returned by backend
+          items: (data['items'] as List? ?? [])
+              .map(
+                (e) => OrderItems.fromJson(
+              Map<String, dynamic>.from(e),
+            ),
+          )
+              .toList(),
+
           parentOrderId: parentOrderId,
           captainId: captainId,
-          kotItems: [],
+          kotItems: const [],
         );
       }
 

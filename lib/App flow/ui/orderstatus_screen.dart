@@ -90,7 +90,9 @@ class _OrdersListTableState extends State<OrdersListTable> {
     _loadPermissions();
     context.read<OrderstatusBloc>().add(FetchOrders(token: widget.token));
     _selectedStatus = 'All'; // <-- Add this line
-
+    // Show today's date in the UI only
+    _dateController.text =
+        DateFormat('dd/MM/yyyy').format(DateTime.now());
     _searchController.addListener(() {
       _searchDebounce?.cancel();
       _loadCurrency();   // <-- Add this
@@ -428,51 +430,72 @@ class _OrdersListTableState extends State<OrdersListTable> {
 
                             /// DATE DROPDOWN
                             SizedBox(
-                              height: 36,
-                              width: 150,
-                              child: TextField(
-                                controller: _dateController,
-                                readOnly: true,
-                                onTap: () async {
-                                  final picked = await showDatePicker(
-                                    context: context,
-                                    barrierDismissible: false,
-                                    initialDate: selectedDate ?? DateTime.now(),
-                                    firstDate: DateTime(2020),
-                                    lastDate: DateTime(2030),
-                                  );
-                                  if (picked != null) {
-                                    setState(() {
-                                      selectedDate = picked;
-                                      _dateController.text = DateFormat(
-                                        'dd/MM/yy',
-                                      ).format(picked);
-                                      _currentPage = 0;
-                                      _updateFilteredOrders();
-                                    });
-                                  }
-                                },
-                                decoration: InputDecoration(
-                                  hintText: "Select Date",
-                                  hintStyle: const TextStyle(
-                                    color: Colors.black,
-                                    fontSize: 14,
-                                  ),
-                                  suffixIcon: Icon(
-                                    Icons.calendar_month_sharp,
-                                    size: 18,
-                                  ),
-                                  filled: true,
-                                  fillColor: Colors.grey.shade200,
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                  ),
-                                  border: OutlineInputBorder(
+                              width: 180,
+                              height: 40,
+                              child: Container(
+                                decoration: ShapeDecoration(
+                                  color: const Color(0xFFF0F0F0),
+                                  shape: RoundedRectangleBorder(
+                                    side: const BorderSide(
+                                      width: 1,
+                                      color: Color(0xFFA5A5A5),
+                                    ),
                                     borderRadius: BorderRadius.circular(10),
-                                    borderSide: BorderSide.none,
+                                  ),
+                                  shadows: const [
+                                    BoxShadow(
+                                      color: Color(0x19000000),
+                                      blurRadius: 4,
+                                      offset: Offset(0, 1),
+                                    ),
+                                  ],
+                                ),
+                                child: TextField(
+                                  controller: _dateController,
+                                  readOnly: true,
+                                  textAlignVertical: TextAlignVertical.center,
+                                  style: const TextStyle(
+                                    color: Color(0xFF7E7E7E),
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  onTap: () async {
+                                    final picked = await showDatePicker(
+                                      context: context,
+                                      barrierDismissible: false,
+                                      initialDate: selectedDate ?? DateTime.now(),
+                                      firstDate: DateTime(2020),
+                                      lastDate: DateTime(2030),
+                                    );
+
+                                    if (picked != null) {
+                                      setState(() {
+                                        selectedDate = picked;
+                                        _dateController.text =
+                                        "${picked.day.toString().padLeft(2, '0')}/"
+                                            "${picked.month.toString().padLeft(2, '0')}/"
+                                            "${picked.year}";
+                                        _currentPage = 0;
+                                        _updateFilteredOrders();
+                                      });
+                                    }
+                                  },
+                                  decoration: const InputDecoration(
+                                    border: InputBorder.none,
+                                    enabledBorder: InputBorder.none,
+                                    focusedBorder: InputBorder.none,
+                                    isDense: true,
+                                    contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 12,
+                                    ),
+                                    suffixIcon: Icon(
+                                      Icons.calendar_month,
+                                      size: 20,
+                                      color: Color(0xFF6D6D6D),
+                                    ),
                                   ),
                                 ),
-                                style: TextStyle(fontSize: 14),
                               ),
                             ),
 
@@ -583,7 +606,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
                         Expanded(
                           child: Container(
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: Color(0xFFF2F2F2),
                               borderRadius: const BorderRadius.only(
                                 topLeft: Radius.circular(8),
                                 topRight: Radius.circular(8),
@@ -608,6 +631,9 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                   dataRowHeight: 40,
                                   headingRowColor: MaterialStateProperty.all(
                                     const Color(0xFF2A3558),
+                                  ),
+                                  dataRowColor: MaterialStateProperty.all(
+                                    const Color(0xFFFCFCFF),
                                   ),
                                   columnSpacing: 40,
                                   dividerThickness: 0,
@@ -748,16 +774,16 @@ class _OrdersListTableState extends State<OrdersListTable> {
                           ),
                         ),
 
-                        const SizedBox(height: 12),
+                        // const SizedBox(height: 12),
 
                         /// PAGINATION
                         Container(
                           height: 45,
                           decoration: const BoxDecoration(
-                            color: Color(0xFFF7F7F7),
+                            color: Color(0xFFF2F2F2),
                             border: Border(
                               top: BorderSide(
-                                color: Color(0xFFE0E0E0),
+                                color: Color(0xFFF2F2F2),
                               ),
                             ),
                             borderRadius: BorderRadius.only(
@@ -784,7 +810,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   border: Border.all(
-                                    color: const Color(0xFFEFEFEF),
+                                    color: Color(0xFFF2F2F2),
                                   ),
                                   borderRadius: BorderRadius.circular(4),
                                 ),

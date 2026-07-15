@@ -840,20 +840,74 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
 
                                                             // Item Name
                                                             Expanded(
-                                                              child: Row(
+                                                              child: Column(
+                                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                                mainAxisSize: MainAxisSize.min,
                                                                 children: [
-                                                                  Flexible(
-                                                                    child: Text(
-                                                                      item.itemName ?? item.name ?? '',
-                                                                      style: TextStyle(
-                                                                        fontSize: 14,
-                                                                        decoration: isCancelled ? TextDecoration.lineThrough : null,
-                                                                        color: isCancelled ? Colors.red.shade700 : Colors.black87,
-                                                                        fontWeight: isCancelled ? FontWeight.w600 : FontWeight.normal,
-                                                                      ),
-                                                                      overflow: TextOverflow.ellipsis,
+                                                                  Text(
+                                                                    item.itemName ?? item.name ?? '',
+                                                                    style: TextStyle(
+                                                                      fontSize: 14,
+                                                                      decoration: isCancelled ? TextDecoration.lineThrough : null,
+                                                                      color: isCancelled ? Colors.red.shade700 : Colors.black87,
+                                                                      fontWeight: isCancelled ? FontWeight.w600 : FontWeight.normal,
                                                                     ),
+                                                                    overflow: TextOverflow.ellipsis,
                                                                   ),
+
+                                                                  // Modifiers
+                                                                  if ((item.modifiers ?? []).isNotEmpty)
+                                                                    Padding(
+                                                                      padding: const EdgeInsets.only(top: 2),
+                                                                      child: Wrap(
+                                                                        spacing: 4,
+                                                                        runSpacing: 2,
+                                                                        children: item.modifiers!
+                                                                            .map(
+                                                                              (modifier) => Text(
+                                                                            modifier,
+                                                                            style: TextStyle(
+                                                                              fontSize: 11,
+                                                                              color: isCancelled
+                                                                                  ? Colors.red.shade400
+                                                                                  : Colors.blueGrey,
+                                                                              fontStyle: FontStyle.italic,
+                                                                              decoration: isCancelled
+                                                                                  ? TextDecoration.lineThrough
+                                                                                  : null,
+                                                                            ),
+                                                                          ),
+                                                                        )
+                                                                            .toList(),
+                                                                      ),
+                                                                    ),
+
+                                                                  // Add-ons
+                                                                  if (item.addOns != null && item.addOns!.isNotEmpty)
+                                                                    Padding(
+                                                                      padding: const EdgeInsets.only(top: 2),
+                                                                      child: Column(
+                                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                                        children: item.addOns!.entries.map((entry) {
+                                                                          final addon = entry.value;
+
+                                                                          return Text(
+                                                                            "+ ${entry.key}"
+                                                                                "${addon['quantity'] != null ? ' x${addon['quantity']}' : ''}"
+                                                                                "${addon['price'] != null ? ' (₹${addon['price']})' : ''}",
+                                                                            style: TextStyle(
+                                                                              fontSize: 11,
+                                                                              color: isCancelled
+                                                                                  ? Colors.red.shade400
+                                                                                  : Colors.green.shade700,
+                                                                              decoration: isCancelled
+                                                                                  ? TextDecoration.lineThrough
+                                                                                  : null,
+                                                                            ),
+                                                                          );
+                                                                        }).toList(),
+                                                                      ),
+                                                                    ),
                                                                 ],
                                                               ),
                                                             ),

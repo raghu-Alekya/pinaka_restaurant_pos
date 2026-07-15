@@ -362,8 +362,8 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
     final blockHeight = MediaQuery.of(context).size.height * 0.9;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFE5EFFF),
-
+      // backgroundColor: const Color(0xFFE5EFFF),
+      backgroundColor: const Color(0xFFF6F6F6),
       // TOP BAR
       appBar: TopBar(
         token: widget.token,
@@ -426,7 +426,13 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
             );
             kotReason = reasonMeta["value"] ?? "-";
           }
+          final String role = (_userPermissions?.role ?? '').toLowerCase();
 
+          final bool canEditOrder =
+              (_userPermissions?.canEditOrder ?? false) &&
+                  (role == 'administrator' ||
+                      role == 'manager' ||
+                      role == 'merchant');
           return Center(
             child: Container(
               width: double.infinity,
@@ -452,7 +458,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                       height: blockHeight,
                       margin: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE5EFFF),
+                        color: const Color(0xFFF6F6F6),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Column(
@@ -511,11 +517,12 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                 // Right buttons: Edit Order + Cancel Order
                                 Row(
                                   children: [
+
                                     // Edit Order Button
                                     if ((orderModel.status ?? '').toLowerCase() == 'completed')
                                       ElevatedButton(
-                                        onPressed: !(_userPermissions?.canEditOrder ?? false)
-                                            ? null // Disable button
+                                        onPressed: !canEditOrder
+                                            ? null
                                             : () async {
                                           // order with merchant discount
                                           if ((orderModel.merchantDiscount ?? 0) > 0) {
@@ -532,29 +539,35 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                             );
                                             return;
                                           }
-
+                                          final String role = (_userPermissions?.role ?? '').toLowerCase();
                                           // 1 TOP-BAR ROLE CHECK (blocks captains)
-                                          if ((_userPermissions?.role ?? '').toLowerCase() != 'manager')
-                                          {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(content: Text('Only managers can edit orders'),
-                                                duration: Duration(seconds: 1),
-                                                backgroundColor: Colors.green,),
-                                            );
-                                            return;
-                                          }
-                                          // 3️ PIN-ENTERED USER MUST BE MANAGER
-                                          // Permission check from login response
-                                          if (!(_userPermissions?.canEditOrder ?? false)) {
+                                          if (!((_userPermissions?.canEditOrder ?? false) &&
+                                              (role == 'administrator' ||
+                                                  role == 'manager' ||
+                                                  role == 'merchant'))) {
                                             ScaffoldMessenger.of(context).showSnackBar(
                                               const SnackBar(
-                                                content: Text("Only managers can edit orders"),
+                                                content: Text(
+                                                  'Only administrators, managers, and merchants can edit orders',
+                                                ),
                                                 duration: Duration(seconds: 1),
                                                 backgroundColor: Colors.red,
                                               ),
                                             );
                                             return;
                                           }
+                                          // 3️ PIN-ENTERED USER MUST BE MANAGER
+                                          // Permission check from login response
+                                          // if (!(_userPermissions?.canEditOrder ?? false)) {
+                                          //   ScaffoldMessenger.of(context).showSnackBar(
+                                          //     const SnackBar(
+                                          //       content: Text("Only managers can edit orders"),
+                                          //       duration: Duration(seconds: 1),
+                                          //       backgroundColor: Colors.red,
+                                          //     ),
+                                          //   );
+                                          //   return;
+                                          // }
 
                                           // 4️ SAME MANAGER DOUBLE CHECK
                                           // final String pinEnteredManagerId = _permissions!.userId;
@@ -854,7 +867,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                       ),
                                                     ),
                                                     TextSpan(
-                                                      text: "#${orderModel.orderId ?? '-'}",
+                                                      text: "${orderModel.orderId ?? '-'}",
                                                       style: const TextStyle(
                                                         fontWeight: FontWeight.bold,
                                                         fontSize: 14,
@@ -1319,7 +1332,88 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                       // ),
                                     ),
                                   ),
+                                  const SizedBox(height: 10,),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 40,
+                                    child: ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFF3F65A1),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                      ),
+                                      onPressed: () async {
+                                        try {
+                                          Map<String, Map<String, dynamic>> consolidated = {};
+                                          if (orderModel.kotOrders != null) {
+                                            for (var kot in orderModel.kotOrders!) {
+                                              if (kot.lineItems != null) {
+                                                for (var lineItem in kot.lineItems!) {
+                                                  final name = lineItem.name ?? '';
+                                                  final modifiers = lineItem.modifiers ?? [];
+                                                  final key = "$name-${modifiers.join(',')}";
+                                                  if (consolidated.containsKey(key)) {
+                                                    final existing = consolidated[key]!;
+                                                    final currentQty = int.tryParse(existing['qty'].toString()) ?? 0;
+                                                    final addedQty = lineItem.quantity ?? 0;
+                                                    final newQty = currentQty + addedQty;
+                                                    existing['qty'] = newQty;
+                                                    existing['amount'] = (double.tryParse(existing['price'].toString()) ?? 0.0) * newQty;
+                                                  } else {
+                                                    consolidated[key] = {
+                                                      "name": name,
+                                                      "qty": lineItem.quantity ?? 0,
+                                                      "price": lineItem.itemPrice ?? 0.0,
+                                                      "amount": lineItem.amount ?? 0.0,
+                                                      "modifiers": modifiers,
+                                                    };
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
 
+                                          await Printer.printBill(
+                                            context: context,
+                                            orderId: orderModel.orderId.toString(),
+                                            tableName: orderModel.tableName ?? "",
+                                            cashierName: widget.userPermissions?.displayName ?? 'Admin',
+                                            items: consolidated.values.toList(),
+                                            grossTotal: (orderModel.grossTotal ?? 0).toDouble(),
+                                            couponDiscount: (orderModel.discount ?? 0).toDouble(),
+                                            merchantDiscount: (orderModel.merchantDiscount ?? 0).toDouble(),
+                                            tipAmount: (orderModel.tipAmount ?? 0).toDouble(),
+                                            taxAmount: (orderModel.totalTax ?? 0).toDouble(),
+                                            serviceCharge: (orderModel.serviceChargeValue ?? 0).toDouble(),
+                                            netPayable: (orderModel.netPayable ?? orderModel.netTotal ?? 0).toDouble(),
+                                            isCopy: true,
+                                          );
+                                        } catch (e) {
+                                          debugPrint("Print Bill Error: $e");
+                                        }
+                                      },
+                                      child: const Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.print,
+                                            color: Colors.white,
+                                            size: 18,
+                                          ),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            "Print Bill",
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -1367,7 +1461,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                       margin: const EdgeInsets.all(6),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE5EFFF),
+                        color: const Color(0xFFF6F6F6),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Column(
@@ -1548,92 +1642,92 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
                           //  KOT TABLE
                           Expanded(child: buildSelectedKotCard(order,orderModel)),
-                          const SizedBox(height: 10,),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: SizedBox(
-                              width: 180,
-                              height: 36,
-                              child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFF7C127),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                                ),
-                                onPressed: () async {
-                                  try {
-                                    Map<String, Map<String, dynamic>> consolidated = {};
-                                    if (orderModel.kotOrders != null) {
-                                      for (var kot in orderModel.kotOrders!) {
-                                        if (kot.lineItems != null) {
-                                          for (var lineItem in kot.lineItems!) {
-                                            final name = lineItem.name ?? '';
-                                            final modifiers = lineItem.modifiers ?? [];
-                                            final key = "$name-${modifiers.join(',')}";
-                                            if (consolidated.containsKey(key)) {
-                                              final existing = consolidated[key]!;
-                                              final currentQty = int.tryParse(existing['qty'].toString()) ?? 0;
-                                              final addedQty = lineItem.quantity ?? 0;
-                                              final newQty = currentQty + addedQty;
-                                              existing['qty'] = newQty;
-                                              existing['amount'] = (double.tryParse(existing['price'].toString()) ?? 0.0) * newQty;
-                                            } else {
-                                              consolidated[key] = {
-                                                "name": name,
-                                                "qty": lineItem.quantity ?? 0,
-                                                "price": lineItem.itemPrice ?? 0.0,
-                                                "amount": lineItem.amount ?? 0.0,
-                                                "modifiers": modifiers,
-                                              };
-                                            }
-                                          }
-                                        }
-                                      }
-                                    }
-
-                                    await Printer.printBill(
-                                      context: context,
-                                      orderId: orderModel.orderId.toString(),
-                                      tableName: orderModel.tableName ?? "",
-                                      cashierName: widget.userPermissions?.displayName ?? 'Admin',
-                                      items: consolidated.values.toList(),
-                                      grossTotal: (orderModel.grossTotal ?? 0).toDouble(),
-                                      couponDiscount: (orderModel.discount ?? 0).toDouble(),
-                                      merchantDiscount: (orderModel.merchantDiscount ?? 0).toDouble(),
-                                      tipAmount: (orderModel.tipAmount ?? 0).toDouble(),
-                                      taxAmount: (orderModel.totalTax ?? 0).toDouble(),
-                                      serviceCharge: (orderModel.serviceChargeValue ?? 0).toDouble(),
-                                      netPayable: (orderModel.netPayable ?? orderModel.netTotal ?? 0).toDouble(),
-                                      isCopy: true,
-                                    );
-                                  } catch (e) {
-                                    debugPrint("Print Bill Error: $e");
-                                  }
-                                },
-                                child: const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.print,
-                                      color: Colors.white,
-                                      size: 18,
-                                    ),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      "Print Bill",
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
+                          // const SizedBox(height: 10,),
+                          // Align(
+                          //   alignment: Alignment.centerRight,
+                          //   child: SizedBox(
+                          //     width: 180,
+                          //     height: 36,
+                          //     child: ElevatedButton(
+                          //       style: ElevatedButton.styleFrom(
+                          //         backgroundColor: const Color(0xFFF7C127),
+                          //         shape: RoundedRectangleBorder(
+                          //           borderRadius: BorderRadius.circular(10),
+                          //         ),
+                          //         padding: const EdgeInsets.symmetric(horizontal: 12),
+                          //       ),
+                          //       onPressed: () async {
+                          //         try {
+                          //           Map<String, Map<String, dynamic>> consolidated = {};
+                          //           if (orderModel.kotOrders != null) {
+                          //             for (var kot in orderModel.kotOrders!) {
+                          //               if (kot.lineItems != null) {
+                          //                 for (var lineItem in kot.lineItems!) {
+                          //                   final name = lineItem.name ?? '';
+                          //                   final modifiers = lineItem.modifiers ?? [];
+                          //                   final key = "$name-${modifiers.join(',')}";
+                          //                   if (consolidated.containsKey(key)) {
+                          //                     final existing = consolidated[key]!;
+                          //                     final currentQty = int.tryParse(existing['qty'].toString()) ?? 0;
+                          //                     final addedQty = lineItem.quantity ?? 0;
+                          //                     final newQty = currentQty + addedQty;
+                          //                     existing['qty'] = newQty;
+                          //                     existing['amount'] = (double.tryParse(existing['price'].toString()) ?? 0.0) * newQty;
+                          //                   } else {
+                          //                     consolidated[key] = {
+                          //                       "name": name,
+                          //                       "qty": lineItem.quantity ?? 0,
+                          //                       "price": lineItem.itemPrice ?? 0.0,
+                          //                       "amount": lineItem.amount ?? 0.0,
+                          //                       "modifiers": modifiers,
+                          //                     };
+                          //                   }
+                          //                 }
+                          //               }
+                          //             }
+                          //           }
+                          //
+                          //           await Printer.printBill(
+                          //             context: context,
+                          //             orderId: orderModel.orderId.toString(),
+                          //             tableName: orderModel.tableName ?? "",
+                          //             cashierName: widget.userPermissions?.displayName ?? 'Admin',
+                          //             items: consolidated.values.toList(),
+                          //             grossTotal: (orderModel.grossTotal ?? 0).toDouble(),
+                          //             couponDiscount: (orderModel.discount ?? 0).toDouble(),
+                          //             merchantDiscount: (orderModel.merchantDiscount ?? 0).toDouble(),
+                          //             tipAmount: (orderModel.tipAmount ?? 0).toDouble(),
+                          //             taxAmount: (orderModel.totalTax ?? 0).toDouble(),
+                          //             serviceCharge: (orderModel.serviceChargeValue ?? 0).toDouble(),
+                          //             netPayable: (orderModel.netPayable ?? orderModel.netTotal ?? 0).toDouble(),
+                          //             isCopy: true,
+                          //           );
+                          //         } catch (e) {
+                          //           debugPrint("Print Bill Error: $e");
+                          //         }
+                          //       },
+                          //       child: const Row(
+                          //         mainAxisAlignment: MainAxisAlignment.center,
+                          //         children: [
+                          //           Icon(
+                          //             Icons.print,
+                          //             color: Colors.white,
+                          //             size: 18,
+                          //           ),
+                          //           SizedBox(width: 8),
+                          //           Text(
+                          //             "Print Bill",
+                          //             style: TextStyle(
+                          //               fontSize: 16,
+                          //               fontWeight: FontWeight.bold,
+                          //               color: Colors.white,
+                          //             ),
+                          //           ),
+                          //         ],
+                          //       ),
+                          //     ),
+                          //   ),
+                          // ),
 
 
 

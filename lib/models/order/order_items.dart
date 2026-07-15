@@ -1,6 +1,7 @@
 import '../sidebar/category_model_.dart';
 
 class OrderItems {
+  final int? id;
   final int productId;        // ✅ always required
   final int? variationId;     // ✅ optional (null if not applicable)
   final String name;
@@ -21,6 +22,7 @@ class OrderItems {
   final String isCancelled; // 'yes' or 'no'
 
   OrderItems({
+    this.id,
     required this.productId,
     this.variationId, // ✅ optional
     required this.name,
@@ -86,23 +88,34 @@ class OrderItems {
     final isCancelled = json['is_cancelled']?.toString() ?? 'no';
 
     return OrderItems(
-      productId: json['productId'] ?? 0,
-      variationId: json['variationId'],  // ✅ FIXED
+      id: (json['id'] as num?)?.toInt(),
+
+      productId: (json['productId'] ??
+          json['product_id'] ??
+          0) as int,
+
+      variationId: json['variationId'],
+
       name: json['name']?.toString() ??
           json['item_name']?.toString() ??
+          json['product_name']?.toString() ??
           'Unknown',
-      quantity: json['quantity'] ?? 1,
-      price: (json['price'] as num?)?.toDouble() ?? 0.0,
-      //  ✅ amount includes modifier price
+
+      quantity: (json['quantity'] as num?)?.toInt() ?? 1,
+
+      price: (json['price'] as num?)?.toDouble() ?? 0,
+
       amount: (json['amount'] as num?)?.toDouble() ??
-          (((json['price'] as num?)?.toDouble() ?? 0.0) * (json['quantity'] ?? 1)),
-      addOns: addOns,
+          (((json['price'] as num?)?.toDouble() ?? 0) *
+              ((json['quantity'] as num?)?.toInt() ?? 1)),
+
       modifiers: modifiers,
+      addOns: addOns,
       note: json['note']?.toString() ?? '',
       section: section,
       taxClass: taxClass,
       hasOptions: json['hasOptions'] ?? false,
-      isCancelled: isCancelled, // ✅ Added
+      isCancelled: isCancelled,
     );
   }
 
@@ -113,6 +126,7 @@ class OrderItems {
     }));
 
     return {
+      'id': id,
       'productId': productId,
       if (variationId != null) 'variationId': variationId, // ✅ only if exists
       'name': name,
@@ -130,6 +144,7 @@ class OrderItems {
   }
 
   OrderItems copyWith({
+    int? id,
     int? productId,
     int? variationId,
     String? name,
@@ -145,6 +160,7 @@ class OrderItems {
     String? isCancelled, // ✅ Added
   }) {
     return OrderItems(
+      id: id ?? this.id,
       productId: productId ?? this.productId,
       variationId: variationId ?? this.variationId,
       name: name ?? this.name,
