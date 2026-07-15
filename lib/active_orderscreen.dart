@@ -696,6 +696,8 @@ class _ExpandableActiveOrderCardState
                         final qty = item['qty'] ?? 1;
                         final note = item['note']?.toString() ?? '';
                         final isLast = entry.key == items.length - 1;
+                        final List modifiers = item['modifiers'] ?? [];
+                        final List addons = item['addons'] ?? [];
 
                         return Column(
                           children: [
@@ -716,30 +718,17 @@ class _ExpandableActiveOrderCardState
                                           style: TextStyle(
                                             fontSize: 13,
                                             fontWeight: FontWeight.w500,
-                                            color:
-                                                item['status']
-                                                                ?.toString()
-                                                                .toLowerCase() ==
-                                                            'cancelled' ||
-                                                        item['status']
-                                                                ?.toString()
-                                                                .toLowerCase() ==
-                                                            'cancel'
-                                                    ? Colors.red
-                                                    : Colors.black87,
-                                            decoration:
-                                                item['status']
-                                                                ?.toString()
-                                                                .toLowerCase() ==
-                                                            'cancelled' ||
-                                                        item['status']
-                                                                ?.toString()
-                                                                .toLowerCase() ==
-                                                            'cancel'
-                                                    ? TextDecoration.lineThrough
-                                                    : null,
+                                            color: item['status']?.toString().toLowerCase() == 'cancelled' ||
+                                                item['status']?.toString().toLowerCase() == 'cancel'
+                                                ? Colors.red
+                                                : Colors.black87,
+                                            decoration: item['status']?.toString().toLowerCase() == 'cancelled' ||
+                                                item['status']?.toString().toLowerCase() == 'cancel'
+                                                ? TextDecoration.lineThrough
+                                                : null,
                                           ),
                                         ),
+
                                         if (note.isNotEmpty)
                                           Padding(
                                             padding: const EdgeInsets.only(top: 2),
@@ -749,6 +738,62 @@ class _ExpandableActiveOrderCardState
                                                 fontSize: 11,
                                                 color: Colors.grey.shade500,
                                               ),
+                                            ),
+                                          ),
+
+                                        /// -------- MODIFIERS (RED) --------
+                                        if (modifiers.isNotEmpty)
+                                          Padding(
+                                            padding: const EdgeInsets.only(left: 12, top: 4),
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: modifiers.map<Widget>((modifier) {
+                                                final modifierName = modifier is Map
+                                                    ? modifier['name']?.toString() ?? ''
+                                                    : modifier.toString();
+
+                                                return Padding(
+                                                  padding: const EdgeInsets.only(bottom: 2),
+                                                  child: Text(
+                                                    "• $modifierName",
+                                                    style: const TextStyle(
+                                                      color: Colors.red,
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                );
+                                              }).toList(),
+                                            ),
+                                          ),
+
+                                        /// -------- ADDONS (BLUE) --------
+                                        if (addons.isNotEmpty)
+                                          Padding(
+                                            padding: const EdgeInsets.only(left: 12, top: 2),
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: addons.map<Widget>((addon) {
+                                                final addonName = addon is Map
+                                                    ? addon['name']?.toString() ?? ''
+                                                    : addon.toString();
+
+                                                final addonQty = addon is Map
+                                                    ? (addon['qty'] ?? 1)
+                                                    : 1;
+
+                                                return Padding(
+                                                  padding: const EdgeInsets.only(bottom: 2),
+                                                  child: Text(
+                                                    "+ $addonQty × $addonName",
+                                                    style: const TextStyle(
+                                                      color: Colors.blue,
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                );
+                                              }).toList(),
                                             ),
                                           ),
                                       ],

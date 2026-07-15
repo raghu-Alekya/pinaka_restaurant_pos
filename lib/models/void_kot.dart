@@ -38,6 +38,7 @@ class KotItem {
   final double price;
   double amount;
   final List<String> modifiers;
+  final List<String> addons;
 
   KotItem({
     required this.id,
@@ -48,6 +49,7 @@ class KotItem {
     required this.price,
     required this.amount,
     required this.modifiers,
+    required this.addons,
   });
 
   factory KotItem.fromJson(Map<String, dynamic> json) {
@@ -62,6 +64,9 @@ class KotItem {
       modifiers: (json["modifiers"] as List? ?? [])
           .map((e) => e.toString())
           .toList(),
+      addons: (json["addons"] as List? ?? [])
+          .map((e) => e.toString())
+          .toList(),
     );
   }
 
@@ -74,6 +79,7 @@ class KotItem {
     double? price,
     double? amount,
     List<String>? modifiers,
+    List<String>? addons,
   }) {
     return KotItem(
       id: id ?? this.id,
@@ -84,10 +90,9 @@ class KotItem {
       price: price ?? this.price,
       amount: amount ?? this.amount,
       modifiers: modifiers ?? List<String>.from(this.modifiers),
+      addons: addons ?? List<String>.from(this.addons),
     );
   }
-
-
 }
 // class VoidItemSelectionRequest {
 //   final int kotId;
@@ -207,17 +212,23 @@ class LineItemUpdate {
   final int id;
   final int productId;
   final int quantity;
+  final List<dynamic> modifiers;
+  final List<dynamic> addons;
 
   LineItemUpdate({
     required this.id,
     required this.productId,
     required this.quantity,
+    this.modifiers = const [],
+    this.addons = const [],
   });
 
   Map<String, dynamic> toJson() => {
     "id": id,
     "product_id": productId,
     "quantity": quantity,
+    "modifiers": modifiers,
+    "addons": addons,
   };
 }
 

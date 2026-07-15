@@ -234,6 +234,7 @@ class KdsMqttService {
       'kot_number': kotNumber,
       'status': status,
       'is_cancelled': isCancelled,
+      "remaining_items": remainingItems,
       if (cancelledItems != null) 'cancelled_items': cancelledItems,
       if (remainingItems != null) 'remaining_items': remainingItems,
     };

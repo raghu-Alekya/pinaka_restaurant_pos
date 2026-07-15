@@ -6,77 +6,50 @@ import 'package:http/http.dart' as http;
 import '../models/void_kot.dart';
 import '../utils/AppConstant.dart';
 
-class VoidItemRepository {
-  Future<KotLineItemsResponse> getKotLineItems({
-    required int kotId,
+class CancelItemRepository {
+  Future<void> updateCancelItemStatus({
+    required String token,
+    required int parentId,
+    required int orderId,
     required int restaurantId,
-    required int zoneId,
-    required String token,
+    required String orderType,
+    int? zoneId,
+    required List<int> itemIds,
   }) async {
     final url = Uri.parse(
-      "${AppConstants.baseApiPath}/orders/get-line-items"
-          "?kot_id=$kotId&restaurant_id=$restaurantId&zone_id=$zoneId",
+      "${AppConstants.baseApiPath}/kot/update-cancel-item-status",
     );
 
-    final response = await http.get(
-      url,
-      headers: {
-        "Authorization": "Bearer $token",
-        "Content-Type": "application/json",
-      },
-    );
+    final Map<String, dynamic> body = {
+      "parent_id": parentId,
+      "order_id": orderId,
+      "restaurant_id": restaurantId,
+      "order_type": orderType,
+      "items": itemIds,
+    };
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-
-      if (data is Map && data.containsKey("data")) {
-        return KotLineItemsResponse.fromJson(data["data"]);
-      }
-
-      return KotLineItemsResponse.fromJson(data);
-    } else {
-      throw Exception(
-        "Failed to load KOT line items: ${response.body}",
-      );
+    if (zoneId != null) {
+      body["zone_id"] = zoneId;
     }
-  }
-}
-
-class UpdatekotRepository {
-  Future<UpdatekotResponse> updatekot({
-    required String token,
-    required int kotId,
-    required UpdatekotRequest request,
-  }) async {
-    final url = Uri.parse(
-      "${AppConstants.baseApiPath}/orders/$kotId",
-    );
 
     final response = await http.put(
       url,
       headers: {
-        "Content-Type": "application/json",
         "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
       },
-      body: jsonEncode(request.toJson()),
+      body: jsonEncode(body),
     );
 
-    if (response.statusCode == 200 ||
-        response.statusCode == 201) {
-      return UpdatekotResponse.fromJson(
-        jsonDecode(response.body),
-      );
-    } else {
-      debugPrint("❌ UPDATE URL: $url");
-      debugPrint(
-        "❌ UPDATE REQUEST: ${jsonEncode(request.toJson())}",
-      );
-      debugPrint(
-        "❌ UPDATE RESPONSE: ${response.statusCode} ${response.body}",
-      );
+    debugPrint("URL      : $url");
+    debugPrint("REQUEST  : ${jsonEncode(body)}");
+    debugPrint("STATUS   : ${response.statusCode}");
+    debugPrint("RESPONSE : ${response.body}");
 
+    if (response.statusCode != 200 &&
+        response.statusCode != 201) {
       throw Exception(
-        "Update Order Failed: ${response.statusCode} ${response.body}",
+        "Cancel Item API Failed: ${response.statusCode}\n${response.body}",
       );
     }
   }

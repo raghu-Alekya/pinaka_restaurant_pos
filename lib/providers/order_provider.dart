@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -125,8 +126,11 @@ class OrderProvider extends ChangeNotifier {
 
 
 
-  void _notifyPos(KitchenOrder order, String status,
-      {bool isCancelled = false}) {
+  void _notifyPos(
+      KitchenOrder order,
+      String status, {
+        bool isCancelled = false,
+      }) {
     final posStatus = KotApiStatus.fromLocal(status);
 
     _mqttService.sendStatusUpdate(
@@ -139,10 +143,13 @@ class OrderProvider extends ChangeNotifier {
       kotNumber: order.id,
       status: posStatus,
       isCancelled: isCancelled,
+
+      // ✅ Add this
+      remainingItems: order.items.map((item) => item.toJson()).toList(),
     );
 
     KdsDebugLog.info(
-      'POS notified: ${order.id} → $posStatus (cancelled=$isCancelled)',
+      'POS notified: ${order.id} → $posStatus',
     );
   }
   void _clearServedOrders() {
@@ -214,49 +221,39 @@ class OrderProvider extends ChangeNotifier {
 
         _notifyPos(order, 'Preparing');
       });
+      // Get token
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token') ?? '';
 
-      final lineItemsResponse = await VoidItemRepository().getKotLineItems(
-        kotId: order.kotId!,
-        restaurantId: 1,
-        zoneId: order.zoneId!,
-        token: token,
-      );
+// Find cancelled line item IDs from existing order items
+      final cancelledItemIds = order.items
+          .where((item) =>
+      !remainingItems.any((e) => e['name'] == item.name))
+          .map((item) => item.lineItemId)
+          .whereType<int>() // removes null values
+          .toList();
 
-      final updatedItems = lineItemsResponse.items.map((item) {
-        final isCancelled = !remainingItems.any(
-              (e) => e['name'] == item.productName,
+// Call cancel item API only if there are cancelled items
+      if (cancelledItemIds.isNotEmpty) {
+        await CancelItemRepository().updateCancelItemStatus(
+          token: token,
+          parentId: order.parentOrderId!,
+          orderId: order.kotId!,
+          restaurantId: 1,
+          orderType: order.type,
+          zoneId: order.zoneId,
+          itemIds: cancelledItemIds,
         );
+      }
 
-        return LineItemUpdate(
-          id: item.id,
-          productId: item.productId,
-          quantity: isCancelled ? 0 : item.quantity,
-        );
-      }).toList();
-
-      final request = UpdatekotRequest(
-        lineItems: updatedItems,
-        metaData: [
-          MetaDataItem(
-            key: "flag_type",
-            value: "void_items",
-          ),
-          MetaDataItem(
-            key: "remarks",
-            value: "Cancelled from KDS",
-          ),
-        ],
-      );
-
-      await UpdatekotRepository().updatekot(
-        token: token,
-        kotId: order.kotId!,
-        request: request,
-      );
-
+// Update KOT status
       await _apiService.startOrder(order);
+// Finally move KOT to Preparing
+      await _apiService.startOrder(order);
+
+      print("Start API Success");
+      await _apiService.startOrder(order);
+      
       print("Start API Success");
 
       return true;
@@ -310,13 +307,45 @@ class OrderProvider extends ChangeNotifier {
     if (order == null) return false;
 
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token') ?? '';
+
+      // Get selected line item ids
+      final selectedItemIds = selectedItems
+          .map((item) => item['lineItemId'] as int?)
+          .whereType<int>()
+          .toList();
+
+      debugPrint("Selected Item IDs: $selectedItemIds");
+
+      // Call backend
+      if (selectedItemIds.isNotEmpty) {
+        await CancelItemRepository().updateCancelItemStatus(
+          token: token,
+          parentId: order.parentOrderId!,
+          orderId: order.kotId!,
+          restaurantId: 1,
+          orderType: order.type,
+          zoneId: order.zoneId,
+          itemIds: selectedItemIds,
+        );
+      }
+
       _updateAndSave(() {
-        order.items.removeWhere((item) {
-          return selectedItems.any(
-                (selected) =>
-            selected['name'] == item.name,
+        for (final item in order.items) {
+          debugPrint(
+            "Item: ${item.name}, "
+                "lineItemId: ${item.lineItemId}, "
+                "status: ${item.status}",
           );
-        });
+          final isCancelled = selectedItems.any(
+                (selected) => selected['name'] == item.name,
+          );
+
+          if (isCancelled) {
+            item.status = 'cancelled';
+          }
+        }
       });
 
       _mqttService.sendStatusUpdate(
@@ -334,7 +363,9 @@ class OrderProvider extends ChangeNotifier {
 
       notifyListeners();
       return true;
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint("cancelItems failed: $e");
+      debugPrintStack(stackTrace: stack);
       return false;
     }
   }
@@ -375,6 +406,7 @@ class OrderProvider extends ChangeNotifier {
   Future<void> loadExistingOrders() async {
     try {
       final apiOrders = await _apiService.getKitchenDisplayOrders();
+      debugPrint(jsonEncode(apiOrders));
 
       // Keep locally served orders so they don't disappear prematurely
       final servedLocal = _orders.where((o) => o.status.toLowerCase() == 'served').toList();
@@ -383,9 +415,30 @@ class OrderProvider extends ChangeNotifier {
 
       for (final json in apiOrders) {
         try {
+          final kotItems = json['kot_items'] as List? ?? [];
+
+          for (final item in kotItems) {
+            debugPrint(
+              'KOT: ${json['kot_number']} '
+                  'Item: ${item['item_name']} '
+                  'Modifiers: ${item['modifiers']} '
+                  'Addons: ${item['addons']}',
+            );
+          }
+
           final order = KitchenOrder.fromJson(
             Map<String, dynamic>.from(json),
+
           );
+          for (final item in order.items) {
+            debugPrint(
+              "PARSED => ${item.name} "
+                  "Modifiers=${item.modifiers} "
+                  "Addons=${item.addons}",
+            );
+          }
+
+
 
           // Restore locally cancelled items status
           KitchenOrder? existingOrder;

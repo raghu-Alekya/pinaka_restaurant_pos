@@ -2,51 +2,115 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class OrderItem {
+  final int? lineItemId;
   final String name;
   final int qty;
   String status;
   final String note;
   final bool isVeg;
 
+  final List<Map<String, dynamic>> modifiers;
+  final List<Map<String, dynamic>> addons;
+
   OrderItem({
+    this.lineItemId,
     required this.name,
     required this.qty,
     this.status = 'New',
     this.note = '',
     this.isVeg = true,
+    this.modifiers = const [],
+    this.addons = const [],
   });
 
+
   factory OrderItem.fromJson(Map<String, dynamic> json) {
+    debugPrint("ITEM JSON => $json");
+    debugPrint("MODIFIERS => ${json['modifiers']}");
+    debugPrint("ADDONS => ${json['addons']}");
+    debugPrint("ADDONS (MQTT) => ${json['addOns']}");
+
     final rawIsVeg = json['is_veg'] ?? json['isVeg'] ?? json['veg'];
+
     final bool isVeg = rawIsVeg == null
         ? true
         : (rawIsVeg == true ||
-            rawIsVeg == 1 ||
-            rawIsVeg.toString().toLowerCase() == 'true' ||
-            rawIsVeg.toString() == '1');
+        rawIsVeg == 1 ||
+        rawIsVeg.toString().toLowerCase() == 'true' ||
+        rawIsVeg.toString() == '1');
+
+    // Handle both API and MQTT addon formats
+    final rawAddons = json['addons'] ?? json['addOns'];
+
+    List<Map<String, dynamic>> parsedAddons = [];
+
+    if (rawAddons is Map) {
+      rawAddons.forEach((key, value) {
+        parsedAddons.add({
+          'name': key.toString(),
+          'qty': value['quantity'] ?? 1,
+          'price': value['price'] ?? 0,
+        });
+      });
+    } else if (rawAddons is List) {
+      parsedAddons = rawAddons.map<Map<String, dynamic>>((e) {
+        if (e is Map) {
+          return Map<String, dynamic>.from(e);
+        }
+        return {
+          'name': e.toString(),
+          'qty': 1,
+        };
+      }).toList();
+    }
+
+    final parsedModifiers =
+    (json['modifiers'] as List? ?? []).map<Map<String, dynamic>>((e) {
+      if (e is Map) {
+        return Map<String, dynamic>.from(e);
+      }
+      return {
+        'name': e.toString(),
+      };
+    }).toList();
+
+    debugPrint("PARSED MODIFIERS => $parsedModifiers");
+    debugPrint("PARSED ADDONS => $parsedAddons");
+
 
     return OrderItem(
+      lineItemId: (json['id'] as num?)?.toInt(),
       name: json['name']?.toString() ??
           json['item_name']?.toString() ??
           'Unknown',
+
       qty: (json['qty'] as num?)?.toInt() ??
           (json['quantity'] as num?)?.toInt() ??
           1,
+
       status: json['status']?.toString() ?? 'New',
+
       note: json['note']?.toString() ?? '',
+
       isVeg: isVeg,
+
+      modifiers: parsedModifiers,
+
+      addons: parsedAddons,
     );
   }
 
   Map<String, dynamic> toJson() => {
+    'id': lineItemId,
     'name': name,
     'qty': qty,
     'status': status,
     'note': note,
     'is_veg': isVeg,
+    'modifiers': modifiers,
+    'addons': addons,
   };
 }
-
 class KitchenOrder {
   final String id;
   final int? kotId;
@@ -160,6 +224,7 @@ class KitchenOrder {
       default:
         uiStatus = 'Pending';
     }
+    final rawItems = (json['kot_items'] ?? json['items']) as List? ?? [];
 
     return KitchenOrder(
       id: json['kot_number']?.toString() ?? '',
@@ -172,10 +237,12 @@ class KitchenOrder {
       kotStatus: json['kot_status']?.toString() ?? '',
       tableName: json['table_name']?.toString(),
       kotTime: _parseKotTime(json['kot_time']?.toString()),
-      items: (json['kot_items'] as List? ?? [])
+      items: rawItems
           .map((e) => OrderItem.fromJson(Map<String, dynamic>.from(e)))
           .toList(),
-      servedAt: json['servedAt'] != null ? DateTime.tryParse(json['servedAt'].toString()) : null,
+      servedAt: json['servedAt'] != null
+          ? DateTime.tryParse(json['servedAt'].toString())
+          : null,
     );
   }
   /// Save to local storage
@@ -212,15 +279,17 @@ class KitchenOrder {
     'kotTime': kotTime,
     'headerColor': headerColor,
     'servedAt': servedAt,
-    'items': items
-        .map((item) => {
+    'items': items.map((item) => {
+      'id': item.lineItemId,          // <-- Add this
+      'lineItemId': item.lineItemId,  // <-- Optional but recommended
       'name': item.name,
       'qty': item.qty,
       'status': item.status,
       'note': item.note,
       'is_veg': item.isVeg,
-    })
-        .toList(),
+      'modifiers': item.modifiers,
+      'addons': item.addons,
+    }).toList(),
   };
 
   // static Future<void> fromJson(e) {}

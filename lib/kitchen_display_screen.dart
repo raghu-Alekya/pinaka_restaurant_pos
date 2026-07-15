@@ -728,9 +728,18 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                             itemCount: items.length,
                             itemBuilder: (context, index) {
                               final item = items[index];
-                              final String name =
-                                  item['name']?.toString() ?? '';
+
+                              final String name = item['name']?.toString() ?? '';
                               final int qty = item['qty'] ?? 1;
+                              final String status =
+                                  item['status']?.toString().toLowerCase() ?? '';
+
+                              final bool isCancelled =
+                                  status == 'cancelled' || status == 'cancel';
+
+                              // Get modifiers & addons
+                              final List modifiers = item['modifiers'] ?? [];
+                              final List addons = item['addons'] ?? [];
 
                               return InkWell(
                                 onTap: () {
@@ -741,50 +750,108 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                   }
                                 },
                                 child: Container(
-                                  color:
-                                      selected[index]
-                                          ? Colors.red.withOpacity(.12)
-                                          : null,
+                                  color: selected[index]
+                                      ? Colors.red.withOpacity(.12)
+                                      : null,
                                   padding: EdgeInsets.only(
                                     top: isCardZoomedOut ? 2 : 4,
-                                    bottom: isCardZoomedOut ? 2 : 4,
+                                    bottom: isCardZoomedOut ? 4 : 6,
                                     right: isCardZoomedOut ? 8 : 16,
                                   ),
-                                  child: Row(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        "$qty × ",
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: isCardZoomedOut ? 12 : 14,
-                                          color:
-                                              selected[index]
+
+                                      /// Main Item
+                                      Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            "$qty × ",
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: isCardZoomedOut ? 12 : 14,
+                                              color: selected[index]
                                                   ? Colors.red
                                                   : const Color(0xff333333),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: Text(
-                                          name,
-                                          style: TextStyle(
-                                            fontSize: isCardZoomedOut ? 12 : 14,
-                                            color:
-                                                selected[index]
+                                            ),
+                                          ),
+
+                                          Expanded(
+                                            child:Text(
+                                              name,
+                                              style: TextStyle(
+                                                fontSize: isCardZoomedOut ? 12 : 14,
+                                                fontWeight: FontWeight.w500,
+                                                color: isCancelled
+                                                    ? Colors.red
+                                                    : selected[index]
                                                     ? Colors.red
                                                     : const Color(0xff333333),
+                                                decoration: isCancelled
+                                                    ? TextDecoration.lineThrough
+                                                    : TextDecoration.none,
+                                              ),
+                                            )
                                           ),
-                                        ),
-                                      ),
-                                      if (selectedCancelItemKotId == kotId)
-                                        Icon(
-                                          selected[index]
-                                              ? Icons.check_box
-                                              : Icons.check_box_outline_blank,
-                                          size: isCardZoomedOut ? 14 : 18,
-                                          color:
+
+                                          if (selectedCancelItemKotId == kotId)
+                                            Icon(
                                               selected[index]
+                                                  ? Icons.check_box
+                                                  : Icons.check_box_outline_blank,
+                                              size: isCardZoomedOut ? 14 : 18,
+                                              color: selected[index]
                                                   ? Colors.red
                                                   : Colors.grey,
+                                            ),
+                                        ],
+                                      ),
+
+                                      /// -------------------- MODIFIERS --------------------
+                                      /// Modifiers (Red)
+                                      if (modifiers.isNotEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.only(left: 24, top: 2),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: modifiers.map<Widget>((modifier) {
+                                              return Text(
+                                                "• ${modifier.toString()}",
+                                                style: TextStyle(
+                                                  fontSize: isCardZoomedOut ? 10 : 12,
+                                                  color: Colors.red,
+                                                  fontWeight: FontWeight.w600,
+                                                  decoration: isCancelled
+                                                      ? TextDecoration.lineThrough
+                                                      : TextDecoration.none,
+                                                ),
+                                              );
+                                            }).toList(),
+                                          ),
+                                        ),
+
+                                      /// -------------------- ADDONS --------------------
+                                      /// Addons (Blue)
+                                      if (addons.isNotEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.only(left: 24, top: 2),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: addons.map<Widget>((addon) {
+                                              return Text(
+                                                "+ ${addon.toString()}",
+                                                style: TextStyle(
+                                                  fontSize: isCardZoomedOut ? 10 : 12,
+                                                  color: Colors.blue,
+                                                  fontWeight: FontWeight.w600,
+                                                  decoration: isCancelled
+                                                      ? TextDecoration.lineThrough
+                                                      : TextDecoration.none,
+                                                ),
+                                              );
+                                            }).toList(),
+                                          ),
                                         ),
                                     ],
                                   ),
@@ -812,27 +879,37 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                   vertical: isCardZoomedOut ? 5 : 9,
                                 ),
                               ),
-                              onPressed: () async {
-                                final selectedItems = <Map<String, dynamic>>[];
-                                for (int i = 0; i < items.length; i++) {
-                                  if (selected[i]) {
-                                    selectedItems.add(
-                                      items[i] as Map<String, dynamic>,
-                                    );
-                                  }
-                                }
+    onPressed: () async {
+    debugPrint("===== CONFIRM ITEM CANCEL CLICKED =====");
 
-                                if (selectedItems.isNotEmpty) {
-                                  final success = await orderProvider
-                                      .cancelItems(kotId, selectedItems);
-                                  if (success) {
-                                    setState(() {
-                                      selectedCancelItemKotId = null;
-                                      zoomedKotIds.remove(kotId);
-                                    });
-                                  }
-                                }
-                              },
+    final selectedItems = <Map<String, dynamic>>[];
+
+    for (int i = 0; i < items.length; i++) {
+    if (selected[i]) {
+    selectedItems.add(items[i] as Map<String, dynamic>);
+    }
+    }
+
+    debugPrint("Selected Items: $selectedItems");
+
+    if (selectedItems.isNotEmpty) {
+    final success = await orderProvider.cancelItems(
+    kotId,
+    selectedItems,
+    );
+
+    debugPrint("Cancel Item Success: $success");
+
+    if (success) {
+    setState(() {
+    selectedCancelItemKotId = null;
+    zoomedKotIds.remove(kotId);
+    });
+    }
+    } else {
+    debugPrint("No items selected");
+    }
+    },
                               child: Text(
                                 "Confirm Item Cancel",
                                 style: TextStyle(
@@ -978,15 +1055,29 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                     }
                                   } else {
                                     // Start KOT with remaining items
-                                    final remainingItems =
-                                        <Map<String, dynamic>>[];
+                                    // Selected items (to cancel)
+                                    final selectedItems = <Map<String, dynamic>>[];
+
+// Remaining items (to prepare)
+                                    final remainingItems = <Map<String, dynamic>>[];
+
                                     for (int i = 0; i < items.length; i++) {
-                                      if (!selected[i]) {
-                                        remainingItems.add(
-                                          items[i] as Map<String, dynamic>,
-                                        );
+                                      if (selected[i]) {
+                                        selectedItems.add(items[i] as Map<String, dynamic>);
+                                      } else {
+                                        remainingItems.add(items[i] as Map<String, dynamic>);
                                       }
                                     }
+
+// 1. Cancel selected items
+                                    if (selectedItems.isNotEmpty) {
+                                      await orderProvider.cancelItems(
+                                        kotId,
+                                        selectedItems,
+                                      );
+                                    }
+
+// 2. Start KOT with remaining items
                                     await orderProvider.startOrder(
                                       kotId,
                                       remainingItems,
