@@ -243,6 +243,18 @@ class _paymentsummaryState extends State<paymentsummary> {
     return _roundMoney(calculatedPayable.abs());
   }
 
+  double getNetTotal() {
+    if (widget.grandTotal != null) {
+      return _roundMoney(widget.grandTotal!.abs());
+    }
+    final state = context.read<PaymentBloc>().state;
+    final bool isStateValid = state is PaymentSummaryLoaded && state.summary.orderId == widget.orderId;
+    final bool isSummaryValid = _paymentSummary != null && _paymentSummary!.orderId == widget.orderId;
+    final PaymentSummary? summary =
+        isStateValid ? state.summary : (isSummaryValid ? _paymentSummary : null);
+    return summary?.netTotal ?? 0.0;
+  }
+
   // ➕ NEW — full order total minus whatever has already been collected
   // through earlier partial ("split") payments for this order. When no
   // partial payment has been made (_totalPaidAmount == 0.0, the default)
@@ -2172,6 +2184,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                             ],
                             child: DiscountPopup(
                               netPayable: netPayable,
+                              netTotal: getNetTotal(),
                               orderId: widget.orderId,
                             ),
                           ),

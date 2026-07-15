@@ -12,19 +12,18 @@ enum DiscountType { percent, amount }
 
 class DiscountPopup extends StatefulWidget {
   final double netPayable;
+  final double netTotal; // ✅ ADDED
   final String ? authToken;
   final int orderId;
   final double initialDiscount;
-// ✅ comes from parent
 
   const DiscountPopup({
     super.key,
     required this.netPayable,
+    required this.netTotal, // ✅ REQUIRED
     this.authToken,
     required this.orderId,
     this.initialDiscount = 0.0,
-
-
   });
 
   @override
@@ -153,7 +152,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
 
     setState(() {
       if (selectedType == DiscountType.percent) {
-        final discount = (payableAmount * value) / 100;
+        final discount = (widget.netTotal * value) / 100;
         newPayableAmount =
             (payableAmount - discount).clamp(0, payableAmount);
       } else {
@@ -202,7 +201,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
     final discountAmount = isNCSelected
         ? payableAmount
         : selectedType == DiscountType.percent
-        ? (payableAmount * inputValue) / 100
+        ? (widget.netTotal * inputValue) / 100
         : inputValue;
 
     debugPrint('💰 FINAL discountAmount sent to API = $discountAmount');
@@ -273,7 +272,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
           final appliedDiscount = isNCSelected
               ? payableAmount
               : selectedType == DiscountType.percent
-              ? (payableAmount * inputValue) / 100
+              ? (widget.netTotal * inputValue) / 100
               : inputValue;
 
           // ✅ keep discount value in TextField after apply
