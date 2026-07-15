@@ -99,7 +99,12 @@ class CouponRepository {
         return CouponResponse(
           success: true,
           message: "Coupon applied successfully.",
-          couponAmount: (data["coupon_amount"] as num?)?.toDouble() ?? 0.0,
+          couponAmount: ((data["coupon_amount"] as num?)?.toDouble() ??
+              double.tryParse((data["discount_total"] ?? 0).toString()) ??
+              (data["coupon_lines"] as List?)?.fold<double>(
+                0.0,
+                (sum, item) => sum + (double.tryParse(item["discount"]?.toString() ?? "0") ?? 0.0),
+              ) ?? 0.0).abs(),
         );
       }
 
@@ -123,6 +128,7 @@ class CouponRepository {
   Future<bool> removeCoupon({
     required String token,
     required int orderId,
+    required String couponCode,
   }) async {
     try {
       final response = await ApiExceptionHandler.put(
@@ -136,7 +142,7 @@ class CouponRepository {
         body: jsonEncode({
           "coupon_lines": [
             {
-              "code": "",
+              "code": couponCode,
               "remove": true,
             }
           ]

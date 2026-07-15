@@ -14,6 +14,7 @@ import '../../blocs/Bloc State/create_payment_state.dart';
 import '../../blocs/Bloc State/discount_stata.dart';
 import '../../blocs/Bloc State/payment_state.dart';
 import '../../models/payment/create_payment_model.dart';
+import '../../models/payment/discount_model.dart';
 import '../../models/payment/payment_summary_model.dart';
 import '../../repositories/TIP_repository.dart';
 import '../../repositories/coupon_repository.dart';
@@ -90,6 +91,8 @@ class _paymentsummaryState extends State<paymentsummary> {
   double merchantDiscount = 0.0;
   double _lastNetPayable = 0.0;
   bool _isNcDiscount = false;
+  String? _lastAppliedDiscountStr;
+  String? _lastAppliedDiscountReason;
 
   bool _balanceRevealed = false;
   double _confirmedTenderForBalance = 0.0;
@@ -125,12 +128,6 @@ class _paymentsummaryState extends State<paymentsummary> {
   void initState() {
     super.initState();
     _loadCurrencySymbol();
-    // Initialize UI cleanly without displaying stale summary values.
-    // The parent PaymentScreen or this callback will fetch the latest details.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _reloadSummary();
-    });
   }
 
   Future<void> _loadCurrencySymbol() async {
@@ -230,7 +227,7 @@ class _paymentsummaryState extends State<paymentsummary> {
     final merchantDiscountAbs = merchantDiscount.abs();
     final serviceCharge = summary.serviceChargeValue;
 
-    double basePayable = summary.netTotal;
+    double basePayable = summary.netTotal - summary.serviceChargeValue;
     if (summary.coupons <= 0) {
       basePayable -= _couponAmount;
     }
@@ -252,7 +249,8 @@ class _paymentsummaryState extends State<paymentsummary> {
     final bool isSummaryValid = _paymentSummary != null && _paymentSummary!.orderId == widget.orderId;
     final PaymentSummary? summary =
         isStateValid ? state.summary : (isSummaryValid ? _paymentSummary : null);
-    return summary?.netTotal ?? 0.0;
+    if (summary == null) return 0.0;
+    return summary.netTotal - summary.serviceChargeValue;
   }
 
   // ➕ NEW — full order total minus whatever has already been collected
@@ -328,7 +326,7 @@ class _paymentsummaryState extends State<paymentsummary> {
             content: Text("Please enter payment amount"),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 2),
+            duration: Duration(seconds: 1),
           ),
         );
         return;
@@ -341,7 +339,7 @@ class _paymentsummaryState extends State<paymentsummary> {
             content: Text("Please enter a valid amount greater than 0"),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 2),
+            duration: Duration(seconds: 1),
           ),
         );
         return;
@@ -355,7 +353,7 @@ class _paymentsummaryState extends State<paymentsummary> {
           content: Text("Please select a payment method (Cash / Card / UPI)"),
           backgroundColor: Colors.orange,
           behavior: SnackBarBehavior.floating,
-          duration: Duration(seconds: 2),
+          duration: Duration(seconds: 1),
         ),
       );
       return;
@@ -436,7 +434,7 @@ class _paymentsummaryState extends State<paymentsummary> {
             content: Text(msg),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 2),
+            duration: const Duration(seconds: 1),
           ),
         );
         return;
@@ -851,7 +849,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                   content: Text(state.message),
                   backgroundColor: Colors.red,
                   behavior: SnackBarBehavior.floating,
-                  duration: const Duration(seconds: 3),
+                  duration: const Duration(seconds: 1),
                 ),
               );
               return;
@@ -865,6 +863,26 @@ class _paymentsummaryState extends State<paymentsummary> {
               );
               _paymentSummary = state.summary;
               _syncFromState(state);
+            }
+          },
+        ),
+
+        BlocListener<DiscountBloc, DiscountState>(
+          listener: (context, state) {
+            if (state is DiscountSuccess) {
+              final double applied = state.response.discountAmt;
+              setState(() {
+                _isDiscountApplied = true;
+                discountController.text = applied.toStringAsFixed(2);
+              });
+              context.read<PaymentBloc>().add(
+                UpdateMerchantDiscount(
+                  value: applied,
+                  isNoCharge: state.isNcApplied,
+                ),
+              );
+              // Trigger reload in parent screen so all totals are updated
+              widget.onCouponAmountChanged?.call(_couponAmount);
             }
           },
         ),
@@ -962,7 +980,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                       content: Text(
                         "Partial payment of $_currencySymbol${paidThisTxn.toStringAsFixed(2)} recorded. Balance $_currencySymbol${remainingAfter.toStringAsFixed(2)} remaining.",
                       ),
-                      duration: const Duration(seconds: 2),
+                      duration: const Duration(seconds: 1),
                     ),
                   );
                 }
@@ -1107,6 +1125,8 @@ class _paymentsummaryState extends State<paymentsummary> {
                 _discountAmount = 0;
                 merchantDiscount = 0.0;
                 discountController.clear();
+                _lastAppliedDiscountStr = null;
+                _lastAppliedDiscountReason = null;
               });
               // context.read<PaymentBloc>().add(
               //   UpdateMerchantDiscount(
@@ -2201,6 +2221,8 @@ class _paymentsummaryState extends State<paymentsummary> {
                         _isDiscountApplied = true;
                         _isNcDiscount = isNc;
                         discountController.text = applied.toStringAsFixed(2);
+                        _lastAppliedDiscountStr = result["discountStr"];
+                        _lastAppliedDiscountReason = result["reason"];
                       });
 
                       // ✅ Update PaymentBloc with both discount and NC flag
@@ -2270,7 +2292,22 @@ class _paymentsummaryState extends State<paymentsummary> {
                                     _couponAmount = amt;
                                     couponController.text = coupon;
                                   });
-                                  widget.onCouponAmountChanged?.call(amt);
+
+                                  if (_lastAppliedDiscountStr != null && _lastAppliedDiscountStr!.contains('%')) {
+                                    context.read<DiscountBloc>().add(
+                                      ApplyDiscountEvent(
+                                        request: AddDiscountRequest(
+                                          orderId: widget.orderId,
+                                          amount: _lastAppliedDiscountStr!,
+                                          isNc: _isNcDiscount ? "yes" : "no",
+                                          reason: _lastAppliedDiscountReason ?? "",
+                                        ),
+                                      ),
+                                    );
+                                  } else {
+                                    widget.onCouponAmountChanged?.call(amt);
+                                  }
+
                                   // Success message
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
@@ -2292,6 +2329,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                         final success = await _couponRepository.removeCoupon(
                           token: widget.token,
                           orderId: widget.orderId,
+                          couponCode: _appliedCoupon,
                         );
 
                         if (success) {
@@ -2302,7 +2340,20 @@ class _paymentsummaryState extends State<paymentsummary> {
                             couponController.clear();
                           });
 
-                          widget.onCouponAmountChanged?.call(0.0);
+                          if (_lastAppliedDiscountStr != null && _lastAppliedDiscountStr!.contains('%')) {
+                            context.read<DiscountBloc>().add(
+                              ApplyDiscountEvent(
+                                request: AddDiscountRequest(
+                                  orderId: widget.orderId,
+                                  amount: _lastAppliedDiscountStr!,
+                                  isNc: _isNcDiscount ? "yes" : "no",
+                                  reason: _lastAppliedDiscountReason ?? "",
+                                ),
+                              ),
+                            );
+                          } else {
+                            widget.onCouponAmountChanged?.call(0.0);
+                          }
 
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
@@ -2357,7 +2408,6 @@ class _paymentsummaryState extends State<paymentsummary> {
                               widget.onTipChanged(amt);
 
                               context.read<PaymentBloc>().add(UpdateTip(amt));
-                              // _reloadSummary();
                             },
                           ),
                     );
@@ -2369,7 +2419,6 @@ class _paymentsummaryState extends State<paymentsummary> {
                       });
                       widget.onTipChanged(result);
                       context.read<PaymentBloc>().add(UpdateTip(result));
-                      // _reloadSummary();
                     }
                   },
           onDelete:

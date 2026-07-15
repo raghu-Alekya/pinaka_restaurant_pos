@@ -197,14 +197,13 @@ class _DiscountPopupState extends State<DiscountPopup> {
     debugPrint('➡️ isNCSelected = $isNCSelected');
     debugPrint('➡️ payableAmount = $payableAmount');
 
-    // 🔥 CORRECT AMOUNT CALCULATION
-    final discountAmount = isNCSelected
-        ? payableAmount
+    final String discountStr = isNCSelected
+        ? payableAmount.toStringAsFixed(2)
         : selectedType == DiscountType.percent
-        ? (widget.netTotal * inputValue) / 100
-        : inputValue;
+            ? "${inputValue.toInt()} %"
+            : inputValue.toStringAsFixed(0);
 
-    debugPrint('💰 FINAL discountAmount sent to API = $discountAmount');
+    debugPrint('💰 FINAL discountStr sent to API = $discountStr');
     debugPrint('🧾 orderId = ${widget.orderId}');
     debugPrint('🧾 reason = ${reasonController.text}');
 
@@ -212,10 +211,9 @@ class _DiscountPopupState extends State<DiscountPopup> {
 
     context.read<DiscountBloc>().add(
       ApplyDiscountEvent(
-        // token: widget.authToken!,
         request: AddDiscountRequest(
           orderId: widget.orderId,
-          amount: discountAmount,
+          amount: discountStr,
           isNc: isNCSelected ? "yes" : "no",
           reason: reasonController.text,
         ),
@@ -268,12 +266,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
 
         if (state is DiscountSuccess) {
           final inputValue = double.tryParse(discountController.text) ?? 0;
-
-          final appliedDiscount = isNCSelected
-              ? payableAmount
-              : selectedType == DiscountType.percent
-              ? (widget.netTotal * inputValue) / 100
-              : inputValue;
+          final appliedDiscount = state.response.discountAmt;
 
           // ✅ keep discount value in TextField after apply
           discountController.value = TextEditingValue(
@@ -293,9 +286,17 @@ class _DiscountPopupState extends State<DiscountPopup> {
               isNoCharge: isNCSelected, // or isNc
             ),
           );
+          final String discountStr = isNCSelected
+              ? payableAmount.toStringAsFixed(2)
+              : selectedType == DiscountType.percent
+                  ? "${inputValue.toInt()} %"
+                  : inputValue.toStringAsFixed(0);
+
           Navigator.pop(context, {
             "amount": appliedDiscount,
             "isNc": isNCSelected,
+            "discountStr": discountStr,
+            "reason": reasonController.text,
           });
         }
 

@@ -34,10 +34,11 @@ class PaymentRepository {
 
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       try {
+        final String apiOrderType = orderType.toLowerCase().contains("take") ? "takeaway" : "Dine In";
         final queryParams = <String, String>{
           "order_id": orderId.toString(),
           "restaurant_id": restaurantId,
-          "order_type": "",
+          "order_type": apiOrderType,
         };
 
         if (zoneId != null) {

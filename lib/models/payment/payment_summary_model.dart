@@ -47,14 +47,14 @@ class PaymentSummary {
 
   factory PaymentSummary.fromJson(Map<String, dynamic> json) {
     return PaymentSummary(
-      restaurantId: (json['restaurant_id'] ?? 0).toInt(),
-      orderId: (json['order_id'] ?? 0).toInt(),
+      restaurantId: int.tryParse(json['restaurant_id'].toString()) ?? 0,
+      orderId: int.tryParse(json['order_id'].toString()) ?? 0,
 
-      grossTotal: (json['gross_total'] ?? 0).toDouble(),
-      tax: (json['tax'] ?? 0).toDouble(),
+      grossTotal: double.tryParse((json['gross_total'] ?? 0).toString()) ?? 0.0,
+      tax: double.tryParse((json['tax'] ?? 0).toString()) ?? 0.0,
 
       // 🔥 backend uses "Fees" (capital F)
-      fees: (json['Fees'] ?? 0).toDouble(),
+      fees: double.tryParse((json['Fees'] ?? 0).toString()) ?? 0.0,
 
       // ✅ FIXED: read merchant_discount
       discount: double.tryParse(
@@ -64,19 +64,23 @@ class PaymentSummary {
         (json['tip'] ?? 0).toString(),
       ) ?? 0.0,
 
-      coupons: (json['coupons'] ?? 0).toDouble(),
-      netTotal: (json['net_total'] ?? 0).toDouble(),
+      coupons: (double.tryParse(
+        (json['coupon_total'] ?? json['coupons'] ?? 0).toString(),
+      ) ?? 0.0).abs(),
+      netTotal: double.tryParse((json['net_total'] ?? 0).toString()) ?? 0.0,
       couponDetails: (json['coupon_details'] as List? ?? [])
-          .map((e) => CouponDetail.fromJson(e))
+          .whereType<Map>()
+          .map((e) => CouponDetail.fromJson(Map<String, dynamic>.from(e)))
           .toList(),
 
       lineItems: (json['line_items'] as List? ?? [])
-          .map((e) => LineItem.fromJson(e))
+          .whereType<Map>()
+          .map((e) => LineItem.fromJson(Map<String, dynamic>.from(e)))
           .toList(),
 
-      tableId: (json['table_id'] ?? 0).toInt(),
+      tableId: int.tryParse((json['table_id'] ?? 0).toString()) ?? 0,
       tableName: json['table_name']?.toString() ?? '',
-      zoneId: (json['zone_id'] ?? 0).toInt(),
+      zoneId: int.tryParse((json['zone_id'] ?? 0).toString()) ?? 0,
       // ✅ ADD THIS
       modifiersTaxable:
       (json['modifiers_taxable'] ?? 'no').toString().toLowerCase() == 'yes',
@@ -87,10 +91,10 @@ class PaymentSummary {
           .toString()
           .toLowerCase() == 'yes',
       serviceChargePercentage:
-      (json['service_charge_percentage'] ?? 0).toDouble(),
+      double.tryParse((json['service_charge_percentage'] ?? 0).toString()) ?? 0.0,
 
       serviceChargeValue:
-      (json['service_charge_value'] ?? 0).toDouble(),
+      double.tryParse((json['service_charge_value'] ?? 0).toString()) ?? 0.0,
       roundOff: double.tryParse(
         (json['round_off'] ?? 0).toString(),
       ) ?? 0.0,
@@ -202,18 +206,18 @@ class LineItem {
 
   factory LineItem.fromJson(Map<String, dynamic> json) {
     return LineItem(
-      productId: (json['product_id'] ?? 0).toInt(),
-      variationId: (json['variation_id'] ?? 0).toInt(),
+      productId: int.tryParse((json['product_id'] ?? 0).toString()) ?? 0,
+      variationId: int.tryParse((json['variation_id'] ?? 0).toString()) ?? 0,
       name: json['name'] ?? '',
-      qty: (json['qty'] ?? 0).toInt(),
-      total: (json['total'] ?? 0).toDouble(),
+      qty: int.tryParse((json['qty'] ?? 0).toString()) ?? 0,
+      total: double.tryParse((json['total'] ?? 0).toString()) ?? 0.0,
       price: double.tryParse(
         (json['price'] ?? 0).toString(),
       ) ?? 0.0,
-      tax: (json['tax'] ?? 0).toDouble(),
+      tax: double.tryParse((json['tax'] ?? 0).toString()) ?? 0.0,
       taxClass: (json['tax_class'] ?? 'food').toString().toLowerCase(),
       modifiers: List<String>.from(json['modifiers'] ?? []),
-      modifierAmount: (json['modifier_amount'] ?? 0).toDouble(),
+      modifierAmount: double.tryParse((json['modifier_amount'] ?? 0).toString()) ?? 0.0,
     );
   }
 }
@@ -229,7 +233,7 @@ class CouponDetail {
   factory CouponDetail.fromJson(Map<String,dynamic> json) {
     return CouponDetail(
       code: json['code'] ?? '',
-      value: (json['value'] ?? 0).toDouble(),
+      value: double.tryParse((json['value'] ?? 0).toString()) ?? 0.0,
     );
   }
 }

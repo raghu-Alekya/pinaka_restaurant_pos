@@ -20,7 +20,7 @@ class DiscountReasonResponse {
 // models/discount/add_discount_request.dart
 class AddDiscountRequest {
   final int orderId;
-  final double amount;
+  final String amount; // ✅ CHANGED to String
   final String isNc;
   final String reason;
 
@@ -40,20 +40,28 @@ class AddDiscountRequest {
     };
   }
 }
+
 // models/discount/add_discount_response.dart
 class AddDiscountResponse {
   final bool success;
   final String message;
+  final double discountAmt; // ✅ ADDED
 
   AddDiscountResponse({
     required this.success,
     required this.message,
+    required this.discountAmt,
   });
 
   factory AddDiscountResponse.fromJson(Map<String, dynamic> json) {
+    final data = json['data'] as Map<String, dynamic>?;
+    final rawDiscountAmt = data != null ? data['discount_amt'] : 0.0;
+    final double parsedAmt = double.tryParse(rawDiscountAmt.toString())?.abs() ?? 0.0;
+
     return AddDiscountResponse(
-      success: json['success'] ?? true,
+      success: (json['status'] ?? json['status_code'] ?? '').toString().toLowerCase() == 'success' || (json['success'] ?? false) == true,
       message: json['message'] ?? 'Discount applied successfully',
+      discountAmt: parsedAmt,
     );
   }
 }

@@ -79,7 +79,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
         context.read<PaymentBloc>().add(ResetPayment());
 
         final orderType = widget.isTakeAway ? "Take Away" : "Dine In";
-        debugPrint("💳 Loading payment summary for Order ID: $orderId (Type: $orderType)");
+        debugPrint(
+          "💳 Loading payment summary for Order ID: $orderId (Type: $orderType)",
+        );
 
         context.read<PaymentBloc>().add(
           LoadPaymentSummary(
@@ -91,7 +93,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
           ),
         );
       } else {
-        debugPrint("⚠️ PaymentScreen - No valid order ID found (orderId: $orderId)");
+        debugPrint(
+          "⚠️ PaymentScreen - No valid order ID found (orderId: $orderId)",
+        );
       }
     });
   }
@@ -121,7 +125,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
             "role": savedPermissions.role,
           };
         });
-        debugPrint("💳 Permissions loaded - User: ${savedPermissions.displayName}, Role: ${savedPermissions.role}");
+        debugPrint(
+          "💳 Permissions loaded - User: ${savedPermissions.displayName}, Role: ${savedPermissions.role}",
+        );
       }
     } catch (e) {
       debugPrint("❌ Error loading permissions: $e");
@@ -136,19 +142,23 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return BlocBuilder<PaymentBloc, PaymentState>(
       builder: (context, state) {
         final orderId = context.read<OrderBloc>().state.orderId ?? 0;
-        final bool isStateValid = state is PaymentSummaryLoaded && state.summary.orderId == orderId;
+        final bool isStateValid =
+            state is PaymentSummaryLoaded && state.summary.orderId == orderId;
         final rawSummary = isStateValid ? state.summary : null;
         final merchantDiscount = isStateValid ? state.merchantDiscount : 0.0;
-        final PaymentSummary? paymentSummary = rawSummary != null ? rawSummary.copyWith(
-          discount: merchantDiscount.abs(),
-          coupons: _couponAmount > 0 ? _couponAmount : rawSummary.coupons,
-          netTotal: _grandTotal ?? rawSummary.netTotal,
-          tipAmount: _tipAmount > 0 ? _tipAmount : rawSummary.tipAmount,
-        ) : null;
+        final PaymentSummary? paymentSummary =
+            rawSummary != null
+                ? rawSummary.copyWith(
+                  discount: merchantDiscount.abs(),
+                  coupons:
+                      _couponAmount > 0 ? _couponAmount : rawSummary.coupons,
+                  netTotal: _grandTotal ?? rawSummary.netTotal,
+                  tipAmount: _tipAmount > 0 ? _tipAmount : rawSummary.tipAmount,
+                )
+                : null;
 
         final hasCouponApplied =
-            _couponAmount > 0 ||
-                ((paymentSummary?.coupons ?? 0) > 0);
+            _couponAmount > 0 || ((paymentSummary?.coupons ?? 0) > 0);
         final hasDiscountApplied = merchantDiscount.abs() > 0;
 
         // ✅ DEBUG: Print payment state
@@ -162,7 +172,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         return Scaffold(
           appBar: PreferredSize(
             preferredSize: const Size.fromHeight(60),
-            child:TopBar(
+            child: TopBar(
               userPermissions: _userPermissions,
               token: widget.token,
               isPaymentScreen: true,
@@ -174,56 +184,65 @@ class _PaymentScreenState extends State<PaymentScreen> {
               zoneId: widget.zoneId,
               cashierName: _selectedUser?['name'] ?? '',
               isTakeAway: widget.isTakeAway,
-                onBackPressed: () {
-                  final paymentState = context.read<PaymentBloc>().state;
+              onBackPressed: () {
+                final paymentState = context.read<PaymentBloc>().state;
 
-                  final bool isNoCharge =
-                      paymentState is PaymentSummaryLoaded &&
-                          paymentState.isNoCharge;
+                final bool isNoCharge =
+                    paymentState is PaymentSummaryLoaded &&
+                    paymentState.isNoCharge;
 
-                  final double remainingAmount =
-                  paymentState is PaymentSummaryLoaded
-                      ? paymentState.summary.netTotal
-                      : 0.0;
+                final bool hasDiscountApplied =
+                    paymentState is PaymentSummaryLoaded &&
+                    paymentState.merchantDiscount.abs() > 0;
 
-                  if (_couponAmount > 0) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          "Please remove the applied coupon before going back.",
-                        ),
-                        backgroundColor: Colors.red,
+                final double remainingAmount =
+                    paymentState is PaymentSummaryLoaded
+                        ? paymentState.summary.netTotal
+                        : 0.0;
+
+                if (_couponAmount > 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        "Please remove the applied coupon before going back.",
                       ),
-                    );
-                    return;
-                  }
-
-                  if (isNoCharge) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          "Please remove the applied No Charge discount before going back.",
-                        ),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                    return;
-                  }
-
-                  if (_hasPartialPayment) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          "Please complete the remaining payment before leaving this screen.",
-                        ),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                    return;
-                  }
-
-                  Navigator.pop(context);
+                      backgroundColor: Colors.red,
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                  return;
                 }
+
+                if (hasDiscountApplied) {
+                  final String msg =
+                      isNoCharge
+                          ? "Please remove the applied No Charge discount before going back."
+                          : "Please remove the applied discount to go back.";
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(msg),
+                      backgroundColor: Colors.red,
+                      duration: const Duration(seconds: 1),
+                    ),
+                  );
+                  return;
+                }
+
+                if (_hasPartialPayment) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        "Please complete the remaining payment before leaving this screen.",
+                      ),
+                      backgroundColor: Colors.red,
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                  return;
+                }
+
+                Navigator.pop(context);
+              },
             ),
           ),
           body: Row(
@@ -231,24 +250,29 @@ class _PaymentScreenState extends State<PaymentScreen> {
               Expanded(
                 flex: 25,
                 child: BlocProvider(
-                  create: (context) => TaxBloc(TaxRepository())..add(LoadTaxesEvent()),
+                  create:
+                      (context) =>
+                          TaxBloc(TaxRepository())..add(LoadTaxesEvent()),
                   child: Sidebarwidgets(
                     userPermissions: _userPermissions,
                     selectedUser: _selectedUser,
                     merchantDiscount: merchantDiscount,
-                    tipAmount: _tipAmount > 0
-                        ? _tipAmount
-                        : (paymentSummary?.tipAmount ?? 0),
+                    tipAmount:
+                        _tipAmount > 0
+                            ? _tipAmount
+                            : (paymentSummary?.tipAmount ?? 0),
                     paymentSummary: paymentSummary,
                     hasCouponApplied: hasCouponApplied,
                     hasDiscountApplied: hasDiscountApplied,
                     appliedCouponAmount:
-                    _couponAmount > 0
-                        ? _couponAmount
-                        : (paymentSummary?.coupons ?? 0.0),
+                        _couponAmount > 0
+                            ? _couponAmount
+                            : (paymentSummary?.coupons ?? 0.0),
                     token: widget.token,
                     onNetPayableChanged: (double value) {
-                      debugPrint("💳 Net payable changed: $value (isTakeAway: ${widget.isTakeAway})");
+                      debugPrint(
+                        "💳 Net payable changed: $value (isTakeAway: ${widget.isTakeAway})",
+                      );
                       setState(() => _grandTotal = value);
                     },
                   ),
@@ -266,29 +290,31 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   PaymentSummary: paymentSummary,
                   orderId: orderId,
                   grandTotal: _grandTotal,
-                  isTakeAway: widget.isTakeAway,  // ✅ Pass isTakeAway to paymentsummary
+                  isTakeAway:
+                      widget.isTakeAway, // ✅ Pass isTakeAway to paymentsummary
                   onMerchantDiscountChanged: (double value) {
-                    debugPrint("💳 Merchant discount changed: $value (isTakeAway: ${widget.isTakeAway})");
+                    debugPrint(
+                      "💳 Merchant discount changed: $value (isTakeAway: ${widget.isTakeAway})",
+                    );
                     context.read<PaymentBloc>().add(
-                      UpdateMerchantDiscount(
-                        value: value,
-                        isNoCharge: false,
-                      ),
+                      UpdateMerchantDiscount(value: value, isNoCharge: false),
                     );
                   },
                   onTipChanged: (double value) {
-                    debugPrint("💳 Tip changed: $value (isTakeAway: ${widget.isTakeAway})");
+                    debugPrint(
+                      "💳 Tip changed: $value (isTakeAway: ${widget.isTakeAway})",
+                    );
 
                     setState(() {
                       _tipAmount = value;
                     });
 
-                    context.read<PaymentBloc>().add(
-                      UpdateTip(value),
-                    );
+                    context.read<PaymentBloc>().add(UpdateTip(value));
                   },
                   onCouponAmountChanged: (double amount) {
-                    debugPrint("💳 Coupon amount changed: $amount (isTakeAway: ${widget.isTakeAway})");
+                    debugPrint(
+                      "💳 Coupon amount changed: $amount (isTakeAway: ${widget.isTakeAway})",
+                    );
                     setState(() {
                       _couponAmount = amount;
                     });
