@@ -16,6 +16,7 @@ class DiscountPopup extends StatefulWidget {
   final String ? authToken;
   final int orderId;
   final double initialDiscount;
+  final bool isPercent;
 
   const DiscountPopup({
     super.key,
@@ -24,6 +25,7 @@ class DiscountPopup extends StatefulWidget {
     this.authToken,
     required this.orderId,
     this.initialDiscount = 0.0,
+    this.isPercent = false,
   });
 
   @override
@@ -51,8 +53,14 @@ class _DiscountPopupState extends State<DiscountPopup> {
 
     // ✅ show existing discount when popup opens
     if (widget.initialDiscount > 0) {
-      discountController.text = widget.initialDiscount.toStringAsFixed(2);
-
+      if (widget.isPercent) {
+        selectedType = DiscountType.percent;
+        final double percentVal = (widget.initialDiscount / (widget.netTotal > 0 ? widget.netTotal : 1.0)) * 100;
+        discountController.text = percentVal.toStringAsFixed(0);
+      } else {
+        selectedType = DiscountType.amount;
+        discountController.text = widget.initialDiscount.toStringAsFixed(2);
+      }
       // update preview also
       final applied = widget.initialDiscount;
       newPayableAmount = (payableAmount - applied).clamp(0, payableAmount);
@@ -200,7 +208,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
     final String discountStr = isNCSelected
         ? payableAmount.toStringAsFixed(2)
         : selectedType == DiscountType.percent
-            ? "${inputValue.toInt()} %"
+            ? ((widget.netTotal * inputValue) / 100).toStringAsFixed(2)
             : inputValue.toStringAsFixed(0);
 
     debugPrint('💰 FINAL discountStr sent to API = $discountStr');

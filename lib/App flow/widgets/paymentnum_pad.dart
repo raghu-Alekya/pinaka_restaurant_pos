@@ -241,16 +241,14 @@ class _paymentsummaryState extends State<paymentsummary> {
   }
 
   double getNetTotal() {
-    if (widget.grandTotal != null) {
-      return _roundMoney(widget.grandTotal!.abs());
-    }
     final state = context.read<PaymentBloc>().state;
     final bool isStateValid = state is PaymentSummaryLoaded && state.summary.orderId == widget.orderId;
     final bool isSummaryValid = _paymentSummary != null && _paymentSummary!.orderId == widget.orderId;
     final PaymentSummary? summary =
         isStateValid ? state.summary : (isSummaryValid ? _paymentSummary : null);
     if (summary == null) return 0.0;
-    return summary.netTotal - summary.serviceChargeValue;
+    final double couponsVal = summary.coupons > 0 ? summary.coupons : _couponAmount;
+    return summary.grossTotal - couponsVal + summary.tax;
   }
 
   // ➕ NEW — full order total minus whatever has already been collected
@@ -628,6 +626,7 @@ class _paymentsummaryState extends State<paymentsummary> {
         token: widget.token,
         orderId: widget.orderId,
         restaurantId: widget.restaurantId,
+        zoneId: widget.zoneId,
         orderType: widget.isTakeAway ? "Take Away" : "Dine In",
       ),
     );
@@ -906,6 +905,7 @@ class _paymentsummaryState extends State<paymentsummary> {
               );
               // Trigger reload in parent screen so all totals are updated
               widget.onCouponAmountChanged?.call(_couponAmount);
+              _reloadSummary();
             }
           },
         ),
@@ -1139,7 +1139,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                 SnackBar(
                   content: Text(state.response.message),
                   duration: const Duration(seconds: 1),
-                  backgroundColor: Colors.red,
+                  backgroundColor: Colors.green,
                 ),
               );
               setState(() {
@@ -2226,9 +2226,11 @@ class _paymentsummaryState extends State<paymentsummary> {
                               ),
                             ],
                             child: DiscountPopup(
-                              netPayable: netPayable,
+                              netPayable: netPayable + merchantDiscount.abs(),
                               netTotal: getNetTotal(),
                               orderId: widget.orderId,
+                              initialDiscount: merchantDiscount.abs(),
+                              isPercent: _lastAppliedDiscountStr != null && _lastAppliedDiscountStr!.contains('%'),
                             ),
                           ),
                     );
@@ -2308,7 +2310,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                               (_) => Couponscreen(
                                 orderId: widget.orderId,
                                 token: widget.token,
-                                onCouponApplied: (coupon, amt) {
+                                onCouponApplied: (coupon, amt) async {
                                   setState(() {
                                     _isCouponApplied = true;
                                     _appliedCoupon = coupon;
@@ -2316,19 +2318,34 @@ class _paymentsummaryState extends State<paymentsummary> {
                                     couponController.text = coupon;
                                   });
 
+                                  widget.onCouponAmountChanged?.call(amt);
+
+                                  await Future.delayed(const Duration(milliseconds: 500));
+
                                   if (_lastAppliedDiscountStr != null && _lastAppliedDiscountStr!.contains('%')) {
-                                    context.read<DiscountBloc>().add(
-                                      ApplyDiscountEvent(
-                                        request: AddDiscountRequest(
-                                          orderId: widget.orderId,
-                                          amount: _lastAppliedDiscountStr!,
-                                          isNc: _isNcDiscount ? "yes" : "no",
-                                          reason: _lastAppliedDiscountReason ?? "",
+                                    final percentVal = double.tryParse(_lastAppliedDiscountStr!.replaceAll('%', '').trim()) ?? 0.0;
+                                    final state = context.read<PaymentBloc>().state;
+                                    final bool isStateValid = state is PaymentSummaryLoaded && state.summary.orderId == widget.orderId;
+                                    final bool isSummaryValid = _paymentSummary != null && _paymentSummary!.orderId == widget.orderId;
+                                    final PaymentSummary? summary =
+                                        isStateValid ? state.summary : (isSummaryValid ? _paymentSummary : null);
+                                    if (summary != null) {
+                                      final netTotalBeforeDiscountAndCoupon = summary.netTotal - summary.serviceChargeValue - summary.tipAmount + summary.discount.abs() + summary.coupons.abs();
+                                      final newNetTotal = netTotalBeforeDiscountAndCoupon - amt;
+                                      final calculatedDiscount = (newNetTotal * percentVal) / 100;
+                                      context.read<DiscountBloc>().add(
+                                        ApplyDiscountEvent(
+                                          request: AddDiscountRequest(
+                                            orderId: widget.orderId,
+                                            amount: calculatedDiscount.toStringAsFixed(2),
+                                            isNc: _isNcDiscount ? "yes" : "no",
+                                            reason: _lastAppliedDiscountReason ?? "",
+                                          ),
                                         ),
-                                      ),
-                                    );
+                                      );
+                                    }
                                   } else {
-                                    widget.onCouponAmountChanged?.call(amt);
+                                    _reloadSummary();
                                   }
 
                                   // Success message
@@ -2349,7 +2366,18 @@ class _paymentsummaryState extends State<paymentsummary> {
               onDelete:
                   _isCouponApplied
                       ? () async {
-                        final success = await _couponRepository.removeCoupon(
+                          if (_isDiscountApplied) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Please delete the merchant discount first"),
+                                duration: Duration(seconds: 2),
+                                backgroundColor: Colors.red,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                            return;
+                          }
+                          final success = await _couponRepository.removeCoupon(
                           token: widget.token,
                           orderId: widget.orderId,
                           couponCode: _appliedCoupon,
@@ -2363,19 +2391,34 @@ class _paymentsummaryState extends State<paymentsummary> {
                             couponController.clear();
                           });
 
+                          widget.onCouponAmountChanged?.call(0.0);
+
+                          await Future.delayed(const Duration(milliseconds: 500));
+
                           if (_lastAppliedDiscountStr != null && _lastAppliedDiscountStr!.contains('%')) {
-                            context.read<DiscountBloc>().add(
-                              ApplyDiscountEvent(
-                                request: AddDiscountRequest(
-                                  orderId: widget.orderId,
-                                  amount: _lastAppliedDiscountStr!,
-                                  isNc: _isNcDiscount ? "yes" : "no",
-                                  reason: _lastAppliedDiscountReason ?? "",
+                            final percentVal = double.tryParse(_lastAppliedDiscountStr!.replaceAll('%', '').trim()) ?? 0.0;
+                            final state = context.read<PaymentBloc>().state;
+                            final bool isStateValid = state is PaymentSummaryLoaded && state.summary.orderId == widget.orderId;
+                            final bool isSummaryValid = _paymentSummary != null && _paymentSummary!.orderId == widget.orderId;
+                            final PaymentSummary? summary =
+                                isStateValid ? state.summary : (isSummaryValid ? _paymentSummary : null);
+                            if (summary != null) {
+                              final netTotalBeforeDiscountAndCoupon = summary.netTotal - summary.serviceChargeValue - summary.tipAmount + summary.discount.abs() + summary.coupons.abs();
+                              final newNetTotal = netTotalBeforeDiscountAndCoupon;
+                              final calculatedDiscount = (newNetTotal * percentVal) / 100;
+                              context.read<DiscountBloc>().add(
+                                ApplyDiscountEvent(
+                                  request: AddDiscountRequest(
+                                    orderId: widget.orderId,
+                                    amount: calculatedDiscount.toStringAsFixed(2),
+                                    isNc: _isNcDiscount ? "yes" : "no",
+                                    reason: _lastAppliedDiscountReason ?? "",
+                                  ),
                                 ),
-                              ),
-                            );
+                              );
+                            }
                           } else {
-                            widget.onCouponAmountChanged?.call(0.0);
+                            _reloadSummary();
                           }
 
                           ScaffoldMessenger.of(context).showSnackBar(

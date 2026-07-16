@@ -236,6 +236,7 @@ class _TopBarState extends State<TopBar> {
         taxAmount: summaryToPrint.tax,
         serviceCharge: summaryToPrint.serviceChargeValue,
         netPayable: summaryToPrint.netTotal,
+        couponDetails: summaryToPrint.couponDetails,
       );
 
       if (mounted) {

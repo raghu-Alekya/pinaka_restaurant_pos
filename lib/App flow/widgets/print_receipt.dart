@@ -22,6 +22,8 @@ class PrintRecipt extends StatefulWidget {
   final int? zoneId;
   final bool isTakeAway;
   final UserPermissions? userPermissions;
+  final bool isFromOrderDetails;
+  final bool isCopy;
 
   const PrintRecipt({
     Key? key,
@@ -35,6 +37,8 @@ class PrintRecipt extends StatefulWidget {
     this.zoneId,
     this.isTakeAway = false,
     this.userPermissions,
+    this.isFromOrderDetails = false,
+    this.isCopy = false,
   }) : super(key: key);
 
   @override
@@ -107,6 +111,8 @@ class _PrintReciptState extends State<PrintRecipt> {
             taxAmount: widget.paymentSummary.tax,
             serviceCharge: widget.paymentSummary.serviceChargeValue,
             netPayable: widget.paymentSummary.netTotal,
+            couponDetails: widget.paymentSummary.couponDetails,
+            isCopy: widget.isCopy,
           );
         } catch (e) {
           debugPrint("Print failed: $e");
@@ -116,6 +122,10 @@ class _PrintReciptState extends State<PrintRecipt> {
 
     // ✅ STEP 1: CLOSE THE PRINT DIALOG
     Navigator.of(context).pop();
+
+    if (widget.isFromOrderDetails) {
+      return;
+    }
 
     // ✅ STEP 2: CLEAR ORDER STATE
     // context.read<OrderBloc>().add(ClearOrder());

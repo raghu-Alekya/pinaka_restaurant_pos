@@ -7,8 +7,12 @@ import '../utils/logger.dart';
 
 class OrderstatusRepository {
   /// Fetch all orders with detailed KOT and line item info
-  Future<List<OrderlistModel>> fetchOrders(String token) async {
-    final uri = Uri.parse(AppConstants.getAllOrdersList);
+  Future<List<OrderlistModel>> fetchOrders(String token, {String? date}) async {
+    var urlStr = AppConstants.getAllOrdersList;
+    if (date != null) {
+      urlStr += '?date=$date';
+    }
+    final uri = Uri.parse(urlStr);
 
     try {
       final response = await http.get(

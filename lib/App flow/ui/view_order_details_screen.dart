@@ -11,6 +11,8 @@ import '../../repositories/cancel_order_list_repository.dart';
 import '../../repositories/order_list_repository.dart';
 import '../../utils/SessionManager.dart';
 import '../../printer/printer_service.dart';
+import 'package:pinaka_restaurant_pos/App%20flow/widgets/print_receipt.dart';
+import 'package:pinaka_restaurant_pos/models/payment/payment_summary_model.dart' as psm;
 import '../widgets/navigationhelper.dart';
 import '../widgets/top_bar.dart';
 import '../widgets/bottom_nav_bar.dart';
@@ -1374,20 +1376,76 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                             }
                                           }
 
-                                          await Printer.printBill(
-                                            context: context,
-                                            orderId: orderModel.orderId.toString(),
-                                            tableName: orderModel.tableName ?? "",
-                                            cashierName: widget.userPermissions?.displayName ?? 'Admin',
-                                            items: consolidated.values.toList(),
+                                          final paymentSummaryObj = psm.PaymentSummary(
+                                            restaurantId: orderModel.restaurantId ?? 0,
+                                            orderId: orderModel.orderId ?? 0,
                                             grossTotal: (orderModel.grossTotal ?? 0).toDouble(),
-                                            couponDiscount: (orderModel.discount ?? 0).toDouble(),
-                                            merchantDiscount: (orderModel.merchantDiscount ?? 0).toDouble(),
+                                            tax: (orderModel.totalTax ?? 0).toDouble(),
+                                            fees: 0.0,
+                                            discount: (orderModel.merchantDiscount ?? 0).toDouble(),
+                                            coupons: orderModel.totalCouponDiscount.toDouble(),
                                             tipAmount: (orderModel.tipAmount ?? 0).toDouble(),
-                                            taxAmount: (orderModel.totalTax ?? 0).toDouble(),
-                                            serviceCharge: (orderModel.serviceChargeValue ?? 0).toDouble(),
-                                            netPayable: (orderModel.netPayable ?? orderModel.netTotal ?? 0).toDouble(),
-                                            isCopy: true,
+                                            netTotal: (orderModel.netPayable ?? orderModel.netTotal ?? 0).toDouble(),
+                                            lineItems: consolidated.values.map((item) {
+                                              return psm.LineItem(
+                                                productId: 0,
+                                                variationId: 0,
+                                                name: item['name'].toString(),
+                                                qty: int.tryParse(item['qty'].toString()) ?? 0,
+                                                price: double.tryParse(item['price'].toString()) ?? 0.0,
+                                                total: double.tryParse(item['amount'].toString()) ?? 0.0,
+                                                tax: 0.0,
+                                                taxClass: 'food',
+                                                modifiers: List<String>.from(item['modifiers'] ?? []),
+                                                modifierAmount: 0.0,
+                                              );
+                                            }).toList(),
+                                            tableId: orderModel.tableId ?? 0,
+                                            tableName: orderModel.tableName ?? "",
+                                            zoneId: orderModel.zoneId ?? 0,
+                                            modifiersTaxable: false,
+                                            isNoCharge: false,
+                                            couponDetails: orderModel.couponDetails?.map((e) {
+                                              return psm.CouponDetail(
+                                                code: e.code ?? "",
+                                                value: (e.value ?? 0).toDouble(),
+                                              );
+                                            }).toList() ?? [],
+                                            serviceChargePercentage: (orderModel.serviceChargePercentage ?? 0).toDouble(),
+                                            serviceChargeValue: (orderModel.serviceChargeValue ?? 0).toDouble(),
+                                            roundOff: (orderModel.roundOff ?? 0).toDouble(),
+                                          );
+
+                                          showDialog(
+                                            context: context,
+                                            barrierDismissible: false,
+                                            builder: (context) => Dialog(
+                                              backgroundColor: Colors.transparent,
+                                              insetPadding: EdgeInsets.zero,
+                                              child: Align(
+                                                alignment: Alignment.centerLeft,
+                                                child: Padding(
+                                                  padding: const EdgeInsets.only(
+                                                    left: 330,
+                                                    top: 60,
+                                                    bottom: 60,
+                                                  ),
+                                                  child: PrintRecipt(
+                                                    loadedTables: const [],
+                                                    pin: widget.pin,
+                                                    token: widget.token,
+                                                    restaurantId: widget.restaurantId,
+                                                    restaurantName: widget.restaurantName,
+                                                    zoneId: orderModel.zoneId,
+                                                    paymentSummary: paymentSummaryObj,
+                                                    cashierName: widget.userPermissions?.displayName ?? 'Admin',
+                                                    isTakeAway: orderModel.orderType?.toLowerCase().contains("take") ?? false,
+                                                    isFromOrderDetails: true,
+                                                    isCopy: true,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
                                           );
                                         } catch (e) {
                                           debugPrint("Print Bill Error: $e");

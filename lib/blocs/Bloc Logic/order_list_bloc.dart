@@ -20,7 +20,7 @@ class OrderstatusBloc extends Bloc<OrderstatusEvent, OrderstatusState> {
       ) async {
     emit(OrderLoading());
     try {
-      final orders = await orderRepository.fetchOrders(event.token);
+      final orders = await orderRepository.fetchOrders(event.token, date: event.date);
 
       // Debug print each order
       for (var order in orders) {

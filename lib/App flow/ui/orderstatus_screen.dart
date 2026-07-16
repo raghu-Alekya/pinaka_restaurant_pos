@@ -137,6 +137,22 @@ class _OrdersListTableState extends State<OrdersListTable> {
     }
   }
 
+  DateTime? _parseOrderDate(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return null;
+    final parsed = DateTime.tryParse(dateStr);
+    if (parsed != null) return parsed;
+    try {
+      return DateFormat("d MMMM, yyyy").parse(dateStr);
+    } catch (_) {}
+    try {
+      return DateFormat("d MMM, yyyy").parse(dateStr);
+    } catch (_) {}
+    try {
+      return DateFormat("dd/MM/yyyy").parse(dateStr);
+    } catch (_) {}
+    return null;
+  }
+
   List<OrderlistModel> _filterOrders(List<OrderlistModel> orders) {
     final query = _searchQuery.toLowerCase();
 
@@ -157,7 +173,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
 
       bool matchesDate = true;
       if (selectedDate != null) {
-        final orderDate = DateTime.tryParse(order.date ?? '');
+        final orderDate = _parseOrderDate(order.date);
         if (orderDate == null) {
           matchesDate = false;
         } else {
@@ -476,8 +492,14 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                             "${picked.month.toString().padLeft(2, '0')}/"
                                             "${picked.year}";
                                         _currentPage = 0;
-                                        _updateFilteredOrders();
                                       });
+                                      final dateStr = DateFormat('yyyy-MM-dd').format(picked);
+                                      context.read<OrderstatusBloc>().add(
+                                        FetchOrders(
+                                          token: widget.token,
+                                          date: dateStr,
+                                        ),
+                                      );
                                     }
                                   },
                                   decoration: const InputDecoration(
@@ -563,26 +585,29 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                 ),
-                                onPressed:
-                                _isResetEnabled()
+                                onPressed: _isResetEnabled()
                                     ? () {
-                                  setState(() {
-                                    // 🔹 Search
-                                    _searchQuery = '';
-                                    _searchController.clear();
+                                        setState(() {
+                                          // 🔹 Search
+                                          _searchQuery = '';
+                                          _searchController.clear();
 
-                                    // 🔹 Status
-                                    _selectedStatus = 'All';
+                                          // 🔹 Status
+                                          _selectedStatus = 'All';
 
-                                    // 🔹 Date
-                                    selectedDate = null;
-                                    _dateController.clear();
+                                          // 🔹 Date
+                                          selectedDate = null;
+                                          _dateController.clear();
 
-                                    // 🔹 Pagination
-                                    _currentPage = 0;
-                                    _updateFilteredOrders();
-                                  });
-                                }
+                                          // 🔹 Pagination
+                                          _currentPage = 0;
+                                          _updateFilteredOrders();
+                                        });
+                                        context.read<OrderstatusBloc>().add(
+                                              FetchOrders(
+                                                  token: widget.token),
+                                            );
+                                      }
                                     : null,
                                 icon: const Icon(
                                   Icons.refresh,

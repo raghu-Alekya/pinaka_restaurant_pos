@@ -26,6 +26,7 @@ class Printer {
     required double netPayable,
     required BuildContext context,
     bool isCopy = false,
+    List<dynamic>? couponDetails,
   }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -231,8 +232,25 @@ class Printer {
       }
       // Coupon
       if (couponDiscount.abs() > 0) {
+        String couponLabel = "Coupon";
+        if (couponDetails != null && couponDetails.isNotEmpty) {
+          final codes = couponDetails.map((c) {
+            if (c is Map) {
+              return c['code']?.toString() ?? '';
+            } else {
+              try {
+                return (c as dynamic).code?.toString() ?? '';
+              } catch (_) {
+                return '';
+              }
+            }
+          }).where((code) => code.isNotEmpty).join(", ");
+          if (codes.isNotEmpty) {
+            couponLabel = "Coupon ($codes)";
+          }
+        }
         bytes += generator.row([
-          PosColumn(width: 8, text: "Coupon"),
+          PosColumn(width: 8, text: couponLabel),
           PosColumn(
             width: 4,
             text: "-${couponDiscount.abs().toStringAsFixed(2)}",
