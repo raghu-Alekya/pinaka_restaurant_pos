@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../models/complete_order_model.dart';
+import '../utils/AppConstant.dart';
 
 Future<CompletedOrdersResponse> getCompletedOrders({
   required String token,
@@ -45,10 +46,10 @@ Future<CompletedOrdersResponse> getCompletedOrders({
     queryParams["prep_time"] = prepTime.toString();
   }
 
-  final url = Uri.https(
-    "merchantrestaurant.alektasolutions.com",
-    "/wp-json/pinaka-restaurant-pos/v1/kot/get-completed-orders",
-    queryParams,
+  final url = Uri.parse(
+    AppConstants.completedOrdersEndpoint,
+  ).replace(
+    queryParameters: queryParams,
   );
 
   print("========== COMPLETED ORDERS ==========");

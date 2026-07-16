@@ -36,6 +36,9 @@ class AppConstants {
 
   static String get parentKotOrdersEndpoint =>
       "$baseApiPath/kot/get-parent-kot-orders";
+  static String get completedOrdersEndpoint =>
+      "$baseApiPath/kot/get-completed-orders";
+
 
 
 }
