@@ -145,7 +145,15 @@ class AppConstants {
   // Settings
   static String get getGeneralSettingsEndpoint =>
       '$baseApiPath/settings/get-general-settings';
+  static String get saveGeneralSettingsEndpoint =>
+      '$baseApiPath/settings/save-general-settings';
+  static String get uploadMediaEndpoint =>
+      '$baseDomain/wp-json/wp/v2/media';
+  static String get editProfileImageEndpoint =>
+      '$baseApiPath/settings/edit-profile-image';
 
+  static String get editReceiptImageEndpoint =>
+      '$baseApiPath/settings/edit-receipt-image';
   // Orders
   static String get getAllOrdersList =>
       '$baseApiPath/kot/get-all-orders';

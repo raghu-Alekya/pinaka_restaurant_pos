@@ -175,51 +175,92 @@ class _TipPopupState extends State<TipPopup> {
         width: 80,
         height: 50,
         alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.blue.shade600 : Color(0xFF4C81F1),
-          borderRadius: BorderRadius.circular(6),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              offset: const Offset(2, 2),
-              blurRadius: 3,
-            )
-          ],
-        ),
+          decoration: BoxDecoration(
+            color: const Color(0xFF2353B7),
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x3F223F7D),
+                blurRadius: 6,
+                offset: Offset(5,5),
+              )
+            ],
+          ),
         child: Text(
           // value.toString(),
           "$_currencySymbol${value.toDouble().toStringAsFixed(2)}",
           style: const TextStyle(
             color: Colors.white,
-            fontSize: 18,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
         ),
       ),
     );
   }
+  Widget _buildKeypadButton(
+      String label, {
+        Color? color,
+        VoidCallback? onPressed,
+        Color? borderColor,
+      }) {
+    final bool isClear = label == "Clear";
+    final bool isBack = label == "⌫";
 
-  Widget _buildKeypadButton(String label,
-      {Color? color, VoidCallback? onPressed, Color? borderColor}) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color ?? const Color(0xFFF3F5FF),
-        foregroundColor: Colors.black,
-        minimumSize: const Size(70, 60),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-          side: BorderSide(color: borderColor ?? Colors.transparent, width: 1),
-        ),
-        elevation: 0,
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x3F000000),
+            blurRadius: 5,
+            offset: Offset(0, 1),
+            spreadRadius: 0,
+          ),
+        ],
       ),
-      child: Text(
-        label,
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color ??
+              (isClear || isBack
+                  ? Colors.white
+                  : const Color(0xFFF1F5FF)),
+          foregroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: BorderSide(
+              color: borderColor ??
+                  (isClear
+                      ? const Color(0xFFFF4D20)
+                      : isBack
+                      ? const Color(0xFF4C5F7D)
+                      : Colors.transparent),
+              width: 1,
+            ),
+          ),
+        ),
+        child: isBack
+            ? const Icon(
+          Icons.backspace_outlined,
+          color: Color(0xFF4C5F7D),
+          size: 25,
+        )
+            : Text(
+          label,
+          style: TextStyle(
+            fontSize: isClear ? 16 : 18,
+            fontWeight: FontWeight.w500,
+            color: isClear
+                ? const Color(0xFFFE6464)
+                : const Color(0xFF4C5F7D),
+          ),
+        ),
       ),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -231,7 +272,7 @@ class _TipPopupState extends State<TipPopup> {
         // side: const BorderSide(color: Colors.blueAccent, width: 1),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(30),
         child: SizedBox(
           width: 850,
           height: 400,
@@ -239,39 +280,65 @@ class _TipPopupState extends State<TipPopup> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // ---------- Header ----------
-              Stack(
-                alignment: Alignment.center,
+              Row(
                 children: [
-                  // Centered Title
-                  const Align(
-                    alignment: Alignment.center,
-                    child: Text(
-                      "Tip",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                  Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDDFFF8),
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF7CCABB),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.volunteer_activism,
+                        color: Colors.white,
+                        size: 26,
                       ),
                     ),
                   ),
 
-                  // Close Button on the Right
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Container(
-                      width: 30,
-                      height: 30,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFF94438), // red background
-                        shape: BoxShape.circle,
-                      ),
-                      child: IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white, size: 18),
-                        padding: EdgeInsets.zero,
-                        onPressed: () => Navigator.pop(context),
-                      ),
+                  const SizedBox(width: 20),
+
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text(
+                          "Tip",
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        SizedBox(height: 6),
+                        Text(
+                          "Add a tip to show your appreciation for exceptional service",
+                          style: TextStyle(
+                            color: Color(0xFF7C7C7C),
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+
+                  InkWell(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      height: 40,
+                      width: 40,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF84337),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.close,color: Colors.white),
+                    ),
+                  )
                 ],
               ),
 
@@ -279,7 +346,7 @@ class _TipPopupState extends State<TipPopup> {
               //   "Add tip for",
               //   style: TextStyle(color: Colors.grey, fontSize: 14),
               // ),
-              const SizedBox(height: 50),
+              const SizedBox(height: 30),
 
               // ---------- Body ----------
               Expanded(
@@ -308,25 +375,49 @@ class _TipPopupState extends State<TipPopup> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          TextField(
+                      Container(
+                        decoration: BoxDecoration(
+                          boxShadow: [
+                            BoxShadow(
+                              color: Color(0x19000000),
+                              blurRadius: 10,
+                              offset: Offset(0,1),
+                            )
+                          ],
+                        ),
+                        child: TextField(
                             controller: _tipController,
                             readOnly: true,
                             decoration: InputDecoration(
                               prefixText: "$_currencySymbol ",
                               hintText: "Please enter amount",
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(6),
+
+                              filled: true,
+                              fillColor: Colors.white,
+
+                              contentPadding:
+                              const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(
+                                  color: Color(0xFF6D7A8F),
+                                ),
                               ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 12,
+
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(
+                                  color: Color(0xFF2353B7),
+                                ),
                               ),
                             ),
-                          ),                          const SizedBox(height: 25),
+                          ),                          ),
+                          const SizedBox(height: 25),
                           ElevatedButton(
                             onPressed: _isLoading ? null : _applyTip,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.redAccent,
+                              backgroundColor: Color(0xFF4CAF50),
                               minimumSize: const Size(double.infinity, 50),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(6),
@@ -355,7 +446,7 @@ class _TipPopupState extends State<TipPopup> {
                       ),
                     ),
 
-                    const SizedBox(width: 40),
+                    const SizedBox(width: 20),
                     const SizedBox(height: 25),
 
                     // ---------- Right: Number Pad ----------
@@ -364,10 +455,10 @@ class _TipPopupState extends State<TipPopup> {
                       child: GridView.count(
                         shrinkWrap: true,
                         crossAxisCount: 3,
-                        mainAxisSpacing: 6,
-                        crossAxisSpacing: 6,
+                        mainAxisSpacing: 10,
+                        crossAxisSpacing: 10,
                         // 👇 Adjust this ratio to control button height
-                        childAspectRatio: 3, // smaller value = taller buttons
+                        childAspectRatio: 2.5, // smaller value = taller buttons
                         children: [
                           for (var i = 1; i <= 9; i++)
                             _buildKeypadButton(

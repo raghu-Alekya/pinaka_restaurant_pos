@@ -267,117 +267,153 @@ class _DiscountPopupState extends State<DiscountPopup> {
 
 
   @override
+  @override
   Widget build(BuildContext context) {
     return BlocListener<DiscountBloc, DiscountState>(
       listener: (context, state) {
-        debugPrint('🟣 [DiscountPopup] BlocListener state = ${state.runtimeType}');
-
         if (state is DiscountSuccess) {
           final inputValue = double.tryParse(discountController.text) ?? 0;
           final appliedDiscount = state.response.discountAmt;
 
-          // ✅ keep discount value in TextField after apply
-          discountController.value = TextEditingValue(
-            text: inputValue.toString(),
-            selection: TextSelection.collapsed(offset: inputValue.toString().length),
-          );
-
-          // ✅ update payable preview
           setState(() {
-            newPayableAmount = (payableAmount - appliedDiscount).clamp(0, payableAmount);
+            newPayableAmount =
+                (payableAmount - appliedDiscount).clamp(0, payableAmount);
           });
 
-          // ✅ save discount in PaymentBloc
           context.read<PaymentBloc>().add(
             UpdateMerchantDiscount(
               value: appliedDiscount,
-              isNoCharge: isNCSelected, // or isNc
+              isNoCharge: isNCSelected,
             ),
           );
-          final String discountStr = isNCSelected
-              ? payableAmount.toStringAsFixed(2)
-              : selectedType == DiscountType.percent
-                  ? "${inputValue.toInt()} %"
-                  : inputValue.toStringAsFixed(0);
 
           Navigator.pop(context, {
             "amount": appliedDiscount,
             "isNc": isNCSelected,
-            "discountStr": discountStr,
             "reason": reasonController.text,
           });
         }
 
-
-
-
         if (state is DiscountFailure) {
-          debugPrint('❌ [DiscountPopup] DiscountFailure = ${state.error}');
           _showError(state.error);
         }
       },
       child: Dialog(
         backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(20),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
         child: Container(
           width: 860,
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(30),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            // border: Border.all(color: const Color(0xFF1FBF75), width: 2),
+            borderRadius: BorderRadius.circular(14),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+
+              /// Header
               _header(context),
-              const SizedBox(height: 40),
-              Align(
-                alignment: Alignment.center,
-                child: SizedBox(
-                  width: 870,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        width: 460,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _leftSection(),
-                            const SizedBox(height: 25),
-                            GestureDetector(
-                              onTap: () {
-                                debugPrint('🟢 [UI] Save & Continue tapped');
-                                _onSaveAndContinue();
-                              },
-                              child: Container(
-                                height: 48,
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFF6B6B),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Center(
-                                  child: Text(
-                                    'Save & Continue',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
+
+              const SizedBox(height: 18),
+
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+
+                  /// LEFT
+                  Expanded(
+                    flex: 5,
+                    child: Column(
+                      children: [
+
+                        /// Amount Card
+                        Container(
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: Color(0xFFF9FAFC),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xffDFDFDF),
+                            ),
+                          ),
+                          child: _amountRow(),
+                        ),
+
+                        const SizedBox(height: 15),
+
+                        /// Discount Card
+                        Container(
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: Color(0xFFF9FAFC),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xffDFDFDF),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+
+                              // const Text(
+                              //   "Apply Discount",
+                              //   style: TextStyle(
+                              //     fontWeight: FontWeight.w600,
+                              //     fontSize: 15,
+                              //   ),
+                              // ),
+                              //
+                              // const SizedBox(height: 15),
+
+                              _discountToggle(),
+
+                              const SizedBox(height: 18),
+
+                              _reasonField(),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 15),
+
+                        SizedBox(
+                          width: double.infinity,
+                          height: 48,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xff4CAF50),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 30),
-                      _keypadSection(),
-                    ],
+                            onPressed: _onSaveAndContinue,
+                            child: const Text(
+                              "Save & Continue",
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        )
+                      ],
+                    ),
                   ),
-                ),
-              ),
+
+                  const SizedBox(width: 18),
+
+                  /// RIGHT
+                  Expanded(
+                    flex: 4,
+                    child: SizedBox(
+                      height: 386,
+                      child: _keypadSection(),
+                    ),
+                  )
+                ],
+              )
             ],
           ),
         ),
@@ -389,38 +425,65 @@ class _DiscountPopupState extends State<DiscountPopup> {
 
   /// ---------------- HEADER ----------------
   Widget _header(BuildContext context) {
-    return Stack(
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Center(
+        Container(
+          width: 68,
+          height: 68,
+          decoration: BoxDecoration(
+            color: const Color(0xFFEAF6FD),
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: const Icon(
+            Icons.discount_outlined,
+            color: Color(0xFF6FAFD5),
+            size: 34,
+          ),
+        ),
+
+        const SizedBox(width: 18),
+
+        Expanded(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: const [
               Text(
-                'Discount',
+                "Apply Discount",
                 style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1C1C1C),
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF3B3B3B),
                 ),
               ),
               SizedBox(height: 4),
               Text(
-                'Add discounts using a percentage or amount, with an optional reason and real-time total preview.',
-                style: TextStyle(fontSize: 12, color: Color(0xFF7A869A)),
+                "Add discounts using a percentage or amount, with an optional reason and real-time total preview.",
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF5A6A85),
+                ),
               ),
             ],
           ),
         ),
-        Positioned(
-          right: 0,
-          child: GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: const CircleAvatar(
-              radius: 14,
-              backgroundColor: Color(0xFFFF5A5A),
-              child: Icon(Icons.close, size: 14, color: Colors.white),
+
+        InkWell(
+          onTap: () => Navigator.pop(context),
+          child: Container(
+            width: 32,
+            height: 32,
+            decoration: const BoxDecoration(
+              color: Color(0xFFFF4B3E),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.close,
+              color: Colors.white,
+              size: 18,
             ),
           ),
-        )
+        ),
       ],
     );
   }
@@ -487,7 +550,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label,
-              style: const TextStyle(fontSize: 12, color: Color(0xFF7A869A))),
+              style: const TextStyle(fontSize: 12, color: Color(0xFF252525))),
           const SizedBox(height: 6),
 
           Container(
@@ -496,8 +559,19 @@ class _DiscountPopupState extends State<DiscountPopup> {
             alignment: Alignment.centerLeft,
             decoration: BoxDecoration(
               color: const Color(0xFFF1F3F7),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: const Color(0xFFE6EAF2)),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                width: 1,
+                color: const Color(0xFFDFDFDF),
+              ),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x19000000),
+                  blurRadius: 10,
+                  offset: Offset(0, 1),
+                  spreadRadius: 0,
+                ),
+              ],
             ),
             child: Text(
               value, // ✅ dynamically updates
@@ -514,124 +588,390 @@ class _DiscountPopupState extends State<DiscountPopup> {
 
 
   Widget _discountToggle() {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        GestureDetector(
-          onTap: () {
-            setState(() {
-              _exitNCMode();
-              selectedType = DiscountType.percent;
-              isNCSelected = false;
-              // discountController.clear();
-            });
-          },
-          child: _radioButton(
-            'Percent',
-            selectedType == DiscountType.percent && !isNCSelected,
-          ),
-        ),
-        const SizedBox(width: 12),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
 
-        GestureDetector(
-          onTap: () {
-            setState(() {
-              _exitNCMode();
-              selectedType = DiscountType.amount;
-              // isNCSelected = false;
-              // discountController.clear();
-            });
-          },
-          child: _radioButton(
-            'Amount',
-            selectedType == DiscountType.amount && !isNCSelected,
-          ),
-        ),
+            /// Discount Type
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Discount Type:",
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
 
-        const SizedBox(width: 12),
+                  Container(
+                    height: 48,
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFDFDFDF)),
+                    ),
+                    child: Row(
+                      children: [
 
-        /// 🔹 Input Field (Enabled for Percent / Amount / NC)
-        SizedBox(
-          width: 120,
-          child: IgnorePointer( // 🚫 blocks ALL interaction
-            ignoring: isNCSelected,
-            child: TextField(
-              controller: discountController,
-              readOnly: true, // keypad only
-              enabled: !isNCSelected,
-              textAlign: TextAlign.center,
-              decoration: InputDecoration(
-                prefixText: isNCSelected
-                    ? ''
-                    : (selectedType == DiscountType.amount ? '$_currency' : ''),
-                prefixStyle: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-                hintText: isNCSelected
-                    ? '--'
-                    : selectedType == DiscountType.percent
-                    ? 'ex:10%'
-                    : '100',
-                hintStyle: TextStyle(
-                  color: isNCSelected
-                      ? const Color(0xFF9CA3AF)
-                      : const Color(0xFF999393),
-                  fontWeight: FontWeight.w500,
-                ),
-                filled: true,
-                fillColor: isNCSelected
-                    ? const Color(0xFFE5E7EB)
-                    : Colors.white,
-                contentPadding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(6),
-                ),
+                        /// %
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _exitNCMode();
+                                selectedType = DiscountType.percent;
+                              });
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: selectedType == DiscountType.percent
+                                    ? const Color(0xFF2136BE)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                "%",
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: selectedType == DiscountType.percent
+                                      ? Colors.white
+                                      : Colors.black,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _exitNCMode();
+                                selectedType = DiscountType.amount;
+                              });
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: selectedType == DiscountType.amount
+                                    ? const Color(0xFF2136BE)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                _currency,
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: selectedType == DiscountType.amount
+                                      ? Colors.white
+                                      : Colors.black,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-        ),
 
+            const SizedBox(width: 12),
 
-        const SizedBox(width: 12),
+            /// Value
+            SizedBox(
+              width: 120,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
 
-        /// 🔹 NC Button
-        GestureDetector(
-          onTap: () {
-            setState(() {
-              isNCSelected = true;
+                  const Text(
+                    "Value:",
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 14,
+                    ),
+                  ),
 
-              // ✅ Discount becomes full payable amount
-              discountController.text = payableAmount.toStringAsFixed(2);
+                  const SizedBox(height: 6),
 
-              // ✅ New payable becomes zero
-              newPayableAmount = 0;
-            });
-          },
+                  SizedBox(
+                    height: 48,
+                    child: IgnorePointer(
+                      ignoring: isNCSelected,
+                      child: TextField(
+                        controller: discountController,
+                        readOnly: true,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 18, // Entered text size
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF111827),
+                        ),
+                        decoration: InputDecoration(
+                          hintText: selectedType == DiscountType.percent
+                              ? "10%"
+                              : "$_currency 100.00",
+                          prefixText: !isNCSelected &&
+                              selectedType == DiscountType.amount
+                              ? "$_currency "
+                              : null,
 
-          child: Container(
-            width: 80,
-            height: 42,
-            decoration: BoxDecoration(
-              color: isNCSelected ? const Color(0xFFF59E0B) : const Color(0xFFFAD51D),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(
-                color: isNCSelected ? const Color(0xFFB45309) : Colors.transparent,
+                          suffixText: !isNCSelected &&
+                              selectedType == DiscountType.percent
+                              ? "%"
+                              : null,
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 12,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            child: const Center(
-              child: Text(
-                'NC',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
+
+            const SizedBox(width: 12),
+
+            /// NC
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+
+                const SizedBox(
+                  height: 20, // aligns with Value label
                 ),
-              ),
-            ),
-          ),
-        ),
 
+                const SizedBox(height: 6),
+
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      isNCSelected = true;
+                      discountController.text =
+                          payableAmount.toStringAsFixed(2);
+                      newPayableAmount = 0;
+                    });
+                  },
+                  child: Container(
+                    width: 80,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFAD51D),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isNCSelected
+                            ? const Color(0xFFB45309)
+                            : Colors.transparent,
+                      ),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        "NC",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        // const SizedBox(height: 5),
+
+        // Row(
+        //   children: [
+        //     /// Percentage Toggle
+        //     Expanded(
+        //       child: Container(
+        //         height: 48,
+        //         padding: const EdgeInsets.all(2),
+        //         decoration: BoxDecoration(
+        //           color: Colors.white,
+        //           borderRadius: BorderRadius.circular(8),
+        //           border: Border.all(
+        //             color: const Color(0xFFDFDFDF),
+        //           ),
+        //         ),
+        //         child: Row(
+        //           children: [
+        //
+        //             /// Percentage
+        //             Expanded(
+        //               child: GestureDetector(
+        //                 onTap: () {
+        //                   setState(() {
+        //                     _exitNCMode();
+        //                     selectedType = DiscountType.percent;
+        //                   });
+        //                 },
+        //                 child: AnimatedContainer(
+        //                   duration: const Duration(milliseconds: 200),
+        //                   decoration: BoxDecoration(
+        //                     color: selectedType == DiscountType.percent
+        //                         ? const Color(0xFF2136BE)
+        //                         : Colors.transparent,
+        //                     borderRadius: BorderRadius.circular(6),
+        //                   ),
+        //                   alignment: Alignment.center,
+        //                   child: Text(
+        //                     "%",
+        //                     style: TextStyle(
+        //                       fontSize: 22,
+        //                       fontWeight: FontWeight.bold,
+        //                       color: selectedType == DiscountType.percent
+        //                           ? Colors.white
+        //                           : Colors.black,
+        //                     ),
+        //                   ),
+        //                 ),
+        //               ),
+        //             ),
+        //
+        //             /// Amount
+        //             Expanded(
+        //               child: GestureDetector(
+        //                 onTap: () {
+        //                   setState(() {
+        //                     _exitNCMode();
+        //                     selectedType = DiscountType.amount;
+        //                   });
+        //                 },
+        //                 child: AnimatedContainer(
+        //                   duration: const Duration(milliseconds: 200),
+        //                   decoration: BoxDecoration(
+        //                     color: selectedType == DiscountType.amount
+        //                         ? const Color(0xFF2136BE)
+        //                         : Colors.transparent,
+        //                     borderRadius: BorderRadius.circular(6),
+        //                   ),
+        //                   alignment: Alignment.center,
+        //                   child: Text(
+        //                     _currency,
+        //                     style: TextStyle(
+        //                       fontSize: 22,
+        //                       fontWeight: FontWeight.bold,
+        //                       color: selectedType == DiscountType.amount
+        //                           ? Colors.white
+        //                           : Colors.black,
+        //                     ),
+        //                   ),
+        //                 ),
+        //               ),
+        //             ),
+        //           ],
+        //         ),
+        //       ),
+        //     ),
+        //
+        //     const SizedBox(width: 12),
+        //
+        //     /// Value Field
+        //     SizedBox(
+        //       width: 120,
+        //       height: 48,
+        //       child: IgnorePointer(
+        //         ignoring: isNCSelected,
+        //         child: TextField(
+        //           controller: discountController,
+        //           readOnly: true,
+        //           enabled: !isNCSelected,
+        //           textAlign: TextAlign.center,
+        //           decoration: InputDecoration(
+        //             prefixText: !isNCSelected &&
+        //                 selectedType == DiscountType.amount
+        //                 ? "$_currency "
+        //                 : null,
+        //             prefixStyle: const TextStyle(
+        //               fontWeight: FontWeight.bold,
+        //               fontSize: 16,
+        //               color: Colors.black,
+        //             ),
+        //             hintText: selectedType == DiscountType.percent
+        //                 ? "10"
+        //                 : "100",
+        //             filled: true,
+        //             fillColor:
+        //             isNCSelected ? const Color(0xFFE5E7EB) : Colors.white,
+        //             contentPadding: const EdgeInsets.symmetric(
+        //               horizontal: 10,
+        //               vertical: 12,
+        //             ),
+        //             enabledBorder: OutlineInputBorder(
+        //               borderRadius: BorderRadius.circular(8),
+        //               borderSide:
+        //               const BorderSide(color: Color(0xFFD9DDE5)),
+        //             ),
+        //             focusedBorder: OutlineInputBorder(
+        //               borderRadius: BorderRadius.circular(8),
+        //               borderSide:
+        //               const BorderSide(color: Color(0xFF2E43C6)),
+        //             ),
+        //           ),
+        //         ),
+        //       ),
+        //     ),
+        //
+        //     const SizedBox(width: 12),
+        //
+        //     /// NC Button
+        //     GestureDetector(
+        //       onTap: () {
+        //         setState(() {
+        //           isNCSelected = true;
+        //           discountController.text =
+        //               payableAmount.toStringAsFixed(2);
+        //           newPayableAmount = 0;
+        //         });
+        //       },
+        //       child: Container(
+        //         width: 80,
+        //         height: 48,
+        //         decoration: BoxDecoration(
+        //           color: const Color(0xFFFAD51D),
+        //           borderRadius: BorderRadius.circular(8),
+        //           border: Border.all(
+        //             color: isNCSelected
+        //                 ? const Color(0xFFB45309)
+        //                 : Colors.transparent,
+        //           ),
+        //         ),
+        //         child: const Center(
+        //           child: Text(
+        //             "NC",
+        //             style: TextStyle(
+        //               fontSize: 18,
+        //               fontWeight: FontWeight.bold,
+        //             ),
+        //           ),
+        //         ),
+        //       ),
+        //     ),
+        //   ],
+        // ),
       ],
     );
   }
@@ -671,7 +1011,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
       children: [
         const Text(
           'Discount / NC Reason :',
-          style: TextStyle(fontSize: 12, color: Color(0xFF7A869A)),
+          style: TextStyle(fontSize: 12, color: Color(0xFF252525)),
         ),
         const SizedBox(height: 6),
 
@@ -692,32 +1032,73 @@ class _DiscountPopupState extends State<DiscountPopup> {
             if (state is DiscountReasonLoaded) {
               print('✅ Discount reasons loaded: ${state.reasons}');
 
-              return DropdownButtonFormField<String>(
-                value: reasonController.text.isNotEmpty
-                    ? reasonController.text
-                    : null,
-                items: state.reasons
-                    .map(
-                      (reason) => DropdownMenuItem<String>(
-                    value: reason,
-                    child: Text(reason),
+              return Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x19000000),
+                      blurRadius: 10,
+                      offset: Offset(0, 1),
+                      spreadRadius: 0,
+                    ),
+                  ],
+                ),
+                child: DropdownButtonFormField<String>(
+                  value: reasonController.text.isNotEmpty
+                      ? reasonController.text
+                      : null,
+                  items: state.reasons
+                      .map(
+                        (reason) => DropdownMenuItem<String>(
+                      value: reason,
+                      child: Text(reason),
+                    ),
+                  )
+                      .toList(),
+                  onChanged: (value) {
+                    reasonController.text = value ?? '';
+                  },
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(
+                        width: 1,
+                        color: Color(0xFFDFDFDF),
+                      ),
+                    ),
+
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(
+                        width: 1,
+                        color: Color(0xFFDFDFDF),
+                      ),
+                    ),
+
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(
+                        width: 1,
+                        color: Color(0xFFDFDFDF),
+                      ),
+                    ),
                   ),
-                )
-                    .toList(),
-                onChanged: (value) {
-                  print('👉 Selected discount reason: $value');
-                  reasonController.text = value ?? '';
-                },
-                decoration: InputDecoration(
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 12,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(6),
+                  hint: const Text('Select reason'),
+                  dropdownColor: Colors.white,
+                  icon: const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: Colors.black,
                   ),
                 ),
-                hint: const Text('Select reason'),
               );
             }
 
@@ -776,47 +1157,80 @@ class _DiscountPopupState extends State<DiscountPopup> {
   /// ---------------- KEYPAD ----------------
   Widget _keypadSection() {
     final labels = [
-      '1','2','3',
-      '4','5','6',
-      '7','8','9',
-      'Clear','0','⌫'
+      '1',
+      '2',
+      '3',
+      '4',
+      '5',
+      '6',
+      '7',
+      '8',
+      '9',
+      'Clear',
+      '0',
+      '⌫',
     ];
 
-    return SizedBox(
-      width: 300,
-      child: GridView.builder(
-        shrinkWrap: true,
-        itemCount: labels.length,
-        gridDelegate:
-        const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 1.0,
-        ),
-        itemBuilder: (_, i) {
-          return InkWell(
-            onTap: () => _onKeypadTap(labels[i]), // ✅ tap enabled
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5FB),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFE6EAF2)),
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: labels.length,
+      gridDelegate:
+      const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 15,
+        mainAxisSpacing: 15,
+        childAspectRatio: 1.26, // increase to reduce height
+      ),
+      itemBuilder: (_, index) {
+        final label = labels[index];
+
+        final isClear = label == "Clear";
+        final isBack = label == "⌫";
+
+        return InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: () => _onKeypadTap(label),
+          child: Container(
+            decoration: BoxDecoration(
+              color: (isClear || isBack)
+                  ? Colors.white
+                  : const Color(0xffF4F7FD),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: (isClear || isBack)
+                    ? Colors.redAccent
+                    : const Color(0xffDADFE8),
               ),
-              child: Center(
-                child: Text(
-                  labels[i],
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x12000000),
+                  blurRadius: 6,
+                  offset: Offset(0, 2),
+                )
+              ],
+            ),
+            child: Center(
+              child: isBack
+                  ? const Icon(
+                Icons.backspace_outlined,
+                color: Colors.redAccent,
+                size: 28,
+              )
+                  : Text(
+                label,
+                style: TextStyle(
+                  fontSize: isClear ? 16 : 18,
+                  color: isClear
+                      ? Colors.redAccent
+                      : const Color(0xff4C5F80),
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 

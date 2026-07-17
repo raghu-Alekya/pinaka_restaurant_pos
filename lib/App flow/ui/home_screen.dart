@@ -70,6 +70,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String _currency = "₹";
   int kotStatusCount = 0;
   int kotCustomerCount = 0;
+  int totalTables = 0;
+
   @override
   void initState() {
     super.initState();
@@ -191,6 +193,7 @@ class _HomeScreenState extends State<HomeScreen> {
         restaurantId: int.tryParse(widget.restaurantId) ?? 0,
       );
       setState(() {
+        totalTables = counts.totalTables;
         occupiedTables = counts.dineinTables;
         availableTables = counts.availableTables;
         isLoadingCounts = false;
@@ -309,8 +312,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Expanded(
                       child: _summaryCard(
-                        "Occupied Tables",
-                        occupiedTables.toString(),
+                        "Total Tables",
+                        totalTables.toString(),
                         Icons.table_restaurant,
                         Colors.orange,
                       ),
@@ -327,7 +330,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _summaryCard(
-                        "Active Orders",
+                        "Total Orders",
                         activeOrdersCount.toString(),
                         Icons.receipt_long,
                         Colors.blue,
@@ -345,7 +348,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _summaryCard(
-                        "Reservations",
+                        "Total Reservations",
                         upcomingReservations.toString(),
                         Icons.calendar_today,
                         Colors.cyan,

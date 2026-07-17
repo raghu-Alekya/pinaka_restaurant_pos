@@ -1,4 +1,5 @@
 class TableStatusCountModel {
+  final bool success;
   final int availableTables;
   final int reservedTables;
   final int dineinTables;
@@ -6,6 +7,7 @@ class TableStatusCountModel {
   final int totalTables;
 
   TableStatusCountModel({
+    required this.success,
     required this.availableTables,
     required this.reservedTables,
     required this.dineinTables,
@@ -15,6 +17,7 @@ class TableStatusCountModel {
 
   factory TableStatusCountModel.fromJson(Map<String, dynamic> json) {
     return TableStatusCountModel(
+      success: json['success'] ?? false,
       availableTables: json['available_tables'] ?? 0,
       reservedTables: json['reserved_tables'] ?? 0,
       dineinTables: json['dinein_tables'] ?? 0,

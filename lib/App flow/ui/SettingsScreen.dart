@@ -856,12 +856,16 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../models/General_Settings_Model.dart';
 import '../../printer/printer_setup_screen.dart';
 import '../../printer/printer_db_helper.dart';
+import '../../repositories/settings_repository.dart';
+import '../../utils/SessionManager.dart';
 
 class SettingsScreen extends StatefulWidget {
   final String token;
@@ -918,7 +922,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final ImagePicker _picker = ImagePicker();
   String _selectedLabel = "General";
   String? _connectedPrinterName;
+  final GeneralSettingsRepository _settingsRepository =
+  GeneralSettingsRepository();
 
+  String? _receiptLogoUrl;
+  String? _profileImageUrl;
   @override
   void initState() {
     super.initState();
@@ -927,8 +935,123 @@ class _SettingsScreenState extends State<SettingsScreen> {
     print("Display Name: ${widget.displayName}");
     _loadSavedSettings();
     _loadConnectedPrinter();
+    _loadGeneralSettings();
   }
+  Future<void> _loadGeneralSettings() async {
+    try {
+      final token = await SessionManager.getToken();
 
+      final response = await _settingsRepository.fetchGeneralSettings(
+        token: token!,
+      );
+
+      final data = response["data"];
+
+      setState(() {
+        _fullNameController.text = data["full_name"] ?? "";
+        _contactController.text = data["phone_number"] ?? "";
+        _emailController.text = data["email"] ?? "";
+        _deviceIdController.text = data["user_device_id"] ?? "";
+
+        _companyController.text = data["company_name"] ?? "";
+        _gstinController.text =
+        data["gstin"] == false ? "" : data["gstin"].toString();
+        _headerController.text =
+        data["header_text"] == false ? "" : data["header_text"].toString();
+        _footerController.text =
+        data["footer_text"] == false ? "" : data["footer_text"].toString();
+      });
+      if ((data["profile_url"] ?? "").toString().isNotEmpty) {
+        _profileImageUrl = data["profile_url"];
+        _loadProfileImage(data["profile_url"]);
+        _loadProfileImage(_profileImageUrl!);
+      }
+
+      if ((data["receipt_logo"] ?? "").toString().isNotEmpty) {
+        _receiptLogoUrl = data["receipt_logo"];
+        _loadLogoImage(data["receipt_logo"]);
+        _loadLogoImage(_receiptLogoUrl!);
+      }
+    } catch (e) {
+      debugPrint(e.toString());
+    }
+  }
+  Future<void> _loadProfileImage(String url) async {
+    try {
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        setState(() {
+          _photoBytes = response.bodyBytes;
+        });
+      }
+    } catch (e) {
+      debugPrint(e.toString());
+    }
+  }
+  Future<void> _loadLogoImage(String url) async {
+    try {
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        setState(() {
+          _logoBytes = response.bodyBytes;
+        });
+      }
+    } catch (e) {
+      debugPrint("Logo image error: $e");
+    }
+  }
+  Future<void> _saveGeneralSettings() async {
+    try {
+      final token = await SessionManager.getToken();
+
+      if (token == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Token not found"),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 1),
+          ),
+        );
+        return;
+      }
+
+      final request = SaveGeneralSettingsRequest(
+        headerText: _headerController.text.trim(),
+        footerText: _footerController.text.trim(),
+        printSettings: _connectedPrinterName ?? "",
+        receiptLogoUrl: "", // Replace with uploaded logo URL if available
+      );
+
+      final response = await _settingsRepository.saveGeneralSettings(
+        token: token,
+        request: request,
+      );
+
+      // Save locally if required
+      await _saveSettings();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(response.message),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 1),
+        ),
+      );
+
+      // Refresh data from server
+      await _loadGeneralSettings();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString()),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 1),
+        ),
+      );
+    }
+  }
   Future<void> _loadConnectedPrinter() async {
     try {
       final printerData = await PrinterDBHelper().getPrinterFromDB();
@@ -991,9 +1114,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         source: ImageSource.gallery,
         imageQuality: 80,
       );
+
       if (picked == null) return;
+
       final bytes = await picked.readAsBytes();
       final base64Str = base64Encode(bytes);
+
       setState(() {
         if (isProfile) {
           _photoBytes = bytes;
@@ -1003,12 +1129,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _logoBase64 = base64Str;
         }
       });
+
+      final token = await SessionManager.getToken();
+
+      // Upload image to WordPress
+      final uploadedUrl = await _settingsRepository.uploadImage(
+        token: token!,
+        imagePath: picked.path,
+      );
+      if (isProfile) {
+        await _settingsRepository.editProfileImage(
+          token: token,
+          profileImageUrl: uploadedUrl,
+        );
+      } else {
+        setState(() {
+          _logoBytes = bytes;
+          _logoBase64 = base64Str;
+          _receiptLogoUrl = uploadedUrl;
+        });
+
+        await _settingsRepository.editReceiptImage(
+          token: token,
+          receiptLogoUrl: uploadedUrl,
+        );
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Image updated successfully"),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 1),
+        ),
+      );
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Image selection failed'),
-        duration: Duration(seconds: 1),
-        backgroundColor: Colors.red,));
+      debugPrint("Image upload error: $e");
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString()),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 1),
+        ),
+      );
     }
   }
 
@@ -1045,7 +1208,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         GestureDetector(
-          onTap: () => _pickImage(true),
+          onTap: () => _pickImage(true), // ✅ Profile image
           child: DottedBorder(
             color: Colors.black,
             strokeWidth: 1.5,
@@ -1098,11 +1261,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 8),
               InkWell(
-                onTap: () {
-                  setState(() {
-                    _photoBytes = null;
-                    _photoBase64 = null;
-                  });
+                onTap: () async {
+                  try {
+                    final token = await SessionManager.getToken();
+
+                    await _settingsRepository.editProfileImage(
+                      token: token!,
+                      profileImageUrl: "",
+                    );
+
+                    setState(() {
+                      _photoBytes = null;
+                      _photoBase64 = null;
+                      _profileImageUrl = null;
+                    });
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Profile image removed successfully"),
+                        backgroundColor: Colors.green,
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(e.toString()),
+                        backgroundColor: Colors.red,
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                  }
                 },
                 borderRadius: BorderRadius.circular(6),
                 child: Container(
@@ -1126,7 +1315,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _logoBox(Uint8List? bytes) {
+  Widget _logoBox(Uint8List? bytes, String? imageUrl,) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -1186,11 +1375,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 8),
               // Delete button
               InkWell(
-                onTap: () {
-                  setState(() {
-                    _logoBytes = null;
-                    _logoBase64 = null;
-                  });
+                onTap: () async {
+                  try {
+                    final token = await SessionManager.getToken();
+
+                    await _settingsRepository.editReceiptImage(
+                      token: token!,
+                      receiptLogoUrl: "",
+                    );
+
+                    setState(() {
+                      _logoBytes = null;
+                      _logoBase64 = null;
+                      _receiptLogoUrl = null;
+                    });
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Logo removed successfully"),
+                        backgroundColor: Colors.green,
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(e.toString()),
+                        backgroundColor: Colors.red,
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                  }
                 },
                 borderRadius: BorderRadius.circular(6),
                 child: Container(
@@ -1277,6 +1492,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       String label,
       TextEditingController controller, {
         String? hint,
+        bool readOnly = false,
       }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1292,9 +1508,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const SizedBox(height: 5),
         TextFormField(
           controller: controller,
+          readOnly: readOnly,
           decoration: InputDecoration(
             filled: true,
-            fillColor: const Color(0xFFEDF2F6),
+            fillColor: readOnly
+                ? const Color(0xFFF5F5F5) // Grey background for non-editable fields
+                : const Color(0xFFEDF2F6),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(6),
               borderSide: const BorderSide(color: Color(0xFFE0E4EC)),
@@ -1403,7 +1622,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                   ),
-                                  onPressed: _saveSettings,
+                                  onPressed: _saveGeneralSettings,
                                   child: const Text("Save Changes"),
                                 ),
                               ],
@@ -1463,13 +1682,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
               const SizedBox(height: 25),
-              _buildField("Full Name", _fullNameController),
+              _buildField("Full Name", _fullNameController,readOnly: true,),
               const SizedBox(height: 18),
-              _buildField("Contact No.", _contactController),
+              _buildField("Contact No.", _contactController,readOnly: true,),
               const SizedBox(height: 18),
-              _buildField("Email Address", _emailController),
+              _buildField("Email Address", _emailController,readOnly: true,),
               const SizedBox(height: 18),
-              _buildField("Device ID :", _deviceIdController),
+              _buildField("Device ID :", _deviceIdController,readOnly: true,),
               const SizedBox(height: 18),
               FutureBuilder<PackageInfo>(
                 future: PackageInfo.fromPlatform(),
@@ -1530,15 +1749,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 20),
               Row(
                 children: [
-                  _logoBox(_logoBytes),
+                  _logoBox(
+                    _logoBytes,
+                    _receiptLogoUrl,
+                  ),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: _buildField("Company Name", _companyController),
+                    child: _buildField("Company Name", _companyController,readOnly: true,),
                   ),
                 ],
               ),
               const SizedBox(height: 20),
-              _buildField("GSTIN", _gstinController),
+              _buildField("GSTIN", _gstinController,readOnly: true,),
               const SizedBox(height: 20),
               _buildField("Header", _headerController),
               const SizedBox(height: 20),
