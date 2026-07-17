@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:kds_app/widgets/mercahant%20validation%20screen.dart';
 import 'package:kds_app/widgets/login_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -35,7 +36,22 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    _checkMerchantStatus();
+    _initApp();
+  }
+
+  Future<void> _initApp() async {
+    if (kDebugMode) {
+      final prefs = await SharedPreferences.getInstance();
+      // In debug mode, clear cached credentials/configurations on launch to force starting from the onboarding login screen.
+      await prefs.remove('store_base_url');
+      await prefs.remove('store_name');
+      await prefs.remove('store_id');
+      await prefs.remove('api_token');
+      await prefs.remove('token');
+      await prefs.remove('emp_login_pin');
+      await prefs.remove('emp_login_pin_str');
+    }
+    await _checkMerchantStatus();
   }
 
   Future<void> _checkMerchantStatus() async {

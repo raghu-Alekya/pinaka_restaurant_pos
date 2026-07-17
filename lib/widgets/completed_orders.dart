@@ -182,24 +182,26 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
       isLoading = true;
     });
 
-    final fromDateParam = selectedDate != null
-        ? DateTime(
-            selectedDate!.year,
-            selectedDate!.month,
-            selectedDate!.day,
-          )
-        : DateTime(
-            DateTime.now().year,
-            DateTime.now().month,
-            DateTime.now().day,
-          );
-    final toDateParam = selectedDate != null
-        ? DateTime(
-            selectedDate!.year,
-            selectedDate!.month,
-            selectedDate!.day,
-          ).add(const Duration(days: 1))
-        : DateTime.now();
+    final fromDateParam =
+        selectedDate != null
+            ? DateTime(
+              selectedDate!.year,
+              selectedDate!.month,
+              selectedDate!.day,
+            )
+            : DateTime(
+              DateTime.now().year,
+              DateTime.now().month,
+              DateTime.now().day,
+            );
+    final toDateParam =
+        selectedDate != null
+            ? DateTime(
+              selectedDate!.year,
+              selectedDate!.month,
+              selectedDate!.day,
+            ).add(const Duration(days: 1))
+            : DateTime.now();
 
     debugPrint("--- CompletedOrdersScreen: loadOrders ---");
     debugPrint("Selected Date Filter: $selectedDate");
@@ -315,7 +317,9 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
 
     debugPrint("Orders after applying filters: ${filteredOrders.length}");
     for (var o in filteredOrders) {
-      debugPrint(" - KOT #${o.kotNumber} | Received Time (parsed kotDateTime): ${o.kotDateTime} (Original string: ${o.kotTime})");
+      debugPrint(
+        " - KOT #${o.kotNumber} | Received Time (parsed kotDateTime): ${o.kotDateTime} (Original string: ${o.kotTime})",
+      );
     }
 
     currentPage = 1;
@@ -898,7 +902,9 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
                                         // Table No.
                                         DataCell(
                                           Text(
-                                            order.orderType.toLowerCase().contains('take')
+                                            order.orderType
+                                                    .toLowerCase()
+                                                    .contains('take')
                                                 ? "N/A"
                                                 : (order.tableName.isEmpty
                                                     ? "-"
@@ -918,8 +924,11 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
                                         // Prep Time
                                         DataCell(
                                           Text(
-                                            order.status.toLowerCase() == 'cancelled' ||
-                                                    order.status.toLowerCase() == 'cancel'
+                                            order.status.toLowerCase() ==
+                                                        'cancelled' ||
+                                                    order.status
+                                                            .toLowerCase() ==
+                                                        'cancel'
                                                 ? "N/A"
                                                 : (order.prepTime.isEmpty
                                                     ? "-"
@@ -934,151 +943,167 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
 
                                         // Action
                                         DataCell(
-                                          order.status.toLowerCase() == 'cancelled' ||
-                                                  order.status.toLowerCase() == 'cancel'
+                                          order.status.toLowerCase() ==
+                                                      'cancelled' ||
+                                                  order.status.toLowerCase() ==
+                                                      'cancel'
                                               ? Container(
-                                                  padding: const EdgeInsets.symmetric(
-                                                    vertical: 8,
-                                                  ),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.grey.shade400,
-                                                    borderRadius: BorderRadius.circular(4),
-                                                  ),
-                                                  child: SizedBox(
-                                                    width: 130,
-                                                    child: Row(
-                                                      mainAxisAlignment: MainAxisAlignment.center,
-                                                      children: const [
-                                                        Icon(
-                                                          Icons.not_interested,
-                                                          size: 14,
-                                                          color: Colors.white,
-                                                        ),
-                                                        SizedBox(width: 6),
-                                                        Text(
-                                                          "Couldn't Alter",
-                                                          style: TextStyle(
-                                                            color: Colors.white,
-                                                            fontSize: 12,
-                                                            fontWeight: FontWeight.bold,
-                                                          ),
-                                                        ),
-                                                      ],
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 8,
                                                     ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey.shade400,
+                                                  borderRadius:
+                                                      BorderRadius.circular(4),
+                                                ),
+                                                child: SizedBox(
+                                                  width: 130,
+                                                  child: Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .center,
+                                                    children: const [
+                                                      Icon(
+                                                        Icons.not_interested,
+                                                        size: 14,
+                                                        color: Colors.white,
+                                                      ),
+                                                      SizedBox(width: 6),
+                                                      Text(
+                                                        "Couldn't Alter",
+                                                        style: TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 12,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    ],
                                                   ),
-                                                )
+                                                ),
+                                              )
                                               : (order.canRecall
                                                   ? InkWell(
-                                                      onTap: () async {
-                                                        final api = OrderApiService(
-                                                          getToken:
-                                                              () async =>
-                                                                  widget.token,
-                                                          restaurantId:
-                                                              widget.restaurantId,
-                                                        );
+                                                    onTap: () async {
+                                                      final api = OrderApiService(
+                                                        getToken:
+                                                            () async =>
+                                                                widget.token,
+                                                        restaurantId:
+                                                            widget.restaurantId,
+                                                      );
 
-                                                        await api.updateKotOrderStatus(
-                                                          orderId: order.kotOrderId,
-                                                          parentId: order.orderId,
-                                                          zoneId:
-                                                              order
-                                                                  .zoneId, // <-- must exist
-                                                          restaurantId:
-                                                              order.restaurantId,
-                                                          status: "preparing",
-                                                        );
-                                                        debugPrint(
-                                                          "Restaurant ID: ${order.restaurantId}",
-                                                        );
-                                                        debugPrint(
-                                                          "Zone ID: ${order.zoneId}",
-                                                        );
-                                                        debugPrint(
-                                                          "Order ID: ${order.orderId}",
-                                                        );
-                                                        // Refresh KDS orders
-                                                        await context
-                                                            .read<OrderProvider>()
-                                                            .loadExistingOrders();
+                                                      await api.updateKotOrderStatus(
+                                                        orderId:
+                                                            order.kotOrderId,
+                                                        parentId: order.orderId,
+                                                        zoneId:
+                                                            order
+                                                                .zoneId, // <-- must exist
+                                                        restaurantId:
+                                                            order.restaurantId,
+                                                        status: "preparing",
+                                                      );
+                                                      debugPrint(
+                                                        "Restaurant ID: ${order.restaurantId}",
+                                                      );
+                                                      debugPrint(
+                                                        "Zone ID: ${order.zoneId}",
+                                                      );
+                                                      debugPrint(
+                                                        "Order ID: ${order.orderId}",
+                                                      );
+                                                      // Refresh KDS orders
+                                                      await context
+                                                          .read<OrderProvider>()
+                                                          .loadExistingOrders();
 
-                                                        // if (!mounted) return;
+                                                      // if (!mounted) return;
 
-                                                        if (!mounted) return;
+                                                      if (!mounted) return;
 
-                                                        if (widget.isEmbedded) {
-                                                          widget.onRecallSuccess
-                                                              ?.call();
-                                                        } else {
-                                                          Navigator.pushReplacement(
-                                                            context,
-                                                            MaterialPageRoute(
-                                                              builder:
-                                                                  (
-                                                                    _,
-                                                                  ) => ActiveOrdersScreen(
-                                                                    token:
-                                                                        widget.token,
-                                                                    restaurantId:
-                                                                        widget
-                                                                            .restaurantId,
-                                                                  ),
-                                                            ),
-                                                          );
-                                                        }
-                                                      },
-                                                      child: Container(
-                                                        padding:
-                                                            const EdgeInsets.symmetric(
-                                                              vertical: 8,
-                                                            ),
-                                                        decoration: BoxDecoration(
-                                                          color: const Color(
-                                                            0xff2563EB,
-                                                          ),
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                4,
-                                                              ),
-                                                        ),
-                                                        child: SizedBox(
-                                                          width: 130,
-                                                          child: Row(
-                                                            mainAxisAlignment: MainAxisAlignment.center,
-                                                            children: const [
-                                                              Icon(
-                                                                Icons.refresh,
-                                                                size: 14,
-                                                                color: Colors.white,
-                                                              ),
-                                                              SizedBox(width: 6),
-                                                              Text(
-                                                                "Recall/Alter",
-                                                                style: TextStyle(
-                                                                  color: Colors.white,
-                                                                  fontSize: 12,
-                                                                  fontWeight:
-                                                                      FontWeight.bold,
+                                                      if (widget.isEmbedded) {
+                                                        widget.onRecallSuccess
+                                                            ?.call();
+                                                      } else {
+                                                        Navigator.pushReplacement(
+                                                          context,
+                                                          MaterialPageRoute(
+                                                            builder:
+                                                                (
+                                                                  _,
+                                                                ) => ActiveOrdersScreen(
+                                                                  token:
+                                                                      widget
+                                                                          .token,
+                                                                  restaurantId:
+                                                                      widget
+                                                                          .restaurantId,
                                                                 ),
-                                                              ),
-                                                            ],
                                                           ),
+                                                        );
+                                                      }
+                                                    },
+                                                    child: Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            vertical: 8,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(
+                                                          0xff2563EB,
                                                         ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              4,
+                                                            ),
                                                       ),
-                                                    )
-                                                  : const Center(
                                                       child: SizedBox(
                                                         width: 130,
-                                                        child: Text(
-                                                          "-",
-                                                          textAlign: TextAlign.center,
-                                                          style: TextStyle(
-                                                            color: Colors.grey,
-                                                            fontSize: 16,
-                                                          ),
+                                                        child: Row(
+                                                          mainAxisAlignment:
+                                                              MainAxisAlignment
+                                                                  .center,
+                                                          children: const [
+                                                            Icon(
+                                                              Icons.refresh,
+                                                              size: 14,
+                                                              color:
+                                                                  Colors.white,
+                                                            ),
+                                                            SizedBox(width: 6),
+                                                            Text(
+                                                              "Recall/Alter",
+                                                              style: TextStyle(
+                                                                color:
+                                                                    Colors
+                                                                        .white,
+                                                                fontSize: 12,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                              ),
+                                                            ),
+                                                          ],
                                                         ),
                                                       ),
-                                                    )),
+                                                    ),
+                                                  )
+                                                  : const Center(
+                                                    child: SizedBox(
+                                                      width: 130,
+                                                      child: Text(
+                                                        "-",
+                                                        textAlign:
+                                                            TextAlign.center,
+                                                        style: TextStyle(
+                                                          color: Colors.grey,
+                                                          fontSize: 16,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  )),
                                         ),
                                       ],
                                     );
