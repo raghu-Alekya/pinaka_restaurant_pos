@@ -601,6 +601,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                 "No printer selected. Please set up a printer in settings.",
               ),
               backgroundColor: Colors.red,
+              duration: Duration(seconds: 1)
             ),
           );
         }
