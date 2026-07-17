@@ -2060,7 +2060,7 @@ class _TablesScreenState extends State<TablesScreen> {
         ),
       ],
       child: Scaffold(
-        backgroundColor: const Color(0xFFF0F3FC),
+        backgroundColor: const Color(0xFFF0F1F5),
         resizeToAvoidBottomInset: false,
         // appBar: TopBar(
         //   token: widget.token,

@@ -118,167 +118,191 @@ class _CouponscreenState extends State<Couponscreen> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+
+    final dialogWidth = size.width * 0.55;
+    final dialogHeight = size.height * 0.35;
+
+    final iconBox = dialogWidth * 0.10;
+    final closeButton = dialogWidth * 0.042;
+    final buttonWidth = dialogWidth * 0.24;
+    final buttonHeight = dialogHeight * 0.18;
+    final textFieldHeight = dialogHeight * 0.18;
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+      ),
       child: SizedBox(
-        width: 900,
-        height: 400,
+        width: dialogWidth,
+        height: dialogHeight,
         child: Padding(
-          padding: const EdgeInsets.all(12.0),
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Title row
-              Stack(
-                alignment: Alignment.center,
+              /// Header
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Center(
+                  Container(
+                    width: 85,
+                    height: 85,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF3E6),
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Center(
+                      child: Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFAB4C),
+                          borderRadius: BorderRadius.circular(26),
+                        ),
+                        child: const Icon(
+                          Icons.local_offer,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(width: 20),
+
+                  Expanded(
                     child: Column(
-                      children: [
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
                         Text(
-                          "COUPON",
+                          "Apply Coupon",
                           style: TextStyle(
-                              fontSize: 24, fontWeight: FontWeight.bold),
+                            fontSize: 32,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF373535),
+                          ),
                         ),
                         SizedBox(height: 8),
                         Text(
-                          "Add discounts using a percentage or amount with optional reason and real-time total review.",
-                          textAlign: TextAlign.center,
+                          "Apply coupon codes at checkout to instantly redeem discounts and see updated totals in real time.",
                           style: TextStyle(
-                              fontSize: 14, color: Color(0xFF4C5F7D)),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w400,
+                            color: Color(0xFF4C5F7D),
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  Positioned(
-                    right: 0,
-                    child: GestureDetector(
-                      onTap: () => Navigator.of(context).pop(),
-                      child: Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child:
-                          Icon(Icons.close, color: Colors.white, size: 20),
-                        ),
+
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      width: closeButton,
+                      height: closeButton,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF84337),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Icon(
+                        Icons.close,
+                        color: Colors.white,
                       ),
                     ),
                   ),
                 ],
               ),
-              SizedBox(height: 20),
 
-              // Coupon input row
+              const Spacer(),
+
+              /// Coupon Label
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  "Coupon Code :",
+                  style: TextStyle(
+                    color: Color(0xFF6B7280),
+                    fontSize: 24,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 14),
+
+              /// Textfield + Apply Button
               Row(
                 children: [
                   Expanded(
-                    child: Container(
-                      height: 40,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: Colors.grey),
-                      ),
-                      child: TextFormField(
-                        controller: _couponController,
-                        decoration: const InputDecoration(
-                          hintText: "Enter coupon code",
-                          border: InputBorder.none,
+                      child: Container(
+                        height: textFieldHeight,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: const Color(0xFFC1C1C1)),
+                          borderRadius: BorderRadius.circular(14),
                         ),
-                      ),
-                    ),
+                        child: Center(
+                          child: TextField(
+                            controller: _couponController,
+                            textAlignVertical: TextAlignVertical.center,
+                            decoration: InputDecoration(
+                              border: InputBorder.none,
+                              contentPadding: EdgeInsets.zero,
+                              prefixIcon: const Icon(
+                                Icons.local_offer_outlined,
+                                color: Colors.grey,
+                              ),
+                              hintText: "Enter code (e.g. WELCOME50)",
+                              hintStyle: const TextStyle(
+                                color: Color(0xFF9CA3AF),
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
                   ),
-                  const SizedBox(width: 12),
+
+                  const SizedBox(width: 20),
+
                   SizedBox(
-                    height: 40,
-                    child: ElevatedButton(
+                    width: buttonWidth,
+                    height: buttonHeight,
+                    child: ElevatedButton.icon(
                       onPressed: _isApplying ? null : _applyCoupon,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF4C5F7D),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(14),
                         ),
+                        elevation: 2,
                       ),
-                      child: _isApplying
+                      icon: _isApplying
                           ? const SizedBox(
                         width: 18,
                         height: 18,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          color: Colors.white,
                         ),
                       )
-                          : const Text(
-                        "Apply Coupon",
-                        style: TextStyle(
+                          : const Icon(
+                        Icons.check_circle_outline,
+                        color: Colors.white,
+                      ),
+                      label: Text(
+                        _isApplying ? "Applying..." : "Apply",
+                        style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
                   ),
                 ],
               ),
-              SizedBox(height: 20),
-
-              // Available coupons horizontal list
-              SizedBox(
-                height: 40,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: availableCoupons.length,
-                  itemBuilder: (context, index) {
-                    final coupon = availableCoupons[index];
-
-                    return InkWell(
-                      onTap: () {
-                        _couponController.text = coupon.code;
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 4,
-                          horizontal: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF4C81F1),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              coupon.code,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              coupon.discountType == 'percent'
-                                  ? '${coupon.amount}% OFF'
-                                  : '$_currency${coupon.amount.toInt()} OFF',
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              )
             ],
           ),
         ),

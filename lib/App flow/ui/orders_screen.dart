@@ -1880,7 +1880,7 @@ class _OrderPanelState extends State<OrderPanel> {
                               ),
                               const SizedBox(width: 6),
                               Text(
-                                "${DateFormat('MMM dd, yyyy').format(DateTime.now())} | ${DateFormat('h:mm a').format(DateTime.now())}",
+                                DateFormat('dd MMMM, yyyy').format(DateTime.now()),
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w500,

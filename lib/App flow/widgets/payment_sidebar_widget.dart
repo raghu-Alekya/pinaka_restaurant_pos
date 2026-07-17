@@ -2688,6 +2688,7 @@ Net Payable      : $netPayableTemp
                                                 backgroundColor: const Color(0xFF1A2B4A),
                                                 foregroundColor: Colors.white,
                                                 disabledBackgroundColor: Colors.grey,
+                                                disabledForegroundColor: Colors.white,
                                                 elevation: 0,
                                                 shape: RoundedRectangleBorder(
                                                   borderRadius: BorderRadius.circular(8), // Border radius

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -67,7 +69,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   late KitchenRepository kitchenRepo;
   bool isResetEnabled = false;
   static const String _apiBaseUrl = "https://merchantrestaurant.alektasolutions.com";
-
+  Timer? _timer;
 
   @override
   void initState() {
@@ -75,6 +77,12 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     kitchenRepo = KitchenRepository(token: widget.token);
     _loadPermissions();
     _initializeData();
+    _timer = Timer.periodic(
+      const Duration(seconds: 1),
+          (_) {
+        _refreshSelectedTable();
+      },
+    );
     _searchController.addListener(() {
       setState(() {
         searchQuery = _searchController.text.toLowerCase();
@@ -86,9 +94,18 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _timer?.cancel();
     super.dispose();
   }
+  Future<void> _refreshSelectedTable() async {
+    if (_selectedTable == null) return;
 
+    await _fetchParentKotOrders(_selectedTable!);
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
   Future<void> _initializeData() async {
     await _loadPermissions();
     await _fetchZones();
@@ -1291,15 +1308,16 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     return GestureDetector(
       onTap: isResetEnabled ? _onResetPressed : null,
       child: Opacity(
-        opacity: isResetEnabled ? 1.0 : 0.5, // 🔒 visual disabled effect
+        opacity: isResetEnabled ? 1.0 : 0.5,
         child: Container(
           height: 45,
           padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
-            color: isResetEnabled ? Colors.red : Colors.grey.shade300,
+            color:isResetEnabled  ? const Color(0xFFFDF8F8)
+                : Colors.grey.shade300, // Light grey background
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: isResetEnabled ? Colors.red : Colors.grey.shade300,
+              color: isResetEnabled ? Colors.red : Colors.grey.shade400,
             ),
           ),
           child: Row(
@@ -1308,7 +1326,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
               Icon(
                 Icons.refresh,
                 size: 18,
-                color: isResetEnabled ? Colors.white : Colors.grey,
+                color: isResetEnabled ? Colors.red : Colors.grey,
               ),
               const SizedBox(width: 6),
               Text(
@@ -1316,7 +1334,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: isResetEnabled ? Colors.white : Colors.grey,
+                  color: isResetEnabled ? Colors.red : Colors.grey,
                 ),
               ),
             ],
@@ -1399,8 +1417,8 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         childAspectRatio: 2.2,
-        crossAxisSpacing: 5,
-        mainAxisSpacing: 8,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
       ),
       itemCount: tables.length,
       itemBuilder: (context, index) {
@@ -1622,8 +1640,8 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     isSelected ? const Color(0xFFD8E9FB) : const Color(0xFF81ACEF);
 
     return Container(
-      width: 30,
-      height: 30,
+      width: 36,
+      height: 36,
       decoration: BoxDecoration(
         color: isSecondary ? secondaryColor : primaryColor,
         shape: BoxShape.circle,
@@ -1911,7 +1929,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                                   ),
 
                                 const Spacer(),
-
+                                //  status
                                 Container(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 10,

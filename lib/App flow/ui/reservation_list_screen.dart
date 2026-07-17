@@ -497,9 +497,18 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                           // Reset button
                           ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: isResetEnabled ? Colors.red : Colors.grey.shade300,
-                              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              backgroundColor: isResetEnabled
+                                  ? const Color(0xFFFDF8F8)
+                                  : Colors.grey.shade300,
+                              foregroundColor: isResetEnabled ? Colors.red : Colors.grey,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                side: BorderSide(
+                                  color: isResetEnabled ? Colors.red : Colors.grey.shade400,
+                                ),
+                              ),
                             ),
                             onPressed: isResetEnabled
                                 ? () {
@@ -513,8 +522,18 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                               });
                             }
                                 : null,
-                            icon: Icon(Icons.refresh, size: 16, color: Colors.white),
-                            label: Text("Reset", style: TextStyle(color: Colors.white, fontSize: 14)),
+                            icon: Icon(
+                              Icons.refresh,
+                              size: 16,
+                              color: isResetEnabled ? Colors.red : Colors.grey,
+                            ),
+                            label: Text(
+                              "Reset",
+                              style: TextStyle(
+                                color: isResetEnabled ? Colors.red : Colors.grey,
+                                fontSize: 14,
+                              ),
+                            ),
                           ),
 
                           const SizedBox(width: 12),

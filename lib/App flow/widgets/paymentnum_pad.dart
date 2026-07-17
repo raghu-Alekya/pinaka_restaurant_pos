@@ -1004,6 +1004,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                         "Partial payment of $_currencySymbol${paidThisTxn.toStringAsFixed(2)} recorded. Balance $_currencySymbol${remainingAfter.toStringAsFixed(2)} remaining.",
                       ),
                       duration: const Duration(seconds: 1),
+                      backgroundColor: Colors.green,
                     ),
                   );
                 }
@@ -1270,11 +1271,16 @@ class _paymentsummaryState extends State<paymentsummary> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withOpacity(0.07),
+            color: Colors.white,
+            offset: Offset(-4, -4),
             blurRadius: 8,
-            offset: const Offset(0, 2),
+          ),
+          BoxShadow(
+            color: Color(0xFFD9E6FF),
+            offset: Offset(4, 4),
+            blurRadius: 8,
           ),
         ],
       ),
@@ -1397,33 +1403,35 @@ class _paymentsummaryState extends State<paymentsummary> {
                           padding: const EdgeInsets.all(4),
                           child: GestureDetector(
                             onTap:
-                                payDisabled ? null : () => handleKeyPress("C"),
+                            payDisabled ? null : () => handleKeyPress("C"),
                             child: Opacity(
                               opacity: payDisabled ? 0.5 : 1.0,
                               child: Container(
-                                height: 90,
-                                decoration: BoxDecoration(
-                                  color:
-                                      payDisabled
-                                          ? Colors.grey.shade300
-                                          : const Color(0xFFFFEBEB),
-                                  borderRadius: BorderRadius.circular(10),
-                                  boxShadow:
-                                      payDisabled
-                                          ? []
-                                          : const [
-                                            BoxShadow(
-                                              color: Color(0xCCF0A0A0),
-                                              blurRadius: 0,
-                                              spreadRadius: 0,
-                                              offset: Offset(3, 3),
-                                            ),
-                                            BoxShadow(
-                                              color: Color(0x55DC6464),
-                                              blurRadius: 8,
-                                              offset: Offset(4, 4),
-                                            ),
-                                          ],
+                                height: 110,
+                                decoration: ShapeDecoration(
+                                  color: payDisabled
+                                      ? Colors.grey.shade200
+                                      : const Color(0xFFFFDADA),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  shadows: payDisabled
+                                      ? []
+                                      : const [
+                                    // Top-left highlight
+                                    BoxShadow(
+                                      color: Colors.white,
+                                      offset: Offset(-4, -4),
+                                      blurRadius: 4,
+                                    ),
+
+                                    // Bottom-right shadow
+                                    BoxShadow(
+                                      color: Color(0xFFFFCCCC),
+                                      offset: Offset(4, 4),
+                                      blurRadius: 2,
+                                    ),
+                                  ],
                                 ),
                                 alignment: Alignment.center,
                                 child: Text(
@@ -1432,9 +1440,9 @@ class _paymentsummaryState extends State<paymentsummary> {
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
                                     color:
-                                        payDisabled
-                                            ? Colors.grey
-                                            : const Color(0xFFE53935),
+                                    payDisabled
+                                        ? Colors.grey
+                                        : const Color(0xFFFF4D20),
                                   ),
                                 ),
                               ),
@@ -1490,80 +1498,65 @@ class _paymentsummaryState extends State<paymentsummary> {
     return Expanded(
       child: Row(
         children:
-            keys.map((k) {
-              final bool isBackspace = k == "⌫";
-              return Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(6),
-                  child: GestureDetector(
-                    onTap: disabled ? null : () => handleKeyPress(k),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color:
-                            disabled
-                                ? Colors.grey.shade100
-                                : isBackspace
-                                ? const Color(0xFFF0F0F0)
-                                // ── REVERTED: back to the original F2F5FF fill.
-                                : const Color(0xFFF2F5FF),
-                        borderRadius: BorderRadius.circular(10),
-                        // ── ORIGINAL bottom-right shadow pair, PLUS a mirrored
-                        // top-left pair added (both are still normal OUTER
-                        // BoxShadows — Flutter has no true inset shadow — just
-                        // offset to the opposite corner so the glow appears on
-                        // both sides instead of only bottom-right).
-                        boxShadow:
-                            disabled
-                                ? []
-                                : [
-                                  // ── CHANGED: bottom-right shadow pair removed —
-                                  // only the top-left glow remains now.
-                                  BoxShadow(
-                                    color:
-                                        isBackspace
-                                            ? const Color(0xCCB4C8DC)
-                                            : const Color(0xCCB4C8F0),
-                                    blurRadius: 0,
-                                    spreadRadius: 0,
-                                    offset: const Offset(-3, -3),
-                                  ),
-                                  BoxShadow(
-                                    color:
-                                        isBackspace
-                                            ? const Color(0x5596B4D0)
-                                            : const Color(0x5596B4E6),
-                                    blurRadius: 8,
-                                    offset: const Offset(-4, -4),
-                                  ),
-                                ],
+        keys.map((k) {
+          final bool isBackspace = k == "⌫";
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(6),
+              child: GestureDetector(
+                onTap: disabled ? null : () => handleKeyPress(k),
+                child: Container(
+                  decoration: ShapeDecoration(
+                    color: disabled
+                        ? Colors.grey.shade100
+                        : const Color(0xFFEDF1F9),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    shadows: disabled
+                        ? []
+                        : const [
+                      // Top-left highlight
+                      BoxShadow(
+                        color: Colors.white,
+                        offset: Offset(-4, -4),
+                        blurRadius: 6,
                       ),
-                      alignment: Alignment.center,
-                      child:
-                          isBackspace
-                              ? Icon(
-                                Icons.backspace_outlined,
-                                color:
-                                    disabled
-                                        ? Colors.grey
-                                        : const Color(0xFF4C5F7D),
-                                size: 22,
-                              )
-                              : Text(
-                                k,
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color:
-                                      disabled
-                                          ? Colors.grey
-                                          : const Color(0xFF4C5F7D),
-                                ),
-                              ),
+
+                      // Bottom-right shadow
+                      BoxShadow(
+                        color: Color(0xFFD9E6FF),
+                        offset: Offset(4, 4),
+                        blurRadius: 6,
+                      ),
+                    ],
+                  ),
+                  alignment: Alignment.center,
+                  child:
+                  isBackspace
+                      ? Icon(
+                    Icons.backspace_outlined,
+                    color: disabled
+                        ? Colors.grey
+                        : const Color(0xFF0C3952),
+                    size: 22,
+                  )
+                      : Text(
+                    k,
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color:
+                      disabled
+                          ? Colors.grey
+                          : const Color(0xFF4C5F7D),
                     ),
                   ),
                 ),
-              );
-            }).toList(),
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
@@ -1581,31 +1574,27 @@ class _paymentsummaryState extends State<paymentsummary> {
                   ? null
                   : () => _onPresetAmountTap(value.toStringAsFixed(2)),
           child: Container(
-            decoration: BoxDecoration(
-              color:
-                  disabled
-                      ? Colors.grey.shade200
-                      : isSelected
-                      ? const Color(0xFFDFF5E1)
-                      : const Color(0xFFE6F9E0),
-              borderRadius: BorderRadius.circular(10),
-              // ── ONLY CHANGE: green-tinted shadow bottom+right ──
-              boxShadow:
-                  disabled
-                      ? []
-                      : const [
-                        BoxShadow(
-                          color: Color(0xCC96D2A0),
-                          blurRadius: 0,
-                          spreadRadius: 0,
-                          offset: Offset(3, 3),
-                        ),
-                        BoxShadow(
-                          color: Color(0x5564B478),
-                          blurRadius: 8,
-                          offset: Offset(4, 4),
-                        ),
-                      ],
+            decoration: ShapeDecoration(
+              color: disabled
+                  ? Colors.grey.shade200
+                  : const Color(0xFFE5FFDD),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              shadows: disabled
+                  ? []
+                  : const [
+                BoxShadow(
+                  color: Colors.white,
+                  offset: Offset(-4, -4),
+                  blurRadius: 6,
+                ),
+                BoxShadow(
+                  color: Color(0xFFCBE8C4),
+                  offset: Offset(4, 4),
+                  blurRadius: 6,
+                ),
+              ],
             ),
             alignment: Alignment.center,
             child: Text(
@@ -1631,22 +1620,27 @@ class _paymentsummaryState extends State<paymentsummary> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           height: 54,
-          decoration: BoxDecoration(
-            // ── FIX: always show the full, active color — the button no
-            // longer dulls to color.withOpacity(0.13) when unselected.
-            // Selection is now indicated by the white ring border + glow
-            // shadow instead of by fading the button's own color.
+          decoration: ShapeDecoration(
             color: color,
-            borderRadius: BorderRadius.circular(10),
-            border:
-                isSelected
-                    ? Border.all(color: Colors.white, width: 2)
-                    : Border.all(color: Colors.transparent, width: 2),
-            boxShadow: [
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: isSelected
+                    ? Colors.white
+                    : Colors.transparent,
+                width: 2,
+              ),
+            ),
+            shadows: [
               BoxShadow(
-                color: color.withOpacity(0.35),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
+                color: Colors.white.withOpacity(0.15),
+                offset: const Offset(-4, -4),
+                blurRadius: 6,
+              ),
+              BoxShadow(
+                color: color.withOpacity(0.45),
+                offset: const Offset(4, 4),
+                blurRadius: 6,
               ),
             ],
           ),
@@ -1721,11 +1715,16 @@ class _paymentsummaryState extends State<paymentsummary> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                boxShadow: [
+                boxShadow: const [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.07),
+                    color: Colors.white,
+                    offset: Offset(-4, -4),
                     blurRadius: 8,
-                    offset: const Offset(0, 2),
+                  ),
+                  BoxShadow(
+                    color: Color(0xFFD9E6FF),
+                    offset: Offset(4, 4),
+                    blurRadius: 8,
                   ),
                 ],
               ),
@@ -1753,11 +1752,16 @@ class _paymentsummaryState extends State<paymentsummary> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
+                        boxShadow: const [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.07),
+                            color: Colors.white,
+                            offset: Offset(-4, -4),
                             blurRadius: 8,
-                            offset: const Offset(0, 2),
+                          ),
+                          BoxShadow(
+                            color: Color(0xFFD9E6FF),
+                            offset: Offset(4, 4),
+                            blurRadius: 8,
                           ),
                         ],
                       ),
@@ -1782,11 +1786,16 @@ class _paymentsummaryState extends State<paymentsummary> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withOpacity(0.09),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            color: Colors.white,
+            offset: Offset(-4, -4),
+            blurRadius: 8,
+          ),
+          BoxShadow(
+            color: Color(0xFFD9E6FF),
+            offset: Offset(4, 4),
+            blurRadius: 8,
           ),
         ],
       ),
@@ -1877,11 +1886,16 @@ class _paymentsummaryState extends State<paymentsummary> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withOpacity(0.09),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            color: Colors.white,
+            offset: Offset(-4, -4),
+            blurRadius: 8,
+          ),
+          BoxShadow(
+            color: Color(0xFFD9E6FF),
+            offset: Offset(4, 4),
+            blurRadius: 8,
           ),
         ],
       ),

@@ -173,7 +173,22 @@ class _OrdersListTableState extends State<OrdersListTable> {
 
       bool matchesDate = true;
       if (selectedDate != null) {
-        final orderDate = _parseOrderDate(order.date);
+        // final orderDate = _parseOrderDate(order.date);
+        DateTime? parseOrderDate(String? value) {
+          if (value == null || value.trim().isEmpty) return null;
+
+          try {
+            return DateFormat("dd MMMM, yyyy").parseStrict(value.trim());
+          } catch (_) {}
+
+          try {
+            return DateFormat("dd MMM, yyyy").parseStrict(value.trim());
+          } catch (_) {}
+
+          return null;
+        }
+        final orderDate = parseOrderDate(order.date);
+        debugPrint("Parsed Order  : $orderDate");
         if (orderDate == null) {
           matchesDate = false;
         } else {
@@ -570,54 +585,56 @@ class _OrdersListTableState extends State<OrdersListTable> {
 
                             const SizedBox(width: 12),
                             SizedBox(
-                              height: 40, // Set your desired height
+                              height: 40,
                               child: ElevatedButton.icon(
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor:
-                                  _isResetEnabled()
-                                      ? Colors.red
+                                  backgroundColor: _isResetEnabled()
+                                      ? const Color(0xFFFDF8F8)
                                       : Colors.grey.shade300,
+                                  foregroundColor: _isResetEnabled() ? Colors.red : Colors.grey,
+                                  elevation: 0,
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 12,
                                     vertical: 0,
                                   ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(10),
+                                    side: BorderSide(
+                                      color: _isResetEnabled()
+                                          ? Colors.red
+                                          : Colors.grey.shade400,
+                                    ),
                                   ),
                                 ),
                                 onPressed: _isResetEnabled()
                                     ? () {
-                                        setState(() {
-                                          // 🔹 Search
-                                          _searchQuery = '';
-                                          _searchController.clear();
+                                  setState(() {
+                                    // 🔹 Search
+                                    _searchQuery = '';
+                                    _searchController.clear();
 
-                                          // 🔹 Status
-                                          _selectedStatus = 'All';
+                                    // 🔹 Status
+                                    _selectedStatus = 'All';
 
-                                          // 🔹 Date
-                                          selectedDate = null;
-                                          _dateController.clear();
+                                    // 🔹 Date
+                                    selectedDate = null;
+                                    _dateController.clear();
 
-                                          // 🔹 Pagination
-                                          _currentPage = 0;
-                                          _updateFilteredOrders();
-                                        });
-                                        context.read<OrderstatusBloc>().add(
-                                              FetchOrders(
-                                                  token: widget.token),
-                                            );
-                                      }
+                                    // 🔹 Pagination
+                                    _currentPage = 0;
+                                    _updateFilteredOrders();
+                                  });
+                                }
                                     : null,
-                                icon: const Icon(
+                                icon: Icon(
                                   Icons.refresh,
                                   size: 16,
-                                  color: Colors.white,
+                                  color: _isResetEnabled() ? Colors.red : Colors.grey,
                                 ),
-                                label: const Text(
+                                label: Text(
                                   "Reset",
                                   style: TextStyle(
-                                    color: Colors.white,
+                                    color: _isResetEnabled() ? Colors.red : Colors.grey,
                                     fontSize: 14,
                                   ),
                                 ),

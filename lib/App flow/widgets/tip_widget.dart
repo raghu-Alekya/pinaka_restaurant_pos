@@ -168,7 +168,7 @@ class _TipPopupState extends State<TipPopup> {
       onTap: () {
         setState(() {
           selectedTip = value;
-          _tipController.text = value.toString();
+          _tipController.text = value.toDouble().toStringAsFixed(2);
         });
       },
       child: Container(

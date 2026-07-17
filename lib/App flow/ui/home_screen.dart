@@ -277,7 +277,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: const Color(0xffF5F6FA),
+        backgroundColor: const Color(0xFFF0F1F5),
         appBar: TopBar(
           token: widget.token,
           pin: widget.pin,
