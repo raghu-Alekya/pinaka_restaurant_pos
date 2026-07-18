@@ -115,26 +115,25 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
       }
     }
 
-    // Duration Filter
+    // Duration Filter (filters by actual prep time of the order)
     bool matchDuration = true;
-    if (selectedDuration != null && order.finishedDateTime != null) {
-      final now = DateTime.now();
-      final orderDate = order.finishedDateTime!;
-      final diff = now.difference(orderDate);
-
-      switch (selectedDuration) {
-        case '30 Min':
-          matchDuration = diff.inMinutes <= 30;
-          break;
-        case '60 Min':
-          matchDuration = diff.inMinutes <= 60;
-          break;
-        case '5 Hours':
-          matchDuration = diff.inHours <= 5;
-          break;
-        case '24 Hours':
-          matchDuration = diff.inHours <= 24;
-          break;
+    if (selectedDuration != null && order.prepTime.isNotEmpty) {
+      final prepMinutes = _parsePrepTimeToMinutes(order.prepTime);
+      if (prepMinutes != null) {
+        switch (selectedDuration) {
+          case '30 Min':
+            matchDuration = prepMinutes <= 30;
+            break;
+          case '60 Min':
+            matchDuration = prepMinutes <= 60;
+            break;
+          case '5 Hours':
+            matchDuration = prepMinutes <= 300;
+            break;
+          case '24 Hours':
+            matchDuration = prepMinutes <= 1440;
+            break;
+        }
       }
     }
 
@@ -285,26 +284,25 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
             }
           }
 
-          // Duration Filter
+          // Duration Filter (filters by actual prep time of the order)
           bool matchDuration = true;
-          if (selectedDuration != null && order.finishedDateTime != null) {
-            final now = DateTime.now();
-            final orderDate = order.finishedDateTime!;
-            final diff = now.difference(orderDate);
-
-            switch (selectedDuration) {
-              case '30 Min':
-                matchDuration = diff.inMinutes <= 30;
-                break;
-              case '60 Min':
-                matchDuration = diff.inMinutes <= 60;
-                break;
-              case '5 Hours':
-                matchDuration = diff.inHours <= 5;
-                break;
-              case '24 Hours':
-                matchDuration = diff.inHours <= 24;
-                break;
+          if (selectedDuration != null && order.prepTime.isNotEmpty) {
+            final prepMinutes = _parsePrepTimeToMinutes(order.prepTime);
+            if (prepMinutes != null) {
+              switch (selectedDuration) {
+                case '30 Min':
+                  matchDuration = prepMinutes <= 30;
+                  break;
+                case '60 Min':
+                  matchDuration = prepMinutes <= 60;
+                  break;
+                case '5 Hours':
+                  matchDuration = prepMinutes <= 300;
+                  break;
+                case '24 Hours':
+                  matchDuration = prepMinutes <= 1440;
+                  break;
+              }
             }
           }
 
@@ -324,6 +322,28 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
 
     currentPage = 1;
     applyPagination();
+  }
+
+  /// Parses a prepTime string like "90 mins", "90", "45 min" into total minutes.
+  int? _parsePrepTimeToMinutes(String prepTime) {
+    final match = RegExp(r'(\d+)').firstMatch(prepTime);
+    if (match != null) {
+      return int.tryParse(match.group(1) ?? '');
+    }
+    return null;
+  }
+
+  /// Formats total minutes into a human-readable string.
+  /// e.g. 45 → "45 min", 90 → "1 hr 30 min", 60 → "1 hr"
+  String _formatPrepTime(String prepTime) {
+    if (prepTime.isEmpty) return '-';
+    final minutes = _parsePrepTimeToMinutes(prepTime);
+    if (minutes == null) return prepTime;
+    if (minutes < 60) return '$minutes min';
+    final hrs = minutes ~/ 60;
+    final mins = minutes % 60;
+    if (mins == 0) return '$hrs hr';
+    return '$hrs hr $mins min';
   }
 
   void setFilter(OrderTypeFilter filter) {
@@ -626,7 +646,7 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
 
               // Status Dropdown
               Container(
-                width: 110,
+                width: 130,
                 height: 40,
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 decoration: BoxDecoration(
@@ -930,9 +950,7 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
                                                             .toLowerCase() ==
                                                         'cancel'
                                                 ? "N/A"
-                                                : (order.prepTime.isEmpty
-                                                    ? "-"
-                                                    : order.prepTime),
+                                                : _formatPrepTime(order.prepTime),
                                           ),
                                         ),
 
