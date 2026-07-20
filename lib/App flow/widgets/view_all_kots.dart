@@ -74,12 +74,13 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
   // user needing to tap/expand anything.
   Timer? _refreshTimer;
   static const Duration _autoRefreshInterval = Duration(seconds: 5);
-
+  String _currency = "₹";
   @override
   void initState() {
     super.initState();
     _kots = widget.kots; // seed with whatever the parent gave us initially
     _fetchKots();
+    _loadCurrency();
     _startAutoRefresh(); // 🔴 FIX
     // ✅ NEW: report initial expansion state to the parent on first build
     // so the parent's _showKotList stays in sync from the start.
@@ -87,7 +88,15 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
       widget.onToggle?.call(_expanded);
     });
   }
+  Future<void> _loadCurrency() async {
+    final currency = await SessionManager.getCurrencySymbol();
 
+    if (mounted) {
+      setState(() {
+        _currency = currency ?? "₹";
+      });
+    }
+  }
   // 🔴 FIX: starts a periodic silent refetch so status changes (void/cancel/
   // preparing/ready/served) reflect automatically, live.
   void _startAutoRefresh() {
@@ -894,7 +903,8 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                           return Text(
                                                                             "+ ${entry.key}"
                                                                                 "${addon['quantity'] != null ? ' x${addon['quantity']}' : ''}"
-                                                                                "${addon['price'] != null ? ' (₹${addon['price']})' : ''}",
+                                                                                // "${addon['price'] != null ? ' (₹${addon['price']})' : ''}",
+                                                                                "${addon['price'] != null ? ' ($_currency${addon['price']})' : ''}",
                                                                             style: TextStyle(
                                                                               fontSize: 11,
                                                                               color: isCancelled
@@ -941,7 +951,8 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                 crossAxisAlignment: CrossAxisAlignment.end,
                                                                 children: [
                                                                   Text(
-                                                                    (item.totalWithAddons ?? 0).toStringAsFixed(2),
+                                                                    // (item.totalWithAddons ?? 0).toStringAsFixed(2),
+                                                                    "$_currency${(item.totalWithAddons ?? 0).toStringAsFixed(2)}",
                                                                     style: TextStyle(
                                                                       fontWeight: isCancelled ? FontWeight.w800 : FontWeight.bold,
                                                                       decoration: isCancelled ? TextDecoration.lineThrough : null,
@@ -950,7 +961,8 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                     ),
                                                                   ),
                                                                   Text(
-                                                                    (item.amount ?? 0).toStringAsFixed(2),
+                                                                    "$_currency${(item.amount ?? 0).toStringAsFixed(2)}",
+                                                                    // (item.amount ?? 0).toStringAsFixed(2),
                                                                     style: TextStyle(
                                                                       fontSize: 11,
                                                                       color: isCancelled ? Colors.red.shade400 : Colors.grey.shade500,

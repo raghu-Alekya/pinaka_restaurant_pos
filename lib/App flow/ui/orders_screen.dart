@@ -96,11 +96,21 @@ class _OrderPanelState extends State<OrderPanel> {
   StreamSubscription? _mqttSubscription;
   bool _isRepeatingOrder = false;
   bool _showKotList = false; // Track KOT dropdown expansion state
-
+  String _currency = "₹";
   @override
   void initState() {
     super.initState();
     _initMqttStatusListener();
+    _loadCurrency();
+  }
+  Future<void> _loadCurrency() async {
+    final currency = await SessionManager.getCurrencySymbol();
+
+    if (mounted) {
+      setState(() {
+        _currency = currency ?? "₹";
+      });
+    }
   }
 
   Future<void> _initMqttStatusListener() async {
@@ -2409,6 +2419,8 @@ class _OrderPanelState extends State<OrderPanel> {
                                     ),
                                   )
                                       : OrderPanelList(
+                                    currency: _currency,
+                                    // currency: _currencySymbol, // <-- Add this
                                     orderItems: state.orderItems,
                                     addonPrices: widget.addonPrices,
                                     onIncreaseQuantity: (index) {

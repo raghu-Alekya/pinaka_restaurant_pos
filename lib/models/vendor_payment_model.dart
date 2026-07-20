@@ -134,3 +134,31 @@ class VendorPaymentDetailsModel {
     );
   }
 }
+class VendorPaymentsResponseModel {
+  final bool success;
+  final int totalCount;
+  final int filteredCount;
+  final int todayPaymentsCount;
+  final List<VendorPaymentModel> payments;
+
+  VendorPaymentsResponseModel({
+    required this.success,
+    required this.totalCount,
+    required this.filteredCount,
+    required this.todayPaymentsCount,
+    required this.payments,
+  });
+
+  factory VendorPaymentsResponseModel.fromJson(
+      Map<String, dynamic> json) {
+    return VendorPaymentsResponseModel(
+      success: json["success"] ?? false,
+      totalCount: json["total_count"] ?? 0,
+      filteredCount: json["filtered_count"] ?? 0,
+      todayPaymentsCount: json["today_payments_count"] ?? 0,
+      payments: (json["data"] as List? ?? [])
+          .map((e) => VendorPaymentModel.fromJson(e))
+          .toList(),
+    );
+  }
+}

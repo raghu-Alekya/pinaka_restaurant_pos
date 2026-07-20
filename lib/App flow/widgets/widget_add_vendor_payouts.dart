@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/vendor_payment_model.dart';
 import '../../repositories/vendor_payment_repository.dart';
+import '../../utils/SessionManager.dart';
 
 // import '../../models/vendor_payments_model.dart';
 // import '../../repositories/vendor_payments_repository.dart';
@@ -23,7 +24,7 @@ class _AddVendorPayoutDialogState extends State<AddVendorPayoutDialog> {
   String? selectedPaymentMode = 'Cash';
   final VendorPaymentRepository _repository =
   VendorPaymentRepository();
-
+  String _currency = "₹";
   bool isLoading = false;
   List<Map<String, dynamic>> vendors = [];
 
@@ -55,7 +56,7 @@ class _AddVendorPayoutDialogState extends State<AddVendorPayoutDialog> {
     super.initState();
     // for updating the date in the date field
     final today = DateTime.now();
-
+    _loadCurrency();
     dateController.text =
     "${today.day.toString().padLeft(2, '0')}/"
         "${today.month.toString().padLeft(2, '0')}/"
@@ -81,7 +82,15 @@ class _AddVendorPayoutDialogState extends State<AddVendorPayoutDialog> {
     }
     _loadVendors();
   }
+  Future<void> _loadCurrency() async {
+    final currency = await SessionManager.getCurrencySymbol();
 
+    if (mounted) {
+      setState(() {
+        _currency = currency ?? "₹";
+      });
+    }
+  }
   Future<void> _loadVendors() async {
     try {
       final result = await _repository.getVendors(
@@ -389,13 +398,15 @@ class _AddVendorPayoutDialogState extends State<AddVendorPayoutDialog> {
                       crossAxisAlignment:
                       CrossAxisAlignment.start,
                       children: [
-                        _label("Amount (₹) *"),
+                        // _label("Amount (₹) *"),
+                        _label("Amount ($_currency) *"),
                         TextFormField(
                           controller: amountController,
                           keyboardType:
                           TextInputType.number,
-                          decoration:
-                          _fieldDecoration("0.00"),
+                          decoration: _fieldDecoration("0.00").copyWith(
+                            prefixText: "$_currency ",
+                          ),
                         ),
                       ],
                     ),

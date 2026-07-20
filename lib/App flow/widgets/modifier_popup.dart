@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pinaka_restaurant_pos/models/order/order_items.dart';
 import '../../models/order/modifier_model.dart';
 import '../../repositories/modifier_repository.dart';
+import '../../utils/SessionManager.dart';
 import '../../utils/logger.dart';
 
 class ModifierAddOnPopup extends StatefulWidget {
@@ -25,7 +26,7 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
   final Set<String> selectedModifiers = {};
   final Map<String, Map<String, dynamic>> selectedAddOns = {};
   final TextEditingController noteController = TextEditingController();
-
+  String _currency = "₹";
   bool isLoading = true;
 
   double get total {
@@ -56,7 +57,7 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
   @override
   void initState() {
     super.initState();
-
+    _loadCurrency();
     // ✅ Pre-fill modifiers if item already has them
     if (widget.item.modifiers.isNotEmpty) {
       selectedModifiers.addAll(widget.item.modifiers);
@@ -80,6 +81,15 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
     _fetchItems();
   }
 
+  Future<void> _loadCurrency() async {
+    final currency = await SessionManager.getCurrencySymbol();
+
+    if (mounted) {
+      setState(() {
+        _currency = currency ?? "₹";
+      });
+    }
+  }
   Future<void> _fetchItems() async {
     final repo = ModifierRepository(
       token: widget.token,
@@ -333,7 +343,7 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
                                   ),
                                   Expanded(
                                     child: Text(
-                                      '${addon.name} +₹${addon.price.toStringAsFixed(2)}',
+                                      '${addon.name} +$_currency${addon.price.toStringAsFixed(2)}',
                                       style: const TextStyle(
                                           fontSize: 13),
                                     ),
@@ -424,7 +434,7 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  Text('Total: ₹${total.toStringAsFixed(2)}',
+                  Text('Total: $_currency${total.toStringAsFixed(2)}',
                       style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16)),

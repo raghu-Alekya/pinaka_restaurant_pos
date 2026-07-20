@@ -107,12 +107,11 @@ class AddDiscountRepository {
         jsonDecode(response.body),
       );
     }
+    final responseData = jsonDecode(response.body);
 
     throw Exception(
-      ApiExceptionHandler.parseError(
-        response,
-        defaultMessage: "Unable to apply discount.",
-      ),
+      responseData["message"] ??
+          "Discount amount cannot exceed the Net Payable amount.",
     );
   }
 }

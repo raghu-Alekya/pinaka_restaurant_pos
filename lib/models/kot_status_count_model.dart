@@ -20,3 +20,19 @@ class KotStatusCountModel {
     );
   }
 }
+class KotOrderCountModel {
+  final bool success;
+  final int totalOrderCount;
+
+  KotOrderCountModel({
+    required this.success,
+    required this.totalOrderCount,
+  });
+
+  factory KotOrderCountModel.fromJson(Map<String, dynamic> json) {
+    return KotOrderCountModel(
+      success: json['success'] ?? false,
+      totalOrderCount: json['total_order_count'] ?? 0,
+    );
+  }
+}

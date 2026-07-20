@@ -1088,6 +1088,11 @@ class _TablesScreenState extends State<TablesScreen> {
         }
       },
       onLongPress: () {
+        // Don't allow Merge popup in Table Setup/Edit mode
+        if (_showPopup) {
+          return;
+        }
+
         if (capacity == 0) {
           AreaMovementNotifier.showPopup(
             context: context,
@@ -1099,6 +1104,7 @@ class _TablesScreenState extends State<TablesScreen> {
           );
           return;
         }
+
         if (status.toLowerCase() == 'reserve') {
           AreaMovementNotifier.showPopup(
             context: context,
@@ -1109,6 +1115,7 @@ class _TablesScreenState extends State<TablesScreen> {
           );
           return;
         }
+
         _showTableActionPopup(context, index, tableData);
       },
       child: RotatedBox(quarterTurns: quarterTurns, child: borderedTable),
@@ -1312,17 +1319,25 @@ class _TablesScreenState extends State<TablesScreen> {
       },
 
       onLongPress: () {
+        // Don't show Merge popup while Table Setup/Edit is active
+        if (_showPopup || _showEditPopup) {
+          return;
+        }
+
         if (capacity == 0) {
           AreaMovementNotifier.showPopup(
             context: context,
             fromArea: tableData['areaName'] ?? '',
             toArea: '',
             tableName: tableData['tableName'] ?? '',
-            customMessage: 'Unable to Edit Merge: This is a child table. Please Edit from parent table',
+            customMessage:
+            'Unable to Edit Merge: This is a child table. Please Edit from parent table',
           );
           return;
         }
+
         final status = tableData['status']?.toLowerCase() ?? 'available';
+
         if (status == 'reserve') {
           AreaMovementNotifier.showPopup(
             context: context,
@@ -1333,6 +1348,7 @@ class _TablesScreenState extends State<TablesScreen> {
           );
           return;
         }
+
         _showTableActionPopup(context, actualIndex, tableData);
       },
     );
@@ -1469,17 +1485,25 @@ class _TablesScreenState extends State<TablesScreen> {
       },
 
       onLongPress: () {
+        // Disable long press in Table Setup/Edit mode
+        if (_showPopup || _showEditPopup) {
+          return;
+        }
+
         if (capacity == 0) {
           AreaMovementNotifier.showPopup(
             context: context,
             fromArea: tableData['areaName'] ?? '',
             toArea: '',
             tableName: tableData['tableName'] ?? '',
-            customMessage: 'Unable to Edit Merge: This is a child table. Please Edit from parent table',
+            customMessage:
+            'Unable to Edit Merge: This is a child table. Please Edit from parent table',
           );
           return;
         }
+
         final status = tableData['status']?.toLowerCase() ?? 'available';
+
         if (status == 'reserve') {
           AreaMovementNotifier.showPopup(
             context: context,
@@ -1490,6 +1514,7 @@ class _TablesScreenState extends State<TablesScreen> {
           );
           return;
         }
+
         _showTableActionPopup(context, actualIndex, tableData);
       },
     );

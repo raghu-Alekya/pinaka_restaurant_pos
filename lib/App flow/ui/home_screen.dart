@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/ui/reservation_list_screen.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/ui/tables_screen.dart';
@@ -16,11 +18,13 @@ import '../../blocs/Bloc Logic/order_bloc.dart';
 import '../../blocs/Bloc Logic/order_list_bloc.dart';
 import '../../blocs/Bloc State/attendance_state.dart';
 import '../../blocs/Bloc State/order_state.dart';
+import '../../constants/constants.dart';
 import '../../models/UserPermissions.dart';
 import '../../models/tip_model.dart';
 import '../../repositories/TIP_repository.dart';
 import '../../repositories/checkin_repository.dart';
 import '../../repositories/employee_repository.dart';
+import '../../repositories/kot_order_count_repository.dart';
 import '../../repositories/kot_status_count_repository.dart';
 import '../../repositories/order_list_repository.dart';
 import '../../repositories/table_status_count_repository.dart';
@@ -71,11 +75,13 @@ class _HomeScreenState extends State<HomeScreen> {
   int kotStatusCount = 0;
   int kotCustomerCount = 0;
   int totalTables = 0;
-
+  int totalKotOrders = 0;
+  int todayVendorPaymentsCount = 0;
   @override
   void initState() {
     super.initState();
     _loadSavedPermissions();
+    loadKotOrderCount();
     _startClock();
     _loadCurrency();   // <-- Add this
     loadKotStatusCount();
@@ -87,6 +93,55 @@ class _HomeScreenState extends State<HomeScreen> {
       _checkShiftStatus();
     });
     _loadVendorCount();
+    _loadTodayVendorPaymentsCount();
+  }
+
+
+  Future<void> _loadTodayVendorPaymentsCount() async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+          "${AppConstants.baseApiPath}/vendor_payments/get-vendor-payments",
+        ),
+        headers: {
+          "Authorization": "Bearer ${widget.token}",
+          "Content-Type": "application/json",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        setState(() {
+          todayVendorPaymentsCount = data["today_payments_count"] ?? 0;
+        });
+      }
+    } catch (e) {
+      print("Today's Vendor Payments Count Error: $e");
+    }
+  }
+  Future<void> loadKotOrderCount() async {
+    try {
+      debugPrint("Calling KOT Order Count API...");
+
+      final repository = KotOrderCountRepository(
+        token: widget.token,
+      );
+
+      final result = await repository.fetchKotOrderCount();
+
+      debugPrint("API returned: ${result.totalOrderCount}");
+
+      if (!mounted) return;
+
+      setState(() {
+        totalKotOrders = result.totalOrderCount;
+      });
+
+      debugPrint("Updated totalKotOrders: $totalKotOrders");
+    } catch (e) {
+      debugPrint("KOT Order Count Error: $e");
+    }
   }
   Future<void> _loadCurrency() async {
     final currency = await SessionManager.getCurrencySymbol();
@@ -331,7 +386,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Expanded(
                       child: _summaryCard(
                         "Total Orders",
-                        activeOrdersCount.toString(),
+                        totalKotOrders.toString(),
                         Icons.receipt_long,
                         Colors.blue,
                       ),
@@ -349,7 +404,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Expanded(
                       child: _summaryCard(
                         "Total Reservations",
-                        upcomingReservations.toString(),
+                        totalReservations.toString(),
                         Icons.calendar_today,
                         Colors.cyan,
                       ),
@@ -361,7 +416,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Expanded(
                       child: Divider(
-                        color: Colors.grey.shade300,
+                        color: Colors.grey.shade400,
                         thickness: 1,
                       ),
                     ),
@@ -379,7 +434,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     Expanded(
                       child: Divider(
-                        color: Colors.grey.shade300,
+                        color: Colors.grey.shade400,
                         thickness: 1,
                       ),
                     ),
@@ -678,8 +733,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       SizedBox(
                         width: 250,
                         child: _whiteModuleCard(
-                          title: "Vendors",
-                          count: vendorcount.toInt().toString(),
+                          // title: "Vendors",
+                          title: "Today's Vendor Payments",
+                          // count: vendorcount.toInt().toString(),
+                          count: todayVendorPaymentsCount.toString(),
                           countLabel: "Vendors",
                           icon: Icons.local_shipping_outlined,
                           iconColor: Colors.orange,
@@ -803,8 +860,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(width: 12),
           Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
                 value,

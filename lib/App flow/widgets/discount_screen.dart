@@ -48,9 +48,10 @@ class _DiscountPopupState extends State<DiscountPopup> {
   void initState() {
     super.initState();
     _loadCurrency();   // <-- Add this
-    payableAmount = widget.netPayable;
-    newPayableAmount = widget.netPayable;
-
+    // payableAmount = widget.netPayable;
+    // newPayableAmount = widget.netPayable;
+    payableAmount = widget.netTotal;
+    newPayableAmount = widget.netTotal;
     // ✅ show existing discount when popup opens
     if (widget.initialDiscount > 0) {
       if (widget.isPercent) {
@@ -293,16 +294,18 @@ class _DiscountPopupState extends State<DiscountPopup> {
             "reason": reasonController.text,
           });
         }
-
         if (state is DiscountFailure) {
-          _showError(state.error);
+          _showError(
+            state.error.replaceFirst("Exception: ", ""),
+          );
         }
       },
       child: Dialog(
         backgroundColor: Colors.transparent,
         insetPadding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
         child: Container(
-          width: 860,
+          width: 750,
+          height: 550,
           padding: const EdgeInsets.all(30),
           decoration: BoxDecoration(
             color: Colors.white,
@@ -340,7 +343,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
                           child: _amountRow(),
                         ),
 
-                        const SizedBox(height: 15),
+                        const SizedBox(height: 10),
 
                         /// Discount Card
                         Container(
@@ -368,14 +371,14 @@ class _DiscountPopupState extends State<DiscountPopup> {
 
                               _discountToggle(),
 
-                              const SizedBox(height: 18),
+                              const SizedBox(height: 16),
 
                               _reasonField(),
                             ],
                           ),
                         ),
 
-                        const SizedBox(height: 15),
+                        const SizedBox(height: 12),
 
                         SizedBox(
                           width: double.infinity,
@@ -528,7 +531,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
     return Row(
       children: [
         _amountBox(
-          'Payable Amount',
+          'Net Total',
           '$_currency${payableAmount.toStringAsFixed(2)}',
           readOnly: true,
         ),
@@ -591,15 +594,271 @@ class _DiscountPopupState extends State<DiscountPopup> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Row(
+        //   crossAxisAlignment: CrossAxisAlignment.start,
+        //   children: [
+        //     Column(
+        //       crossAxisAlignment: CrossAxisAlignment.start,
+        //       children: [
+        //
+        //         const SizedBox(
+        //           height: 20, // aligns with Value label
+        //         ),
+        //
+        //         const SizedBox(height: 6),
+        //
+        //         GestureDetector(
+        //           onTap: () {
+        //             setState(() {
+        //               isNCSelected = true;
+        //               discountController.text =
+        //                   payableAmount.toStringAsFixed(2);
+        //               newPayableAmount = 0;
+        //             });
+        //           },
+        //           child: Container(
+        //             width: 80,
+        //             height: 48,
+        //             decoration: BoxDecoration(
+        //               color: const Color(0xFFFFFFFF),
+        //               borderRadius: BorderRadius.circular(8),
+        //               border: Border.all(
+        //                 color: isNCSelected
+        //                     ? const Color(0xFFFAD51D)
+        //                     : Colors.transparent,
+        //               ),
+        //             ),
+        //             child: const Center(
+        //               child: Text(
+        //                 "NC",
+        //                 style: TextStyle(
+        //                   fontWeight: FontWeight.bold,
+        //                   fontSize: 18,
+        //                 ),
+        //               ),
+        //             ),
+        //           ),
+        //         ),
+        //       ],
+        //     ),
+        //     const SizedBox(width: 12),
+        //
+        //     /// Discount Type
+        //     Expanded(
+        //       child: Column(
+        //         crossAxisAlignment: CrossAxisAlignment.start,
+        //         children: [
+        //           const Text(
+        //             "Discount Type:",
+        //             style: TextStyle(
+        //               fontWeight: FontWeight.w500,
+        //               fontSize: 14,
+        //             ),
+        //           ),
+        //           const SizedBox(height: 6),
+        //
+        //           Container(
+        //             height: 48,
+        //             padding: const EdgeInsets.all(2),
+        //             decoration: BoxDecoration(
+        //               color: Colors.white,
+        //               borderRadius: BorderRadius.circular(8),
+        //               border: Border.all(color: const Color(0xFFDFDFDF)),
+        //             ),
+        //             child: Row(
+        //               children: [
+        //
+        //                 /// %
+        //                 Expanded(
+        //                   child: GestureDetector(
+        //                     onTap: () {
+        //                       setState(() {
+        //                         _exitNCMode();
+        //                         selectedType = DiscountType.percent;
+        //                       });
+        //                     },
+        //                     child: AnimatedContainer(
+        //                       duration: const Duration(milliseconds: 200),
+        //                       alignment: Alignment.center,
+        //                       decoration: BoxDecoration(
+        //                         color: selectedType == DiscountType.percent
+        //                             ? const Color(0xFF2136BE)
+        //                             : Colors.transparent,
+        //                         borderRadius: BorderRadius.circular(6),
+        //                       ),
+        //                       child: Text(
+        //                         "%",
+        //                         style: TextStyle(
+        //                           fontSize: 22,
+        //                           fontWeight: FontWeight.bold,
+        //                           color: selectedType == DiscountType.percent
+        //                               ? Colors.white
+        //                               : Colors.black,
+        //                         ),
+        //                       ),
+        //                     ),
+        //                   ),
+        //                 ),
+        //
+        //                 Expanded(
+        //                   child: GestureDetector(
+        //                     onTap: () {
+        //                       setState(() {
+        //                         _exitNCMode();
+        //                         selectedType = DiscountType.amount;
+        //                       });
+        //                     },
+        //                     child: AnimatedContainer(
+        //                       duration: const Duration(milliseconds: 200),
+        //                       alignment: Alignment.center,
+        //                       decoration: BoxDecoration(
+        //                         color: selectedType == DiscountType.amount
+        //                             ? const Color(0xFF2136BE)
+        //                             : Colors.transparent,
+        //                         borderRadius: BorderRadius.circular(6),
+        //                       ),
+        //                       child: Text(
+        //                         _currency,
+        //                         style: TextStyle(
+        //                           fontSize: 22,
+        //                           fontWeight: FontWeight.bold,
+        //                           color: selectedType == DiscountType.amount
+        //                               ? Colors.white
+        //                               : Colors.black,
+        //                         ),
+        //                       ),
+        //                     ),
+        //                   ),
+        //                 ),
+        //               ],
+        //             ),
+        //           ),
+        //         ],
+        //       ),
+        //     ),
+        //
+        //     const SizedBox(width: 12),
+        //
+        //     /// Value
+        //     SizedBox(
+        //       width: 120,
+        //       child: Column(
+        //         crossAxisAlignment: CrossAxisAlignment.start,
+        //         children: [
+        //
+        //           const Text(
+        //             "Value:",
+        //             style: TextStyle(
+        //               fontWeight: FontWeight.w500,
+        //               fontSize: 14,
+        //             ),
+        //           ),
+        //
+        //           const SizedBox(height: 6),
+        //
+        //           SizedBox(
+        //             height: 48,
+        //             child: IgnorePointer(
+        //               ignoring: isNCSelected,
+        //               child: TextField(
+        //                 controller: discountController,
+        //                 readOnly: true,
+        //                 textAlign: TextAlign.center,
+        //                 style: const TextStyle(
+        //                   fontSize: 18, // Entered text size
+        //                   fontWeight: FontWeight.bold,
+        //                   color: Color(0xFF111827),
+        //                 ),
+        //                 decoration: InputDecoration(
+        //                   hintText: selectedType == DiscountType.percent
+        //                       ? "10%"
+        //                       : "$_currency 100.00",
+        //                   prefixText: !isNCSelected &&
+        //                       selectedType == DiscountType.amount
+        //                       ? "$_currency "
+        //                       : null,
+        //
+        //                   suffixText: !isNCSelected &&
+        //                       selectedType == DiscountType.percent
+        //                       ? "%"
+        //                       : null,
+        //                   filled: true,
+        //                   fillColor: Colors.white,
+        //                   contentPadding: const EdgeInsets.symmetric(
+        //                     horizontal: 10,
+        //                     vertical: 12,
+        //                   ),
+        //                   border: OutlineInputBorder(
+        //                     borderRadius: BorderRadius.circular(8),
+        //                   ),
+        //                 ),
+        //               ),
+        //             ),
+        //           ),
+        //         ],
+        //       ),
+        //     ),
+        //
+        //     const SizedBox(width: 12),
+        //
+        //     /// NC
+        //     Column(
+        //       crossAxisAlignment: CrossAxisAlignment.start,
+        //       children: [
+        //
+        //         const SizedBox(
+        //           height: 20, // aligns with Value label
+        //         ),
+        //
+        //         // const SizedBox(height: 6),
+        //
+        //         // GestureDetector(
+        //         //   onTap: () {
+        //         //     setState(() {
+        //         //       isNCSelected = true;
+        //         //       discountController.text =
+        //         //           payableAmount.toStringAsFixed(2);
+        //         //       newPayableAmount = 0;
+        //         //     });
+        //         //   },
+        //         //   child: Container(
+        //         //     width: 80,
+        //         //     height: 48,
+        //         //     decoration: BoxDecoration(
+        //         //       color: const Color(0xFFFAD51D),
+        //         //       borderRadius: BorderRadius.circular(8),
+        //         //       border: Border.all(
+        //         //         color: isNCSelected
+        //         //             ? const Color(0xFFB45309)
+        //         //             : Colors.transparent,
+        //         //       ),
+        //         //     ),
+        //         //     child: const Center(
+        //         //       child: Text(
+        //         //         "NC",
+        //         //         style: TextStyle(
+        //         //           fontWeight: FontWeight.bold,
+        //         //           fontSize: 18,
+        //         //         ),
+        //         //       ),
+        //         //     ),
+        //         //   ),
+        //         // ),
+        //       ],
+        //     ),
+        //   ],
+        // ),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
 
-            /// Discount Type
+            /// LEFT SIDE
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+
+                  // Discount Type label
                   const Text(
                     "Discount Type:",
                     style: TextStyle(
@@ -607,11 +866,12 @@ class _DiscountPopupState extends State<DiscountPopup> {
                       fontSize: 14,
                     ),
                   ),
+
                   const SizedBox(height: 6),
 
+                  // NC | % | ₹ Container
                   Container(
                     height: 48,
-                    padding: const EdgeInsets.all(2),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(8),
@@ -619,79 +879,76 @@ class _DiscountPopupState extends State<DiscountPopup> {
                     ),
                     child: Row(
                       children: [
-
-                        /// %
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _exitNCMode();
-                                selectedType = DiscountType.percent;
-                              });
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: selectedType == DiscountType.percent
-                                    ? const Color(0xFF2136BE)
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                "%",
-                                style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: selectedType == DiscountType.percent
-                                      ? Colors.white
-                                      : Colors.black,
-                                ),
-                              ),
-                            ),
-                          ),
+                        _buildTypeButton(
+                          title: "NC",
+                          selected: isNCSelected,
+                          onTap: () {
+                            setState(() {
+                              isNCSelected = true;
+                              discountController.text = payableAmount.toStringAsFixed(2);
+                              newPayableAmount = 0;
+                            });
+                          },
                         ),
 
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _exitNCMode();
-                                selectedType = DiscountType.amount;
-                              });
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: selectedType == DiscountType.amount
-                                    ? const Color(0xFF2136BE)
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                _currency,
-                                style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: selectedType == DiscountType.amount
-                                      ? Colors.white
-                                      : Colors.black,
-                                ),
-                              ),
-                            ),
-                          ),
+                        _divider(),
+
+                        _buildTypeButton(
+                          title: "%",
+                          selected: !isNCSelected &&
+                              selectedType == DiscountType.percent,
+                          onTap: () {
+                            setState(() {
+                              _exitNCMode();
+                              selectedType = DiscountType.percent;
+                            });
+                          },
+                        ),
+
+                        _divider(),
+
+                        _buildTypeButton(
+                          title: _currency,
+                          selected: !isNCSelected &&
+                              selectedType == DiscountType.amount,
+                          onTap: () {
+                            setState(() {
+                              _exitNCMode();
+                              selectedType = DiscountType.amount;
+                            });
+                          },
                         ),
                       ],
                     ),
                   ),
+
+                  const SizedBox(height: 6),
+
+                  if (isNCSelected)
+                    const Row(
+                      children: [
+                        Icon(
+                          Icons.check_circle,
+                          color: Colors.green,
+                          size: 16,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          "NC Applied",
+                          style: TextStyle(
+                            color: Colors.green,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
                 ],
               ),
             ),
 
-            const SizedBox(width: 12),
+            const SizedBox(width: 16),
 
-            /// Value
+            /// RIGHT SIDE (UNCHANGED)
             SizedBox(
               width: 120,
               child: Column(
@@ -708,98 +965,267 @@ class _DiscountPopupState extends State<DiscountPopup> {
 
                   const SizedBox(height: 6),
 
-                  SizedBox(
-                    height: 48,
-                    child: IgnorePointer(
-                      ignoring: isNCSelected,
-                      child: TextField(
-                        controller: discountController,
-                        readOnly: true,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 18, // Entered text size
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF111827),
-                        ),
-                        decoration: InputDecoration(
-                          hintText: selectedType == DiscountType.percent
-                              ? "10%"
-                              : "$_currency 100.00",
-                          prefixText: !isNCSelected &&
-                              selectedType == DiscountType.amount
-                              ? "$_currency "
-                              : null,
+              SizedBox(
+                            height: 48,
+                            child: IgnorePointer(
+                              ignoring: isNCSelected,
+                              child: TextField(
+                                controller: discountController,
+                                readOnly: true,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 18, // Entered text size
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF111827),
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: selectedType == DiscountType.percent
+                                      ? "10%"
+                                      : "$_currency 100.00",
+                                  prefixText: !isNCSelected &&
+                                      selectedType == DiscountType.amount
+                                      ? "$_currency "
+                                      : null,
 
-                          suffixText: !isNCSelected &&
-                              selectedType == DiscountType.percent
-                              ? "%"
-                              : null,
-                          filled: true,
-                          fillColor: Colors.white,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 12,
+                                  suffixText: !isNCSelected &&
+                                      selectedType == DiscountType.percent
+                                      ? "%"
+                                      : null,
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 12,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
-
-            const SizedBox(width: 12),
-
-            /// NC
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-
-                const SizedBox(
-                  height: 20, // aligns with Value label
-                ),
-
-                const SizedBox(height: 6),
-
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      isNCSelected = true;
-                      discountController.text =
-                          payableAmount.toStringAsFixed(2);
-                      newPayableAmount = 0;
-                    });
-                  },
-                  child: Container(
-                    width: 80,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFAD51D),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: isNCSelected
-                            ? const Color(0xFFB45309)
-                            : Colors.transparent,
-                      ),
-                    ),
-                    child: const Center(
-                      child: Text(
-                        "NC",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ],
-        ),
+        )
+        // Row(
+        //   crossAxisAlignment: CrossAxisAlignment.start,
+        //   children: [
+        //     /// Discount Type + NC
+        //     Expanded(
+        //       child: Column(
+        //         crossAxisAlignment: CrossAxisAlignment.start,
+        //         children: [
+        //           const Text(
+        //             "Discount Type:",
+        //             style: TextStyle(
+        //               fontWeight: FontWeight.w500,
+        //               fontSize: 14,
+        //             ),
+        //           ),
+        //           const SizedBox(height: 6),
+        //
+        //           Row(
+        //             children: [
+        //               /// NC Button
+        //               GestureDetector(
+        //                 onTap: () {
+        //                   setState(() {
+        //                     isNCSelected = true;
+        //                     discountController.text =
+        //                         payableAmount.toStringAsFixed(2);
+        //                     newPayableAmount = 0;
+        //                   });
+        //                 },
+        //                 child: Container(
+        //                   width: 80,
+        //                   height: 48,
+        //                   decoration: BoxDecoration(
+        //                     color: isNCSelected
+        //                         ? const Color(0xFF2236BE)
+        //                         : Colors.white,
+        //                     borderRadius: BorderRadius.circular(8),
+        //                     border: Border.all(
+        //                       color: isNCSelected
+        //                           ? const Color(0xFF2236BE)
+        //                           : const Color(0xFFEACB00),
+        //                       width: 1.5,
+        //                     ),
+        //                   ),
+        //                   child: Center(
+        //                     child: Text(
+        //                       "NC",
+        //                       style: TextStyle(
+        //                         fontWeight: FontWeight.bold,
+        //                         fontSize: 18,
+        //                         color: isNCSelected
+        //                             ? Colors.white
+        //                             : const Color(0xFFEACB00),
+        //                       ),
+        //                     ),
+        //                   ),
+        //                 ),
+        //               ),
+        //
+        //               const SizedBox(width: 8),
+        //
+        //               /// % / ₹ Toggle
+        //               Expanded(
+        //                 child: Container(
+        //                   height: 48,
+        //                   padding: const EdgeInsets.all(2),
+        //                   decoration: BoxDecoration(
+        //                     color: Colors.white,
+        //                     borderRadius: BorderRadius.circular(8),
+        //                     border: Border.all(
+        //                       color: const Color(0xFFDFDFDF),
+        //                     ),
+        //                   ),
+        //                   child: Row(
+        //                     children: [
+        //                       // % button
+        //                       Expanded(
+        //                         child: GestureDetector(
+        //                           onTap: () {
+        //                             setState(() {
+        //                               _exitNCMode();
+        //                               selectedType = DiscountType.percent;
+        //                             });
+        //                           },
+        //                           child: AnimatedContainer(
+        //                             duration: const Duration(milliseconds: 200),
+        //                             alignment: Alignment.center,
+        //                             decoration: BoxDecoration(
+        //                               color: selectedType ==
+        //                                   DiscountType.percent
+        //                                   ? const Color(0xFF2136BE)
+        //                                   : Colors.transparent,
+        //                               borderRadius:
+        //                               BorderRadius.circular(6),
+        //                             ),
+        //                             child: Text(
+        //                               "%",
+        //                               style: TextStyle(
+        //                                 fontSize: 22,
+        //                                 fontWeight: FontWeight.bold,
+        //                                 color: selectedType ==
+        //                                     DiscountType.percent
+        //                                     ? Colors.white
+        //                                     : Colors.black,
+        //                               ),
+        //                             ),
+        //                           ),
+        //                         ),
+        //                       ),
+        //
+        //                       Expanded(
+        //                         child: GestureDetector(
+        //                           onTap: () {
+        //                             setState(() {
+        //                               _exitNCMode();
+        //                               selectedType = DiscountType.amount;
+        //                             });
+        //                           },
+        //                           child: AnimatedContainer(
+        //                             duration: const Duration(milliseconds: 200),
+        //                             alignment: Alignment.center,
+        //                             decoration: BoxDecoration(
+        //                               color: selectedType ==
+        //                                   DiscountType.amount
+        //                                   ? const Color(0xFF2136BE)
+        //                                   : Colors.transparent,
+        //                               borderRadius:
+        //                               BorderRadius.circular(6),
+        //                             ),
+        //                             child: Text(
+        //                               _currency,
+        //                               style: TextStyle(
+        //                                 fontSize: 22,
+        //                                 fontWeight: FontWeight.bold,
+        //                                 color: selectedType ==
+        //                                     DiscountType.amount
+        //                                     ? Colors.white
+        //                                     : Colors.black,
+        //                               ),
+        //                             ),
+        //                           ),
+        //                         ),
+        //                       ),
+        //                     ],
+        //                   ),
+        //                 ),
+        //               ),
+        //             ],
+        //           ),
+        //         ],
+        //       ),
+        //     ),
+        //
+        //     const SizedBox(width: 16),
+        //
+        //     /// Value
+        //     SizedBox(
+        //       width: 120,
+        //       child: Column(
+        //         crossAxisAlignment: CrossAxisAlignment.start,
+        //         children: [
+        //
+        //           const Text(
+        //             "Value:",
+        //             style: TextStyle(
+        //               fontWeight: FontWeight.w500,
+        //               fontSize: 14,
+        //             ),
+        //           ),
+        //
+        //           const SizedBox(height: 6),
+        //
+        //           SizedBox(
+        //             height: 48,
+        //             child: IgnorePointer(
+        //               ignoring: isNCSelected,
+        //               child: TextField(
+        //                 controller: discountController,
+        //                 readOnly: true,
+        //                 textAlign: TextAlign.center,
+        //                 style: const TextStyle(
+        //                   fontSize: 18, // Entered text size
+        //                   fontWeight: FontWeight.bold,
+        //                   color: Color(0xFF111827),
+        //                 ),
+        //                 decoration: InputDecoration(
+        //                   hintText: selectedType == DiscountType.percent
+        //                       ? "10%"
+        //                       : "$_currency 100.00",
+        //                   prefixText: !isNCSelected &&
+        //                       selectedType == DiscountType.amount
+        //                       ? "$_currency "
+        //                       : null,
+        //
+        //                   suffixText: !isNCSelected &&
+        //                       selectedType == DiscountType.percent
+        //                       ? "%"
+        //                       : null,
+        //                   filled: true,
+        //                   fillColor: Colors.white,
+        //                   contentPadding: const EdgeInsets.symmetric(
+        //                     horizontal: 10,
+        //                     vertical: 12,
+        //                   ),
+        //                   border: OutlineInputBorder(
+        //                     borderRadius: BorderRadius.circular(8),
+        //                   ),
+        //                 ),
+        //               ),
+        //             ),
+        //           ),
+        //         ],
+        //       ),
+        //     ),
+        //
+        //   ],
+        // )
         // const SizedBox(height: 5),
 
         // Row(
@@ -976,7 +1402,44 @@ class _DiscountPopupState extends State<DiscountPopup> {
     );
   }
 
-
+  Widget _divider() {
+    return Container(
+      width: 1,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      color: const Color(0xFFE5E7EB),
+    );
+  }
+  Widget _buildTypeButton({
+    required String title,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected
+                ? const Color(0xFF2236BE)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            title,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: selected
+                  ? Colors.white
+                  : Colors.black,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
   Widget _radioButton(String text, bool selected) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -1180,7 +1643,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
         crossAxisCount: 3,
         crossAxisSpacing: 15,
         mainAxisSpacing: 15,
-        childAspectRatio: 1.26, // increase to reduce height
+        childAspectRatio: 1.1, // increase to reduce height
       ),
       itemBuilder: (_, index) {
         final label = labels[index];
@@ -1188,49 +1651,54 @@ class _DiscountPopupState extends State<DiscountPopup> {
         final isClear = label == "Clear";
         final isBack = label == "⌫";
 
-        return InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: () => _onKeypadTap(label),
-          child: Container(
-            decoration: BoxDecoration(
-              color: (isClear || isBack)
-                  ? Colors.white
-                  : const Color(0xffF4F7FD),
+        return IgnorePointer(
+          ignoring: isNCSelected,
+          child: Opacity(
+            opacity: isNCSelected ? 0.5 : 1,
+            child: InkWell(
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: (isClear || isBack)
-                    ? Colors.redAccent
-                    : const Color(0xffDADFE8),
-              ),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x12000000),
-                  blurRadius: 6,
-                  offset: Offset(0, 2),
-                )
-              ],
-            ),
-            child: Center(
-              child: isBack
-                  ? const Icon(
-                Icons.backspace_outlined,
-                color: Colors.redAccent,
-                size: 28,
-              )
-                  : Text(
-                label,
-                style: TextStyle(
-                  fontSize: isClear ? 16 : 18,
-                  color: isClear
-                      ? Colors.redAccent
-                      : const Color(0xff4C5F80),
-                  fontWeight: FontWeight.w500,
+              onTap: () => _onKeypadTap(label),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: (isClear || isBack)
+                      ? Colors.white
+                      : const Color(0xffF4F7FD),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: (isClear || isBack)
+                        ? Colors.redAccent
+                        : const Color(0xffDADFE8),
+                  ),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x12000000),
+                      blurRadius: 6,
+                      offset: Offset(0, 2),
+                    )
+                  ],
+                ),
+                child: Center(
+                  child: isBack
+                      ? const Icon(
+                    Icons.backspace_outlined,
+                    color: Colors.redAccent,
+                    size: 28,
+                  )
+                      : Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: isClear ? 16 : 18,
+                      color: isClear
+                          ? Colors.redAccent
+                          : const Color(0xff4C5F80),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
-        );
-      },
+        );      },
     );
   }
 

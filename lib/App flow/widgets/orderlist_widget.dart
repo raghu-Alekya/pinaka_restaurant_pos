@@ -6,6 +6,7 @@ import '../../models/order/order_items.dart';
 import 'modifier_popup.dart';
 
 class OrderPanelList extends StatelessWidget {
+  final String currency;
   final List<OrderItems> orderItems;
   final Map<String, double> addonPrices; // addon name -> price
   final Function(int index) onIncreaseQuantity;
@@ -21,6 +22,7 @@ class OrderPanelList extends StatelessWidget {
 
   const OrderPanelList({
     Key? key,
+    required this.currency,   // <-- Add this
     required this.orderItems,
     required this.addonPrices,
     required this.onIncreaseQuantity,
@@ -202,7 +204,8 @@ class OrderPanelList extends StatelessWidget {
                     SizedBox(
                       width: 70,
                       child: Text(
-                        '₹${item.price.toStringAsFixed(2)}',
+                        // '₹${item.price.toStringAsFixed(2)}',
+                        '$currency${item.price.toStringAsFixed(2)}',
                         textAlign: TextAlign.right,
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                       ),
@@ -244,7 +247,8 @@ class OrderPanelList extends StatelessWidget {
                     SizedBox(
                       width: 70,
                       child: Text(
-                        '₹${item.totalWithAddons.toStringAsFixed(2)}',
+                        // '₹${item.totalWithAddons.toStringAsFixed(2)}',
+                        '$currency${item.totalWithAddons.toStringAsFixed(2)}',
                         textAlign: TextAlign.right,
                         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                       ),
@@ -290,7 +294,8 @@ class OrderPanelList extends StatelessWidget {
     String formatEntry(MapEntry<String, Map<String, dynamic>> e) {
       final qty = e.value['quantity'] as int? ?? 0;
       final price = (e.value['price'] as num?)?.toDouble() ?? 0.0;
-      return '${e.key} x$qty (₹${(qty * price).toStringAsFixed(2)})';
+      // return '${e.key} x$qty (₹${(qty * price).toStringAsFixed(2)})';
+      return '${e.key} x$qty ($currency${(qty * price).toStringAsFixed(2)})';
     }
 
     if (entries.length <= limit) {
