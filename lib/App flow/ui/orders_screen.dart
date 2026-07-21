@@ -1925,18 +1925,9 @@ class _OrderPanelState extends State<OrderPanel> {
                                     builder: (context, setState) {
                                       return ConfirmationPopup(
                                         title: "Are you sure?",
-                                        message:
-                                        widget.isTakeAway
-                                            ? "Do you want to really cancel this order?\nThis action cannot be undone."
-                                            : "Do you want to really delete the ",
-                                        highlightedText:
-                                        widget.isTakeAway
-                                            ? null
-                                            : state.tableName,
-                                        trailingMessage:
-                                        widget.isTakeAway
-                                            ? null
-                                            : "?\nThis will remove it from ${state.zoneName}.",
+                                        message: "Do you really want to delete Order ID ",
+                                        highlightedText: currentOrderId.toString(),
+                                        trailingMessage: "?",
                                         imagePath: "assets/warning_icon.png",
                                         confirmButtonText: "Yes, Cancel!",
                                         cancelButtonText: "No, Keep It",

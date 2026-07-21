@@ -8,12 +8,13 @@ import '../../blocs/Bloc Logic/payment_bloc.dart';
 import '../../blocs/Bloc State/discount_stata.dart';
 import '../../models/payment/discount_model.dart';
 import '../../utils/SessionManager.dart';
+
 enum DiscountType { percent, amount }
 
 class DiscountPopup extends StatefulWidget {
   final double netPayable;
   final double netTotal; // ✅ ADDED
-  final String ? authToken;
+  final String? authToken;
   final int orderId;
   final double initialDiscount;
   final bool isPercent;
@@ -33,7 +34,6 @@ class DiscountPopup extends StatefulWidget {
 }
 
 class _DiscountPopupState extends State<DiscountPopup> {
-
   final TextEditingController discountController = TextEditingController();
   final TextEditingController reasonController = TextEditingController();
 
@@ -47,7 +47,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
   @override
   void initState() {
     super.initState();
-    _loadCurrency();   // <-- Add this
+    _loadCurrency(); // <-- Add this
     // payableAmount = widget.netPayable;
     // newPayableAmount = widget.netPayable;
     payableAmount = widget.netTotal;
@@ -56,7 +56,10 @@ class _DiscountPopupState extends State<DiscountPopup> {
     if (widget.initialDiscount > 0) {
       if (widget.isPercent) {
         selectedType = DiscountType.percent;
-        final double percentVal = (widget.initialDiscount / (widget.netTotal > 0 ? widget.netTotal : 1.0)) * 100;
+        final double percentVal =
+            (widget.initialDiscount /
+                (widget.netTotal > 0 ? widget.netTotal : 1.0)) *
+                100;
         discountController.text = percentVal.toStringAsFixed(0);
       } else {
         selectedType = DiscountType.amount;
@@ -80,6 +83,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
       });
     }
   }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -90,11 +94,6 @@ class _DiscountPopupState extends State<DiscountPopup> {
     }
   }
 
-
-
-
-
-
   @override
   void dispose() {
     discountController.removeListener(_calculateNewPayable);
@@ -102,7 +101,6 @@ class _DiscountPopupState extends State<DiscountPopup> {
     reasonController.dispose();
     super.dispose();
   }
-
 
   void _onKeypadTap(String value) {
     if (isNCSelected) return;
@@ -119,8 +117,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
           if (updated.isEmpty) {
             discountController.clear();
           } else if (selectedType == DiscountType.amount) {
-            discountController.text =
-            '${int.parse(updated).toString()}.00';
+            discountController.text = '${int.parse(updated).toString()}.00';
           } else {
             discountController.text = updated;
           }
@@ -131,8 +128,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
         final raw = discountController.text.replaceAll('.00', '');
         final updated = raw + value;
 
-        discountController.text =
-        '${int.parse(updated).toString()}.00';
+        discountController.text = '${int.parse(updated).toString()}.00';
       } else {
         discountController.text += value;
       }
@@ -145,6 +141,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
     _calculateNewPayable();
     setState(() {});
   }
+
   void _calculateNewPayable() {
     if (isNCSelected) {
       setState(() {
@@ -154,22 +151,19 @@ class _DiscountPopupState extends State<DiscountPopup> {
       return;
     }
 
-    final value = double.tryParse(
-      discountController.text.replaceAll('.00', ''),
-    ) ??
-        0;
+    final value =
+        double.tryParse(discountController.text.replaceAll('.00', '')) ?? 0;
 
     setState(() {
       if (selectedType == DiscountType.percent) {
         final discount = (widget.netTotal * value) / 100;
-        newPayableAmount =
-            (payableAmount - discount).clamp(0, payableAmount);
+        newPayableAmount = (payableAmount - discount).clamp(0, payableAmount);
       } else {
-        newPayableAmount =
-            (payableAmount - value).clamp(0, payableAmount);
+        newPayableAmount = (payableAmount - value).clamp(0, payableAmount);
       }
     });
   }
+
   void _onSaveAndContinue() {
     debugPrint('🟢 [_onSaveAndContinue] called');
 
@@ -193,25 +187,29 @@ class _DiscountPopupState extends State<DiscountPopup> {
       _showError('Select discount reason');
       return;
     }
-    final inputValue = double.tryParse(
-      discountController.text.replaceAll('.00', ''),
-    ) ??
-        0;
-// Show with 2 decimal places
-    if (selectedType == DiscountType.amount) {
-      discountController.text = inputValue.toStringAsFixed(2);
-    }
+    final inputValue =
+        double.tryParse(discountController.text.replaceAll('.00', '')) ?? 0;
+    // Show with 2 decimal places
+    //     if (selectedType == DiscountType.amount) {
+    //       discountController.text = inputValue.toStringAsFixed(2);
+    //     }
+
     debugPrint('➡️ inputValue = $inputValue');
     debugPrint('➡️ selectedType = $selectedType');
     debugPrint('➡️ isNCSelected = $isNCSelected');
     debugPrint('➡️ payableAmount = $payableAmount');
 
-    final String discountStr = isNCSelected
+    // final String discountStr = isNCSelected
+    //     ? payableAmount.toStringAsFixed(2)
+    //     : selectedType == DiscountType.percent
+    //         ? ((widget.netTotal * inputValue) / 100).toStringAsFixed(2)
+    //         : inputValue.toStringAsFixed(0);
+    final String discountStr =
+    isNCSelected
         ? payableAmount.toStringAsFixed(2)
         : selectedType == DiscountType.percent
-            ? ((widget.netTotal * inputValue) / 100).toStringAsFixed(2)
-            : inputValue.toStringAsFixed(0);
-
+        ? ((widget.netTotal * inputValue) / 100).toStringAsFixed(2)
+        : inputValue.toStringAsFixed(2);
     debugPrint('💰 FINAL discountStr sent to API = $discountStr');
     debugPrint('🧾 orderId = ${widget.orderId}');
     debugPrint('🧾 reason = ${reasonController.text}');
@@ -229,7 +227,6 @@ class _DiscountPopupState extends State<DiscountPopup> {
       ),
     );
   }
-
 
   void _showSuccess(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -252,6 +249,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
       ),
     );
   }
+
   void _exitNCMode() {
     setState(() {
       isNCSelected = false;
@@ -264,9 +262,6 @@ class _DiscountPopupState extends State<DiscountPopup> {
     });
   }
 
-
-
-
   @override
   @override
   Widget build(BuildContext context) {
@@ -277,8 +272,10 @@ class _DiscountPopupState extends State<DiscountPopup> {
           final appliedDiscount = state.response.discountAmt;
 
           setState(() {
-            newPayableAmount =
-                (payableAmount - appliedDiscount).clamp(0, payableAmount);
+            newPayableAmount = (payableAmount - appliedDiscount).clamp(
+              0,
+              payableAmount,
+            );
           });
 
           context.read<PaymentBloc>().add(
@@ -295,9 +292,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
           });
         }
         if (state is DiscountFailure) {
-          _showError(
-            state.error.replaceFirst("Exception: ", ""),
-          );
+          _showError(state.error.replaceFirst("Exception: ", ""));
         }
       },
       child: Dialog(
@@ -314,7 +309,6 @@ class _DiscountPopupState extends State<DiscountPopup> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-
               /// Header
               _header(context),
 
@@ -323,22 +317,18 @@ class _DiscountPopupState extends State<DiscountPopup> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
                   /// LEFT
                   Expanded(
                     flex: 5,
                     child: Column(
                       children: [
-
                         /// Amount Card
                         Container(
                           padding: const EdgeInsets.all(18),
                           decoration: BoxDecoration(
                             color: Color(0xFFF9FAFC),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: const Color(0xffDFDFDF),
-                            ),
+                            border: Border.all(color: const Color(0xffDFDFDF)),
                           ),
                           child: _amountRow(),
                         ),
@@ -351,14 +341,11 @@ class _DiscountPopupState extends State<DiscountPopup> {
                           decoration: BoxDecoration(
                             color: Color(0xFFF9FAFC),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: const Color(0xffDFDFDF),
-                            ),
+                            border: Border.all(color: const Color(0xffDFDFDF)),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-
                               // const Text(
                               //   "Apply Discount",
                               //   style: TextStyle(
@@ -368,17 +355,16 @@ class _DiscountPopupState extends State<DiscountPopup> {
                               // ),
                               //
                               // const SizedBox(height: 15),
-
                               _discountToggle(),
 
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 10),
 
                               _reasonField(),
                             ],
                           ),
                         ),
 
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 10),
 
                         SizedBox(
                           width: double.infinity,
@@ -400,7 +386,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
                               ),
                             ),
                           ),
-                        )
+                        ),
                       ],
                     ),
                   ),
@@ -410,13 +396,10 @@ class _DiscountPopupState extends State<DiscountPopup> {
                   /// RIGHT
                   Expanded(
                     flex: 4,
-                    child: SizedBox(
-                      height: 386,
-                      child: _keypadSection(),
-                    ),
-                  )
+                    child: SizedBox(height: 386, child: _keypadSection()),
+                  ),
                 ],
-              )
+              ),
             ],
           ),
         ),
@@ -424,27 +407,47 @@ class _DiscountPopupState extends State<DiscountPopup> {
     );
   }
 
-
-
   /// ---------------- HEADER ----------------
   Widget _header(BuildContext context) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 68,
-          height: 68,
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: const Color(0xFFEAF6FD),
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(24),
           ),
-          child: const Icon(
-            Icons.discount_outlined,
-            color: Color(0xFF6FAFD5),
-            size: 34,
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: const BoxDecoration(
+              color: Color(0xFF6BACC3),
+              shape: BoxShape.circle,
+            ),
+            child: Image.asset(
+              "assets/Discount Icon.png",
+              width: 26,
+              height: 26,
+              fit: BoxFit.contain,
+            ),
           ),
         ),
-
+        // Container(
+        //   width: 68,
+        //   height: 68,
+        //   decoration: BoxDecoration(
+        //     color: const Color(0xFFEAF6FD),
+        //     borderRadius: BorderRadius.circular(18),
+        //   ),
+        //   child: Center(
+        //     child: Image.asset(
+        //       "assets/Discount Icon.png",
+        //       width: 34,
+        //       height: 34,
+        //       fit: BoxFit.contain,
+        //     ),
+        //   ),
+        // ),
         const SizedBox(width: 18),
 
         Expanded(
@@ -462,10 +465,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
               SizedBox(height: 4),
               Text(
                 "Add discounts using a percentage or amount, with an optional reason and real-time total preview.",
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF5A6A85),
-                ),
+                style: TextStyle(fontSize: 14, color: Color(0xFF5A6A85)),
               ),
             ],
           ),
@@ -480,11 +480,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
               color: Color(0xFFFF4B3E),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.close,
-              color: Colors.white,
-              size: 18,
-            ),
+            child: const Icon(Icons.close, color: Colors.white, size: 18),
           ),
         ),
       ],
@@ -520,12 +516,10 @@ class _DiscountPopupState extends State<DiscountPopup> {
 
           // _customerTags(),
           // const SizedBox(height: 20),
-
         ],
       ),
     );
   }
-
 
   Widget _amountRow() {
     return Row(
@@ -552,8 +546,10 @@ class _DiscountPopupState extends State<DiscountPopup> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label,
-              style: const TextStyle(fontSize: 12, color: Color(0xFF252525))),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, color: Color(0xFF252525)),
+          ),
           const SizedBox(height: 6),
 
           Container(
@@ -563,10 +559,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
             decoration: BoxDecoration(
               color: const Color(0xFFF1F3F7),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                width: 1,
-                color: const Color(0xFFDFDFDF),
-              ),
+              border: Border.all(width: 1, color: const Color(0xFFDFDFDF)),
               boxShadow: const [
                 BoxShadow(
                   color: Color(0x19000000),
@@ -578,17 +571,13 @@ class _DiscountPopupState extends State<DiscountPopup> {
             ),
             child: Text(
               value, // ✅ dynamically updates
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
             ),
           ),
         ],
       ),
     );
   }
-
 
   Widget _discountToggle() {
     return Column(
@@ -851,20 +840,15 @@ class _DiscountPopupState extends State<DiscountPopup> {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             /// LEFT SIDE
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
                   // Discount Type label
                   const Text(
                     "Discount Type:",
-                    style: TextStyle(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
                   ),
 
                   const SizedBox(height: 6),
@@ -885,9 +869,14 @@ class _DiscountPopupState extends State<DiscountPopup> {
                           onTap: () {
                             setState(() {
                               isNCSelected = true;
-                              discountController.text = payableAmount.toStringAsFixed(2);
+                              discountController.clear(); // Clear the field
                               newPayableAmount = 0;
                             });
+                            // setState(() {
+                            //   isNCSelected = true;
+                            //   discountController.text = payableAmount.toStringAsFixed(2);
+                            //   newPayableAmount = 0;
+                            // });
                           },
                         ),
 
@@ -895,7 +884,8 @@ class _DiscountPopupState extends State<DiscountPopup> {
 
                         _buildTypeButton(
                           title: "%",
-                          selected: !isNCSelected &&
+                          selected:
+                          !isNCSelected &&
                               selectedType == DiscountType.percent,
                           onTap: () {
                             setState(() {
@@ -909,7 +899,8 @@ class _DiscountPopupState extends State<DiscountPopup> {
 
                         _buildTypeButton(
                           title: _currency,
-                          selected: !isNCSelected &&
+                          selected:
+                          !isNCSelected &&
                               selectedType == DiscountType.amount,
                           onTap: () {
                             setState(() {
@@ -927,11 +918,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
                   if (isNCSelected)
                     const Row(
                       children: [
-                        Icon(
-                          Icons.check_circle,
-                          color: Colors.green,
-                          size: 16,
-                        ),
+                        Icon(Icons.check_circle, color: Colors.green, size: 16),
                         SizedBox(width: 4),
                         Text(
                           "NC Applied",
@@ -954,61 +941,86 @@ class _DiscountPopupState extends State<DiscountPopup> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
                   const Text(
                     "Value:",
-                    style: TextStyle(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
                   ),
 
                   const SizedBox(height: 6),
+                  Container(
+                    decoration: BoxDecoration(
+                      color:
+                      isNCSelected ? const Color(0xFFF5F5F5) : Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color:
+                        isNCSelected
+                            ? const Color(0xFFCECECE) // NC border color
+                            : const Color(
+                          0xFFDFDFDF,
+                        ), // Normal border color
+                      ),
+                    ),
+                    child: SizedBox(
+                      // ✅ Add child:
+                      height: 48,
+                      child: IgnorePointer(
+                        ignoring: isNCSelected,
+                        child: TextField(
+                          controller: discountController,
+                          readOnly: true,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 18, // Entered text size
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF111827),
+                          ),
+                          decoration: InputDecoration(
+                            hintText:
+                            selectedType == DiscountType.percent
+                                ? "10"
+                                : "100.00",
+                            hintStyle: const TextStyle(
+                              color: Color(0xFFBDBDBD), // Light grey
+                              fontSize: 18,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            prefixText:
+                            !isNCSelected &&
+                                selectedType == DiscountType.amount
+                                ? "$_currency "
+                                : null,
+                            suffixText:
+                            !isNCSelected &&
+                                selectedType == DiscountType.percent
+                                ? "%"
+                                : null,
+                            filled: true,
+                            fillColor:
+                            isNCSelected
+                                ? const Color(
+                              0xFFF5F5F5,
+                            ) // Optional disabled background
+                                : Colors.white,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 12,
+                            ),
 
-              SizedBox(
-                            height: 48,
-                            child: IgnorePointer(
-                              ignoring: isNCSelected,
-                              child: TextField(
-                                controller: discountController,
-                                readOnly: true,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  fontSize: 18, // Entered text size
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF111827),
-                                ),
-                                decoration: InputDecoration(
-                                  hintText: selectedType == DiscountType.percent
-                                      ? "10%"
-                                      : "$_currency 100.00",
-                                  prefixText: !isNCSelected &&
-                                      selectedType == DiscountType.amount
-                                      ? "$_currency "
-                                      : null,
-
-                                  suffixText: !isNCSelected &&
-                                      selectedType == DiscountType.percent
-                                      ? "%"
-                                      : null,
-                                  filled: true,
-                                  fillColor: Colors.white,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 12,
-                                  ),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                              ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide.none, // or BorderSide(color: Color(0xFFDFDFDF))
                             ),
                           ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
           ],
-        )
+        ),
         // Row(
         //   crossAxisAlignment: CrossAxisAlignment.start,
         //   children: [
@@ -1409,30 +1421,55 @@ class _DiscountPopupState extends State<DiscountPopup> {
       color: const Color(0xFFE5E7EB),
     );
   }
+
   Widget _buildTypeButton({
     required String title,
     required bool selected,
     required VoidCallback onTap,
   }) {
+    final bool isNC = title == "NC";
+
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
+          margin: const EdgeInsets.all(4),
           alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selected
-                ? const Color(0xFF2236BE)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
-          ),
+          decoration:
+          selected
+              ? BoxDecoration(
+            color: const Color(0xFF2236BE),
+            borderRadius: BorderRadius.circular(8),
+          )
+              : isNC
+              ? BoxDecoration(
+            color: Colors.white,
+            border: Border.all(
+              color: const Color(0xFFEACA00),
+              width: 1,
+            ),
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x19000000),
+                blurRadius: 4,
+                offset: Offset(0, 1),
+                spreadRadius: 0,
+              ),
+            ],
+          )
+              : const BoxDecoration(color: Colors.transparent),
           child: Text(
             title,
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: selected
+              color:
+              selected
                   ? Colors.white
+                  : isNC
+                  ? const Color(0xFFEACA00)
                   : Colors.black,
             ),
           ),
@@ -1440,6 +1477,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
       ),
     );
   }
+
   Widget _radioButton(String text, bool selected) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -1447,19 +1485,15 @@ class _DiscountPopupState extends State<DiscountPopup> {
         color: selected ? const Color(0xFFEAF2FF) : Colors.white,
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
-            color: selected
-                ? const Color(0xFF3B82F6)
-                : const Color(0xFFE6EAF2)),
+          color: selected ? const Color(0xFF3B82F6) : const Color(0xFFE6EAF2),
+        ),
       ),
       child: Row(
         children: [
           Icon(
-            selected
-                ? Icons.radio_button_checked
-                : Icons.radio_button_off,
+            selected ? Icons.radio_button_checked : Icons.radio_button_off,
             size: 16,
-            color:
-            selected ? const Color(0xFF3B82F6) : Colors.grey,
+            color: selected ? const Color(0xFF3B82F6) : Colors.grey,
           ),
           const SizedBox(width: 6),
           Text(text),
@@ -1486,9 +1520,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
               print('⏳ Loading discount reasons...');
               return const SizedBox(
                 height: 48,
-                child: Center(
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
+                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
               );
             }
 
@@ -1509,10 +1541,12 @@ class _DiscountPopupState extends State<DiscountPopup> {
                   ],
                 ),
                 child: DropdownButtonFormField<String>(
-                  value: reasonController.text.isNotEmpty
+                  value:
+                  reasonController.text.isNotEmpty
                       ? reasonController.text
                       : null,
-                  items: state.reasons
+                  items:
+                  state.reasons
                       .map(
                         (reason) => DropdownMenuItem<String>(
                       value: reason,
@@ -1581,7 +1615,6 @@ class _DiscountPopupState extends State<DiscountPopup> {
     );
   }
 
-
   // Widget _customerTags() {
   //   return Row(
   //     children: [
@@ -1593,7 +1626,6 @@ class _DiscountPopupState extends State<DiscountPopup> {
   //     ],
   //   );
   // }
-
 
   Widget _tag(String text) {
     return GestureDetector(
@@ -1616,7 +1648,6 @@ class _DiscountPopupState extends State<DiscountPopup> {
     );
   }
 
-
   /// ---------------- KEYPAD ----------------
   Widget _keypadSection() {
     final labels = [
@@ -1638,8 +1669,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: labels.length,
-      gridDelegate:
-      const SliverGridDelegateWithFixedCrossAxisCount(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         crossAxisSpacing: 15,
         mainAxisSpacing: 15,
@@ -1656,51 +1686,58 @@ class _DiscountPopupState extends State<DiscountPopup> {
           child: Opacity(
             opacity: isNCSelected ? 0.5 : 1,
             child: InkWell(
-              borderRadius: BorderRadius.circular(10),
-              onTap: () => _onKeypadTap(label),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: (isClear || isBack)
-                      ? Colors.white
-                      : const Color(0xffF4F7FD),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: (isClear || isBack)
-                        ? Colors.redAccent
-                        : const Color(0xffDADFE8),
-                  ),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x12000000),
-                      blurRadius: 6,
-                      offset: Offset(0, 2),
-                    )
-                  ],
-                ),
-                child: Center(
-                  child: isBack
-                      ? const Icon(
-                    Icons.backspace_outlined,
-                    color: Colors.redAccent,
-                    size: 28,
-                  )
-                      : Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: isClear ? 16 : 18,
-                      color: isClear
+                borderRadius: BorderRadius.circular(10),
+                onTap: () => _onKeypadTap(label),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isNCSelected && (isClear || isBack)
+                        ? const Color(0xFFF5F5F5)
+                        : (isClear || isBack)
+                        ? Colors.white
+                        : const Color(0xFFF4F7FD),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: isNCSelected && (isClear || isBack)
+                          ? const Color(0xFFCECECE)
+                          : (isClear || isBack)
                           ? Colors.redAccent
-                          : const Color(0xff4C5F80),
-                      fontWeight: FontWeight.w500,
+                          : const Color(0xFFDADFE8),
+                    ),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x12000000),
+                        blurRadius: 6,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: isBack
+                        ? Icon(
+                      Icons.backspace_outlined,
+                      color: isNCSelected
+                          ? const Color(0xFFBDBDBD)
+                          : Colors.redAccent,
+                      size: 28,
+                    )
+                        : Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: isClear ? 16 : 18,
+                        fontWeight: FontWeight.w500,
+                        color: isNCSelected && (isClear || isBack)
+                            ? const Color(0xFFBDBDBD)
+                            : isClear
+                            ? Colors.redAccent
+                            : const Color(0xFF4C5F80),
+                      ),
                     ),
                   ),
-                ),
-              ),
+                )
             ),
           ),
-        );      },
+        );
+      },
     );
   }
-
-
 }

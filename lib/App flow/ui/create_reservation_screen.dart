@@ -835,7 +835,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                     builder: (_) => ConfirmationPopup(
                       title: "Discard Reservation?",
                       message:
-                      "You have unsaved reservation details. Do you want to leave this page?",
+                      "You have unsaved reservation details. \nDo you want to leave this page?",
                       imagePath: "assets/warning_icon.png",
                       isLoading: false,
                       cancelButtonText: "Stay",

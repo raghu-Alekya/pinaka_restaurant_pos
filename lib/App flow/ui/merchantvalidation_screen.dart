@@ -39,7 +39,7 @@ class _MerchantOnboardingScreenState
     return Scaffold(
       backgroundColor: const Color(0xffF2F2F2),
       body: Padding(
-        padding: const EdgeInsets.all(30),
+        padding: const EdgeInsets.all(0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -51,7 +51,7 @@ class _MerchantOnboardingScreenState
             //     fontWeight: FontWeight.w500,
             //   ),
             // ),
-            const SizedBox(height: 20),
+            // const SizedBox(height: 20),
 
             Expanded(
               child: Container(

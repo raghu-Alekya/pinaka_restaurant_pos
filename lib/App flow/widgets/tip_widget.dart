@@ -27,7 +27,7 @@ class _TipPopupState extends State<TipPopup> {
   bool _isLoading = false;
   final TipRepository _tipRepository = TipRepository();
   String _currencySymbol = "₹";
-  final List<int> tipOptions = [10, 20, 50, 100];
+  final List<int> tipOptions = [50, 100, 150, 200];
   @override
   void initState() {
     super.initState();
@@ -172,20 +172,20 @@ class _TipPopupState extends State<TipPopup> {
         });
       },
       child: Container(
-        width: 80,
-        height: 50,
+        width: 140,
+        height: 55,
         alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: const Color(0xFF2353B7),
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x3F223F7D),
-                blurRadius: 6,
-                offset: Offset(5,5),
-              )
-            ],
-          ),
+        decoration: BoxDecoration(
+          color: const Color(0xFF2353B7),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x3F223F7D),
+              blurRadius: 6,
+              offset: Offset(5,5),
+            )
+          ],
+        ),
         child: Text(
           // value.toString(),
           "$_currencySymbol${value.toDouble().toStringAsFixed(2)}",
@@ -272,9 +272,9 @@ class _TipPopupState extends State<TipPopup> {
         // side: const BorderSide(color: Colors.blueAccent, width: 1),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(30),
+        padding: const EdgeInsets.all(20),
         child: SizedBox(
-          width: 850,
+          width: 650,
           height: 400,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -283,7 +283,7 @@ class _TipPopupState extends State<TipPopup> {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(18),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: const Color(0xFFDDFFF8),
                       borderRadius: BorderRadius.circular(24),
@@ -294,10 +294,11 @@ class _TipPopupState extends State<TipPopup> {
                         color: Color(0xFF7CCABB),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
-                        Icons.volunteer_activism,
-                        color: Colors.white,
-                        size: 26,
+                      child: Image.asset(
+                        "assets/Tips Icon.png",
+                        width: 26,
+                        height: 26,
+                        fit: BoxFit.contain,
                       ),
                     ),
                   ),
@@ -346,7 +347,7 @@ class _TipPopupState extends State<TipPopup> {
               //   "Add tip for",
               //   style: TextStyle(color: Colors.grey, fontSize: 14),
               // ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 20),
 
               // ---------- Body ----------
               Expanded(
@@ -360,13 +361,13 @@ class _TipPopupState extends State<TipPopup> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Wrap(
-                            spacing: 15,
-                            runSpacing: 15,
+                            spacing: 30,
+                            runSpacing: 20,
                             children: tipOptions
                                 .map((e) => _buildTipButton(e))
                                 .toList(),
                           ),
-                          const SizedBox(height: 25),
+                          const SizedBox(height: 15),
                           const Text(
                             "Add Custom Tip :",
                             style: TextStyle(
@@ -375,44 +376,44 @@ class _TipPopupState extends State<TipPopup> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                      Container(
-                        decoration: BoxDecoration(
-                          boxShadow: [
-                            BoxShadow(
-                              color: Color(0x19000000),
-                              blurRadius: 10,
-                              offset: Offset(0,1),
-                            )
-                          ],
-                        ),
-                        child: TextField(
-                            controller: _tipController,
-                            readOnly: true,
-                            decoration: InputDecoration(
-                              prefixText: "$_currencySymbol ",
-                              hintText: "Please enter amount",
-
-                              filled: true,
-                              fillColor: Colors.white,
-
-                              contentPadding:
-                              const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: const BorderSide(
-                                  color: Color(0xFF6D7A8F),
-                                ),
-                              ),
-
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: const BorderSide(
-                                  color: Color(0xFF2353B7),
-                                ),
-                              ),
+                          Container(
+                            decoration: BoxDecoration(
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Color(0x19000000),
+                                  blurRadius: 10,
+                                  offset: Offset(0,1),
+                                )
+                              ],
                             ),
-                          ),                          ),
+                            child: TextField(
+                              controller: _tipController,
+                              readOnly: true,
+                              decoration: InputDecoration(
+                                prefixText: "$_currencySymbol ",
+                                hintText: "Please enter amount",
+
+                                filled: true,
+                                fillColor: Colors.white,
+
+                                contentPadding:
+                                const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFF6D7A8F),
+                                  ),
+                                ),
+
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFF2353B7),
+                                  ),
+                                ),
+                              ),
+                            ),                          ),
                           const SizedBox(height: 25),
                           ElevatedButton(
                             onPressed: _isLoading ? null : _applyTip,
@@ -454,11 +455,11 @@ class _TipPopupState extends State<TipPopup> {
                       flex: 1,
                       child: GridView.count(
                         shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(), // Disable scrolling
                         crossAxisCount: 3,
-                        mainAxisSpacing: 10,
-                        crossAxisSpacing: 10,
-                        // 👇 Adjust this ratio to control button height
-                        childAspectRatio: 2.5, // smaller value = taller buttons
+                        crossAxisSpacing: 15,
+                        mainAxisSpacing: 15,
+                        childAspectRatio: 1.5, // smaller value = taller buttons
                         children: [
                           for (var i = 1; i <= 9; i++)
                             _buildKeypadButton(

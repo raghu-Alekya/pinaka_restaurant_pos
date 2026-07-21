@@ -161,10 +161,11 @@ class _CouponscreenState extends State<Couponscreen> {
                           color: const Color(0xFFFFAB4C),
                           borderRadius: BorderRadius.circular(26),
                         ),
-                        child: const Icon(
-                          Icons.local_offer,
-                          color: Colors.white,
-                          size: 28,
+                        child: Image.asset(
+                          "assets/Coupon Icon.png",
+                          width: 26,
+                          height: 26,
+                          fit: BoxFit.contain,
                         ),
                       ),
                     ),
@@ -272,7 +273,7 @@ class _CouponscreenState extends State<Couponscreen> {
                     child: ElevatedButton.icon(
                       onPressed: _isApplying ? null : _applyCoupon,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF4C5F7D),
+                        backgroundColor: const Color(0xFF4CAF50),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
