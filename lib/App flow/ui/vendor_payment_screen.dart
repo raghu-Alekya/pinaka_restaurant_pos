@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../models/UserPermissions.dart';
 
@@ -459,11 +460,12 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                             "${pickedDate.year}";
                                       });
 
-                                      final apiDate =
-                                          "${pickedDate.year}-"
-                                          "${pickedDate.month.toString().padLeft(2, '0')}-"
-                                          "${pickedDate.day.toString().padLeft(2, '0')}";
+                                      // final apiDate =
+                                      //     "${pickedDate.year}-"
+                                      //     "${pickedDate.month.toString().padLeft(2, '0')}-"
+                                      //     "${pickedDate.day.toString().padLeft(2, '0')}";
 
+                                      final apiDate = DateFormat("d MMMM, yyyy").format(pickedDate);
                                       await _filterVendorPaymentsByDate(apiDate);
                                     }
                                   },

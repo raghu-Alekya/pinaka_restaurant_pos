@@ -28,19 +28,39 @@ class OrderstatusRepository {
 
       if (response.statusCode == 200) {
         final dynamic jsonResponse = jsonDecode(response.body);
+        print("Decoded Type: ${jsonResponse.runtimeType}");
+        print("Decoded JSON: $jsonResponse");
 
+        if (jsonResponse is Map) {
+          print("Keys: ${jsonResponse.keys.toList()}");
+        }
         List<OrderlistModel> orders = [];
 
         List<dynamic> dataList = [];
 
+        // if (jsonResponse is List) {
+        //   dataList = jsonResponse;
+        // } else if (jsonResponse is Map && jsonResponse.containsKey('data')) {
+        //   dataList = jsonResponse['data'] as List;
+        // } else {
+        //   AppLogger.error('Unexpected JSON format');
+        // }
+        // List<dynamic> dataList = [];
+
         if (jsonResponse is List) {
           dataList = jsonResponse;
-        } else if (jsonResponse is Map && jsonResponse.containsKey('data')) {
-          dataList = jsonResponse['data'] as List;
-        } else {
-          AppLogger.error('Unexpected JSON format');
+        } else if (jsonResponse is Map<String, dynamic>) {
+          if (jsonResponse.containsKey('orders')) {
+            dataList = jsonResponse['orders'] as List<dynamic>;
+          } else if (jsonResponse.containsKey('data')) {
+            dataList = jsonResponse['data'] as List<dynamic>;
+          } else {
+            AppLogger.error(
+              'Unexpected JSON keys: ${jsonResponse.keys.toList()}',
+            );
+            return [];
+          }
         }
-
         orders = dataList.map((orderJson) {
           final order = OrderlistModel.fromJson(orderJson);
 

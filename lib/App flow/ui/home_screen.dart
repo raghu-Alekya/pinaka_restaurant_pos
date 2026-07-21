@@ -356,57 +356,142 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         body: Padding(
           padding: const EdgeInsets.all(20),
-          child: SizedBox(
+          child: SizedBox(child: SizedBox(
             height: MediaQuery.of(context).size.height,
-            child: Column(
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+
+            /// LEFT SIDE
+            Expanded(
+            child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+
                 _greetingSection(),
+
                 const SizedBox(height: 8),
+            // Row(
+            //   children: [
+            //     Expanded(
+            //       child: _summaryCard(
+            //         "Total Tables",
+            //         totalTables.toString(),
+            //         Icons.table_restaurant,
+            //         Colors.orange,
+            //       ),
+            //     ),
+            //     const SizedBox(width: 12),
+            //     Expanded(
+            //       child: _summaryCard(
+            //         "Available Tables",
+            //         availableTables.toString(),
+            //         Icons.event_seat,
+            //         Colors.green,
+            //       ),
+            //     ),
+            //     const SizedBox(width: 12),
+            //     Expanded(
+            //       child: _summaryCard(
+            //         "Total Orders",
+            //         totalKotOrders.toString(),
+            //         Icons.receipt_long,
+            //         Colors.blue,
+            //       ),
+            //     ),
+            //     const SizedBox(width: 12),
+            //     Expanded(
+            //       child: _summaryCard(
+            //         "Online Orders",
+            //         "0",
+            //         Icons.language,
+            //         Colors.purple,
+            //       ),
+            //     ),
+            //     const SizedBox(width: 12),
+            //     Expanded(
+            //       child: _summaryCard(
+            //         "Total Reservations",
+            //         totalReservations.toString(),
+            //         Icons.calendar_today,
+            //         Colors.cyan,
+            //       ),
+            //     ),
+            //   ],
+            // ),
+            // const SizedBox(height: 5),
+            // Row(
+            //   children: [
+            //     Expanded(
+            //       child: Divider(
+            //         color: Colors.grey.shade400,
+            //         thickness: 1,
+            //       ),
+            //     ),
+            //     Padding(
+            //       padding: const EdgeInsets.symmetric(horizontal: 12),
+            //       child: Text(
+            //         "QUICK ACCESS",
+            //         style: TextStyle(
+            //           fontWeight: FontWeight.w600,
+            //           color: Colors.grey.shade600,
+            //           fontSize: 16,
+            //           letterSpacing: 1,
+            //         ),
+            //       ),
+            //     ),
+            //     Expanded(
+            //       child: Divider(
+            //         color: Colors.grey.shade400,
+            //         thickness: 1,
+            //       ),
+            //     ),
+            //   ],
                 Row(
                   children: [
                     Expanded(
-                      child: _summaryCard(
-                        "Total Tables",
-                        totalTables.toString(),
-                        Icons.table_restaurant,
-                        Colors.orange,
+                      child: _kotStatusWidget(
+                        "Queue",
+                        "00", // Static value
+                        // Icons.queue,
+                    Icons.room_service,
+                    const Color(0xFF4E4949),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _summaryCard(
-                        "Available Tables",
-                        availableTables.toString(),
-                        Icons.event_seat,
-                        Colors.green,
+                      child: _kotStatusWidget(
+                        "Preparing",
+                        "00", // Static value
+                        Icons.access_time_outlined,
+                        const Color(0xFFE39106),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _summaryCard(
-                        "Total Orders",
-                        totalKotOrders.toString(),
-                        Icons.receipt_long,
-                        Colors.blue,
+                      child: _kotStatusWidget(
+                        "Ready",
+                        "00", // Static value
+                        Icons.check_circle_outline,
+                        const Color(0xFF1A5FCB),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _summaryCard(
-                        "Online Orders",
-                        "0",
-                        Icons.language,
-                        Colors.purple,
+                      child: _kotStatusWidget(
+                        "Served",
+                        "00", // Static value
+                        Icons.done_all,
+                        const Color(0xFF02B443),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _summaryCard(
-                        "Total Reservations",
-                        totalReservations.toString(),
-                        Icons.calendar_today,
-                        Colors.cyan,
+                      child: _kotStatusWidget(
+                        "Cancelled",
+                        "00", // Static value
+                        Icons.cancel_outlined,
+                        const Color(0xFFEA2F38),
                       ),
                     ),
                   ],
@@ -440,6 +525,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ],
                 ),
+                _sectionTitle("Restaurant Operations"),
+
                 const SizedBox(height: 5),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -592,6 +679,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ],
                 ),
+
                 const SizedBox(height: 10),
                 _sectionTitle("Kitchen & Orders"),
                 const SizedBox(height: 8),
@@ -762,11 +850,200 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
+          ]),
+      ),
+    )))
+    );
+  }
+  Widget _restaurantOverview() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+
+        const Text(
+          "Restaurant Overview",
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
         ),
+
+        const SizedBox(height: 12),
+
+        _topSellingItems(),
+
+        const SizedBox(height: 18),
+
+        _tableStatusWidget(),
+      ],
+    );
+  }
+  Widget _topSellingItems() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            blurRadius: 6,
+            color: Colors.black12,
+          )
+        ],
+      ),
+      child: Column(
+        children: [
+
+          const Row(
+            children: [
+              Expanded(
+                child: Text(
+                  "Top Selling Items",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              Text("Category"),
+              SizedBox(width: 40),
+              Text("Qty"),
+            ],
+          ),
+
+          const Divider(),
+
+          _foodRow("Chicken Biryani", "Main Course", "48"),
+          _foodRow("Chicken Dum Biryani", "Main Course", "35"),
+          _foodRow("Paneer Biryani", "Main Course", "28"),
+          _foodRow("Chicken 65", "Starters", "21"),
+        ],
       ),
     );
   }
+  Widget _foodRow(
+      String name,
+      String category,
+      String qty,
+      ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
 
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: Colors.orange.shade200,
+            child: const Icon(Icons.fastfood),
+          ),
+
+          const SizedBox(width: 12),
+
+          Expanded(
+            child: Text(name),
+          ),
+
+          SizedBox(
+            width: 100,
+            child: Text(
+              category,
+              style: const TextStyle(color: Colors.red),
+            ),
+          ),
+
+          SizedBox(
+            width: 40,
+            child: Text(
+              qty,
+              textAlign: TextAlign.end,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  Widget _tableStatusWidget() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            blurRadius: 6,
+            color: Colors.black12,
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+
+          const Text(
+            "Table Status",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+
+          const SizedBox(height: 18),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+
+              _statusBox("15", "Available", Colors.green),
+
+              _statusBox("17", "Dine-In", Colors.red),
+
+              _statusBox("2", "Ready", Colors.blue),
+
+              _statusBox("8", "Shared", Colors.orange),
+
+              _statusBox("6", "Reserve", Colors.grey),
+            ],
+          )
+        ],
+      ),
+    );
+  }
+  Widget _statusBox(
+      String count,
+      String title,
+      Color color,
+      ) {
+    return Container(
+      width: 70,
+      height: 90,
+      decoration: BoxDecoration(
+        color: color.withOpacity(.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(.3)),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+
+          Text(
+            count,
+            style: TextStyle(
+              color: color,
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+
+          const SizedBox(height: 6),
+
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
   Widget _greetingSection() {
     final userName = _selectedUser?['name'] ?? 'User';
     final userRole = _selectedUser?['role'] ?? '';
@@ -859,25 +1136,105 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Icon(icon, color: color),
           ),
           const SizedBox(width: 12),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),        ],
+      ),
+    );
+  }
+  Widget _kotStatusWidget(
+      String title,
+      String value,
+      IconData icon,
+      Color color,
+      ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: ShapeDecoration(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          side: BorderSide(
+            width: 0.8,
+            color: color.withOpacity(0.25),
+          ),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        shadows: const [
+          BoxShadow(
+            color: Color(0x2602B443),
+            blurRadius: 2,
+            offset: Offset(0, 1),
+            spreadRadius: -1,
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(
+              icon,
+              color: color,
+              size: 22,
+            ),
+          ),
+
+          const SizedBox(width: 14),
+
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: Color(0xFF1C2333),
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
               ),
-              Text(title),
-            ],
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w700,
+              fontSize: 28,
+            ),
           ),
         ],
       ),
     );
   }
-
   Widget _moduleCard({
     required String title,
     required String subtitle,
