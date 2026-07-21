@@ -15,6 +15,7 @@ import '../widgets/pin_input.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'home_screen.dart';
+import 'merchantvalidation_screen.dart';
 
 class EmployeeLoginPage extends StatefulWidget {
   final String storeBaseUrl;
@@ -320,6 +321,36 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
                                           fontSize: 20,
                                           color: Colors.white,
                                           fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    TextButton(
+                                      onPressed: () async {
+                                        final prefs = await SharedPreferences.getInstance();
+                                        await prefs.remove('store_base_url');
+                                        await prefs.remove('store_name');
+                                        await prefs.remove('store_address');
+                                        await prefs.remove('store_phone');
+                                        await prefs.remove('store_logo');
+                                        await prefs.remove('store_gstin');
+
+                                        if (context.mounted) {
+                                          Navigator.pushAndRemoveUntil(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => const MerchantOnboardingScreen(),
+                                            ),
+                                            (route) => false,
+                                          );
+                                        }
+                                      },
+                                      child: const Text(
+                                        'Switch Store / Merchant Login',
+                                        style: TextStyle(
+                                          color: Colors.blue,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w500,
                                         ),
                                       ),
                                     ),

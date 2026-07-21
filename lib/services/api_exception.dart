@@ -172,7 +172,9 @@ class ApiExceptionHandler {
             return "This coupon has reached its usage limit.";
           }
 
-          return defaultMessage;
+          return (error["message"] != null && error["message"].toString().isNotEmpty) 
+              ? error["message"].toString() 
+              : defaultMessage;
       }
     } catch (_) {
       return defaultMessage;

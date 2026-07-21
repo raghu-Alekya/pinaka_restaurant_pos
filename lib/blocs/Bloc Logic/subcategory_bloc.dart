@@ -45,6 +45,11 @@ class SubCategoryBloc extends Bloc<SubCategoryEvent, SubCategoryState> {
 
       if (cached.isEmpty) {
         emit(SubCategoryLoaded(subcategories: [], selectedSubCategory: null));
+        productBloc.add(
+          FetchProductsBySubCategory(
+            subCategoryId: int.parse(event.categoryId),
+          ),
+        );
         return;
       }
 
@@ -79,6 +84,11 @@ class SubCategoryBloc extends Bloc<SubCategoryEvent, SubCategoryState> {
 
       if (subcategories.isEmpty) {
         emit(SubCategoryLoaded(subcategories: [], selectedSubCategory: null));
+        productBloc.add(
+          FetchProductsBySubCategory(
+            subCategoryId: int.parse(event.categoryId),
+          ),
+        );
         return;
       }
 

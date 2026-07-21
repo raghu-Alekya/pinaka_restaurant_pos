@@ -64,20 +64,18 @@ void main() async {
   await deleteDatabase(join(dbPath, 'tables.db'));
 
   final prefs = await SharedPreferences.getInstance();
+  //Raghu8**  below statement do a forced cache wipe
+  //await prefs.clear(); // 🧹 FORCED CACHE WIPE
 
   final token = prefs.getString('token') ?? '';
 
-  final savedBaseUrl =
-  prefs.getString('store_base_url');
+  final savedBaseUrl = prefs.getString('store_base_url');
 
-  if (savedBaseUrl != null &&
-      savedBaseUrl.isNotEmpty) {
+  if (savedBaseUrl != null && savedBaseUrl.isNotEmpty) {
     AppConstants.updateBaseUrl(savedBaseUrl);
   }
 
-  final orderRepo = OrderRepository(
-    baseUrl: AppConstants.baseDomain,
-  );
+  final orderRepo = OrderRepository(baseUrl: AppConstants.baseDomain);
 
   if (token != null && token.isNotEmpty) {
     final employeeRepo = EmployeeRepository();
@@ -134,39 +132,41 @@ class MyApp extends StatelessWidget {
         providers: [
           // 1️⃣ MiniSubCategoryBloc first
           BlocProvider<MiniSubCategoryBloc>(
-            create: (_) => MiniSubCategoryBloc(
-              repository: MiniSubCategoryRepository(),
-            ),
+            create:
+                (_) => MiniSubCategoryBloc(
+                  repository: MiniSubCategoryRepository(),
+                ),
           ),
           BlocProvider<SearchProductBloc>(
-            create: (_) => SearchProductBloc(
-            Search_ProductRepository(),
-            ),
+            create: (_) => SearchProductBloc(Search_ProductRepository()),
           ),
           BlocProvider<ProductBloc>(
-            create: (_) => ProductBloc(
-              ProductRepository(
-                // baseUrl: AppConstants.baseDomain
-              ),
-            ),
+            create:
+                (_) => ProductBloc(
+                  ProductRepository(
+                    // baseUrl: AppConstants.baseDomain
+                  ),
+                ),
           ),
 
           // 2️⃣ SubCategoryBloc depends on MiniSubCategoryBloc
           BlocProvider<SubCategoryBloc>(
-            create: (context) => SubCategoryBloc(
-              subCategoryRepository: SubCategoryRepository(),
-              miniSubCategoryBloc: context.read<MiniSubCategoryBloc>(),
-              productBloc: context.read<ProductBloc>(),
-            ),
+            create:
+                (context) => SubCategoryBloc(
+                  subCategoryRepository: SubCategoryRepository(),
+                  miniSubCategoryBloc: context.read<MiniSubCategoryBloc>(),
+                  productBloc: context.read<ProductBloc>(),
+                ),
           ),
 
           // 3️⃣ Other blocs
           BlocProvider<CategoryBloc>(
-            create: (_) => CategoryBloc(
-              repository: CategoryRepository(
-                  baseUrl: AppConstants.baseDomain
-              ),
-            ),
+            create:
+                (_) => CategoryBloc(
+                  repository: CategoryRepository(
+                    baseUrl: AppConstants.baseDomain,
+                  ),
+                ),
           ),
           // BlocProvider<ProductBloc>(
           //   create: (_) => ProductBloc(ProductRepository as ProductRepository),
@@ -179,74 +179,80 @@ class MyApp extends StatelessWidget {
           //   ),
           // ),
           RepositoryProvider<VariantRepository>(
-            create: (context) => VariantRepository(
-              // baseUrl: AppConstants.baseDomain,
-              token: token,
-            ),
+            create:
+                (context) => VariantRepository(
+                  // baseUrl: AppConstants.baseDomain,
+                  token: token,
+                ),
           ),
 
           BlocProvider<OrderBloc>(
-            create: (context) => OrderBloc(
-              OrderRepository(
-                  baseUrl: AppConstants.baseDomain
-              ),
-              RepeatOrderRepository(
-                  // baseUrl: AppConstants.baseDomain
-              ),
-              token,
-            ),
+            create:
+                (context) => OrderBloc(
+                  OrderRepository(baseUrl: AppConstants.baseDomain),
+                  RepeatOrderRepository(
+                    // baseUrl: AppConstants.baseDomain
+                  ),
+                  token,
+                ),
           ),
           BlocProvider<KotBloc>(
-            create: (_) => KotBloc(
-                KotRepository(baseUrl: AppConstants.baseDomain)),
+            create:
+                (_) => KotBloc(KotRepository(baseUrl: AppConstants.baseDomain)),
           ),
           BlocProvider<CreatePaymentBloc>(
-            create: (_) => CreatePaymentBloc(
-              CreatePaymentRepository(),
-            ),
+            create: (_) => CreatePaymentBloc(CreatePaymentRepository()),
           ),
           BlocProvider<PaymentBloc>(
-            create: (_) => PaymentBloc(
-              PaymentRepository(
-                  // baseUrl: AppConstants.baseDomain
-              ),
-            ),
+            create:
+                (_) => PaymentBloc(
+                  PaymentRepository(
+                    // baseUrl: AppConstants.baseDomain
+                  ),
+                ),
           ),
-    // / ✅ ADD THIS
-    BlocProvider<DiscountBloc>(
-    create: (_) => DiscountBloc(
-    AddDiscountRepository(),
-    ),
-    ),
+          // / ✅ ADD THIS
+          BlocProvider<DiscountBloc>(
+            create: (_) => DiscountBloc(AddDiscountRepository()),
+          ),
           BlocProvider(
-            create: (_) => RemoveDiscountBloc(
-              RemoveDiscountRepository(
-                // baseUrl: "https://merchantrestaurant.alektasolutions.com",
-              ),
-            ),
+            create:
+                (_) => RemoveDiscountBloc(
+                  RemoveDiscountRepository(
+                    // baseUrl: "https://merchantrestaurant.alektasolutions.com",
+                  ),
+                ),
           ),
-
 
           BlocProvider<AuthBloc>(
-            create: (context) => AuthBloc(
-              RepositoryProvider.of<AuthRepository>(context),
-            ),
+            create:
+                (context) =>
+                    AuthBloc(RepositoryProvider.of<AuthRepository>(context)),
           ),
           BlocProvider<ZoneBloc>(
-            create: (context) => ZoneBloc(
-              zoneRepository: RepositoryProvider.of<ZoneRepository>(context),
-            ),
+            create:
+                (context) => ZoneBloc(
+                  zoneRepository: RepositoryProvider.of<ZoneRepository>(
+                    context,
+                  ),
+                ),
           ),
           BlocProvider<TableBloc>(
-            create: (context) => TableBloc(
-              zoneRepository: RepositoryProvider.of<ZoneRepository>(context),
-              tableRepository: RepositoryProvider.of<TableRepository>(context),
-            ),
+            create:
+                (context) => TableBloc(
+                  zoneRepository: RepositoryProvider.of<ZoneRepository>(
+                    context,
+                  ),
+                  tableRepository: RepositoryProvider.of<TableRepository>(
+                    context,
+                  ),
+                ),
           ),
           BlocProvider<AttendanceBloc>(
-            create: (context) => AttendanceBloc(
-              RepositoryProvider.of<EmployeeRepository>(context),
-            ),
+            create:
+                (context) => AttendanceBloc(
+                  RepositoryProvider.of<EmployeeRepository>(context),
+                ),
           ),
           BlocProvider<CheckInBloc>(
             create: (context) => CheckInBloc(CheckInRepository()),
@@ -257,12 +263,16 @@ class MyApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           title: 'Employee Login',
           theme: ThemeData(primarySwatch: Colors.blue),
-          home: hasMerchantValidation
-              ? const EmployeeLoginPage(storeBaseUrl: '', storeName: '', storeId: '',)
-              : const MerchantOnboardingScreen(),
+          home:
+              hasMerchantValidation
+                  ? const EmployeeLoginPage(
+                    storeBaseUrl: '',
+                    storeName: '',
+                    storeId: '',
+                  )
+                  : const MerchantOnboardingScreen(),
         ),
-      )
-      ,
+      ),
     );
   }
 }

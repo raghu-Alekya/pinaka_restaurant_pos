@@ -25,6 +25,12 @@ import '../../repositories/kot_repository.dart';
 import '../../repositories/table_repository.dart';
 import '../../repositories/zone_repository.dart';
 import '../../utils/SessionManager.dart';
+import 'package:thermal_printer/esc_pos_utils_platform/src/capability_profile.dart';
+import 'package:thermal_printer/esc_pos_utils_platform/src/enums.dart';
+import 'package:thermal_printer/esc_pos_utils_platform/src/generator.dart';
+import 'package:thermal_printer/esc_pos_utils_platform/src/pos_column.dart';
+import 'package:thermal_printer/esc_pos_utils_platform/src/pos_styles.dart';
+import '../../printer/printer_settings.dart';
 
 const Color kHeaderBlue = Color(0xFF152148);
 const Color kKotHeaderBg = Color(0xFFECEEFB);
@@ -168,6 +174,288 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
         return Colors.red;
       default:
         return Colors.grey;
+    }
+  }
+
+  Future<void> _printKot(KotModel kot) async {
+    try {
+      final profile = await CapabilityProfile.load(name: 'XP-N160I');
+      final generator = Generator(PaperSize.mm80, profile);
+
+      List<int> bytes = [];
+      bytes += [27, 32, 0]; // Reset character spacing
+      final displayKotNo = (kot.kotNumber ?? '').replaceAll('KOT#', '');
+
+      bytes += generator.text(
+        "COPY OF KOT - $displayKotNo",
+        styles: const PosStyles(
+          align: PosAlign.center,
+          bold: true,
+          height: PosTextSize.size3,
+          width: PosTextSize.size2,
+        ),
+      );
+
+      bytes += generator.text(
+        "Dine In",
+        styles: const PosStyles(align: PosAlign.center, bold: true),
+      );
+
+      bytes += generator.hr();
+
+      final dateText = "Date: ${DateFormat('dd/MM/yyyy hh:mm a').format(kot.time)}";
+      final dineInText = "Dine In: ${widget.tableNo}";
+
+      if ((dateText.length + dineInText.length) < 45) {
+        bytes += generator.row([
+          PosColumn(
+            width: 7,
+            text: dateText,
+            styles: const PosStyles(bold: true),
+          ),
+          PosColumn(
+            width: 5,
+            text: dineInText,
+            styles: const PosStyles(align: PosAlign.right, bold: true),
+          ),
+        ]);
+      } else {
+        bytes += generator.text(
+          dateText,
+          styles: const PosStyles(align: PosAlign.left, bold: true),
+        );
+        bytes += generator.text(
+          dineInText,
+          styles: const PosStyles(align: PosAlign.left, bold: true),
+        );
+      }
+
+      bytes += [27, 74, 16]; // spacing
+
+      final orderIdText = "Order Id: ${kot.parentOrderId}";
+      bytes += generator.row([
+        PosColumn(
+          width: 5,
+          text: orderIdText,
+          styles: const PosStyles(bold: true),
+        ),
+        PosColumn(
+          width: 7,
+          text: "",
+          styles: const PosStyles(align: PosAlign.right, bold: true),
+        ),
+      ]);
+
+      bytes += generator.hr();
+      bytes += [27, 32, 3]; // Set character spacing to 3 dots for items and headers
+
+      bytes += generator.row([
+        PosColumn(width: 2, text: "S.No", styles: const PosStyles(bold: true)),
+        PosColumn(
+          width: 8,
+          text: "Item Name",
+          styles: const PosStyles(bold: true),
+        ),
+        PosColumn(
+          width: 2,
+          text: "Qty",
+          styles: const PosStyles(bold: true, align: PosAlign.right),
+        ),
+      ]);
+
+      bytes += [27, 74, 16];
+      bytes += [27, 32, 0];
+      bytes += generator.hr();
+      bytes += [27, 32, 3];
+
+      int index = 1;
+
+      List<String> wrapText(String text, int maxLength) {
+        if (text.isEmpty) return [''];
+        List<String> words = text.split(' ');
+        List<String> lines = [];
+        String currentLine = '';
+
+        for (String word in words) {
+          if (word.isEmpty) continue;
+          if (word.length > maxLength) {
+            if (currentLine.isNotEmpty) {
+              lines.add(currentLine);
+              currentLine = '';
+            }
+            int start = 0;
+            while (start < word.length) {
+              int end = start + maxLength;
+              if (end > word.length) end = word.length;
+              lines.add(word.substring(start, end));
+              start = end;
+            }
+            continue;
+          }
+
+          if (currentLine.isEmpty) {
+            currentLine = word;
+          } else if (currentLine.length + 1 + word.length <= maxLength) {
+            currentLine += ' ' + word;
+          } else {
+            lines.add(currentLine);
+            currentLine = word;
+          }
+        }
+        if (currentLine.isNotEmpty) {
+          lines.add(currentLine);
+        }
+        return lines.isEmpty ? [''] : lines;
+      }
+
+      for (final item in kot.items) {
+        final nameLines = wrapText(item.name, 22);
+
+        bytes += generator.row([
+          PosColumn(
+            width: 2,
+            text: index.toString(),
+            styles: const PosStyles(
+              bold: true,
+              height: PosTextSize.size2,
+              width: PosTextSize.size1,
+            ),
+          ),
+          PosColumn(
+            width: 8,
+            text: nameLines.first,
+            styles: const PosStyles(
+              bold: true,
+              height: PosTextSize.size2,
+              width: PosTextSize.size1,
+            ),
+          ),
+          PosColumn(
+            width: 2,
+            text: "x ${item.quantity}",
+            styles: const PosStyles(
+              align: PosAlign.right,
+              bold: true,
+              height: PosTextSize.size2,
+              width: PosTextSize.size1,
+            ),
+          ),
+        ]);
+
+        for (int i = 1; i < nameLines.length; i++) {
+          bytes += generator.row([
+            PosColumn(
+              width: 2,
+              text: "",
+              styles: const PosStyles(
+                bold: true,
+                height: PosTextSize.size2,
+                width: PosTextSize.size1,
+              ),
+            ),
+            PosColumn(
+              width: 8,
+              text: nameLines[i],
+              styles: const PosStyles(
+                bold: true,
+                height: PosTextSize.size2,
+                width: PosTextSize.size1,
+              ),
+            ),
+            PosColumn(
+              width: 2,
+              text: "",
+              styles: const PosStyles(
+                align: PosAlign.right,
+                bold: true,
+                height: PosTextSize.size2,
+                width: PosTextSize.size1,
+              ),
+            ),
+          ]);
+        }
+
+        if (item.modifiers.isNotEmpty) {
+          bytes += generator.row([
+            PosColumn(width: 2, text: ""),
+            PosColumn(
+              width: 10,
+              text: " + ${item.modifiers.join(', ')}",
+              styles: const PosStyles(
+                bold: true,
+                height: PosTextSize.size2,
+                width: PosTextSize.size1,
+              ),
+            ),
+          ]);
+        }
+
+        if (item.addOns.isNotEmpty) {
+          item.addOns.forEach((name, details) {
+            bytes += generator.row([
+              PosColumn(width: 2, text: ""),
+              PosColumn(
+                width: 10,
+                text: "   * $name x${details['quantity']}",
+                styles: const PosStyles(
+                  bold: true,
+                  height: PosTextSize.size2,
+                  width: PosTextSize.size1,
+                ),
+              ),
+            ]);
+          });
+        }
+
+        final note = item.note;
+        if (note.isNotEmpty) {
+          bytes += generator.row([
+            PosColumn(width: 2, text: ""),
+            PosColumn(
+              width: 10,
+              text: " Note: $note",
+              styles: const PosStyles(
+                bold: true,
+                height: PosTextSize.size2,
+                width: PosTextSize.size1,
+              ),
+            ),
+          ]);
+        }
+
+        bytes += [27, 74, 16];
+        index++;
+      }
+
+      bytes += [27, 32, 0];
+      bytes += generator.hr();
+      bytes += generator.feed(3);
+      bytes += generator.cut();
+
+      final printerSettings = PrinterSettings();
+      await printerSettings.loadPrinter();
+
+      if (printerSettings.selectedPrinter != null) {
+        await printerSettings.printTicket(bytes, generator);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("No printer selected. Please set up a printer in settings."),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("KOT print failed: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -448,14 +736,27 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                             ),
                                           ),
                                           const SizedBox(width: 12),
-                                          /// Time
-                                          Text(
-                                            DateFormat('hh:mm a').format(kot.time),
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w500,
-                                              fontSize: 13,
-                                              color: Colors.black87,
-                                            ),
+                                          /// Time and Print Icon
+                                          Row(
+                                            children: [
+                                              Text(
+                                                DateFormat('hh:mm a').format(kot.time),
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w500,
+                                                  fontSize: 13,
+                                                  color: Colors.black87,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              InkWell(
+                                                onTap: () => _printKot(kot),
+                                                child: const Icon(
+                                                  Icons.print_outlined,
+                                                  color: Colors.blue,
+                                                  size: 20,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                           const Spacer(),
                                           /// Status
