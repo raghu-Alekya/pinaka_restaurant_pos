@@ -61,7 +61,6 @@ void main() async {
     databaseFactory = databaseFactoryFfi;
   }
   final dbPath = await getDatabasesPath();
-  await deleteDatabase(join(dbPath, 'tables.db'));
 
   final prefs = await SharedPreferences.getInstance();
   //Raghu8**  below statement do a forced cache wipe

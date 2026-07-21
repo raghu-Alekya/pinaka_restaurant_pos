@@ -135,6 +135,11 @@ class PrinterDBHelper {
     );
   }
 
+  Future<void> deletePrinterFromDB() async {
+    final db = await DatabaseInitializer().initDatabase();
+    await db.delete(AppDBConst.printerTable);
+  }
+
   Future<int> updatePrinterToDB(BluetoothPrinter printer) async {
     final db = await DatabaseInitializer().initDatabase();
     await _ensureAddressColumn(db);

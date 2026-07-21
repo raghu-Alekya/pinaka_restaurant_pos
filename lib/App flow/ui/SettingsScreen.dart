@@ -1796,6 +1796,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
+                            if (_connectedPrinterName != null)
+                              IconButton(
+                                icon: const Icon(Icons.cancel, color: Colors.red, size: 20),
+                                onPressed: () async {
+                                  try {
+                                    await PrinterDBHelper().deletePrinterFromDB();
+                                    setState(() {
+                                      _connectedPrinterName = null;
+                                    });
+                                  } catch (e) {
+                                    debugPrint("Error removing printer: $e");
+                                  }
+                                },
+                              ),
                           ],
                         ),
                       ],
