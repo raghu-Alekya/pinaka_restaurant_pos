@@ -591,8 +591,8 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
                     color: isDark
-                        ? const Color(0xFF4A527A)
-                        : kCardBg,
+                        ? const Color(0xFF4A527A) // Dark mode
+                        : const Color(0xFF1A3C71), // Light mode
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(8),
                       topRight: const Radius.circular(8),

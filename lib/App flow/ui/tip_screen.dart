@@ -118,9 +118,13 @@ class _TipsScreenState extends State<TipsScreen> {
   }
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final int totalOrders = tipsData?.orders.length ?? 0;
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F6F6),
+      backgroundColor: isDark
+          ? const Color(0xFF161A26)
+          : const Color(0xFFF6F6F6),
       appBar: TopBar(
         token: widget.token,
         pin: widget.pin,restaurantId: widget.restaurantId,
@@ -146,16 +150,19 @@ class _TipsScreenState extends State<TipsScreen> {
           width: double.infinity,
           clipBehavior: Clip.antiAlias,
           decoration: ShapeDecoration(
-            color: Colors.white,
+            color: isDark
+                ? const Color(0xFF202433)
+                : Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
             ),
-            shadows: const [
+            shadows: [
               BoxShadow(
-                color: Color(0x3F474747),
+                color: isDark
+                    ? Colors.black.withOpacity(0.35)
+                    : const Color(0x3F474747),
                 blurRadius: 10,
-                offset: Offset(0, 1),
-                spreadRadius: 0,
+                offset: const Offset(0, 1),
               ),
             ],
           ),
@@ -167,63 +174,13 @@ class _TipsScreenState extends State<TipsScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
-                    // InkWell(
-                    //   borderRadius: BorderRadius.circular(10),
-                    //   onTap: () {
-                    //     Navigator.pushAndRemoveUntil(
-                    //       context,
-                    //       MaterialPageRoute(
-                    //         builder: (_) => HomeScreen(
-                    //           pin: widget.pin,
-                    //           token: widget.token,
-                    //           restaurantId: widget.restaurantId,
-                    //           restaurantName: widget.restaurantName,
-                    //         ),
-                    //       ),
-                    //           (route) => false,
-                    //     );
-                    //   },
-                    //   child: Container(
-                    //     width: 100,
-                    //     height: 40,
-                    //     padding: const EdgeInsets.symmetric(horizontal: 12),
-                    //     decoration: BoxDecoration(
-                    //       color: const Color(0xFF3B4259),
-                    //       borderRadius: BorderRadius.circular(10),
-                    //       boxShadow: const [
-                    //         BoxShadow(
-                    //           color: Color(0x19000000),
-                    //           blurRadius: 4,
-                    //           offset: Offset(0, 1),
-                    //         ),
-                    //       ],
-                    //     ),
-                    //     child: Row(
-                    //       children: const [
-                    //         Icon(
-                    //           Icons.arrow_back,
-                    //           color: Colors.white,
-                    //         ),
-                    //         SizedBox(width: 8),
-                    //         Text(
-                    //           'Back',
-                    //           style: TextStyle(
-                    //             color: Colors.white,
-                    //             fontWeight: FontWeight.w500,
-                    //           ),
-                    //         ),
-                    //       ],
-                    //     ),
-                    //   ),
-                    // ),
-                    // const SizedBox(width: 20),
 
-                    const Text(
+
+                    Text(
                       'Tips',
                       style: TextStyle(
-                        color: Color(0xFF1D1D1D),
+                        color: isDark ? Colors.white : const Color(0xFF1D1D1D),
                         fontSize: 24,
-                        fontFamily: 'Inter',
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -236,7 +193,9 @@ class _TipsScreenState extends State<TipsScreen> {
                       height: 40,
                       child: Container(
                         decoration: ShapeDecoration(
-                          color: const Color(0xFFF0F0F0),
+                          color: isDark
+                              ? const Color(0xFF2B3042)
+                              : const Color(0xFFF0F0F0),
                           shape: RoundedRectangleBorder(
                             side: const BorderSide(
                               width: 1,
@@ -256,8 +215,10 @@ class _TipsScreenState extends State<TipsScreen> {
                           controller: _datetipController,
                           readOnly: true,
                           textAlignVertical: TextAlignVertical.center,
-                          style: const TextStyle(
-                            color: Color(0xFF7E7E7E),
+                          style:  TextStyle(
+                            color: isDark
+                                ? Colors.white70
+                                : const Color(0xFF7E7E7E),
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
@@ -285,7 +246,7 @@ class _TipsScreenState extends State<TipsScreen> {
                               );
                             }
                           },
-                          decoration: const InputDecoration(
+                          decoration:  InputDecoration(
                             border: InputBorder.none,
                             enabledBorder: InputBorder.none,
                             focusedBorder: InputBorder.none,
@@ -297,7 +258,9 @@ class _TipsScreenState extends State<TipsScreen> {
                             suffixIcon: Icon(
                               Icons.calendar_month,
                               size: 20,
-                              color: Color(0xFF6D6D6D),
+                              color: isDark
+                                  ? Colors.white70
+                                  : const Color(0xFF6D6D6D),
                             ),
                           ),
                         ),
@@ -310,7 +273,9 @@ class _TipsScreenState extends State<TipsScreen> {
                         height: 40,
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         decoration: ShapeDecoration(
-                          color: const Color(0xFFF6F8FF),
+                          color: isDark
+                              ? const Color(0xFF2B3042)
+                              : const Color(0xFFF6F8FF),
                           shape: RoundedRectangleBorder(
                             side: BorderSide(
                               width: 1,
@@ -329,21 +294,23 @@ class _TipsScreenState extends State<TipsScreen> {
                         ),
                         child: Row(
                           children: [
-                            const Text(
+                             Text(
                               "Total tip:",
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Color(0xFF383838),
+                                color: isDark ? Colors.white70 : const Color(0xFF383838),
                               ),
                             ),
                             const SizedBox(width: 8),
                             Text(
                               "$_currency ${tipsData?.totalTipAmt.toStringAsFixed(2) ?? '0.00'}",
                               // "₹ ${tipsData?.totalTipAmt.toStringAsFixed(2) ?? '0.00'}",
-                              style: const TextStyle(
+                              style:  TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
-                                color: Color(0xFF022A7E),
+                                color: isDark
+                                    ? const Color(0xFF498FFF)
+                                    : const Color(0xFF022A7E),
                               ),
                             ),
                           ],
@@ -356,20 +323,25 @@ class _TipsScreenState extends State<TipsScreen> {
               /// Remaining screen content
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24,vertical: 0),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 0),
                   child: Container(
                     margin: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF2F2F2),
+                      color: isDark
+                          ? const Color(0xFF202433)
+                          : const Color(0xFFF2F2F2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Column(
                       children: [
+                        /// Header
                         Container(
                           height: 45,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF2A3558),
-                            borderRadius: BorderRadius.only(
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? const Color(0xFF2B4267)
+                                : const Color(0xFF2A3558),
+                            borderRadius: const BorderRadius.only(
                               topLeft: Radius.circular(8),
                               topRight: Radius.circular(8),
                             ),
@@ -434,12 +406,14 @@ class _TipsScreenState extends State<TipsScreen> {
                             child: CircularProgressIndicator(),
                           )
                               : tipsData == null || tipsData!.orders.isEmpty
-                              ? const Center(
+                              ? Center(
                             child: Text(
                               'No tips data available',
                               style: TextStyle(
                                 fontSize: 14,
-                                color: Colors.grey,
+                                color: isDark
+                                    ? Colors.white70
+                                    : Colors.grey,
                               ),
                             ),
                           )
@@ -461,7 +435,8 @@ class _TipsScreenState extends State<TipsScreen> {
                               );
 
                               return ListView.builder(
-                                padding: const EdgeInsets.only(bottom: 8),
+                                padding:
+                                const EdgeInsets.only(bottom: 8),
                                 itemCount: currentPageOrders.length,
                                 itemBuilder: (context, index) {
                                   final tip = currentPageOrders[index];
@@ -469,16 +444,24 @@ class _TipsScreenState extends State<TipsScreen> {
                                   return Container(
                                     height: 40,
                                     decoration: BoxDecoration(
-                                      color: Color(0xFFFCFCFF),
+                                      color: isDark
+                                          ? const Color(0xFF2B3042)
+                                          : const Color(0xFFFCFCFF),
                                       border: Border(
                                         bottom: BorderSide(
-                                          color: Color(0xFFE0E0E0),
+                                          color: isDark
+                                              ? Colors.white12
+                                              : const Color(0xFFE0E0E0),
                                         ),
                                       ),
-                                      borderRadius: index == currentPageOrders.length - 1
+                                      borderRadius: index ==
+                                          currentPageOrders.length -
+                                              1
                                           ? const BorderRadius.only(
-                                        bottomLeft: Radius.circular(8),
-                                        bottomRight: Radius.circular(8),
+                                        bottomLeft:
+                                        Radius.circular(8),
+                                        bottomRight:
+                                        Radius.circular(8),
                                       )
                                           : BorderRadius.zero,
                                     ),
@@ -488,10 +471,14 @@ class _TipsScreenState extends State<TipsScreen> {
                                           child: Center(
                                             child: Text(
                                               tip.orderDate,
-                                              style: const TextStyle(
-                                                  fontSize: 14,
-                                                  color: Color(0xFF3D3D3D),
-                                                  fontWeight:  FontWeight.w500
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: isDark
+                                                    ? Colors.white
+                                                    : const Color(
+                                                    0xFF3D3D3D),
+                                                fontWeight:
+                                                FontWeight.w500,
                                               ),
                                             ),
                                           ),
@@ -500,10 +487,14 @@ class _TipsScreenState extends State<TipsScreen> {
                                           child: Center(
                                             child: Text(
                                               '${tip.orderId}',
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 fontSize: 14,
-                                                color: Color(0xFF3D3D3D),
-                                                fontWeight:  FontWeight.w500,
+                                                color: isDark
+                                                    ? Colors.white
+                                                    : const Color(
+                                                    0xFF3D3D3D),
+                                                fontWeight:
+                                                FontWeight.w500,
                                               ),
                                             ),
                                           ),
@@ -512,11 +503,14 @@ class _TipsScreenState extends State<TipsScreen> {
                                           child: Center(
                                             child: Text(
                                               "$_currency${tip.orderAmt.toStringAsFixed(2)}",
-                                              // tip.orderAmt.toStringAsFixed(2),
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 fontSize: 14,
-                                                color: Color(0xFF3D3D3D),
-                                                fontWeight:  FontWeight.w500,
+                                                color: isDark
+                                                    ? Colors.white
+                                                    : const Color(
+                                                    0xFF3D3D3D),
+                                                fontWeight:
+                                                FontWeight.w500,
                                               ),
                                             ),
                                           ),
@@ -525,11 +519,14 @@ class _TipsScreenState extends State<TipsScreen> {
                                           child: Center(
                                             child: Text(
                                               "$_currency${tip.orderTipAmt.toStringAsFixed(2)}",
-                                              // tip.orderTipAmt.toStringAsFixed(2),
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 fontSize: 14,
-                                                color: Color(0xFF3D3D3D),
-                                                fontWeight:  FontWeight.w500,
+                                                color: isDark
+                                                    ? Colors.white
+                                                    : const Color(
+                                                    0xFF3D3D3D),
+                                                fontWeight:
+                                                FontWeight.w500,
                                               ),
                                             ),
                                           ),
@@ -542,28 +539,38 @@ class _TipsScreenState extends State<TipsScreen> {
                             },
                           ),
                         ),
+
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 8),
                           child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            mainAxisAlignment:
+                            MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
                                 "Total Orders: $totalOrders",
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
-                                  color: Colors.black87,
+                                  color: isDark
+                                      ? Colors.white
+                                      : Colors.black87,
                                 ),
                               ),
-
                               Container(
-                                margin: const EdgeInsets.only(right: 5),
+                                margin:
+                                const EdgeInsets.only(right: 5),
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
+                                  color: isDark
+                                      ? const Color(0xFF2B3042)
+                                      : Colors.white,
                                   border: Border.all(
-                                    color: const Color(0xFFEFEFEF),
+                                    color: isDark
+                                        ? Colors.white24
+                                        : const Color(0xFFEFEFEF),
                                   ),
-                                  borderRadius: BorderRadius.circular(4),
+                                  borderRadius:
+                                  BorderRadius.circular(4),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -576,9 +583,9 @@ class _TipsScreenState extends State<TipsScreen> {
                                         });
                                       }
                                           : null,
-                                      child: _paginationTextButton("Previous"),
+                                      child:
+                                      _paginationTextButton(context,"Previous"),
                                     ),
-
                                     GestureDetector(
                                       onTap: () {
                                         setState(() {
@@ -590,7 +597,6 @@ class _TipsScreenState extends State<TipsScreen> {
                                         selected: currentPage == 1,
                                       ),
                                     ),
-
                                     if (totalPages >= 2)
                                       GestureDetector(
                                         onTap: () {
@@ -603,7 +609,6 @@ class _TipsScreenState extends State<TipsScreen> {
                                           selected: currentPage == 2,
                                         ),
                                       ),
-
                                     if (totalPages >= 3)
                                       GestureDetector(
                                         onTap: () {
@@ -616,32 +621,32 @@ class _TipsScreenState extends State<TipsScreen> {
                                           selected: currentPage == 3,
                                         ),
                                       ),
-
                                     if (totalPages > 4)
-                                      _paginationTextButton("..."),
-
+                                      _paginationTextButton(context,"..."),
                                     if (totalPages > 4)
                                       GestureDetector(
                                         onTap: () {
                                           setState(() {
-                                            currentPage = totalPages;
+                                            currentPage =
+                                                totalPages;
                                           });
                                         },
                                         child: _pageButton(
                                           totalPages,
-                                          selected: currentPage == totalPages,
+                                          selected: currentPage ==
+                                              totalPages,
                                         ),
                                       ),
-
                                     GestureDetector(
-                                      onTap: currentPage < totalPages
+                                      onTap: currentPage <
+                                          totalPages
                                           ? () {
                                         setState(() {
                                           currentPage++;
                                         });
                                       }
                                           : null,
-                                      child: _paginationTextButton("Next"),
+                                      child: _paginationTextButton(context,"Next"),
                                     ),
                                   ],
                                 ),
@@ -653,29 +658,35 @@ class _TipsScreenState extends State<TipsScreen> {
                     ),
                   ),
                 ),
-              ),
+              )
             ],
           ),
         ),
       ),
     );
   }
-  Widget _paginationTextButton(String text) {
+  Widget _paginationTextButton(BuildContext context, String text) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       height: 32,
       padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(
           right: BorderSide(
-            color: Color(0xFFEFEFEF),
+            color: isDark
+                ? const Color(0xFF2B4267)
+                : const Color(0xFFEFEFEF),
           ),
         ),
       ),
       alignment: Alignment.center,
       child: Text(
         text,
-        style: const TextStyle(
-          color: Color(0xFF727272),
+        style: TextStyle(
+          color: isDark
+              ? Colors.white
+              : const Color(0xFF727272),
           fontSize: 11,
         ),
       ),
@@ -685,16 +696,20 @@ class _TipsScreenState extends State<TipsScreen> {
       int page, {
         bool selected = false,
       }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       width: 28,
       height: 32,
       decoration: BoxDecoration(
         color: selected
             ? const Color(0xFFFF4D20)
-            : Colors.white,
-        border: const Border(
+            : (isDark ? const Color(0xFF2B4267) : Colors.white),
+        border: Border(
           right: BorderSide(
-            color: Color(0xFFEFEFEF),
+            color: isDark
+                ? const Color(0xFF2B4267)
+                : const Color(0xFFEFEFEF),
           ),
         ),
       ),
@@ -704,10 +719,9 @@ class _TipsScreenState extends State<TipsScreen> {
         style: TextStyle(
           color: selected
               ? Colors.white
-              : const Color(0xFF727272),
+              : (isDark ? Colors.white : const Color(0xFF727272)),
           fontSize: 11,
-          fontWeight:
-          selected ? FontWeight.w600 : FontWeight.w400,
+          fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
         ),
       ),
     );

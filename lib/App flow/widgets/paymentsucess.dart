@@ -42,16 +42,22 @@ class Paymentsucess extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       width: MediaQuery.of(context).size.width * 0.45,
       height: MediaQuery.of(context).size.height * 0.60,
       decoration: ShapeDecoration(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        color: theme.cardColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
       ),
       child: Padding(
-        padding: EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(20.0),
         child: Center(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -63,7 +69,15 @@ class Paymentsucess extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomLeft,
-                    colors: [Color(0xFFBAE8AB), Color(0xFFFFFFFF)],
+                    colors: isDark
+                        ? [
+                      Colors.green.shade800,
+                      theme.cardColor,
+                    ]
+                        : const [
+                      Color(0xFFBAE8AB),
+                      Colors.white,
+                    ],
                   ),
                   borderRadius: BorderRadius.circular(63),
                 ),
@@ -78,48 +92,54 @@ class Paymentsucess extends StatelessWidget {
                   ),
                 ),
               ),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
+
               Text(
                 'Your transaction is successfully Done!',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Color(0xFF4C5F7D),
-                  fontSize: 22,
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w500,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  color: theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.w600,
                   height: 1.5,
                 ),
               ),
-              SizedBox(height: 15),
+
+              const SizedBox(height: 15),
+
               _buildInfoRow(context, paymentMode, amount),
-              SizedBox(height: 15),
+
+              const SizedBox(height: 15),
+
               _buildChangeRow(context, changeAmount),
-              SizedBox(height: 25),
+
+              const SizedBox(height: 25),
+
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   _buildActionButton(
                     context,
                     label: 'Void',
-                    color: Color(0xFFFD6464),
+                    color: Colors.red.shade400,
                     onTap: () async {
-                      final shouldVoid = await _showVoidConfirmation(context);
+                      final shouldVoid =
+                      await _showVoidConfirmation(context);
                       if (shouldVoid == true) {
                         if (!context.mounted) return;
                         Navigator.pop(context, "void");
                       }
                     },
                   ),
-                  SizedBox(width: 30),
+
+                  const SizedBox(width: 30),
+
                   _buildActionButton(
                     context,
                     label: 'Print',
-                    color: Color(0xFF1BA672),
+                    color: Colors.green.shade600,
                     onTap: () {
-                      // Close this dialog and open PrintReceipt
                       Navigator.pop(context);
 
-                      // Show PrintReceipt dialog
                       showDialog(
                         context: context,
                         barrierDismissible: false,
@@ -161,6 +181,9 @@ class Paymentsucess extends StatelessWidget {
   }
 
   Widget _buildInfoRow(BuildContext context, String? mode, String? amount) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     final formattedAmount =
     (double.tryParse(amount ?? '0') ?? 0).toStringAsFixed(2);
 
@@ -168,14 +191,19 @@ class Paymentsucess extends StatelessWidget {
       height: MediaQuery.of(context).size.height * 0.07,
       width: MediaQuery.of(context).size.width * 0.38,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: const Color(0x10000000), width: 0.8),
-        boxShadow: const [
+        border: Border.all(
+          color: theme.dividerColor.withOpacity(0.3),
+          width: 0.8,
+        ),
+        boxShadow: [
           BoxShadow(
-            color: Colors.black12,
+            color: isDark
+                ? Colors.black.withOpacity(0.4)
+                : Colors.black12,
             blurRadius: 10,
-            offset: Offset(0, 1),
+            offset: const Offset(0, 1),
           ),
         ],
       ),
@@ -185,18 +213,23 @@ class Paymentsucess extends StatelessWidget {
         children: [
           Text(
             mode ?? '',
-            style: const TextStyle(
+            style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
               fontSize: 20,
-              color: Color(0xFF4C5F7D),
+              color: isDark
+                  ? const Color(0xFF498FFF) // Dark mode
+                  : theme.colorScheme.onSurface, // Light mode
             ),
           ),
+
           Text(
             "₹$formattedAmount",
-            style: const TextStyle(
+            style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
               fontSize: 20,
-              color: Color(0xFF4C5F7D),
+              color: isDark
+                  ? const Color(0xFF498FFF) // Dark mode
+                  : theme.colorScheme.onSurface, // Light mode
             ),
           ),
         ],
@@ -207,41 +240,49 @@ class Paymentsucess extends StatelessWidget {
   Widget _buildChangeRow(BuildContext context, String? change) {
     debugPrint("🟢 Change received in UI = $change");
 
-    final double changeAmount = double.tryParse(change ?? '') ?? 0.0;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.07,
       width: MediaQuery.of(context).size.width * 0.38,
       decoration: BoxDecoration(
-        color: Color(0x101BA672),
+        color: isDark
+            ? const Color(0xFF1BA672).withOpacity(0.18)
+            : const Color(0x101BA672),
         borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: Color(0x101BA672), width: 0.8),
+        border: Border.all(
+          color: const Color(0xFF1BA672).withOpacity(0.4),
+          width: 0.8,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Color(0x101BA672),
+            color: isDark
+                ? Colors.black.withOpacity(0.35)
+                : const Color(0x101BA672),
             blurRadius: 10,
-            offset: Offset(0, 1),
+            offset: const Offset(0, 1),
           ),
         ],
       ),
-      padding: EdgeInsets.symmetric(horizontal: 30),
+      padding: const EdgeInsets.symmetric(horizontal: 30),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             "Change:",
-            style: TextStyle(
+            style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w500,
               fontSize: 20,
-              color: Color(0xFF1BA672),
+              color: const Color(0xFF1BA672),
             ),
           ),
           Text(
             "₹${(double.tryParse(change ?? '0.00')?.abs() ?? 0.00).toStringAsFixed(2)}",
-            style: TextStyle(
+            style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w500,
               fontSize: 20,
-              color: Color(0xFF1BA672),
+              color: const Color(0xFF1BA672),
             ),
           ),
         ],
@@ -249,11 +290,15 @@ class Paymentsucess extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButton(BuildContext context, {
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildActionButton(
+      BuildContext context, {
+        required String label,
+        required Color color,
+        required VoidCallback onTap,
+      }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -264,20 +309,21 @@ class Paymentsucess extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           boxShadow: [
             BoxShadow(
-              color: Color(0x19000000),
-              blurRadius: 4,
-              offset: Offset(0, 1),
+              color: isDark
+                  ? Colors.black.withOpacity(0.45)
+                  : Colors.black.withOpacity(0.10),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
         child: Center(
           child: Text(
             label,
-            style: TextStyle(
+            style: theme.textTheme.titleMedium?.copyWith(
               color: Colors.white,
               fontSize: 22,
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
@@ -286,7 +332,8 @@ class Paymentsucess extends StatelessWidget {
   }
 
   Future<bool?> _showVoidConfirmation(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return showDialog<bool>(
       context: context,
@@ -294,23 +341,25 @@ class Paymentsucess extends StatelessWidget {
       builder: (dialogContext) {
         return Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              maxWidth: 400,
-            ),
+            constraints: const BoxConstraints(maxWidth: 400),
             child: Dialog(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
-              backgroundColor: isDark ? const Color(0xFF1E1E2E) : Colors.white,
+              backgroundColor: theme.dialogTheme.backgroundColor ??
+                  theme.colorScheme.surface,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
+                        color: Colors.red.withOpacity(isDark ? 0.2 : 0.1),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -320,53 +369,65 @@ class Paymentsucess extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 10),
+
                     Text(
                       "Void Payment",
-                      style: TextStyle(
-                        fontSize: 14,
+                      style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : Colors.black,
+                        color: theme.colorScheme.onSurface,
                       ),
                     ),
+
                     const SizedBox(height: 6),
+
                     Text(
                       "Do you want to void this payment?",
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDark ? Colors.white70 : Colors.black54,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurface.withOpacity(0.7),
                       ),
                     ),
+
                     const SizedBox(height: 16),
+
                     Row(
                       children: [
                         Expanded(
                           child: OutlinedButton(
                             style: OutlinedButton.styleFrom(
+                              side: BorderSide(
+                                color: theme.colorScheme.outline,
+                              ),
                               padding: const EdgeInsets.symmetric(vertical: 10),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
                             ),
-                            onPressed: () => Navigator.pop(dialogContext, false),
-                            child: const Text("Cancel"),
+                            onPressed: () =>
+                                Navigator.pop(dialogContext, false),
+                            child: Text(
+                              "Cancel",
+                              style: TextStyle(
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 8),
+
                         Expanded(
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 10),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
                             ),
-                            onPressed: () => Navigator.pop(dialogContext, true),
-                            child: const Text(
-                              "Void",
-                              style: TextStyle(color: Colors.white),
-                            ),
+                            onPressed: () =>
+                                Navigator.pop(dialogContext, true),
+                            child: const Text("Void"),
                           ),
                         ),
                       ],

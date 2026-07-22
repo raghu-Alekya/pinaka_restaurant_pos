@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
 
 import '../../blocs/Bloc Event/kot_event.dart';
 import '../../blocs/Bloc Event/void_item_evnts.dart';
@@ -10,6 +11,7 @@ import '../../blocs/Bloc Logic/void_item_bloc.dart';
 import '../../blocs/Bloc State/void_item_state.dart';
 import '../../models/order/void_kot_items.dart';
 import '../../repositories/void_item_repository.dart';
+import '../../utils/theme_provider.dart';
 
 class VoidItemsDialog extends StatefulWidget {
   final List<KotItem> items;
@@ -106,15 +108,22 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
 
   // ─── Header ────────────────────────────────
   Widget _dialogHeader(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       height: 58,
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      decoration: const BoxDecoration(
-        color: Color(0xffF4F6FB),
-        borderRadius: BorderRadius.only(
+      decoration: BoxDecoration(
+        color: isDark
+            ? const Color(0xFF2B3042)
+            : const Color(0xFFF4F6FB),
+        borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(12),
           topRight: Radius.circular(12),
         ),
+        border: isDark
+            ? Border.all(color: Colors.white24)
+            : null,
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -124,7 +133,9 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w500,
-              color: Color(0xff3C4A63),
+              color: isDark
+                  ? Colors.white
+                  : const Color(0xFF3C4A63),
             ),
           ),
           InkWell(
@@ -137,59 +148,81 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                 color: Color(0xFFFF4B4B),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.close, color: Colors.white, size: 18),
+              child: const Icon(
+                Icons.close,
+                color: Colors.white,
+                size: 18,
+              ),
             ),
           ),
         ],
       ),
     );
   }
-
   Widget _tableHeaderRow({bool isLeft = false}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       height: 44,
-      decoration: const BoxDecoration(
-        color: Color(0xFFDCDADA),
-        borderRadius: BorderRadius.only(
+      decoration: BoxDecoration(
+        color: isDark
+            ? const Color(0xFF34384F)
+            : const Color(0xFFDCDADA),
+        borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(8),
           topRight: Radius.circular(8),
         ),
+        border: isDark
+            ? Border.all(color: Colors.white24)
+            : null,
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Row(
         children: [
           SizedBox(
             width: isLeft ? 36 : 28,
-            child: const Center(
+            child: Center(
               child: Text(
                 "#",
-                style: TextStyle(fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
               ),
             ),
           ),
-          const Expanded(
+          Expanded(
             flex: 4,
             child: Text(
               "Item Name",
-              style: TextStyle(fontWeight: FontWeight.w600),
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white : Colors.black,
+              ),
             ),
           ),
-          const Expanded(
+          Expanded(
             flex: 2,
             child: Center(
               child: Text(
                 "Quantity",
-                style: TextStyle(fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
               ),
             ),
           ),
-          const Expanded(
+          Expanded(
             flex: 2,
             child: Align(
               alignment: Alignment.centerRight,
               child: Text(
                 "Amount",
-                style: TextStyle(fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
               ),
             ),
           ),
@@ -202,6 +235,8 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
     required IconData icon,
     required VoidCallback? onTap,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(4),
@@ -209,16 +244,29 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
         width: 26,
         height: 26,
         decoration: BoxDecoration(
-          color: const Color(0xFFFFE6E6),
+          color: isDark
+              ? const Color(0xFF34384F)
+              : const Color(0xFFFFE6E6),
           borderRadius: BorderRadius.circular(4),
+          border: Border.all(
+            color: isDark
+                ? Colors.white24
+                : Colors.transparent,
+          ),
         ),
-        child: Icon(icon, size: 16, color: Colors.black87),
+        child: Icon(
+          icon,
+          size: 16,
+          color: isDark
+              ? Colors.white
+              : Colors.black87,
+        ),
       ),
     );
   }
-
   // ─── LEFT PANEL (Original KOT - No changes) ────────────────────────────────
   Widget _leftPanel() {
+    final isDark = Provider.of<ThemeProvider>(context).isDark;
     return Expanded(
         flex: 1,
         child:Container(
@@ -240,20 +288,35 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
             child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     "To void an item, please select the item and provide a reason for voiding.",
-                    style: TextStyle(fontSize: 14, color: Color(0xFF4C5F7D),fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: isDark
+                          ? Colors.white70
+                          : const Color(0xFF4C5F7D),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Expanded(
                     child: Container(
                       clipBehavior: Clip.antiAlias,
                       decoration: ShapeDecoration(
-                        color: Colors.white,
+                        color: isDark
+                            ? const Color(0xFF202433)
+                            : Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
+                          side: BorderSide(
+                            color: isDark
+                                ? Colors.white24
+                                : const Color(0xFFE6E6E6),
+                          ),
                         ),
-                        shadows: const [
+                        shadows: isDark
+                            ? []
+                            : const [
                           BoxShadow(
                             color: Color(0x19000000),
                             blurRadius: 0,
@@ -269,7 +332,9 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                             child: Container(
                               decoration: BoxDecoration(
                                 border: Border.all(
-                                  color: const Color(0xFFE6E6E6),
+                                  color: isDark
+                                      ? Colors.white24
+                                      : const Color(0xFFE6E6E6),
                                 ),
                                 borderRadius: const BorderRadius.only(
                                   bottomLeft: Radius.circular(8),
@@ -457,6 +522,7 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
 
   // ─── RIGHT PANEL (Editable) ────────────────────────────────
   Widget _rightPanel() {
+    final bool isDark = Provider.of<ThemeProvider>(context).isDark;
     return Expanded(
         flex: 1,
         child: Container(
@@ -545,15 +611,17 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                                             controller: _rightScrollController,
                                             itemCount: rightItems.length,
                                             separatorBuilder: (_, __) =>
-                                            const Divider(
+                                             Divider(
                                               height: 1,
-                                              color: Color(0xFFEDEDED),
+                                              color: isDark
+                                                  ? Colors.white24
+                                                  : Color(0xFFEDEDED),
                                             ),
                                             itemBuilder: (context, index) {
                                               final item = rightItems[index];
 
                                               return Padding(
-                                                padding: const EdgeInsets.symmetric(
+                                                padding: EdgeInsets.symmetric(
                                                     horizontal: 12, vertical: 8),
                                                 child: Row(
                                                   children: [
@@ -569,9 +637,12 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                                                         children: [
                                                           Text(
                                                             item.productName,
-                                                            style: const TextStyle(
+                                                            style: TextStyle(
                                                               fontSize: 13,
                                                               fontWeight: FontWeight.w500,
+                                                              color: isDark
+                                                                  ? Colors.white
+                                                                  : Colors.black,
                                                             ),
                                                           ),
                                                           if (item.modifiers.isNotEmpty)
@@ -581,10 +652,12 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                                                               child: Text(
                                                                 "Modifiers: ${item.modifiers
                                                                     .join(", ")}",
-                                                                style: const TextStyle(
+                                                                style: TextStyle(
                                                                   fontSize: 10,
-                                                                  color: Colors.blueGrey,
                                                                   fontWeight: FontWeight.w500,
+                                                                  color: isDark
+                                                                      ? Colors.lightBlueAccent
+                                                                      : Colors.blueGrey,
                                                                 ),
                                                               ),
                                                             ),
@@ -620,8 +693,13 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
 
                                                           Text(
                                                             "${item.quantity}",
-                                                            style: const TextStyle(
-                                                                fontWeight: FontWeight.w600),
+                                                            style: TextStyle(
+                                                              fontWeight: FontWeight.w600,
+                                                              fontSize: 12,
+                                                              color: isDark
+                                                                  ? Colors.white
+                                                                  : Colors.black,
+                                                            ),
                                                           ),
 
                                                           const SizedBox(width: 8),
@@ -669,8 +747,12 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                                                         alignment: Alignment.centerRight,
                                                         child: Text(
                                                           item.amount.toStringAsFixed(2),
-                                                          style: const TextStyle(
-                                                              fontWeight: FontWeight.w600),
+                                                          style: TextStyle(
+                                                            fontWeight: FontWeight.w600,
+                                                            color: isDark
+                                                                ? Colors.white
+                                                                : const Color(0xFF2C3E50),
+                                                          ),
                                                         ),
                                                       ),
                                                     ),
@@ -697,20 +779,37 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                           ValueListenableBuilder<List<KotItem>>(
                             valueListenable: itemsNotifier,
                             builder: (context, items, _) {
-                              final subtotal = items.fold(
-                                  0.0, (sum, item) => sum + item.amount);
-                              final totalItems = items.fold(
-                                  0, (sum, item) => sum + item.quantity);
+                              final bool isDark =
+                                  Theme.of(context).brightness == Brightness.dark;
+
+                              final subtotal =
+                              items.fold(0.0, (sum, item) => sum + item.amount);
+                              final totalItems =
+                              items.fold(0, (sum, item) => sum + item.quantity);
 
                               return Row(
                                 children: [
-                                  Text("Total Items : $totalItems",
-                                      style: const TextStyle(
-                                          fontSize: 14, fontWeight: FontWeight.w600)),
+                                  Text(
+                                    "Total Items : $totalItems",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark
+                                          ? Colors.white
+                                          : const Color(0xFF2C3E50),
+                                    ),
+                                  ),
                                   const Spacer(),
-                                  Text("Sub Total : ${subtotal.toStringAsFixed(2)}",
-                                      style: const TextStyle(
-                                          fontSize: 14, fontWeight: FontWeight.w600)),
+                                  Text(
+                                    "Sub Total : ${subtotal.toStringAsFixed(2)}",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: isDark
+                                          ? Colors.white
+                                          : const Color(0xFF2C3E50),
+                                    ),
+                                  ),
                                 ],
                               );
                             },
@@ -766,11 +865,19 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                                 },
 
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFFF6B6B),
+                                  backgroundColor: isDark
+                                      ? const Color(0xFFFF4D4F)
+                                      : const Color(0xFFFF6B6B),
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(6),
+                                    side: BorderSide(
+                                      color: isDark
+                                          ? Colors.white24
+                                          : Colors.transparent,
+                                    ),
                                   ),
-                                  elevation: 0,
                                 ),
                                 child: const Text(
                                   " Save ",
@@ -799,6 +906,8 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return BlocListener<UpdatekotBloc, UpdatekotState>(
       listener: (context, state) {
         if (state is UpdatekotSuccess) {
@@ -834,20 +943,32 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
       child: Dialog(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: isDark
+                ? Colors.white24
+                : Colors.transparent,
+          ),
         ),
-        insetPadding: const EdgeInsets.symmetric(horizontal: 26, vertical: 10),
-        backgroundColor: Colors.white,
+        insetPadding: const EdgeInsets.symmetric(
+          horizontal: 26,
+          vertical: 10,
+        ),
+        backgroundColor: isDark
+            ? const Color(0xFF202433)
+            : Colors.white,
         child: Container(
-          width: MediaQuery
-              .of(context)
-              .size
-              .width * 0.82,
-          height: MediaQuery
-              .of(context)
-              .size
-              .height * 0.82,
+          width: MediaQuery.of(context).size.width * 0.82,
+          height: MediaQuery.of(context).size.height * 0.82,
           decoration: BoxDecoration(
-            // border: Border.all(color: const Color(0xFF1E63FF), width: 2),
+            color: isDark
+                ? const Color(0xFF202433)
+                : Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white24
+                  : Colors.transparent,
+            ),
           ),
           child: Column(
             children: [
@@ -855,7 +976,9 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 4),
+                    horizontal: 14,
+                    vertical: 4,
+                  ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [

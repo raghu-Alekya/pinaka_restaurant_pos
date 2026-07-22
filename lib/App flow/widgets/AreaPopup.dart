@@ -56,6 +56,7 @@ class _AreaPopupState extends State<AreaPopup> {
   }
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: widget.togglePopup,
       child: Container(
@@ -72,7 +73,12 @@ class _AreaPopupState extends State<AreaPopup> {
                 width: 340,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
+                  color: isDark
+                      ? const Color(0xFF202433)
+                      : Colors.white,
+                  gradient: isDark
+                      ? null
+                      : const LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
@@ -82,13 +88,15 @@ class _AreaPopupState extends State<AreaPopup> {
                     stops: [0.35, 1.0],
                   ),
                   borderRadius: BorderRadius.circular(16),
-                  border: const Border(
-                    top: BorderSide(
-                      color: Color(0xFF1F9724),
-                      width: 4,
-                    ),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white24
+                        : const Color(0xFF1F9724),
+                    width: isDark ? 1 : 4,
                   ),
-                  boxShadow: const [
+                  boxShadow: isDark
+                      ? []
+                      : const [
                     BoxShadow(
                       color: Color(0x4C4C5F7D),
                       blurRadius: 10,
@@ -108,10 +116,14 @@ class _AreaPopupState extends State<AreaPopup> {
                           width: 46,
                           height: 46,
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: isDark
+                                ? const Color(0xFF2B3042)
+                                : Colors.white,
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: const Color(0xFF1F9724),
+                              color: isDark
+                                  ? Colors.white24
+                                  : const Color(0xFF1F9724),
                             ),
                           ),
                           child: Padding(
@@ -128,22 +140,24 @@ class _AreaPopupState extends State<AreaPopup> {
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
+                            children: [
 
                               Text(
                                 "Create a Area/Zone",
                                 style: TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.w700,
+                                  color: isDark ? Colors.white : Colors.black,
                                 ),
                               ),
-
                               SizedBox(height: 4),
 
                               Text(
                                 "Create a zone to organize tables and manage seating",
                                 style: TextStyle(
-                                  color: Color(0xFF6E6E6E),
+                                  color: isDark
+                                      ? Colors.white70
+                                      : const Color(0xFF6E6E6E),
                                   fontSize: 14,
                                 ),
                               ),
@@ -155,9 +169,10 @@ class _AreaPopupState extends State<AreaPopup> {
                     SizedBox(height: 5),
                     Text(
                       "Area/Zone",
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white : Colors.black,
                       ),
                     ),
                     SizedBox(height: 5),
@@ -165,12 +180,18 @@ class _AreaPopupState extends State<AreaPopup> {
                       height: 46,
                       padding: const EdgeInsets.symmetric(horizontal: 14),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF6F6F6),
+                        color: isDark
+                            ? const Color(0xFF2B3042)
+                            : const Color(0xFFF6F6F6),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: const Color(0xFFF1F1F1),
+                          color: isDark
+                              ? Colors.white24
+                              : const Color(0xFFF1F1F1),
                         ),
-                        boxShadow: const [
+                        boxShadow: isDark
+                            ? []
+                            : const [
                           BoxShadow(
                             color: Color(0x26000000),
                             blurRadius: 2,
@@ -183,15 +204,18 @@ class _AreaPopupState extends State<AreaPopup> {
                           Expanded(
                             child: TextField(
                               controller: widget.areaNameController,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
+                                color: isDark ? Colors.white : Colors.black,
                               ),
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 border: InputBorder.none,
                                 hintText: "Type a Area/Zone name",
                                 hintStyle: TextStyle(
-                                  color: Color(0xFFA19999),
+                                  color: isDark
+                                      ? Colors.white54
+                                      : const Color(0xFFA19999),
                                   fontSize: 14,
                                 ),
                                 isDense: true,
@@ -240,7 +264,7 @@ class _AreaPopupState extends State<AreaPopup> {
                           height: 40,
                           child: OutlinedButton(
                             onPressed: () {
-                              Navigator.pop(context);
+                              widget.togglePopup();
                             },
                             // onPressed: widget.isLoading
                             //     ? null
@@ -250,18 +274,24 @@ class _AreaPopupState extends State<AreaPopup> {
                             //   });
                             // },
                             style: OutlinedButton.styleFrom(
-                              backgroundColor: const Color(0xFFF6F6F6),
-                              side: const BorderSide(
-                                color: Color(0xFFC3C3C3),
+                              backgroundColor: isDark
+                                  ? const Color(0xFF34384F)
+                                  : const Color(0xFFF6F6F6),
+                              side: BorderSide(
+                                color: isDark
+                                    ? Colors.white24
+                                    : const Color(0xFFC3C3C3),
                               ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10),
                               ),
                             ),
-                            child: const Text(
+                            child: Text(
                               "Cancel",
                               style: TextStyle(
-                                color: Color(0xFF535353),
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF535353),
                                 fontWeight: FontWeight.w600,
                               ),
                             ),

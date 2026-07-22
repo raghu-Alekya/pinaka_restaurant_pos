@@ -858,6 +858,7 @@ class _paymentsummaryState extends State<paymentsummary> {
   // ═══════════════════════════════════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     debugPrint("🔥 paymentsummary build called");
 
     return MultiBlocListener(
@@ -1176,7 +1177,9 @@ class _paymentsummaryState extends State<paymentsummary> {
 
       child: Scaffold(
 
-        backgroundColor: const Color(0xFFF5F5F6),
+        backgroundColor: isDark
+            ? const Color(0xFF161A26)
+            : const Color(0xFFF5F5F6),
         // UI is always visible - no loading state
         body: BlocBuilder<PaymentBloc, PaymentState>(
           buildWhen: (prev, curr) {
@@ -1275,19 +1278,23 @@ class _paymentsummaryState extends State<paymentsummary> {
             ? const Color(0xFF202433)
             : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
+        boxShadow: isDark
+            ? [
           BoxShadow(
-            color: isDark
-                ? Colors.black.withOpacity(0.35)
-                : Colors.white,
-            offset: const Offset(-4, -4),
+            color: Colors.black.withOpacity(0.45),
+            offset: const Offset(4, 4),
+            blurRadius: 8,
+          ),
+        ]
+            : const [
+          BoxShadow(
+            color: Colors.white,
+            offset: Offset(-4, -4),
             blurRadius: 8,
           ),
           BoxShadow(
-            color: isDark
-                ? Colors.black54
-                : const Color(0xFFD9E6FF),
-            offset: const Offset(4, 4),
+            color: Color(0xFFD9E6FF),
+            offset: Offset(4, 4),
             blurRadius: 8,
           ),
         ],
@@ -1434,15 +1441,14 @@ class _paymentsummaryState extends State<paymentsummary> {
                                   ),
                                   shadows: payDisabled
                                       ? []
+                                      : isDark
+                                      ? []
                                       : const [
-                                    // Top-left highlight
                                     BoxShadow(
                                       color: Colors.white,
                                       offset: Offset(-4, -4),
                                       blurRadius: 4,
                                     ),
-
-                                    // Bottom-right shadow
                                     BoxShadow(
                                       color: Color(0xFFFFCCCC),
                                       offset: Offset(4, 4),
@@ -1561,7 +1567,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                     Icons.backspace_outlined,
                     color: disabled
                         ? Colors.grey
-                        : const Color(0xFF0C3952),
+                        : (isDark ? Colors.white : const Color(0xFF0C3952)),
                     size: 22,
                   )
                       : Text(
@@ -2634,6 +2640,7 @@ class _paymentsummaryState extends State<paymentsummary> {
     VoidCallback? onDelete,
     bool enabled = true,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     // ── Only change: gradient per tile color ──
     LinearGradient _tileGradient(Color base) {
       if (base == const Color(0xFF1E88E5)) {
@@ -2658,11 +2665,14 @@ class _paymentsummaryState extends State<paymentsummary> {
       return LinearGradient(colors: [base, base]);
     }
 
-    final Color labelColor = isApplied ? Colors.white : borderColor;
-    final Color subColor =
-    isApplied
+    final Color labelColor = isDark
+        ? Colors.white
+        : (isApplied ? Colors.white : borderColor);
+    final Color subColor = isDark
+        ? Colors.white70
+        : (isApplied
         ? Colors.white.withOpacity(0.9)
-        : borderColor.withOpacity(0.8);
+        : borderColor.withOpacity(0.8));
     final Color activeBorder =
     isApplied ? iconBg : borderColor.withOpacity(0.4);
 
@@ -2673,11 +2683,29 @@ class _paymentsummaryState extends State<paymentsummary> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           decoration: BoxDecoration(
-            // ── Only change: gradient when applied, white when not ──
-            gradient: isApplied ? _tileGradient(iconBg) : null,
-            color: isApplied ? null : Colors.white,
+            gradient: isDark
+                ? LinearGradient(
+              colors: [
+                borderColor.withOpacity(0.95),
+                borderColor.withOpacity(0.55),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            )
+                : (isApplied ? _tileGradient(iconBg) : null),
+
+            color: isDark
+                ? null
+                : (isApplied ? null : Colors.white),
+
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: activeBorder, width: isApplied ? 0 : 1.2),
+
+            border: Border.all(
+              color: isDark
+                  ? borderColor.withOpacity(0.35)
+                  : activeBorder,
+              width: 1,
+            ),
           ),
           child: Row(
             children: [
@@ -2713,15 +2741,19 @@ class _paymentsummaryState extends State<paymentsummary> {
                   child: Container(
                     width: 38,
                     height: 38,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.black.withOpacity(0.25)
+                          : Colors.white,
                       shape: BoxShape.circle,
                     ),
                     // ── Only change: trash icon instead of close ──
-                    child: const Icon(
+                    child: Icon(
                       Icons.delete_outline_rounded,
                       size: 25,
-                      color: Colors.red,
+                      color: isDark
+                          ? Colors.white
+                          : Colors.red,
                     ),
                   ),
                 )
@@ -2730,7 +2762,9 @@ class _paymentsummaryState extends State<paymentsummary> {
                   width: 34,
                   height: 34,
                   decoration: BoxDecoration(
-                    color: iconBg,
+                    color: isDark
+                        ? Colors.black.withOpacity(0.18)
+                        : iconBg,
                     shape: BoxShape.circle,
                   ),
                   // ── Only change: iconWidget wrapped in CircleAvatar ──
@@ -2756,29 +2790,53 @@ class _paymentsummaryState extends State<paymentsummary> {
   }
 
   Widget _svcChargeTile(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final bool applied =
         isServiceChargeApplied && selectedServiceCharge != null;
     final Color base = const Color(0xFFE57F69);
-    final Color labelColor = applied ? Colors.white : const Color(0xFFC62828);
-    final Color subColor = Colors.white.withOpacity(0.9);
+    final Color labelColor = isDark
+        ? Colors.white
+        : (applied ? Colors.white : const Color(0xFFC62828));
+
+    final Color subColor =
+    isDark ? Colors.white70 : Colors.white.withOpacity(0.9);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        // ── Only change: red gradient when applied ──
-        gradient:
-        applied
+        gradient: isDark
             ? const LinearGradient(
-          colors: [Color(0xFFF8AD9D), Color(0xFFE57F69)],
+          colors: [
+            Color(0xFFCC5A35),
+            Color(0xFF8F3D21),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         )
-            : null,
-        color: applied ? null : Colors.white,
+            : (applied
+            ? const LinearGradient(
+          colors: [
+            Color(0xFFF8AD9D),
+            Color(0xFFE57F69),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        )
+            : null),
+
+        color: isDark
+            ? null
+            : (applied ? null : Colors.white),
+
         borderRadius: BorderRadius.circular(10),
+
         border: Border.all(
-          color: applied ? Colors.transparent : base.withOpacity(0.4),
-          width: applied ? 0 : 1.2,
+          color: isDark
+              ? Colors.white24
+              : (applied
+              ? Colors.transparent
+              : base.withOpacity(0.4)),
+          width: 1,
         ),
       ),
       child: Row(
@@ -2813,17 +2871,24 @@ class _paymentsummaryState extends State<paymentsummary> {
                       child: DropdownButton<int>(
                         value: selectedServiceCharge,
                         isDense: true,
-                        hint: const Text(
+                        hint: Text(
                           "Select %",
                           style: TextStyle(
                             fontSize: 11,
-                            color: Color(0xFF777777),
+                            color: isDark ? Colors.white70 : const Color(0xFF777777),
                           ),
                         ),
-                        style: const TextStyle(
+
+                        style: TextStyle(
                           fontSize: 11,
-                          color: Color(0xFF212121),
+                          color: isDark ? Colors.white : const Color(0xFF212121),
                         ),
+
+                        dropdownColor:
+                        isDark ? const Color(0xFF2B2B2B) : Colors.white,
+
+                        iconEnabledColor:
+                        isDark ? Colors.white : Colors.black,
                         items: const [
                           DropdownMenuItem(value: 1, child: Text("1%")),
                           DropdownMenuItem(value: 2, child: Text("2%")),
@@ -2847,15 +2912,19 @@ class _paymentsummaryState extends State<paymentsummary> {
               child: Container(
                 width: 38,
                 height: 38,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? Colors.black.withOpacity(0.25)
+                      : Colors.white,
                   shape: BoxShape.circle,
                 ),
-                // ── Only change: trash icon ──
-                child: const Icon(
+
+                child: Icon(
                   Icons.delete_outline_rounded,
                   size: 25,
-                  color: Colors.red,
+                  color: isDark
+                      ? Colors.white
+                      : Colors.red,
                 ),
               ),
             )
@@ -2863,8 +2932,10 @@ class _paymentsummaryState extends State<paymentsummary> {
             Container(
               width: 34,
               height: 34,
-              decoration: const BoxDecoration(
-                color: Color(0xFFC62828),
+              decoration:  BoxDecoration(
+                color: isDark
+                    ? Colors.black.withOpacity(0.20)
+                    : const Color(0xFFC62828),
                 shape: BoxShape.circle,
               ),
               // ── Only change: icon wrapped in CircleAvatar ──
@@ -2950,8 +3021,8 @@ class NumberPad extends StatelessWidget {
           flex: 1,
           child: Column(
             children: [
-              _buildSideButton("⌫"),
-              _buildSideButton("C"),
+              _buildSideButton(context, "⌫"),
+              _buildSideButton(context, "C"),
               Expanded(
                 flex: 2,
                 child: Padding(
@@ -3045,7 +3116,9 @@ class NumberPad extends StatelessWidget {
     );
   }
 
-  Widget _buildSideButton(String label) {
+  Widget _buildSideButton(BuildContext context, String label) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.all(8.0),
@@ -3053,9 +3126,18 @@ class NumberPad extends StatelessWidget {
           onTap: () => onKeyPressed(label),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isDark
+                  ? const Color(0xFF34384F)
+                  : Colors.white,
               borderRadius: BorderRadius.circular(10),
-              boxShadow: const [
+              border: Border.all(
+                color: isDark
+                    ? const Color(0xFF4A527A)
+                    : Colors.grey.shade300,
+              ),
+              boxShadow: isDark
+                  ? []
+                  : const [
                 BoxShadow(
                   color: Colors.black12,
                   blurRadius: 4,
@@ -3066,10 +3148,12 @@ class NumberPad extends StatelessWidget {
             alignment: Alignment.center,
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF4C5F7D),
+                color: isDark
+                    ? Colors.white
+                    : const Color(0xFF4C5F7D),
               ),
             ),
           ),

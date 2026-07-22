@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../repositories/TIP_repository.dart';
 import '../../utils/SessionManager.dart';
+import '../../utils/theme_provider.dart';
 
 class TipPopup extends StatefulWidget {
   final int orderId;
@@ -162,8 +164,9 @@ class _TipPopupState extends State<TipPopup> {
     }
   }
 
-  Widget _buildTipButton(int value) {
+  Widget _buildTipButton(int value, bool isDark) {
     final bool isSelected = selectedTip == value;
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -176,21 +179,26 @@ class _TipPopupState extends State<TipPopup> {
         height: 55,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: const Color(0xFF2353B7),
+          color: isSelected
+              ? const Color(0xFF2353B7)
+              : (isDark
+              ? const Color(0xFF374151)
+              : Colors.white),
           borderRadius: BorderRadius.circular(14),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x3F223F7D),
-              blurRadius: 6,
-              offset: Offset(5,5),
-            )
-          ],
+          border: Border.all(
+            color: isSelected
+                ? const Color(0xFF2353B7)
+                : (isDark
+                ? const Color(0xFF4B5563)
+                : const Color(0xFFD1D5DB)),
+          ),
         ),
         child: Text(
-          // value.toString(),
           "$_currencySymbol${value.toDouble().toStringAsFixed(2)}",
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: isSelected
+                ? Colors.white
+                : (isDark ? Colors.white : Colors.black),
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
@@ -206,11 +214,14 @@ class _TipPopupState extends State<TipPopup> {
       }) {
     final bool isClear = label == "Clear";
     final bool isBack = label == "⌫";
+    final isDark = Provider.of<ThemeProvider>(context).isDark;
 
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
-        boxShadow: const [
+        boxShadow: isDark
+            ? []
+            : const [
           BoxShadow(
             color: Color(0x3F000000),
             blurRadius: 5,
@@ -224,8 +235,12 @@ class _TipPopupState extends State<TipPopup> {
         style: ElevatedButton.styleFrom(
           backgroundColor: color ??
               (isClear || isBack
-                  ? Colors.white
-                  : const Color(0xFFF1F5FF)),
+                  ? (isDark
+                  ? const Color(0xFF34384F)
+                  : Colors.white)
+                  : (isDark
+                  ? const Color(0xFF2B3042)
+                  : const Color(0xFFF1F5FF))),
           foregroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
           elevation: 0,
@@ -236,16 +251,22 @@ class _TipPopupState extends State<TipPopup> {
                   (isClear
                       ? const Color(0xFFFF4D20)
                       : isBack
-                      ? const Color(0xFF4C5F7D)
-                      : Colors.transparent),
+                      ? (isDark
+                      ? Colors.white24
+                      : const Color(0xFF4C5F7D))
+                      : (isDark
+                      ? Colors.white24
+                      : Colors.transparent)),
               width: 1,
             ),
           ),
         ),
         child: isBack
-            ? const Icon(
+            ? Icon(
           Icons.backspace_outlined,
-          color: Color(0xFF4C5F7D),
+          color: isDark
+              ? Colors.white
+              : const Color(0xFF4C5F7D),
           size: 25,
         )
             : Text(
@@ -255,7 +276,9 @@ class _TipPopupState extends State<TipPopup> {
             fontWeight: FontWeight.w500,
             color: isClear
                 ? const Color(0xFFFE6464)
-                : const Color(0xFF4C5F7D),
+                : (isDark
+                ? Colors.white
+                : const Color(0xFF4C5F7D)),
           ),
         ),
       ),
@@ -264,234 +287,272 @@ class _TipPopupState extends State<TipPopup> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final bool isDark = themeProvider.isDark;
     return Dialog(
-      backgroundColor: Colors.white,
-      insetPadding: const EdgeInsets.all(20),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(6),
-        // side: const BorderSide(color: Colors.blueAccent, width: 1),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: SizedBox(
-          width: 650,
-          height: 400,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // ---------- Header ----------
-              Row(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(20),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark
+                ? const Color(0xFF1F2937)
+                : Colors.white,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: isDark
+                  ? const Color(0xFF374151)
+                  : const Color(0xFFDFDFDF),
+            ),
+          ),
+
+          child: Padding(
+            padding: const EdgeInsets.all(30),
+            child: SizedBox(
+              width: 650,
+              height: 400,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFDDFFF8),
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF7CCABB),
-                        shape: BoxShape.circle,
+                  // ---------- Header ----------
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFDDFFF8),
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF7CCABB),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Image.asset(
+                            "assets/Tips Icon.png",
+                            width: 28,
+                            height: 28,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
                       ),
-                      child: Image.asset(
-                        "assets/Tips Icon.png",
-                        width: 26,
-                        height: 26,
-                        fit: BoxFit.contain,
+
+                      const SizedBox(width: 20),
+
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Tip",
+                              style: TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white : Colors.black,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              "Add a tip to show your appreciation for exceptional service",
+                              style: TextStyle(
+                                color: isDark
+                                    ? Colors.grey.shade400
+                                    : const Color(0xFF7C7C7C),
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
+
+                      InkWell(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          height: 40,
+                          width: 40,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFF84337),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.close,color: Colors.white),
+                        ),
+                      )
+                    ],
                   ),
 
-                  const SizedBox(width: 20),
+                  // const Text(
+                  //   "Add tip for",
+                  //   style: TextStyle(color: Colors.grey, fontSize: 14),
+                  // ),
+                  const SizedBox(height: 20),
 
+                  // ---------- Body ----------
                   Expanded(
-                    child: Column(
+                    child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
-                          "Tip",
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w600,
+                      children: [
+                        // ---------- Left: Tip Selection ----------
+                        Expanded(
+                          flex: 1,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Wrap(
+                                spacing: 30,
+                                runSpacing: 20,
+                                children: tipOptions
+                                    .map((e) => _buildTipButton(e, isDark))
+                                    .toList(),
+                              ),
+                              const SizedBox(height: 15),
+                              Text(
+                                "Add Custom Tip :",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: isDark
+                                      ? Colors.white70
+                                      : Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? const Color(0xFF374151)
+                                      : Colors.white,
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Color(0x19000000),
+                                      blurRadius: 10,
+                                      offset: Offset(0, 1),
+                                    ),
+                                  ],
+                                ),
+                                child: TextField(
+                                  controller: _tipController,
+                                  readOnly: true,
+                                  style: TextStyle(
+                                    color: isDark ? Colors.white : Colors.black,
+                                  ),
+                                  decoration: InputDecoration(
+                                    prefixText: "$_currencySymbol ",
+                                    prefixStyle: TextStyle(
+                                      color: isDark ? Colors.white : Colors.black,
+                                    ),
+                                    hintText: "Please enter amount",
+                                    hintStyle: TextStyle(
+                                      color: isDark
+                                          ? Colors.white38
+                                          : Colors.grey,
+                                    ),
+                                    filled: true,
+                                    fillColor: isDark
+                                        ? const Color(0xFF374151)
+                                        : Colors.white,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 10,
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      borderSide: BorderSide(
+                                        color: isDark
+                                            ? const Color(0xFF4B5563)
+                                            : const Color(0xFF6D7A8F),
+                                      ),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      borderSide: const BorderSide(
+                                        color: Color(0xFF2353B7),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 25),
+                              ElevatedButton(
+                                onPressed: _isLoading ? null : _applyTip,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Color(0xFF4CAF50),
+                                  minimumSize: const Size(double.infinity, 50),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                ),
+                                child: _isLoading
+                                    ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                                    : const Text(
+                                  "Save & Continue",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+
+                            ],
                           ),
                         ),
-                        SizedBox(height: 6),
-                        Text(
-                          "Add a tip to show your appreciation for exceptional service",
-                          style: TextStyle(
-                            color: Color(0xFF7C7C7C),
-                            fontSize: 16,
+
+                        const SizedBox(width: 20),
+                        // const SizedBox(height: 25),
+
+                        // ---------- Right: Number Pad ----------
+                        Expanded(
+                          flex: 1,
+                          child: GridView.count(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(), // Disable scrolling
+                            crossAxisCount: 3,
+                            crossAxisSpacing: 15,
+                            mainAxisSpacing: 15,
+                            childAspectRatio: 1.5, // smaller value = taller buttons
+                            children: [
+                              for (var i = 1; i <= 9; i++)
+                                _buildKeypadButton(
+                                  i.toString(),
+                                  onPressed: () => _onNumberPressed(i.toString()),
+                                ),
+                              _buildKeypadButton(
+                                "Clear",
+                                color: isDark
+                                    ? const Color(0xFF34384F)
+                                    : Colors.white,
+                                onPressed: _onClear,
+                                borderColor: const Color(0xFFFF4D20),
+                              ),
+                              _buildKeypadButton(
+                                "0",
+                                onPressed: () => _onNumberPressed("0"),
+                              ),
+                              _buildKeypadButton(
+                                "⌫",
+                                onPressed: _onBackspace,
+                              ),
+                            ],
                           ),
                         ),
+
                       ],
                     ),
                   ),
-
-                  InkWell(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      height: 40,
-                      width: 40,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFF84337),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.close,color: Colors.white),
-                    ),
-                  )
                 ],
               ),
-
-              // const Text(
-              //   "Add tip for",
-              //   style: TextStyle(color: Colors.grey, fontSize: 14),
-              // ),
-              const SizedBox(height: 20),
-
-              // ---------- Body ----------
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ---------- Left: Tip Selection ----------
-                    Expanded(
-                      flex: 1,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Wrap(
-                            spacing: 30,
-                            runSpacing: 20,
-                            children: tipOptions
-                                .map((e) => _buildTipButton(e))
-                                .toList(),
-                          ),
-                          const SizedBox(height: 15),
-                          const Text(
-                            "Add Custom Tip :",
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.black87,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Container(
-                            decoration: BoxDecoration(
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Color(0x19000000),
-                                  blurRadius: 10,
-                                  offset: Offset(0,1),
-                                )
-                              ],
-                            ),
-                            child: TextField(
-                              controller: _tipController,
-                              readOnly: true,
-                              decoration: InputDecoration(
-                                prefixText: "$_currencySymbol ",
-                                hintText: "Please enter amount",
-
-                                filled: true,
-                                fillColor: Colors.white,
-
-                                contentPadding:
-                                const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: const BorderSide(
-                                    color: Color(0xFF6D7A8F),
-                                  ),
-                                ),
-
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: const BorderSide(
-                                    color: Color(0xFF2353B7),
-                                  ),
-                                ),
-                              ),
-                            ),                          ),
-                          const SizedBox(height: 25),
-                          ElevatedButton(
-                            onPressed: _isLoading ? null : _applyTip,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Color(0xFF4CAF50),
-                              minimumSize: const Size(double.infinity, 50),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                            ),
-                            child: _isLoading
-                                ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                                : const Text(
-                              "Save & Continue",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(width: 20),
-                    const SizedBox(height: 25),
-
-                    // ---------- Right: Number Pad ----------
-                    Expanded(
-                      flex: 1,
-                      child: GridView.count(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(), // Disable scrolling
-                        crossAxisCount: 3,
-                        crossAxisSpacing: 15,
-                        mainAxisSpacing: 15,
-                        childAspectRatio: 1.5, // smaller value = taller buttons
-                        children: [
-                          for (var i = 1; i <= 9; i++)
-                            _buildKeypadButton(
-                              i.toString(),
-                              onPressed: () => _onNumberPressed(i.toString()),
-                            ),
-                          _buildKeypadButton(
-                            "Clear",
-                            color: Colors.white,
-                            onPressed: _onClear,
-                            borderColor: const Color(0xFFFF4D20), // Added border color
-                          ),
-
-                          _buildKeypadButton(
-                            "0",
-                            onPressed: () => _onNumberPressed("0"),
-                          ),
-                          _buildKeypadButton(
-                            "⌫",
-                            onPressed: _onBackspace,
-                          ),
-                        ],
-                      ),
-                    ),
-
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
-    );
+        ));
   }
 }

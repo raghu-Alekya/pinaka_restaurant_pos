@@ -288,11 +288,14 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
     // Seating capacity as int or zero if invalid.
     final int seatingCapacity =
         int.tryParse(_seatingCapacityController.text.trim()) ?? 0;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Stack(
       children: [
         Container(
-          color: Colors.white,
+          color: isDark
+              ? const Color(0xFF161A26)
+              : Colors.white,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
             child: Column(
@@ -374,7 +377,9 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                                   fontSize: 13,
                                   fontFamily: 'Inter',
                                   fontWeight: FontWeight.w900,
-                                  color: Color(0xFF4C5F7D),
+                                  color: isDark
+                                      ? Colors.white70
+                                      : const Color(0xFF4C5F7D),
                                 ),
                               ),
                               SizedBox(height: 8),
@@ -384,10 +389,14 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                                 height: 38,
                                 child: Container(
                                   decoration: BoxDecoration(
-                                    color: Colors.white,
+                                    color: isDark
+                                        ? const Color(0xFF202433)
+                                        : Colors.white,
                                     borderRadius: BorderRadius.circular(10),
-                                    boxShadow: [
-                                      BoxShadow(
+                                    boxShadow: isDark
+                                        ? []
+                                        : [
+                                      const BoxShadow(
                                         color: Color(0x19000000),
                                         blurRadius: 5,
                                       ),
@@ -399,7 +408,9 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                                       hintText:
                                           'Type here name or number or combinations',
                                       hintStyle: TextStyle(
-                                        color: Color(0xFFAFACAC),
+                                        color: isDark
+                                            ? Colors.white54
+                                            : const Color(0xFFAFACAC),
                                         fontSize: 10,
                                       ),
                                       border: InputBorder.none,
@@ -448,7 +459,9 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                                   fontSize: 13,
                                   fontFamily: 'Inter',
                                   fontWeight: FontWeight.w900,
-                                  color: Color(0xFF4C5F7D),
+                                  color: isDark
+                                      ? Colors.white70
+                                      : const Color(0xFF4C5F7D),
                                 ),
                               ),
                               SizedBox(height: 8),
@@ -457,10 +470,14 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                                 height: 38,
                                 child: Container(
                                   decoration: BoxDecoration(
-                                    color: Colors.white,
+                                    color: isDark
+                                        ? const Color(0xFF202433)
+                                        : Colors.white,
                                     borderRadius: BorderRadius.circular(10),
-                                    boxShadow: [
-                                      BoxShadow(
+                                    boxShadow: isDark
+                                        ? []
+                                        : [
+                                      const BoxShadow(
                                         color: Color(0x19000000),
                                         blurRadius: 5,
                                       ),
@@ -472,8 +489,10 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                                     decoration: InputDecoration(
                                       hintText: 'Enter the number',
                                       hintStyle: TextStyle(
+                                        color: isDark
+                                            ? Colors.white54
+                                            : const Color(0xFFAFACAC),
                                         fontSize: 10,
-                                        color: Color(0xFFAFACAC),
                                       ),
                                       border: InputBorder.none,
                                       contentPadding: EdgeInsets.fromLTRB(
@@ -517,7 +536,9 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                                 fontSize: 13,
                                 fontFamily: 'Inter',
                                 fontWeight: FontWeight.w900,
-                                color: Color(0xFF4C5F7D),
+                                color: isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF4C5F7D),
                               ),
                             ),
                           ),
@@ -535,15 +556,24 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                               child: DottedBorder(
                                 dashPattern: [8, 4],
                                 strokeWidth: 1,
-                                color:
-                                    _isInputValid()
-                                        ? Color(0xFF2874F0)
-                                        : Colors.black45,
+                                color: _isInputValid()
+                                    ? (isDark
+                                    ? Colors.white54
+                                    : const Color(0xFF2874F0))
+                                    : (isDark
+                                    ? Colors.white24
+                                    : Colors.black45),
                                 borderType: BorderType.RRect,
                                 radius: Radius.circular(12),
                                 child: Container(
                                   width: double.infinity,
                                   padding: EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? const Color(0xFF202433)
+                                        : Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
                                   child: Wrap(
                                     alignment: WrapAlignment.center,
                                     spacing: 40,

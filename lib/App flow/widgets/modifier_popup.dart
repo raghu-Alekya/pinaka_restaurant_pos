@@ -146,10 +146,22 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
   Widget build(BuildContext context) {
     final modifiers = allItems.where((m) => m.type == 'modifier').toList();
     final addOns = allItems.where((m) => m.type == 'add-on').toList();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Dialog(
+      backgroundColor: isDark
+          ? const Color(0xFF202433)
+          : Colors.white,
       insetPadding: const EdgeInsets.all(16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(
+          color: isDark
+              ? Colors.white24
+              : Colors.transparent,
+        ),
+      ),
+
       child: SizedBox(
         width: 800,
         height: 600,
@@ -190,28 +202,31 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     'Select Modifiers',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
+                      color: isDark ? Colors.white : Colors.black,
                     ),
                   ),
                   Container(
                     width: 32,
                     height: 32,
                     decoration: const BoxDecoration(
-                      color: Colors.red,
+                      color: Color(0xFFFF4B4B),
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
                       padding: EdgeInsets.zero,
                       iconSize: 16,
-                      icon: const Icon(Icons.close,
-                          color: Colors.white),
-                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(
+                        Icons.close,
+                        color: Colors.white,
+                      ),
+                      onPressed: () => Navigator.pop(context),
                     ),
-                  ),
+                  )
                 ],
               ),
               const SizedBox(height: 8),
@@ -221,10 +236,10 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(
-                        color: const Color(0xFFF06161), width: 1.5),
-                    borderRadius: BorderRadius.circular(12),
+                    color: isDark
+                        ? const Color(0xFF34384F)
+                        : const Color(0xFFFFF8F8),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   width: 900,
                   height: 150,
@@ -233,41 +248,50 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
                       spacing: 8,
                       runSpacing: 6,
                       children: modifiers.map((mod) {
-                        final selected =
-                        selectedModifiers.contains(mod.name);
+                        final selected = selectedModifiers.contains(mod.name);
+
                         return GestureDetector(
                           onTap: () => toggleModifier(mod.name),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 6),
+                              horizontal: 8,
+                              vertical: 6,
+                            ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFFF8F8),
+                              color: isDark
+                                  ? const Color(0xFF34384F)
+                                  : const Color(0xFFFFF8F8),
                               borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: isDark
+                                    ? Colors.white24
+                                    : Colors.transparent,
+                              ),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Theme(
                                   data: Theme.of(context).copyWith(
-                                    unselectedWidgetColor:
-                                    const Color(0xFFF06161),
+                                    unselectedWidgetColor: const Color(0xFFF06161),
                                   ),
                                   child: Checkbox(
                                     value: selected,
-                                    onChanged: (_) =>
-                                        toggleModifier(mod.name),
+                                    onChanged: (_) => toggleModifier(mod.name),
                                     side: const BorderSide(
-                                        color: Color(0xFFF06161),
-                                        width: 1.5),
-                                    activeColor:
-                                    const Color(0xFFF06161),
+                                      color: Color(0xFFF06161),
+                                      width: 1.5,
+                                    ),
+                                    activeColor: const Color(0xFFF06161),
                                     checkColor: Colors.white,
                                   ),
                                 ),
                                 Text(
                                   mod.name,
-                                  style: const TextStyle(
-                                    color: Colors.black,
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? Colors.white
+                                        : Colors.black,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
@@ -283,18 +307,25 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
               ],
 
               if (addOns.isNotEmpty) ...[
-                const Text(
+                Text(
                   'Add Ons',
                   style: TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 16),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: isDark ? Colors.white : Colors.black,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: isDark
+                        ? const Color(0xFF2B3042)
+                        : Colors.white,
                     border: Border.all(
-                        color: const Color(0xFF3C51DA), width: 1.5),
+                      color: const Color(0xFF3C51DA),
+                      width: 1.5,
+                    ),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   height: 200,
@@ -312,93 +343,101 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
                             .containsKey(addon.name);
                         return Container(
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF2F6FF),
+                            color: isDark
+                                ? const Color(0xFF34384F)
+                                : const Color(0xFFF2F6FF),
                             borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isDark
+                                  ? Colors.white24
+                                  : Colors.transparent,
+                            ),
                           ),
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           child: Column(
-                            crossAxisAlignment:
-                            CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
                                 children: [
                                   Theme(
                                     data: Theme.of(context).copyWith(
-                                      unselectedWidgetColor:
-                                      const Color(0xFF3C51DA),
+                                      unselectedWidgetColor: const Color(0xFF3C51DA),
                                     ),
                                     child: Checkbox(
                                       value: selected,
                                       onChanged: (_) =>
-                                          toggleAddOn(addon.name,
-                                              addon.price),
+                                          toggleAddOn(addon.name, addon.price),
                                       side: const BorderSide(
-                                          color: Color(0xFF3C51DA),
-                                          width: 1.5),
-                                      activeColor:
-                                      const Color(0xFF3C51DA),
+                                        color: Color(0xFF3C51DA),
+                                        width: 1.5,
+                                      ),
+                                      activeColor: const Color(0xFF3C51DA),
                                       checkColor: Colors.white,
                                     ),
                                   ),
                                   Expanded(
                                     child: Text(
                                       '${addon.name} +$_currency${addon.price.toStringAsFixed(2)}',
-                                      style: const TextStyle(
-                                          fontSize: 13),
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: isDark
+                                            ? Colors.white
+                                            : Colors.black,
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
                               if (selected)
                                 Row(
-                                  mainAxisAlignment:
-                                  MainAxisAlignment.center,
+                                  mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     InkWell(
                                       onTap: () =>
-                                          updateAddOnQuantity(
-                                              addon.name, -1),
+                                          updateAddOnQuantity(addon.name, -1),
                                       child: Container(
                                         width: 24,
                                         height: 24,
                                         decoration: BoxDecoration(
-                                          color: const Color(
-                                              0xFF3C51DA),
-                                          borderRadius:
-                                          BorderRadius.circular(
-                                              4),
+                                          color: const Color(0xFF3C51DA),
+                                          borderRadius: BorderRadius.circular(4),
                                         ),
                                         child: const Icon(
-                                            Icons.remove,
-                                            size: 14,
-                                            color: Colors.white),
+                                          Icons.remove,
+                                          size: 14,
+                                          color: Colors.white,
+                                        ),
                                       ),
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
                                       '${selectedAddOns[addon.name]!['quantity']}',
-                                      style: const TextStyle(
-                                          fontSize: 12),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: isDark
+                                            ? Colors.white
+                                            : Colors.black,
+                                      ),
                                     ),
                                     const SizedBox(width: 6),
                                     InkWell(
                                       onTap: () =>
-                                          updateAddOnQuantity(
-                                              addon.name, 1),
+                                          updateAddOnQuantity(addon.name, 1),
                                       child: Container(
                                         width: 24,
                                         height: 24,
                                         decoration: BoxDecoration(
-                                          color: const Color(
-                                              0xFF3C51DA),
-                                          borderRadius:
-                                          BorderRadius.circular(
-                                              4),
+                                          color: const Color(0xFF3C51DA),
+                                          borderRadius: BorderRadius.circular(4),
                                         ),
-                                        child: const Icon(Icons.add,
-                                            size: 14,
-                                            color: Colors.white),
+                                        child: const Icon(
+                                          Icons.add,
+                                          size: 14,
+                                          color: Colors.white,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -413,20 +452,57 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
                 const SizedBox(height: 10),
               ],
 
-              const Text('Write a note',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+              Text(
+                'Write a note',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
+              ),
               const SizedBox(height: 8),
 
               SizedBox(
                 width: 900,
                 height: 40,
-                child: TextField(
+                child:TextField(
                   controller: noteController,
-                  decoration: const InputDecoration(
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.black,
+                  ),
+                  decoration: InputDecoration(
                     hintText: 'Add note',
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
+                    hintStyle: TextStyle(
+                      color: isDark
+                          ? Colors.white54
+                          : Colors.grey,
+                    ),
+                    filled: true,
+                    fillColor: isDark
+                        ? const Color(0xFF34384F)
+                        : Colors.white,
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: isDark
+                            ? Colors.white24
+                            : Colors.grey.shade300,
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: isDark
+                            ? Colors.white24
+                            : Colors.grey.shade300,
+                      ),
+                    ),
+                    focusedBorder: const OutlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Color(0xFFFF4D20),
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                   ),
                 ),
               ),
@@ -434,10 +510,14 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  Text('Total: $_currency${total.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16)),
+                  Text(
+                    'Total: $_currency${total.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
+                  ),
                   const Spacer(),
                   ElevatedButton(
                     onPressed: () {

@@ -3201,16 +3201,18 @@ Net Payable      : $netPayableTemp
                                               _row(
                                                 "Service Charges (Optional)",
                                                 widget.paymentSummary!.serviceChargeValue,
-                                                color: Colors.black,
-                                                icon: Icons.payments_outlined,
+                                                color: Theme.of(context).textTheme.bodyMedium!.color,
+                                                icon: Icons.room_service_outlined,
+                                                // iconColor: const Color(0xFF4C81F1),
                                               ),
 
                                               if (widget.tipAmount > 0)
                                                 _row(
                                                   "Add Tip",
                                                   widget.tipAmount,
-                                                  color: Colors.black,
-                                                  icon: Icons.back_hand_outlined,
+                                                  color: Theme.of(context).textTheme.bodyMedium!.color,
+                                                  icon: Icons.volunteer_activism_outlined,
+                                                  // iconColor: const Color(0xFF4C81F1),
                                                 ),
 
                                               const DottedLine(),

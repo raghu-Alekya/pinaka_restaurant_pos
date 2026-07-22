@@ -268,6 +268,9 @@ class _TopBarState extends State<TopBar> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+  final isDark = theme.brightness == Brightness.dark;
+
     if (widget.paymentSummary != null && _localPaymentSummary != widget.paymentSummary) {
       _localPaymentSummary = widget.paymentSummary;
     }
@@ -276,7 +279,9 @@ class _TopBarState extends State<TopBar> {
         decoration: BoxDecoration(
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withAlpha((0.3 * 255).toInt()),
+              color: isDark
+                  ? Colors.black.withOpacity(0.45)
+                  : Colors.grey.withOpacity(0.30),
               spreadRadius: 0,
               blurRadius: 2,
               offset: const Offset(0, 2),
@@ -284,7 +289,8 @@ class _TopBarState extends State<TopBar> {
           ],
         ),
         child: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: theme.scaffoldBackgroundColor,
+          surfaceTintColor: Colors.transparent,
           toolbarHeight: 60,
           automaticallyImplyLeading: false,
           elevation: 0,
@@ -304,7 +310,7 @@ class _TopBarState extends State<TopBar> {
                         width: 84,
                         height: 36,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1A2B4A),
+                          color: theme.colorScheme.primary,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Row(
@@ -331,11 +337,14 @@ class _TopBarState extends State<TopBar> {
                           child: Container(
                             height: 42,
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: isDark
+                                  ? const Color(0xFF2A2A2A)
+                                  : Colors.white,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: const Color(0xFFE5E7EB),
-                                width: 1,
+                                color: isDark
+                                    ? Colors.grey.shade700
+                                    : const Color(0xFFE5E7EB),
                               ),
                               boxShadow: [
                                 BoxShadow(
@@ -350,17 +359,17 @@ class _TopBarState extends State<TopBar> {
                               focusNode: widget.searchFocusNode,
                               onTap: widget.onSearchTap,
                               onChanged: widget.onSearchChanged,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 14,
-                                color: Color(0xFF111827),
+                                color: theme.textTheme.bodyLarge?.color,
                                 fontWeight: FontWeight.w500,
                               ),
                               decoration: InputDecoration(
                                 hintText: "Search item or short code....",
-                                hintStyle: const TextStyle(
-                                  fontSize: 13,
-                                  color: Color(0xFF9CA3AF),
-                                  fontWeight: FontWeight.w400,
+                                hintStyle: TextStyle(
+                                  color: isDark
+                                      ? Colors.grey.shade400
+                                      : const Color(0xFF9CA3AF),
                                 ),
                                 prefixIcon: const Padding(
                                   padding: EdgeInsets.only(left: 10, right: 8),
@@ -438,14 +447,16 @@ class _TopBarState extends State<TopBar> {
                         Container(
                           width: 235,
                           height: 40,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF9FBFF),
+                            color: isDark
+                                ? const Color(0xFF2B2B2B)
+                                : const Color(0xFFF9FBFF),
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                              color: const Color(0xFFE6E6E6),
+                              color: isDark
+                                  ? Colors.grey.shade700
+                                  : const Color(0xFFE6E6E6),
                               width: 1,
                             ),
                           ),
@@ -453,12 +464,29 @@ class _TopBarState extends State<TopBar> {
                             child: DropdownButton<String>(
                               value: selectedOrderType,
                               isExpanded: true,
-                              hint: const Text("Dine In"),
-                              items:
-                              orderTypes.map((type) {
+                              dropdownColor:
+                              isDark ? const Color(0xFF2B2B2B) : Colors.white,
+                              iconEnabledColor:
+                              isDark ? Colors.white : Colors.black,
+                              style: TextStyle(
+                                color: isDark ? Colors.white : Colors.black,
+                                fontSize: 14,
+                              ),
+                              hint: Text(
+                                "Dine In",
+                                style: TextStyle(
+                                  color: isDark ? Colors.white70 : Colors.black54,
+                                ),
+                              ),
+                              items: orderTypes.map((type) {
                                 return DropdownMenuItem<String>(
                                   value: type,
-                                  child: Text(type),
+                                  child: Text(
+                                    type,
+                                    style: TextStyle(
+                                      color: isDark ? Colors.white : Colors.black,
+                                    ),
+                                  ),
                                 );
                               }).toList(),
                               onChanged: (value) async {
@@ -477,13 +505,11 @@ class _TopBarState extends State<TopBar> {
                                 );
 
                                 if (result?.success == true) {
-                                  ScaffoldMessenger.of(
-                                    context,
-                                  ).showSnackBar(
+                                  ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(result!.message),
-                                      duration: Duration(seconds: 1),
                                       backgroundColor: Colors.green,
+                                      duration: const Duration(seconds: 1),
                                     ),
                                   );
                                 }
@@ -1174,6 +1200,8 @@ class _TopBarState extends State<TopBar> {
   }
 
   Widget _buildProfileSection() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final avatarUrl = widget.userPermissions?.avatar;
 
     final bool isPayment = widget.isPaymentScreen;
@@ -1184,7 +1212,9 @@ class _TopBarState extends State<TopBar> {
         horizontal: isPayment ? 10 : 14,
       ),
       decoration: ShapeDecoration(
-        color: Colors.white,
+        color: isDark
+            ? const Color(0xFF2A2A2A)
+            : Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
         ),
@@ -1217,7 +1247,7 @@ class _TopBarState extends State<TopBar> {
                 style: TextStyle(
                   fontSize: isPayment ? 11 : 14,
                   fontWeight: FontWeight.w600,
-                  color: const Color(0xFF2C2B2B),
+                  color: theme.textTheme.bodyLarge?.color,
                 ),
               ),
               SizedBox(height: isPayment ? 1 : 2),
@@ -1225,7 +1255,7 @@ class _TopBarState extends State<TopBar> {
                 widget.userPermissions?.role ?? "role",
                 style: TextStyle(
                   fontSize: isPayment ? 9 : 12,
-                  color: Colors.grey.shade600,
+                  color: theme.textTheme.bodySmall?.color,
                   height: 1,
                 ),
               ),

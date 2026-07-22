@@ -265,8 +265,11 @@ class _OrdersListTableState extends State<OrdersListTable> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F6F6),
+      backgroundColor: isDark
+          ? const Color(0xFF161A26)
+          : const Color(0xFFF6F6F6),
       appBar: TopBar(
         token: widget.token,
         pin: widget.pin,
@@ -356,9 +359,13 @@ class _OrdersListTableState extends State<OrdersListTable> {
                     //   border: Border.all(color: const Color(0xFFF1F1F3), width: 1),
                     // ),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: isDark
+                          ? const Color(0xFF202433)
+                          : Colors.white,
                       borderRadius: BorderRadius.circular(10),
-                      boxShadow: const [
+                      boxShadow: isDark
+                          ? []
+                          : const [
                         BoxShadow(
                           color: Color(0x3F474747),
                           blurRadius: 10,
@@ -396,10 +403,12 @@ class _OrdersListTableState extends State<OrdersListTable> {
                             // ),
                             const SizedBox(width: 8),
 
-                            const Text(
+                             Text(
                               "Orders List",
                               style: TextStyle(
-                                color: Color(0xFF3D3D3D),
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF3D3D3D),
                                 fontSize: 24,
                                 fontFamily: 'Inter',
                                 fontWeight: FontWeight.w600,
@@ -416,7 +425,9 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                 horizontal: 6,
                               ),
                               decoration: ShapeDecoration(
-                                color: Colors.white,
+                                color: isDark
+                                    ? const Color(0xFF2B3042)
+                                    : Colors.white,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -465,15 +476,21 @@ class _OrdersListTableState extends State<OrdersListTable> {
                               height: 40,
                               child: Container(
                                 decoration: ShapeDecoration(
-                                  color: const Color(0xFFF0F0F0),
+                                  color: isDark
+                                      ? const Color(0xFF2B3042)
+                                      : const Color(0xFFF0F0F0),
                                   shape: RoundedRectangleBorder(
-                                    side: const BorderSide(
+                                    side: BorderSide(
                                       width: 1,
-                                      color: Color(0xFFA5A5A5),
+                                      color: isDark
+                                          ? Colors.white24
+                                          : const Color(0xFFA5A5A5),
                                     ),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
-                                  shadows: const [
+                                  shadows: isDark
+                                      ? []
+                                      : const [
                                     BoxShadow(
                                       color: Color(0x19000000),
                                       blurRadius: 4,
@@ -485,8 +502,10 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                   controller: _dateController,
                                   readOnly: true,
                                   textAlignVertical: TextAlignVertical.center,
-                                  style: const TextStyle(
-                                    color: Color(0xFF7E7E7E),
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? Colors.white
+                                        : const Color(0xFF7E7E7E),
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -508,7 +527,9 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                             "${picked.year}";
                                         _currentPage = 0;
                                       });
+
                                       final dateStr = DateFormat('yyyy-MM-dd').format(picked);
+
                                       context.read<OrderstatusBloc>().add(
                                         FetchOrders(
                                           token: widget.token,
@@ -517,19 +538,21 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                       );
                                     }
                                   },
-                                  decoration: const InputDecoration(
+                                  decoration: InputDecoration(
                                     border: InputBorder.none,
                                     enabledBorder: InputBorder.none,
                                     focusedBorder: InputBorder.none,
                                     isDense: true,
-                                    contentPadding: EdgeInsets.symmetric(
+                                    contentPadding: const EdgeInsets.symmetric(
                                       horizontal: 12,
                                       vertical: 12,
                                     ),
                                     suffixIcon: Icon(
                                       Icons.calendar_month,
                                       size: 20,
-                                      color: Color(0xFF6D6D6D),
+                                      color: isDark
+                                          ? Colors.white70
+                                          : const Color(0xFF6D6D6D),
                                     ),
                                   ),
                                 ),
@@ -546,19 +569,27 @@ class _OrdersListTableState extends State<OrdersListTable> {
                               ),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(8),
-                                color: const Color(0xFF4C81F1),
+                                color: isDark
+                                    ? const Color(0xFF34384F)
+                                    : const Color(0xFF4C81F1),
+                                border: Border.all(
+                                  color: isDark
+                                      ? Colors.white24
+                                      : const Color(0xFF4C81F1),
+                                ),
                               ),
                               child: DropdownButtonHideUnderline(
                                 child: DropdownButton<String>(
-                                  dropdownColor: const Color(0xFF4C81F1),
+                                  value: _selectedStatus,
+                                  dropdownColor: isDark
+                                      ? const Color(0xFF34384F)
+                                      : const Color(0xFF4C81F1),
                                   iconEnabledColor: Colors.white,
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 13,
                                   ),
-                                  value: _selectedStatus,
-                                  items:
-                                  statusOptions
+                                  items: statusOptions
                                       .map(
                                         (e) => DropdownMenuItem<String>(
                                       value: e,
@@ -582,16 +613,21 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                 ),
                               ),
                             ),
-
                             const SizedBox(width: 12),
                             SizedBox(
                               height: 40,
                               child: ElevatedButton.icon(
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: _isResetEnabled()
-                                      ? const Color(0xFFFDF8F8)
-                                      : Colors.grey.shade300,
-                                  foregroundColor: _isResetEnabled() ? Colors.red : Colors.grey,
+                                      ? (isDark
+                                      ? const Color(0xFF34384F)
+                                      : const Color(0xFFFDF8F8))
+                                      : (isDark
+                                      ? const Color(0xFF2B3042)
+                                      : Colors.grey.shade300),
+                                  foregroundColor: _isResetEnabled()
+                                      ? Colors.red
+                                      : (isDark ? Colors.white54 : Colors.grey),
                                   elevation: 0,
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 12,
@@ -602,7 +638,9 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                     side: BorderSide(
                                       color: _isResetEnabled()
                                           ? Colors.red
-                                          : Colors.grey.shade400,
+                                          : (isDark
+                                          ? Colors.white24
+                                          : Colors.grey.shade400),
                                     ),
                                   ),
                                 ),
@@ -629,12 +667,16 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                 icon: Icon(
                                   Icons.refresh,
                                   size: 16,
-                                  color: _isResetEnabled() ? Colors.red : Colors.grey,
+                                  color: _isResetEnabled()
+                                      ? Colors.red
+                                      : (isDark ? Colors.white54 : Colors.grey),
                                 ),
                                 label: Text(
                                   "Reset",
                                   style: TextStyle(
-                                    color: _isResetEnabled() ? Colors.red : Colors.grey,
+                                    color: _isResetEnabled()
+                                        ? Colors.red
+                                        : (isDark ? Colors.white54 : Colors.grey),
                                     fontSize: 14,
                                   ),
                                 ),
@@ -648,168 +690,186 @@ class _OrdersListTableState extends State<OrdersListTable> {
                         Expanded(
                           child: Container(
                             decoration: BoxDecoration(
-                              color: Color(0xFFF2F2F2),
+                              color: isDark
+                                  ? const Color(0xFF202433)
+                                  : const Color(0xFFF2F2F2),
                               borderRadius: const BorderRadius.only(
                                 topLeft: Radius.circular(8),
                                 topRight: Radius.circular(8),
                               ),
                             ),
                             clipBehavior: Clip.antiAlias,
-                            child: SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: SizedBox(
-                                width:
-                                MediaQuery.of(context).size.width *
-                                    0.99, // 80% of screen width
-                                child: DataTable(
-                                  showCheckboxColumn: false,
-                                  headingTextStyle: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                    height: 1.10,
-                                  ),
-                                  headingRowHeight: 45,
-                                  dataRowHeight: 40,
-                                  headingRowColor: MaterialStateProperty.all(
-                                    const Color(0xFF2A3558),
-                                  ),
-                                  dataRowColor: MaterialStateProperty.all(
-                                    const Color(0xFFFCFCFF),
-                                  ),
-                                  columnSpacing: 40,
-                                  dividerThickness: 0,
-                                  columns: const [
-                                    DataColumn(label: Text("Order ID")),
-                                    DataColumn(label: Text("Order Type")),
-                                    DataColumn(label: Text("Date")),
-                                    DataColumn(label: Text("Zone")),
-                                    DataColumn(label: Text("Table")),
-                                    DataColumn(label: Text("Cust. Name")),
-                                    DataColumn(label: Text("Cust. Phone")),
-                                    DataColumn(label: Text("Payment")),
-                                    // DataColumn(label: Text("Amount")),
-                                    // DataColumn(label: Text("Discount")),
-                                    DataColumn(label: Text("Total")),
-                                    DataColumn(label: Text("Status")),
-                                  ],
-                                  rows:
-                                  pageOrders.map((order) {
-                                    return DataRow(
-                                      onSelectChanged: (_) async {
-                                        // Wait for the OrdersDetailsScreen to return a value
-                                        final bool?
-                                        didUpdate = await Navigator.push<
-                                            bool
-                                        >(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder:
-                                                (_) => OrdersDetailsScreen(
-                                              token: widget.token,
-                                              pin: widget.pin,
-                                              restaurantId:
-                                              widget.restaurantId,
-                                              restaurantName:
-                                              widget.restaurantName,
-                                              userPermissions:
-                                              _userPermissions,
-                                              orderId: order.orderId!,
-                                            ),
-                                          ),
-                                        );
-
-                                        // If the screen returned true (order was updated), refetch
-                                        if (didUpdate == true) {
-                                          context
-                                              .read<OrderstatusBloc>()
-                                              .add(
-                                            FetchOrders(
-                                              token: widget.token,
+                            child: Theme(
+                              data: Theme.of(context).copyWith(
+                                dividerColor: isDark ? Colors.white24 : Colors.grey.shade300,
+                              ),
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: SizedBox(
+                                  width: MediaQuery.of(context).size.width * 0.99,
+                                  child: DataTable(
+                                    showCheckboxColumn: false,
+                                    headingTextStyle: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                      height: 1.10,
+                                    ),
+                                    headingRowHeight: 45,
+                                    dataRowHeight: 40,
+                                    headingRowColor: MaterialStateProperty.all(
+                                      isDark
+                                          ? const Color(0xFF34384F)
+                                          : const Color(0xFF2A3558),
+                                    ),
+                                    dataRowColor: MaterialStateProperty.all(
+                                      isDark
+                                          ? const Color(0xFF202433)
+                                          : const Color(0xFFFCFCFF),
+                                    ),
+                                    columnSpacing: 40,
+                                    dividerThickness: 0,
+                                    columns: const [
+                                      DataColumn(label: Text("Order ID")),
+                                      DataColumn(label: Text("Order Type")),
+                                      DataColumn(label: Text("Date")),
+                                      DataColumn(label: Text("Zone")),
+                                      DataColumn(label: Text("Table")),
+                                      DataColumn(label: Text("Cust. Name")),
+                                      DataColumn(label: Text("Cust. Phone")),
+                                      DataColumn(label: Text("Payment")),
+                                      DataColumn(label: Text("Total")),
+                                      DataColumn(label: Text("Status")),
+                                    ],
+                                    rows: pageOrders.map((order) {
+                                      return DataRow(
+                                        onSelectChanged: (_) async {
+                                          final bool? didUpdate = await Navigator.push<bool>(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => OrdersDetailsScreen(
+                                                token: widget.token,
+                                                pin: widget.pin,
+                                                restaurantId: widget.restaurantId,
+                                                restaurantName: widget.restaurantName,
+                                                userPermissions: _userPermissions,
+                                                orderId: order.orderId!,
+                                              ),
                                             ),
                                           );
-                                        }
-                                      },
-                                      cells: [
-                                        DataCell(
-                                          Text(
-                                            order.orderId?.toString() ??
-                                                '-',
-                                          ),
-                                        ),
-                                        DataCell(
-                                          Text(order.orderType ?? '-'),
-                                        ),
-                                        DataCell(Text(order.date ?? '-')),
-                                        DataCell(
-                                          Text(order.zoneName ?? '-'),
-                                        ),
-                                        DataCell(
-                                          Text(order.tableName ?? '-'),
-                                        ),
-                                        DataCell(
-                                          Text(
-                                            order.customerName
-                                                ?.trim()
-                                                .isEmpty ==
-                                                true
-                                                ? 'Guest'
-                                                : order.customerName ?? '-',
-                                          ),
-                                        ),
-                                        DataCell(
-                                          Text(
-                                            order.customerPhone
-                                                ?.trim()
-                                                .isEmpty ==
-                                                true
-                                                ? '-'
-                                                : order.customerPhone ??
-                                                '-',
-                                          ),
-                                        ),
-                                        DataCell(
-                                          Text(order.paymentType ?? '-'),
-                                        ),
-                                        // DataCell(Text(order.amount?.toStringAsFixed(2) ?? '0.00')),
-                                        // DataCell(Text(order.discount?.toStringAsFixed(2) ?? '0.00')),
-                                        DataCell(
-                                          Text(
-                                            "$_currency${order.netPayable?.toStringAsFixed(2) ?? '0.00'}",
-                                          ),
-                                        ),
-                                        DataCell(
-                                          Container(
-                                            padding:
-                                            const EdgeInsets.symmetric(
-                                              horizontal: 12,
-                                              vertical: 6,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: _statusColor(
-                                                order.status ?? '',
-                                              ).withOpacity(0.1),
-                                              borderRadius:
-                                              BorderRadius.circular(12),
-                                            ),
-                                            child: Text(
-                                              order.status?.isNotEmpty ==
-                                                  true
-                                                  ? order.status!
-                                                  : '-',
+
+                                          if (didUpdate == true) {
+                                            context.read<OrderstatusBloc>().add(
+                                              FetchOrders(
+                                                token: widget.token,
+                                              ),
+                                            );
+                                          }
+                                        },
+                                        cells: [
+                                          DataCell(
+                                            Text(
+                                              order.orderId?.toString() ?? '-',
                                               style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w500,
-                                                color: _statusColor(
-                                                  order.status ?? '',
+                                                color: isDark ? Colors.white : Colors.black,
+                                              ),
+                                            ),
+                                          ),
+                                          DataCell(
+                                            Text(
+                                              order.orderType ?? '-',
+                                              style: TextStyle(
+                                                color: isDark ? Colors.white : Colors.black,
+                                              ),
+                                            ),
+                                          ),
+                                          DataCell(
+                                            Text(
+                                              order.date ?? '-',
+                                              style: TextStyle(
+                                                color: isDark ? Colors.white : Colors.black,
+                                              ),
+                                            ),
+                                          ),
+                                          DataCell(
+                                            Text(
+                                              order.zoneName ?? '-',
+                                              style: TextStyle(
+                                                color: isDark ? Colors.white : Colors.black,
+                                              ),
+                                            ),
+                                          ),
+                                          DataCell(
+                                            Text(
+                                              order.tableName ?? '-',
+                                              style: TextStyle(
+                                                color: isDark ? Colors.white : Colors.black,
+                                              ),
+                                            ),
+                                          ),
+                                          DataCell(
+                                            Text(
+                                              order.customerName?.trim().isEmpty == true
+                                                  ? 'Guest'
+                                                  : order.customerName ?? '-',
+                                              style: TextStyle(
+                                                color: isDark ? Colors.white : Colors.black,
+                                              ),
+                                            ),
+                                          ),
+                                          DataCell(
+                                            Text(
+                                              order.customerPhone?.trim().isEmpty == true
+                                                  ? '-'
+                                                  : order.customerPhone ?? '-',
+                                              style: TextStyle(
+                                                color: isDark ? Colors.white : Colors.black,
+                                              ),
+                                            ),
+                                          ),
+                                          DataCell(
+                                            Text(
+                                              order.paymentType ?? '-',
+                                              style: TextStyle(
+                                                color: isDark ? Colors.white : Colors.black,
+                                              ),
+                                            ),
+                                          ),
+                                          DataCell(
+                                            Text(
+                                              "$_currency${order.netPayable?.toStringAsFixed(2) ?? '0.00'}",
+                                              style: TextStyle(
+                                                color: isDark ? Colors.white : Colors.black,
+                                              ),
+                                            ),
+                                          ),
+                                          DataCell(
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 12,
+                                                vertical: 6,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: _statusColor(order.status ?? '')
+                                                    .withOpacity(isDark ? 0.25 : 0.1),
+                                                borderRadius: BorderRadius.circular(12),
+                                              ),
+                                              child: Text(
+                                                order.status?.isNotEmpty == true
+                                                    ? order.status!
+                                                    : '-',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: _statusColor(order.status ?? ''),
                                                 ),
                                               ),
                                             ),
                                           ),
-                                        ),
-                                      ],
-                                    );
-                                  }).toList(),
+                                        ],
+                                      );
+                                    }).toList(),
+                                  ),
                                 ),
                               ),
                             ),
@@ -821,14 +881,18 @@ class _OrdersListTableState extends State<OrdersListTable> {
                         /// PAGINATION
                         Container(
                           height: 45,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFF2F2F2),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? const Color(0xFF202433)
+                                : const Color(0xFFF2F2F2),
                             border: Border(
                               top: BorderSide(
-                                color: Color(0xFFF2F2F2),
+                                color: isDark
+                                    ? Colors.white24
+                                    : const Color(0xFFF2F2F2),
                               ),
                             ),
-                            borderRadius: BorderRadius.only(
+                            borderRadius: const BorderRadius.only(
                               bottomLeft: Radius.circular(10),
                               bottomRight: Radius.circular(10),
                             ),
@@ -841,18 +905,22 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                 displayedOrders == totalOrders
                                     ? "Total Orders: $totalOrders"
                                     : "Showing $displayedOrders of $totalOrders Orders",
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
-                                  color: Colors.black87,
+                                  color: isDark ? Colors.white : Colors.black87,
                                 ),
                               ),
 
                               Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
+                                  color: isDark
+                                      ? const Color(0xFF2B3042)
+                                      : Colors.white,
                                   border: Border.all(
-                                    color: Color(0xFFF2F2F2),
+                                    color: isDark
+                                        ? Colors.white24
+                                        : const Color(0xFFF2F2F2),
                                   ),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
@@ -882,10 +950,14 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                             decoration: BoxDecoration(
                                               color: isActive
                                                   ? const Color(0xFFFF4D20)
-                                                  : Colors.white,
-                                              border: const Border(
+                                                  : (isDark
+                                                  ? const Color(0xFF34384F)
+                                                  : Colors.white),
+                                              border: Border(
                                                 right: BorderSide(
-                                                  color: Color(0xFFEFEFEF),
+                                                  color: isDark
+                                                      ? Colors.white24
+                                                      : const Color(0xFFEFEFEF),
                                                 ),
                                               ),
                                             ),
@@ -895,7 +967,9 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                               style: TextStyle(
                                                 color: isActive
                                                     ? Colors.white
-                                                    : const Color(0xFF727272),
+                                                    : (isDark
+                                                    ? Colors.white70
+                                                    : const Color(0xFF727272)),
                                                 fontSize: 11,
                                                 fontWeight: isActive
                                                     ? FontWeight.w600
@@ -963,21 +1037,29 @@ class _OrdersListTableState extends State<OrdersListTable> {
     required String text,
     required BorderRadius borderRadius,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       width: 65,
       height: 32,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark
+            ? const Color(0xFF34384F)
+            : Colors.white,
         borderRadius: borderRadius,
         border: Border.all(
-          color: const Color(0xFFEFEFEF),
+          color: isDark
+              ? Colors.white24
+              : const Color(0xFFEFEFEF),
         ),
       ),
       child: Text(
         text,
-        style: const TextStyle(
-          color: Color(0xFF727272),
+        style: TextStyle(
+          color: isDark
+              ? Colors.white70
+              : const Color(0xFF727272),
           fontSize: 11,
           fontWeight: FontWeight.w400,
         ),

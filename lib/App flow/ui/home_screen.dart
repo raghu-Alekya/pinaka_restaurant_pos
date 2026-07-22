@@ -367,59 +367,59 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-
-                              _greetingSection(),
-
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _kotStatusWidget(
-                                      "Queue",
-                                      "00", // Static value
-                                      // Icons.queue,
-                                      Icons.room_service,
-                                      const Color(0xFF4E4949),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: _kotStatusWidget(
-                                      "Preparing",
-                                      "00", // Static value
-                                      Icons.access_time_outlined,
-                                      const Color(0xFFE39106),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: _kotStatusWidget(
-                                      "Ready",
-                                      "00", // Static value
-                                      Icons.check_circle_outline,
-                                      const Color(0xFF1A5FCB),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: _kotStatusWidget(
-                                      "Served",
-                                      "00", // Static value
-                                      Icons.done_all,
-                                      const Color(0xFF02B443),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: _kotStatusWidget(
-                                      "Cancelled",
-                                      "00", // Static value
-                                      Icons.cancel_outlined,
-                                      const Color(0xFFEA2F38),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                              //
+                              // _greetingSection(),
+                              //
+                              // const SizedBox(height: 8),
+                              // Row(
+                              //   children: [
+                              //     Expanded(
+                              //       child: _kotStatusWidget(
+                              //         "Queue",
+                              //         "00", // Static value
+                              //         // Icons.queue,
+                              //         Icons.room_service,
+                              //         const Color(0xFF4E4949),
+                              //       ),
+                              //     ),
+                              //     const SizedBox(width: 12),
+                              //     Expanded(
+                              //       child: _kotStatusWidget(
+                              //         "Preparing",
+                              //         "00", // Static value
+                              //         Icons.access_time_outlined,
+                              //         const Color(0xFFE39106),
+                              //       ),
+                              //     ),
+                              //     const SizedBox(width: 12),
+                              //     Expanded(
+                              //       child: _kotStatusWidget(
+                              //         "Ready",
+                              //         "00", // Static value
+                              //         Icons.check_circle_outline,
+                              //         const Color(0xFF1A5FCB),
+                              //       ),
+                              //     ),
+                              //     const SizedBox(width: 12),
+                              //     Expanded(
+                              //       child: _kotStatusWidget(
+                              //         "Served",
+                              //         "00", // Static value
+                              //         Icons.done_all,
+                              //         const Color(0xFF02B443),
+                              //       ),
+                              //     ),
+                              //     const SizedBox(width: 12),
+                              //     Expanded(
+                              //       child: _kotStatusWidget(
+                              //         "Cancelled",
+                              //         "00", // Static value
+                              //         Icons.cancel_outlined,
+                              //         const Color(0xFFEA2F38),
+                              //       ),
+                              //     ),
+                              //   ],
+                              // ),
                               // Row(
                               //   children: [
                               //     Expanded(
@@ -496,38 +496,38 @@ class _HomeScreenState extends State<HomeScreen> {
                               //       ),
                               //     ),
                               //   ],
-                              const SizedBox(height: 5),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Divider(
-                                      color: Colors.grey.shade400,
-                                      thickness: 1,
-                                    ),
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                                    child: Text(
-                                      "QUICK ACCESS",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        color: Theme.of(context).colorScheme.onSurface,
-                                        fontSize: 16,
-                                        letterSpacing: 1,
-                                      ),
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: Divider(
-                                      color: Colors.grey.shade400,
-                                      thickness: 1,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              // _sectionTitle("Restaurant Operations"),
-
-                              const SizedBox(height: 5),
+                              // const SizedBox(height: 5),
+                              // Row(
+                              //   children: [
+                              //     Expanded(
+                              //       child: Divider(
+                              //         color: Colors.grey.shade400,
+                              //         thickness: 1,
+                              //       ),
+                              //     ),
+                              //     Padding(
+                              //       padding: const EdgeInsets.symmetric(horizontal: 12),
+                              //       child: Text(
+                              //         "QUICK ACCESS",
+                              //         style: TextStyle(
+                              //           fontWeight: FontWeight.w600,
+                              //           color: Theme.of(context).colorScheme.onSurface,
+                              //           fontSize: 16,
+                              //           letterSpacing: 1,
+                              //         ),
+                              //       ),
+                              //     ),
+                              //     Expanded(
+                              //       child: Divider(
+                              //         color: Colors.grey.shade400,
+                              //         thickness: 1,
+                              //       ),
+                              //     ),
+                              //   ],
+                              // ),
+                              // // _sectionTitle("Restaurant Operations"),
+                              //
+                              // const SizedBox(height: 5),
                               Expanded(
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -871,19 +871,19 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ],
                                       ),
                                     ),
-                                    const SizedBox(width: 10),
+                                    // const SizedBox(width: 10),
+                                    //
+                                    // Container(
+                                    //   width: 1,
+                                    //   height: double.infinity,
+                                    //   color: Colors.grey.shade300,
+                                    // ),
 
-                                    Container(
-                                      width: 1,
-                                      height: double.infinity,
-                                      color: Colors.grey.shade300,
-                                    ),
-
-                                    const SizedBox(width: 10),
+                                    // const SizedBox(width: 10),
 
                                     /// RIGHT SIDE
                                     SizedBox(
-                                      width: 420,
+                                      width: 435,
                                       child: _restaurantOverview(),
                                     ),
                                   ],
@@ -1221,21 +1221,14 @@ class _HomeScreenState extends State<HomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
 
-        const Text(
-          "Restaurant Overview",
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
 
         const SizedBox(height: 10),
 
         _topSellingItems(),
-
-        const SizedBox(height: 10),
-
-        _tableStatusWidget(),
+        //
+        // const SizedBox(height: 10),
+        //
+        // _tableStatusWidget(),
       ],
     );
   }
@@ -1243,12 +1236,15 @@ class _HomeScreenState extends State<HomeScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.only(
+        left: 16,
+        top: 16,
+        right: 25,
+        bottom: 8,
+      ),
       decoration: BoxDecoration(
-        color: isDark
-            ? const Color(0xFF202433)
-            : Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: isDark ? const Color(0xFF202433) : Colors.white,
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
             blurRadius: 6,
@@ -1261,29 +1257,178 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Column(
         children: [
-          _foodRow(
-            "Chicken Biryani",
-            "Main Course",
-            "48",
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Restaurant Overview",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Color(0xFF1A1A1A),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      "Live overview of today's operations",
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark
+                            ? Colors.grey.shade400
+                            : const Color(0xFF8B97A8),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              Icon(
+                Icons.calendar_today_outlined,
+                size: 18,
+                color: isDark ? Colors.white70 : const Color(0xFF334155),
+              ),
+              const SizedBox(width: 6),
+
+              Text(
+                "17 July, 2026",
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? Colors.white : const Color(0xFF1E293B),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 14),
+
+          _overviewRow(
+            Icons.room_service_outlined,
+            Colors.grey.shade100,
+            Colors.grey,
+            "Queue",
+            "02",
             isDark,
           ),
-          _foodRow(
-            "Chicken Dum Biryani",
-            "Main Course",
-            "35",
+
+          _overviewRow(
+            Icons.access_time,
+            const Color(0xFFFFF7D6),
+            Colors.amber.shade700,
+            "Kitchen Preparing",
+            "10",
             isDark,
           ),
-          _foodRow(
-            "Paneer Biryani",
-            "Main Course",
-            "28",
+
+          _overviewRow(
+            Icons.check_circle_outline,
+            const Color(0xFFEAF2FF),
+            Colors.blue,
+            "Ready to Serve",
+            "06",
             isDark,
           ),
-          _foodRow(
-            "Chicken 65",
-            "Starters",
-            "21",
+
+          _overviewRow(
+            Icons.cancel_outlined,
+            const Color(0xFFFFECEC),
+            Colors.red,
+            "Cancelled",
+            "05",
             isDark,
+          ),
+
+          _overviewRow(
+            Icons.restaurant,
+            const Color(0xFFFFF2E8),
+            Colors.deepOrange,
+            "Dine-In",
+            "10",
+            isDark,
+          ),
+
+          _overviewRow(
+            Icons.shopping_bag_outlined,
+            const Color(0xFFE9FAEF),
+            Colors.green,
+            "Takeaways",
+            "14",
+            isDark,
+          ),
+
+          _overviewRow(
+            Icons.delivery_dining,
+            const Color(0xFFF2EDFF),
+            Colors.deepPurple,
+            "Online Orders",
+            "12",
+            isDark,
+            showDivider: false,
+          ),
+        ],
+      ),
+    );
+  }
+  Widget _overviewRow(
+      IconData icon,
+      Color bgColor,
+      Color iconColor,
+      String title,
+      String value,
+      bool isDark, {
+        bool showDivider = true,
+      }) {
+    return Container(
+      decoration: BoxDecoration(
+        border: showDivider
+            ? Border(
+          bottom: BorderSide(
+            color: isDark
+                ? Colors.grey.shade800
+                : const Color(0xFFE5E7EB),
+          ),
+        )
+            : null,
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              icon,
+              size: 18,
+              color: iconColor,
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 15,
+                color: isDark ? Colors.white : const Color(0xFF333333),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : const Color(0xFF0F172A),
+            ),
           ),
         ],
       ),
@@ -1678,7 +1823,7 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
       child: Container(
-        height: 95,
+        height: 125,
         width: 170,
         padding: const EdgeInsets.all(14),
         decoration: ShapeDecoration(
@@ -1705,7 +1850,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             title,
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 14,
+                              fontSize: 16,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -1714,7 +1859,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             subtitle,
                             style: const TextStyle(
                               color: Colors.white70,
-                              fontSize: 10,
+                              fontSize: 14,
                             ),
                           ),
                         ],
@@ -1722,8 +1867,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
 
                     Container(
-                      width: 45,
-                      height: 40,
+                      width: 50,
+                      height: 45,
                       decoration: BoxDecoration(
                         color: Colors.white24,
                         borderRadius: BorderRadius.circular(10),
@@ -1743,7 +1888,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             countLabel,
                             style: const TextStyle(
                                 color: Colors.white70,
-                                fontSize: 8,
+                                fontSize: 9,
                                 fontWeight: FontWeight.w600
                             ),
                           ),
@@ -1775,13 +1920,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 //     // ),
                 //   ),
 
-                // const Spacer(),
+                const Spacer(),
 
                 const Text(
                   "Open Module →",
                   style: TextStyle(
                     color: Colors.white70,
-                    fontSize: 10,
+                    fontSize: 14,
                   ),
                 ),
               ],
@@ -1792,8 +1937,8 @@ class _HomeScreenState extends State<HomeScreen> {
               right: 0,
               bottom: 0,
               child: Container(
-                width: 20,
-                height: 20,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   color: Colors.white24,
                   shape: BoxShape.circle,
@@ -1801,7 +1946,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Icon(
                   icon,
                   color: Colors.white,
-                  size: 12,
+                  size: 20,
                 ),
               ),
             ),
@@ -1824,7 +1969,7 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),
       child: Container(
-        height: 110,
+        height: 135,
         padding: const EdgeInsets.all(14),
         decoration: ShapeDecoration(
           color: Theme.of(context).cardColor,
@@ -1855,8 +2000,8 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 28,
-                  height: 28,
+                  width: 45,
+                  height: 45,
                   decoration: BoxDecoration(
                     color: iconColor.withOpacity(.12),
                     borderRadius: BorderRadius.circular(12),
@@ -1864,7 +2009,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Icon(
                     icon,
                     color: iconColor,
-                    size: 14,
+                    size: 24,
                   ),
                 ),
 
@@ -1878,14 +2023,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TextStyle(
                         color: iconColor,
                         fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                        fontSize: 16,
                       ),
                     ),
                     Text(
                       countLabel,
                       style:  TextStyle(
                         color: Theme.of(context).hintColor,
-                        fontSize: 11,
+                        fontSize: 12,
                       ),
                     ),
                   ],
@@ -1893,7 +2038,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
 
-            const SizedBox(height: 3),
+            const SizedBox(height: 8),
 
             Text(
               title,
@@ -1917,13 +2062,13 @@ class _HomeScreenState extends State<HomeScreen> {
             //   ),
             // ),
 
-            const SizedBox(height: 4),
-
+            // const SizedBox(height: 4),
+            const Spacer(),
             Text(
               "Open Module →",
               style: TextStyle(
                 color: Theme.of(context).hintColor,
-                fontSize: 10,
+                fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
             ),

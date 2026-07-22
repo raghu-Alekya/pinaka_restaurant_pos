@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../models/order/coupon_model.dart';
 import '../../repositories/coupon_repository.dart';
 import '../../utils/SessionManager.dart';
+import '../../utils/theme_provider.dart';
 
 class Couponscreen extends StatefulWidget {
   final Function(String, double) onCouponApplied;
@@ -120,10 +122,13 @@ class _CouponscreenState extends State<Couponscreen> {
   @override
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final bool isDark = themeProvider.isDark;
+
     final size = MediaQuery.of(context).size;
 
     final dialogWidth = size.width * 0.55;
-    final dialogHeight = size.height * 0.35;
+    final dialogHeight = size.height * 0.40;
 
     final iconBox = dialogWidth * 0.10;
     final closeButton = dialogWidth * 0.042;
@@ -131,13 +136,24 @@ class _CouponscreenState extends State<Couponscreen> {
     final buttonHeight = dialogHeight * 0.18;
     final textFieldHeight = dialogHeight * 0.18;
     return Dialog(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
       ),
-      child: SizedBox(
+      child: Container(
         width: dialogWidth,
         height: dialogHeight,
+        decoration: BoxDecoration(
+          color: isDark
+              ? const Color(0xFF1F2937)
+              : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isDark
+                ? const Color(0xFF374151)
+                : const Color(0xFFDFDFDF),
+          ),
+        ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
           child: Column(
@@ -176,22 +192,26 @@ class _CouponscreenState extends State<Couponscreen> {
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
+                      children: [
                         Text(
                           "Apply Coupon",
                           style: TextStyle(
-                            fontSize: 32,
+                            fontSize: 30,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFF373535),
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF373535),
                           ),
                         ),
-                        SizedBox(height: 8),
+                        const SizedBox(height: 8),
                         Text(
                           "Apply coupon codes at checkout to instantly redeem discounts and see updated totals in real time.",
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w400,
-                            color: Color(0xFF4C5F7D),
+                            color: isDark
+                                ? Colors.grey.shade400
+                                : const Color(0xFF4C5F7D),
                           ),
                         ),
                       ],
@@ -219,12 +239,14 @@ class _CouponscreenState extends State<Couponscreen> {
               const Spacer(),
 
               /// Coupon Label
-              const Align(
+              Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
                   "Coupon Code :",
                   style: TextStyle(
-                    color: Color(0xFF6B7280),
+                    color: isDark
+                        ? Colors.white70
+                        : const Color(0xFF6B7280),
                     fontSize: 24,
                     fontWeight: FontWeight.w500,
                   ),
@@ -240,7 +262,14 @@ class _CouponscreenState extends State<Couponscreen> {
                       child: Container(
                         height: textFieldHeight,
                         decoration: BoxDecoration(
-                          border: Border.all(color: const Color(0xFFC1C1C1)),
+                          color: isDark
+                              ? const Color(0xFF374151)
+                              : Colors.white,
+                          border: Border.all(
+                            color: isDark
+                                ? const Color(0xFF4B5563)
+                                : const Color(0xFFC1C1C1),
+                          ),
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: Center(

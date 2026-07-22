@@ -47,6 +47,8 @@ class PrintRecipt extends StatefulWidget {
 
 class _PrintReciptState extends State<PrintRecipt> {
   String _selectedOption = 'Printer';
+  // final theme = Theme.of(context);
+  // final isDark = theme.brightness == Brightness.dark;
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _smsController = TextEditingController();
   final List<String> options = ['Printer', 'Email', 'SMS'];
@@ -171,12 +173,14 @@ class _PrintReciptState extends State<PrintRecipt> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       width: MediaQuery.of(context).size.width * 0.45,
       height: MediaQuery.of(context).size.height * 0.60,
       padding: EdgeInsets.all(20.0),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF2B2D3A) : Colors.white,
         borderRadius: BorderRadius.circular(16),
       ),
       child: SingleChildScrollView(
@@ -215,6 +219,8 @@ class _PrintReciptState extends State<PrintRecipt> {
               runSpacing: 10,
               alignment: WrapAlignment.center,
               children: options.map((option) {
+                final bool isSelected = _selectedOption == option;
+
                 return GestureDetector(
                   onTap: () {
                     setState(() {
@@ -222,18 +228,24 @@ class _PrintReciptState extends State<PrintRecipt> {
                     });
                   },
                   child: Container(
-                    padding: EdgeInsets.symmetric(
+                    padding: const EdgeInsets.symmetric(
                       horizontal: 20,
                       vertical: 10,
                     ),
                     decoration: BoxDecoration(
-                      color: _selectedOption == option
-                          ? Colors.red.shade50
-                          : Colors.white,
+                      color: isSelected
+                          ? (isDark
+                          ? const Color(0xFF4A1E1E)
+                          : Colors.red.shade50)
+                          : (isDark
+                          ? const Color(0xFF353847)
+                          : Colors.white),
                       border: Border.all(
-                        color: _selectedOption == option
+                        color: isSelected
                             ? Colors.redAccent
-                            : Color(0xFFE7E2E2),
+                            : (isDark
+                            ? Colors.white24
+                            : const Color(0xFFE7E2E2)),
                         width: 1.5,
                       ),
                       borderRadius: BorderRadius.circular(10),
@@ -250,14 +262,19 @@ class _PrintReciptState extends State<PrintRecipt> {
                             });
                           },
                           activeColor: Colors.redAccent,
+                          fillColor: WidgetStateProperty.resolveWith<Color>(
+                                (states) => isDark ? Colors.white : Colors.redAccent,
+                          ),
                         ),
-                        SizedBox(width: 6),
+                        const SizedBox(width: 6),
                         Text(
                           option,
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
-                            color: Color(0xFFAFACAC),
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFFAFACAC),
                           ),
                         ),
                       ],
@@ -270,7 +287,7 @@ class _PrintReciptState extends State<PrintRecipt> {
             SizedBox(
               height: 70,
               child: AnimatedSwitcher(
-                duration: Duration(milliseconds: 300),
+                duration: const Duration(milliseconds: 300),
                 child: _selectedOption == 'Email'
                     ? _buildTextField(
                   hintText: 'Enter Email Address',
@@ -283,7 +300,7 @@ class _PrintReciptState extends State<PrintRecipt> {
                   controller: _smsController,
                   keyboardType: TextInputType.number,
                 )
-                    : SizedBox.shrink(),
+                    : const SizedBox.shrink(),
               ),
             ),
             SizedBox(height: 15),
@@ -292,14 +309,20 @@ class _PrintReciptState extends State<PrintRecipt> {
               children: [
                 _buildDialogButton(
                   label: 'No Receipt',
-                  color: const Color(0xFFECEEF2),
-                  textColor: const Color(0xFF4C5F7D),
+                  color: isDark
+                      ? const Color(0xFF4A4C5A)
+                      : const Color(0xFFECEEF2),
+                  textColor: isDark
+                      ? Colors.white
+                      : const Color(0xFF4C5F7D),
                   onTap: () => _onDonePressed(isNoReceipt: true),
                 ),
                 const SizedBox(width: 20),
                 _buildDialogButton(
                   label: 'Done',
-                  color: const Color(0xFF1BA672),
+                  color: isDark
+                      ? const Color(0xFF22B07D)
+                      : const Color(0xFF1BA672),
                   textColor: Colors.white,
                   onTap: () => _onDonePressed(isNoReceipt: false),
                 ),
@@ -316,6 +339,8 @@ class _PrintReciptState extends State<PrintRecipt> {
     required TextEditingController controller,
     required TextInputType keyboardType,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     List<TextInputFormatter> inputFormatters = [];
 
     if (keyboardType == TextInputType.number) {
@@ -329,40 +354,58 @@ class _PrintReciptState extends State<PrintRecipt> {
         LengthLimitingTextInputFormatter(32),
       ];
     }
+
     return Container(
       width: MediaQuery.of(context).size.width * 0.48,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark
+            ? const Color(0xFF353847)
+            : Colors.white,
         borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: Color(0xFFE7E2E2), width: 1.2),
+        border: Border.all(
+          color: isDark
+              ? Colors.white24
+              : const Color(0xFFE7E2E2),
+          width: 1.2,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Color(0xFFE7E2E2),
+            color: isDark
+                ? Colors.black.withOpacity(0.35)
+                : const Color(0xFFE7E2E2),
             blurRadius: 10,
-            offset: Offset(0, 1),
+            offset: const Offset(0, 1),
           ),
         ],
       ),
-      padding: EdgeInsets.symmetric(horizontal: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       child: TextField(
         controller: controller,
         keyboardType: keyboardType,
         inputFormatters: inputFormatters,
-        style: TextStyle(fontSize: 16, color: Colors.black87),
+        cursorColor: isDark ? Colors.white : Colors.black,
+        style: TextStyle(
+          fontSize: 16,
+          color: isDark ? Colors.white : Colors.black87,
+        ),
         decoration: InputDecoration(
           hintText: hintText,
+          hintStyle: TextStyle(
+            color: isDark ? Colors.white54 : Colors.grey,
+          ),
           border: InputBorder.none,
         ),
       ),
     );
   }
-
   Widget _buildDialogButton({
     required String label,
     required Color color,
     required Color textColor,
     required VoidCallback onTap,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -371,11 +414,16 @@ class _PrintReciptState extends State<PrintRecipt> {
         decoration: BoxDecoration(
           color: color,
           borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isDark ? Colors.white24 : Colors.transparent,
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black12,
+              color: isDark
+                  ? Colors.black.withOpacity(0.45)
+                  : Colors.black12,
               blurRadius: 4,
-              offset: Offset(0, 2),
+              offset: const Offset(0, 2),
             ),
           ],
         ),

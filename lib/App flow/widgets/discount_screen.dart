@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
 
 import '../../blocs/Bloc Event/discount_event.dart';
 import '../../blocs/Bloc Event/payment_event.dart';
@@ -8,6 +9,7 @@ import '../../blocs/Bloc Logic/payment_bloc.dart';
 import '../../blocs/Bloc State/discount_stata.dart';
 import '../../models/payment/discount_model.dart';
 import '../../utils/SessionManager.dart';
+import '../../utils/theme_provider.dart';
 
 enum DiscountType { percent, amount }
 
@@ -36,7 +38,7 @@ class DiscountPopup extends StatefulWidget {
 class _DiscountPopupState extends State<DiscountPopup> {
   final TextEditingController discountController = TextEditingController();
   final TextEditingController reasonController = TextEditingController();
-
+  bool get isDark => Provider.of<ThemeProvider>(context, listen: false).isDark;
   DiscountType selectedType = DiscountType.percent;
   bool isNCSelected = false;
   double payableAmount = 0; // original
@@ -262,9 +264,11 @@ class _DiscountPopupState extends State<DiscountPopup> {
     });
   }
 
-  @override
+  // @override
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDark = themeProvider.isDark;
     return BlocListener<DiscountBloc, DiscountState>(
       listener: (context, state) {
         if (state is DiscountSuccess) {
@@ -303,14 +307,21 @@ class _DiscountPopupState extends State<DiscountPopup> {
           height: 550,
           padding: const EdgeInsets.all(30),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark
+                ? const Color(0xFF1F2937)
+                : Colors.white,
             borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isDark
+                  ? const Color(0xFF374151)
+                  : const Color(0xFFDFDFDF),
+            ),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               /// Header
-              _header(context),
+              _header(context,isDark),
 
               const SizedBox(height: 18),
 
@@ -326,11 +337,17 @@ class _DiscountPopupState extends State<DiscountPopup> {
                         Container(
                           padding: const EdgeInsets.all(18),
                           decoration: BoxDecoration(
-                            color: Color(0xFFF9FAFC),
+                            color: isDark
+                                ? const Color(0xFF111827)
+                                : const Color(0xFFF9FAFC),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xffDFDFDF)),
+                            border: Border.all(
+                              color: isDark
+                                  ? const Color(0xFF374151)
+                                  : const Color(0xFFDFDFDF),
+                            ),
                           ),
-                          child: _amountRow(),
+                          child: _amountRow(isDark),
                         ),
 
                         const SizedBox(height: 10),
@@ -339,9 +356,15 @@ class _DiscountPopupState extends State<DiscountPopup> {
                         Container(
                           padding: const EdgeInsets.all(18),
                           decoration: BoxDecoration(
-                            color: Color(0xFFF9FAFC),
+                            color: isDark
+                                ? const Color(0xFF111827)
+                                : const Color(0xFFF9FAFC),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xffDFDFDF)),
+                            border: Border.all(
+                              color: isDark
+                                  ? const Color(0xFF374151)
+                                  : const Color(0xFFDFDFDF),
+                            ),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -408,7 +431,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
   }
 
   /// ---------------- HEADER ----------------
-  Widget _header(BuildContext context) {
+  Widget _header(BuildContext context, bool isDark) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -453,19 +476,23 @@ class _DiscountPopupState extends State<DiscountPopup> {
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
+            children: [
               Text(
                 "Apply Discount",
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF3B3B3B),
+                  color: isDark
+                      ? Colors.white
+                      : const Color(0xFF3B3B3B),
                 ),
               ),
-              SizedBox(height: 4),
+              const SizedBox(height: 4),
               Text(
                 "Add discounts using a percentage or amount, with an optional reason and real-time total preview.",
-                style: TextStyle(fontSize: 14, color: Color(0xFF5A6A85)),
+                style: TextStyle(fontSize: 14,    color: isDark
+                    ? Colors.grey.shade400
+                    : const Color(0xFF5A6A85),),
               ),
             ],
           ),
@@ -488,7 +515,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
   }
 
   /// ---------------- LEFT SECTION ----------------
-  Widget _leftSection() {
+  Widget _leftSection(bool isDark) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -499,7 +526,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _amountRow(),
+          _amountRow(isDark),
           const Divider(height: 32),
 
           const Text(
@@ -521,12 +548,13 @@ class _DiscountPopupState extends State<DiscountPopup> {
     );
   }
 
-  Widget _amountRow() {
+  Widget _amountRow(bool isDark) {
     return Row(
       children: [
         _amountBox(
           'Net Total',
           '$_currency${payableAmount.toStringAsFixed(2)}',
+          isDark,
           readOnly: true,
         ),
 
@@ -535,21 +563,33 @@ class _DiscountPopupState extends State<DiscountPopup> {
         _amountBox(
           'New Payable Amount',
           '$_currency${newPayableAmount.toStringAsFixed(2)}',
+          isDark,
           readOnly: true,
         ),
       ],
     );
   }
 
-  Widget _amountBox(String label, String value, {bool readOnly = false}) {
+  Widget _amountBox(
+      String label,
+      String value,
+      bool isDark, {
+        bool readOnly = false,
+      }) {
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: const TextStyle(fontSize: 12, color: Color(0xFF252525)),
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark
+                  ? Colors.white70
+                  : const Color(0xFF252525),
+            ),
           ),
+
           const SizedBox(height: 6),
 
           Container(
@@ -557,10 +597,18 @@ class _DiscountPopupState extends State<DiscountPopup> {
             padding: const EdgeInsets.symmetric(horizontal: 12),
             alignment: Alignment.centerLeft,
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F3F7),
+              color: isDark
+                  ? const Color(0xFF374151)
+                  : const Color(0xFFF1F3F7),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(width: 1, color: const Color(0xFFDFDFDF)),
-              boxShadow: const [
+              border: Border.all(
+                color: isDark
+                    ? const Color(0xFF4B5563)
+                    : const Color(0xFFDFDFDF),
+              ),
+              boxShadow: isDark
+                  ? []
+                  : const [
                 BoxShadow(
                   color: Color(0x19000000),
                   blurRadius: 10,
@@ -570,15 +618,20 @@ class _DiscountPopupState extends State<DiscountPopup> {
               ],
             ),
             child: Text(
-              value, // ✅ dynamically updates
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+              value,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: isDark
+                    ? Colors.white
+                    : const Color(0xFF111827),
+              ),
             ),
           ),
         ],
       ),
     );
   }
-
   Widget _discountToggle() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -857,35 +910,37 @@ class _DiscountPopupState extends State<DiscountPopup> {
                   Container(
                     height: 48,
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFDFDFDF)),
+                      color: isDark
+                          ? const Color(0xFF1F2937)
+                          : Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isDark
+                            ? const Color(0xFF4B5563)
+                            : const Color(0xFFDFDFDF),
+                      ),
                     ),
                     child: Row(
                       children: [
                         _buildTypeButton(
                           title: "NC",
+                          isDark: isDark,
                           selected: isNCSelected,
                           onTap: () {
                             setState(() {
                               isNCSelected = true;
-                              discountController.clear(); // Clear the field
+                              discountController.text = payableAmount.toStringAsFixed(2);
                               newPayableAmount = 0;
                             });
-                            // setState(() {
-                            //   isNCSelected = true;
-                            //   discountController.text = payableAmount.toStringAsFixed(2);
-                            //   newPayableAmount = 0;
-                            // });
                           },
                         ),
 
-                        _divider(),
+                        _divider(isDark),
 
                         _buildTypeButton(
                           title: "%",
-                          selected:
-                          !isNCSelected &&
+                          isDark: isDark,
+                          selected: !isNCSelected &&
                               selectedType == DiscountType.percent,
                           onTap: () {
                             setState(() {
@@ -895,12 +950,12 @@ class _DiscountPopupState extends State<DiscountPopup> {
                           },
                         ),
 
-                        _divider(),
+                        _divider(isDark),
 
                         _buildTypeButton(
                           title: _currency,
-                          selected:
-                          !isNCSelected &&
+                          isDark: isDark,
+                          selected: !isNCSelected &&
                               selectedType == DiscountType.amount,
                           onTap: () {
                             setState(() {
@@ -941,75 +996,111 @@ class _DiscountPopupState extends State<DiscountPopup> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     "Value:",
-                    style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 14,
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
                   ),
-
                   const SizedBox(height: 6),
                   Container(
                     decoration: BoxDecoration(
-                      color:
-                      isNCSelected ? const Color(0xFFF5F5F5) : Colors.white,
+                      color: isNCSelected
+                          ? (isDark
+                          ? const Color(0xFF2B3042)
+                          : const Color(0xFFF5F5F5))
+                          : (isDark
+                          ? const Color(0xFF2B3042)
+                          : Colors.white),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color:
-                        isNCSelected
-                            ? const Color(0xFFCECECE) // NC border color
-                            : const Color(
-                          0xFFDFDFDF,
-                        ), // Normal border color
+                        color: isNCSelected
+                            ? (isDark
+                            ? Colors.white24
+                            : const Color(0xFFCECECE))
+                            : (isDark
+                            ? Colors.white24
+                            : const Color(0xFFDFDFDF)),
                       ),
                     ),
                     child: SizedBox(
-                      // ✅ Add child:
                       height: 48,
                       child: IgnorePointer(
                         ignoring: isNCSelected,
                         child: TextField(
                           controller: discountController,
                           readOnly: true,
+                          enabled: !isNCSelected,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 18, // Entered text size
+                          style: TextStyle(
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF111827),
+                            color: isNCSelected
+                                ? (isDark
+                                ? Colors.white54
+                                : const Color(0xFFBDBDBD))
+                                : (isDark
+                                ? Colors.white
+                                : const Color(0xFF111827)),
                           ),
                           decoration: InputDecoration(
-                            hintText:
-                            selectedType == DiscountType.percent
+                            hintText: selectedType == DiscountType.percent
                                 ? "10"
                                 : "100.00",
-                            hintStyle: const TextStyle(
-                              color: Color(0xFFBDBDBD), // Light grey
+                            hintStyle: TextStyle(
+                              color: isDark
+                                  ? Colors.white54
+                                  : const Color(0xFFBDBDBD),
                               fontSize: 18,
                               fontWeight: FontWeight.w500,
                             ),
-                            prefixText:
-                            !isNCSelected &&
+                            prefixText: !isNCSelected &&
                                 selectedType == DiscountType.amount
                                 ? "$_currency "
                                 : null,
-                            suffixText:
-                            !isNCSelected &&
+                            suffixText: !isNCSelected &&
                                 selectedType == DiscountType.percent
                                 ? "%"
                                 : null,
+                            prefixStyle: TextStyle(
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF111827),
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            suffixStyle: TextStyle(
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF111827),
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                             filled: true,
-                            fillColor:
-                            isNCSelected
-                                ? const Color(
-                              0xFFF5F5F5,
-                            ) // Optional disabled background
-                                : Colors.white,
+                            fillColor: isNCSelected
+                                ? (isDark
+                                ? const Color(0xFF2B3042)
+                                : const Color(0xFFF5F5F5))
+                                : (isDark
+                                ? const Color(0xFF2B3042)
+                                : Colors.white),
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 10,
                               vertical: 12,
                             ),
-
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide.none, // or BorderSide(color: Color(0xFFDFDFDF))
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide.none,
+                            ),
+                            disabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide.none,
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide.none,
                             ),
                           ),
                         ),
@@ -1413,19 +1504,21 @@ class _DiscountPopupState extends State<DiscountPopup> {
       ],
     );
   }
+  Widget _divider(bool isDark) {
 
-  Widget _divider() {
     return Container(
       width: 1,
       margin: const EdgeInsets.symmetric(vertical: 8),
-      color: const Color(0xFFE5E7EB),
+      color: isDark
+          ? const Color(0xFF4B5563)
+          : const Color(0xFFE5E7EB),
     );
   }
-
   Widget _buildTypeButton({
     required String title,
     required bool selected,
     required VoidCallback onTap,
+    required bool isDark,
   }) {
     final bool isNC = title == "NC";
 
@@ -1436,41 +1529,38 @@ class _DiscountPopupState extends State<DiscountPopup> {
           duration: const Duration(milliseconds: 200),
           margin: const EdgeInsets.all(4),
           alignment: Alignment.center,
-          decoration:
-          selected
+          decoration: selected
               ? BoxDecoration(
             color: const Color(0xFF2236BE),
             borderRadius: BorderRadius.circular(8),
           )
               : isNC
               ? BoxDecoration(
-            color: Colors.white,
-            border: Border.all(
-              color: const Color(0xFFEACA00),
-              width: 1,
-            ),
+            color: selected
+                ? const Color(0xFF2236BE)
+                : isDark
+                ? const Color(0xFF374151)
+                : Colors.white,
             borderRadius: BorderRadius.circular(8),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x19000000),
-                blurRadius: 4,
-                offset: Offset(0, 1),
-                spreadRadius: 0,
-              ),
-            ],
+            border: isNC
+                ? Border.all(
+              color: const Color(0xFFEACA00),
+            )
+                : null,
           )
-              : const BoxDecoration(color: Colors.transparent),
+              : const BoxDecoration(
+            color: Colors.transparent,
+          ),
           child: Text(
             title,
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color:
-              selected
+              color: selected
                   ? Colors.white
                   : isNC
                   ? const Color(0xFFEACA00)
-                  : Colors.black,
+                  : (isDark ? Colors.white : Colors.black),
             ),
           ),
         ),
@@ -1503,12 +1593,15 @@ class _DiscountPopupState extends State<DiscountPopup> {
   }
 
   Widget _reasonField() {
+    final isDark = Provider.of<ThemeProvider>(context).isDark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Discount / NC Reason :',
-          style: TextStyle(fontSize: 12, color: Color(0xFF252525)),
+          style: TextStyle(fontSize: 12,     color: isDark
+              ? Colors.white70
+              : const Color(0xFF252525),),
         ),
         const SizedBox(height: 6),
 
@@ -1563,37 +1656,53 @@ class _DiscountPopupState extends State<DiscountPopup> {
                       vertical: 12,
                     ),
                     filled: true,
-                    fillColor: Colors.white,
+                    fillColor: isDark
+                        ? const Color(0xFF374151)
+                        : Colors.white,
 
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(
-                        width: 1,
-                        color: Color(0xFFDFDFDF),
+                      borderSide: BorderSide(
+                        color: isDark
+                            ? const Color(0xFF4B5563)
+                            : const Color(0xFFDFDFDF),
                       ),
                     ),
 
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(
-                        width: 1,
-                        color: Color(0xFFDFDFDF),
+                      borderSide: BorderSide(
+                        color: isDark
+                            ? const Color(0xFF4B5563)
+                            : const Color(0xFFDFDFDF),
                       ),
                     ),
 
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                       borderSide: const BorderSide(
-                        width: 1,
-                        color: Color(0xFFDFDFDF),
+                        color: Color(0xFF3B82F6),
                       ),
                     ),
                   ),
-                  hint: const Text('Select reason'),
-                  dropdownColor: Colors.white,
-                  icon: const Icon(
+                  hint: Text(
+                    'Select reason',
+                    style: TextStyle(
+                      color: isDark
+                          ? Colors.white54
+                          : Colors.grey,
+                    ),
+                  ),
+
+                  dropdownColor: isDark
+                      ? const Color(0xFF374151)
+                      : Colors.white,
+
+                  icon: Icon(
                     Icons.keyboard_arrow_down_rounded,
-                    color: Colors.black,
+                    color: isDark
+                        ? Colors.white
+                        : Colors.black,
                   ),
                 ),
               );
@@ -1650,6 +1759,8 @@ class _DiscountPopupState extends State<DiscountPopup> {
 
   /// ---------------- KEYPAD ----------------
   Widget _keypadSection() {
+    final isDark = Provider.of<ThemeProvider>(context).isDark;
+
     final labels = [
       '1',
       '2',
@@ -1673,7 +1784,7 @@ class _DiscountPopupState extends State<DiscountPopup> {
         crossAxisCount: 3,
         crossAxisSpacing: 15,
         mainAxisSpacing: 15,
-        childAspectRatio: 1.1, // increase to reduce height
+        childAspectRatio: 1.1,
       ),
       itemBuilder: (_, index) {
         final label = labels[index];
@@ -1686,54 +1797,74 @@ class _DiscountPopupState extends State<DiscountPopup> {
           child: Opacity(
             opacity: isNCSelected ? 0.5 : 1,
             child: InkWell(
-                borderRadius: BorderRadius.circular(10),
-                onTap: () => _onKeypadTap(label),
-                child: Container(
-                  decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              onTap: () => _onKeypadTap(label),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isNCSelected && (isClear || isBack)
+                      ? (isDark
+                      ? const Color(0xFF2B3042)
+                      : const Color(0xFFF5F5F5))
+                      : (isClear || isBack)
+                      ? (isDark
+                      ? const Color(0xFF34384F)
+                      : Colors.white)
+                      : (isDark
+                      ? const Color(0xFF2B3042)
+                      : const Color(0xFFF4F7FD)),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
                     color: isNCSelected && (isClear || isBack)
-                        ? const Color(0xFFF5F5F5)
+                        ? (isDark
+                        ? Colors.white24
+                        : const Color(0xFFCECECE))
                         : (isClear || isBack)
+                        ? Colors.redAccent
+                        : (isDark
+                        ? Colors.white24
+                        : const Color(0xFFDADFE8)),
+                  ),
+                  boxShadow: isDark
+                      ? []
+                      : const [
+                    BoxShadow(
+                      color: Color(0x12000000),
+                      blurRadius: 6,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: isBack
+                      ? Icon(
+                    Icons.backspace_outlined,
+                    color: isNCSelected
+                        ? (isDark
+                        ? Colors.white54
+                        : const Color(0xFFBDBDBD))
+                        : (isDark
                         ? Colors.white
-                        : const Color(0xFFF4F7FD),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
+                        : Colors.redAccent),
+                    size: 28,
+                  )
+                      : Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: isClear ? 16 : 18,
+                      fontWeight: FontWeight.w500,
                       color: isNCSelected && (isClear || isBack)
-                          ? const Color(0xFFCECECE)
-                          : (isClear || isBack)
+                          ? (isDark
+                          ? Colors.white54
+                          : const Color(0xFFBDBDBD))
+                          : isClear
                           ? Colors.redAccent
-                          : const Color(0xFFDADFE8),
-                    ),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x12000000),
-                        blurRadius: 6,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: isBack
-                        ? Icon(
-                      Icons.backspace_outlined,
-                      color: isNCSelected
-                          ? const Color(0xFFBDBDBD)
-                          : Colors.redAccent,
-                      size: 28,
-                    )
-                        : Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: isClear ? 16 : 18,
-                        fontWeight: FontWeight.w500,
-                        color: isNCSelected && (isClear || isBack)
-                            ? const Color(0xFFBDBDBD)
-                            : isClear
-                            ? Colors.redAccent
-                            : const Color(0xFF4C5F80),
-                      ),
+                          : (isDark
+                          ? Colors.white
+                          : const Color(0xFF4C5F80)),
                     ),
                   ),
-                )
+                ),
+              ),
             ),
           ),
         );

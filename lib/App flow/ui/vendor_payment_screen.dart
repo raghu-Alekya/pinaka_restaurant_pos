@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../models/UserPermissions.dart';
 
 import '../../models/vendor_payment_model.dart';
+import '../../models/view_mode.dart';
 import '../../repositories/vendor_payment_repository.dart';
 import '../../utils/SessionManager.dart';
 import '../widgets/top_bar.dart';
@@ -36,6 +37,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
   bool hasData = false; // change to true when API returns data
   final VendorPaymentRepository _repository =
   VendorPaymentRepository();
+  ViewMode _currentViewMode = ViewMode.normal;
 
   List<VendorPaymentModel> vendorPayments = [];
   bool isLoading = false;
@@ -311,20 +313,42 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
   }
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F6F6),
+      appBar: TopBar(
+        token: widget.token,
+        pin: widget.pin,restaurantId: widget.restaurantId,
+        restaurantName: widget.restaurantName,
+
+        userPermissions: _userPermissions,
+        isHomeScreen: false,
+        onPermissionsReceived: (permissions) {
+          setState(() {
+            _userPermissions = permissions;
+
+            if (_userPermissions?.canDefaultLayout == 'gridCommonImage') {
+              _currentViewMode = ViewMode.gridCommonImage;
+            } else {
+              _currentViewMode = ViewMode.normal;
+            }
+          });
+        },
+      ),
+      backgroundColor: isDark
+          ? const Color(0xFF161A26)
+          : const Color(0xFFF6F6F6),
       body: SafeArea(
         child: Column(
           children: [
-            TopBar(
-              userPermissions: _userPermissions,
-              isHomeScreen: false,
-              restaurantId: widget.restaurantId,
-              restaurantName: widget.restaurantName,
-              // selectedUser: _selectedUser,
-              token: widget.token,
-              pin: widget.pin,
-            ),
+            // TopBar(
+            //   userPermissions: _userPermissions,
+            //   isHomeScreen: false,
+            //   restaurantId: widget.restaurantId,
+            //   restaurantName: widget.restaurantName,
+            //   // selectedUser: _selectedUser,
+            //   token: widget.token,
+            //   pin: widget.pin,
+            // ),
 
             Expanded(
               child: Padding(
@@ -332,13 +356,17 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                 child: Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: isDark
+                        ? const Color(0xFF202433)
+                        : Colors.white,
                     borderRadius: BorderRadius.circular(10),
-                    boxShadow: const [
+                    boxShadow: [
                       BoxShadow(
-                        color: Color(0x3F474747),
+                        color: isDark
+                            ? Colors.black.withOpacity(.45)
+                            : const Color(0x3F474747),
                         blurRadius: 10,
-                        offset: Offset(0, 1),
+                        offset: const Offset(0, 1),
                       ),
                     ],
                   ),
@@ -353,12 +381,11 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
 
                             // const SizedBox(width: 20),
 
-                            const Text(
+                            Text(
                               'Vendor Management',
                               style: TextStyle(
-                                color: Color(0xFF3D3D3D),
+                                color: isDark ? Colors.white : const Color(0xFF3D3D3D),
                                 fontSize: 24,
-                                fontFamily: 'Inter',
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -367,22 +394,35 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                               width: 300,
                               height: 40,
                               decoration: ShapeDecoration(
-                                color: Colors.white,
+                                color: isDark
+                                    ? const Color(0xFF2B3042)
+                                    : Colors.white,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
+                                  side: BorderSide(
+                                    color: isDark
+                                        ? Colors.white24
+                                        : Colors.transparent,
+                                  ),
                                 ),
-                                shadows: const [
+                                shadows: [
                                   BoxShadow(
-                                    color: Color(0x4204347F),
+                                    color: isDark
+                                        ? Colors.black.withOpacity(.35)
+                                        : const Color(0x4204347F),
                                     blurRadius: 10,
-                                    offset: Offset(0, 2),
+                                    offset: const Offset(0, 2),
                                   ),
                                 ],
                               ),
                               child: TextField(
                                 controller: searchController,
-                                cursorColor: Colors.black,
-                                decoration: const InputDecoration(
+                                cursorColor: isDark ? Colors.white : Colors.black,
+
+                                style: TextStyle(
+                                  color: isDark ? Colors.white : Colors.black,
+                                ),
+                                decoration:  InputDecoration(
                                   border: InputBorder.none,
                                   contentPadding: EdgeInsets.symmetric(
                                     horizontal: 16,
@@ -394,9 +434,9 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                   ),
                                   hintText: "Search by name or phone number",
                                   hintStyle: TextStyle(
-                                    color: Color(0xFFC3C2C2),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
+                                    color: isDark
+                                        ? Colors.white54
+                                        : const Color(0xFFC3C2C2),
                                   ),
                                 ),
                                 onChanged: (value) {
@@ -416,11 +456,15 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                               height: 40,
                               child: Container(
                                 decoration: ShapeDecoration(
-                                  color: const Color(0xFFF0F0F0),
+                                  color: isDark
+                                      ? const Color(0xFF2B3042)
+                                      : const Color(0xFFF0F0F0),
                                   shape: RoundedRectangleBorder(
                                     side: BorderSide(
                                       width: 1,
-                                      color: const Color(0xFFA5A5A5),
+                                      color: isDark
+                                          ? const Color(0xFF2B3042)
+                                          : const Color(0xFFF0F0F0),
                                     ),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -437,8 +481,10 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                   controller:_datevendorController,
                                   readOnly: true,
                                   textAlignVertical: TextAlignVertical.center,
-                                  style: const TextStyle(
-                                    color: Color(0xFF7E7E7E),
+                                  style:  TextStyle(
+                                    color: isDark
+                                        ? Colors.white
+                                        : const Color(0xFF7E7E7E),
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -469,7 +515,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                       await _filterVendorPaymentsByDate(apiDate);
                                     }
                                   },
-                                  decoration: const InputDecoration(
+                                  decoration:  InputDecoration(
                                     border: InputBorder.none,
                                     enabledBorder: InputBorder.none,
                                     focusedBorder: InputBorder.none,
@@ -481,7 +527,9 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                     suffixIcon: Icon(
                                       Icons.calendar_month,
                                       size: 20,
-                                      color: Color(0xFF6D6D6D),
+                                      color: isDark
+                                          ? Colors.white70
+                                          : const Color(0xFF6D6D6D),
                                     ),
                                   ),
                                 ),
@@ -551,7 +599,9 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                           child: Container(
                             decoration: BoxDecoration(
-                              color: Color(0xFFF2F2F2),
+                              color: isDark
+                                  ? const Color(0xFF202433)
+                                  : const Color(0xFFF2F2F2),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Column(
@@ -687,9 +737,14 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                       child: CircularProgressIndicator(),
                                     )
                                         : vendorPayments.isEmpty
-                                        ? const Center(
-                                      child: Text(
+                                        ?  Center(
+                                      child:Text(
                                         "No Vendor Payments Found",
+                                        style: TextStyle(
+                                          color: isDark
+                                              ? Colors.white70
+                                              : Colors.black87,
+                                        ),
                                       ),
                                     )
                                         : Builder(
@@ -782,19 +837,25 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                     children: [
                                       Text(
                                         "Total Vendor Payments: ${vendorPayments.length}",
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w600,
-                                          color: Colors.black87,
+                                          color: isDark
+                                              ? Colors.white
+                                              : Colors.black87,
                                         ),
                                       ),
 
                                       Container(
                                         margin: const EdgeInsets.only(right: 5),
                                         decoration: BoxDecoration(
-                                          color: Colors.white,
+                                          color: isDark
+                                              ? const Color(0xFF2B3042)
+                                              : Colors.white,
                                           border: Border.all(
-                                            color: const Color(0xFFEFEFEF),
+                                            color: isDark
+                                                ? Colors.white24
+                                                : const Color(0xFFEFEFEF),
                                           ),
                                           borderRadius: BorderRadius.circular(4),
                                         ),
@@ -898,22 +959,32 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
     );
   }
   Widget _paginationTextButton(String text) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       height: 32,
       padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
+        color: isDark
+            ? const Color(0xFF2B3042)
+            : Colors.white,
         border: Border(
           right: BorderSide(
-            color: Color(0xFFEFEFEF),
+            color: isDark
+                ? Colors.white24
+                : const Color(0xFFEFEFEF),
           ),
         ),
       ),
       alignment: Alignment.center,
       child: Text(
         text,
-        style: const TextStyle(
-          color: Color(0xFF727272),
+        style: TextStyle(
+          color: isDark
+              ? Colors.white70
+              : const Color(0xFF727272),
           fontSize: 11,
+          fontWeight: FontWeight.w500,
         ),
       ),
     );
@@ -923,16 +994,22 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
       int page, {
         bool selected = false,
       }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       width: 28,
       height: 32,
       decoration: BoxDecoration(
         color: selected
             ? const Color(0xFFFF4D20)
-            : Colors.white,
-        border: const Border(
+            : (isDark
+            ? const Color(0xFF2B3042)
+            : Colors.white),
+        border: Border(
           right: BorderSide(
-            color: Color(0xFFEFEFEF),
+            color: isDark
+                ? Colors.white24
+                : const Color(0xFFEFEFEF),
           ),
         ),
       ),
@@ -942,7 +1019,9 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
         style: TextStyle(
           color: selected
               ? Colors.white
-              : const Color(0xFF727272),
+              : (isDark
+              ? Colors.white70
+              : const Color(0xFF727272)),
           fontSize: 11,
           fontWeight: selected
               ? FontWeight.w600
@@ -963,24 +1042,30 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
     required VoidCallback onEdit,
     required VoidCallback onDelete,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     Widget cell(String text) {
       return Expanded(
         child: Container(
           height: 50,
           alignment: Alignment.center,
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
-                color: Color(0xFFE0E0E0),
+                color: isDark
+                    ? Colors.white12
+                    : const Color(0xFFE0E0E0),
               ),
             ),
           ),
           child: Text(
             text,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
-              color: Color(0xFF1D1D1D),
+              color: isDark
+                  ? Colors.white
+                  : const Color(0xFF1D1D1D),
               fontWeight: FontWeight.w400,
             ),
           ),
@@ -989,7 +1074,9 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
     }
 
     return Container(
-      color: Color(0xFFFCFCFF),
+      color: isDark
+          ? const Color(0xFF2B3042)
+          : const Color(0xFFFCFCFF),
       child: Row(
         children: [
           cell(invoiceNo),
@@ -1004,10 +1091,12 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
           Expanded(
             child: Container(
               height: 50,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 border: Border(
                   bottom: BorderSide(
-                    color: Color(0xFFE0E0E0),
+                    color: isDark
+                        ? Colors.white12
+                        : const Color(0xFFE0E0E0),
                   ),
                 ),
               ),
@@ -1016,9 +1105,11 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                 children: [
                   IconButton(
                     onPressed: onEdit,
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.edit_outlined,
-                      color: Colors.blue,
+                      color: isDark
+                          ? const Color(0xFF4C81F1)
+                          : Colors.blue,
                       size: 20,
                     ),
                   ),

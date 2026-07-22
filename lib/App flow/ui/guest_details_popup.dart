@@ -66,6 +66,7 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
             widget.tableData['areaName'] ??
             'Unknown Zone';
     final int? reservationId = widget.tableData['reservation_id'] as int?;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Material(
       type: MaterialType.transparency,
@@ -74,17 +75,28 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
           child: Container(
             padding: const EdgeInsets.all(30),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isDark
+                  ? const Color(0xFF202433)
+                  : Colors.white,
               borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white24
+                    : Colors.transparent,
+              ),
             ),
             constraints: const BoxConstraints(maxWidth: 600, minWidth: 300),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
+                Text(
                   "Select Guest Numbers",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: isDark ? Colors.white : Colors.black,
+                  ),
                 ),
                 const SizedBox(height: 12),
 
@@ -95,6 +107,7 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                   children: List.generate(tableCapacity, (index) {
                     int guest = index + 1;
                     bool isSelected = selectedGuests.contains(guest);
+
                     return GestureDetector(
                       onTap: () {
                         setState(() {
@@ -107,9 +120,18 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? const Color(0xFFE4E4E7)
-                              : const Color(0xFFF6F6F7),
+                              ? (isDark
+                              ? const Color(0xFF4C81F1)
+                              : const Color(0xFFE4E4E7))
+                              : (isDark
+                              ? const Color(0xFF34384F)
+                              : const Color(0xFFF6F6F7)),
                           borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isDark
+                                ? Colors.white24
+                                : Colors.transparent,
+                          ),
                         ),
                         child: Text(
                           '$guest',
@@ -117,8 +139,10 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                             color: isSelected
-                                ? Colors.black
-                                : const Color(0xFF9CA3AF),
+                                ? (isDark ? Colors.white : Colors.black)
+                                : (isDark
+                                ? Colors.white70
+                                : const Color(0xFF9CA3AF)),
                           ),
                         ),
                       ),
@@ -137,8 +161,15 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                           : () async {
                         if (selectedGuests.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Please select number of guests', style: TextStyle(color: Colors.white),),
+                             SnackBar(
+                              content: Text(
+                                "Select Guest Numbers",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                  color: isDark ? Colors.white : Colors.black,
+                                ),
+                              ),
                               duration: Duration(seconds: 1),
                               backgroundColor: Colors.red,
                             ),

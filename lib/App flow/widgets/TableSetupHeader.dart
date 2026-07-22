@@ -37,6 +37,7 @@ class TableSetupHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10),
       child: Column(
@@ -47,22 +48,33 @@ class TableSetupHeader extends StatelessWidget {
               Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white,
+                  color: isDark
+                      ? const Color(0xFF2B3042)
+                      : Colors.white,
+                  border: Border.all(
+                    color: isDark ? Colors.white24 : Colors.transparent,
+                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black38,
-                      blurRadius: 3,
-                      offset: Offset(0, 1),
+                      color: isDark ? Colors.black54 : Colors.black26,
+                      blurRadius: 5,
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
                 child: CircleAvatar(
-                  backgroundColor: Colors.white,
+                  backgroundColor: isDark
+                      ? const Color(0xFF2B3042)
+                      : Colors.white,
                   radius: 15,
                   child: IconButton(
-                    icon: Icon(Icons.arrow_back, color: Colors.black, size: 16),
+                    icon: Icon(
+                      Icons.arrow_back,
+                      color: isDark ? Colors.white : Colors.black,
+                      size: 16,
+                    ),
                     padding: EdgeInsets.zero,
-                    constraints: BoxConstraints(),
+                    constraints: const BoxConstraints(),
                     onPressed: () {
                       showDialog(
                         context: context,
@@ -71,10 +83,22 @@ class TableSetupHeader extends StatelessWidget {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
-                          backgroundColor: Colors.white,
+                          backgroundColor: Colors.transparent,
+                          elevation: 0,
                           child: Container(
                             width: 440,
-                            padding: EdgeInsets.all(20),
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? const Color(0xFF202433)
+                                  : Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isDark
+                                    ? Colors.white24
+                                    : Colors.transparent,
+                              ),
+                            ),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -86,30 +110,35 @@ class TableSetupHeader extends StatelessWidget {
                                     fit: BoxFit.cover,
                                   ),
                                 ),
-                                SizedBox(height: 18),
+                                const SizedBox(height: 18),
                                 Text(
                                   'Finish Table Setup?',
                                   style: TextStyle(
-                                    color: const Color(0xFF373535),
+                                    color: isDark
+                                        ? Colors.white
+                                        : const Color(0xFF373535),
                                     fontSize: 25,
                                     fontFamily: 'Inter',
                                     fontWeight: FontWeight.w900,
                                     height: 1.56,
                                   ),
                                 ),
-                                SizedBox(height: 14),
+                                const SizedBox(height: 14),
                                 Text(
-                                  'Your table arrangement has been saved successfully. \nYou can revisit and edit it anytime from the table management section.',
+                                  'Your table arrangement has been saved successfully.\n'
+                                      'You can revisit and edit it anytime from the table management section.',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    color: const Color(0xFFA19999),
+                                    color: isDark
+                                        ? Colors.white70
+                                        : const Color(0xFFA19999),
                                     fontSize: 14,
                                     fontFamily: 'Inter',
                                     fontWeight: FontWeight.w500,
                                     height: 1.38,
                                   ),
                                 ),
-                                SizedBox(height: 18),
+                                const SizedBox(height: 18),
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
@@ -119,17 +148,33 @@ class TableSetupHeader extends StatelessWidget {
                                       child: ElevatedButton(
                                         onPressed: () => Navigator.of(context).pop(),
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.grey.shade200,
-                                          foregroundColor: Color(0xFF4C5F7D),
+                                          elevation: 0,
+                                          backgroundColor: isDark
+                                              ? const Color(0xFF34384F)
+                                              : Colors.grey.shade200,
+                                          foregroundColor: isDark
+                                              ? Colors.white
+                                              : const Color(0xFF4C5F7D),
                                           shape: RoundedRectangleBorder(
                                             borderRadius: BorderRadius.circular(10),
+                                            side: BorderSide(
+                                              color: isDark
+                                                  ? Colors.white24
+                                                  : Colors.transparent,
+                                            ),
                                           ),
                                           padding: EdgeInsets.zero,
                                         ),
-                                        child: Text('Stay Here', style: TextStyle(fontSize: 15)),
+                                        child: Text(
+                                          'Stay Here',
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            color: isDark ? Colors.white : null,
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                    SizedBox(width: 12),
+                                    const SizedBox(width: 12),
                                     SizedBox(
                                       width: 110,
                                       height: 45,
@@ -140,14 +185,21 @@ class TableSetupHeader extends StatelessWidget {
                                           onClose();
                                         },
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor: Color(0xFFD93535),
+                                          elevation: 0,
+                                          backgroundColor: const Color(0xFFD93535),
                                           foregroundColor: Colors.white,
                                           shape: RoundedRectangleBorder(
                                             borderRadius: BorderRadius.circular(10),
                                           ),
                                           padding: EdgeInsets.zero,
                                         ),
-                                        child: Text('Yes, Exit', style: TextStyle(fontSize: 15)),
+                                        child: const Text(
+                                          'Yes, Exit',
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            color: Colors.white,
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -161,13 +213,26 @@ class TableSetupHeader extends StatelessWidget {
                   ),
                 ),
               ),
+              const SizedBox(width: 10),
+              Text(
+                "Table Setup",
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: isDark
+                      ? Colors.white
+                      : const Color(0xFF15315E),
+                ),
+              ),
               SizedBox(width: 10),
               Text(
                 "Table Setup",
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF15315E),
+                  color: isDark
+                      ? Colors.white
+                      : const Color(0xFF15315E),
                 ),
               ),
             ],
@@ -180,14 +245,26 @@ class TableSetupHeader extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF4C5F7D),
+                color: isDark
+                    ? Colors.white70
+                    : const Color(0xFF4C5F7D),
               ),
             ),
           ),
           SizedBox(height: 4),
           Card(
-            color: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            elevation: isDark ? 0 : 2,
+            color: isDark
+                ? const Color(0xFF202433)
+                : Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(
+                color: isDark
+                    ? Colors.white24
+                    : Colors.transparent,
+              ),
+            ),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6),
               child: Row(
@@ -198,6 +275,7 @@ class TableSetupHeader extends StatelessWidget {
                       child: Row(
                         children: List.generate(createdAreaNames.length, (i) {
                           final name = createdAreaNames[i];
+
                           return Padding(
                             padding: const EdgeInsets.only(right: 10.0),
                             child: GestureDetector(
@@ -208,12 +286,24 @@ class TableSetupHeader extends StatelessWidget {
                               },
                               child: Container(
                                 height: 40,
-                                padding: EdgeInsets.symmetric(horizontal: 12),
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
                                 decoration: BoxDecoration(
-                                  color: name == currentAreaName ? Color(0xFFFFE1E1) : Color(0xFFF2F2F2),
+                                  color: name == currentAreaName
+                                      ? (isDark
+                                      ? const Color(0xFF4C81F1)
+                                      : const Color(0xFFFFE1E1))
+                                      : (isDark
+                                      ? const Color(0xFF34384F)
+                                      : const Color(0xFFF2F2F2)),
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
-                                    color: name == currentAreaName ? Color(0xFFFF4D20) : Color(0xFFAFACAC),
+                                    color: name == currentAreaName
+                                        ? (isDark
+                                        ? const Color(0xFF4C81F1)
+                                        : const Color(0xFFFF4D20))
+                                        : (isDark
+                                        ? Colors.white24
+                                        : const Color(0xFFAFACAC)),
                                   ),
                                 ),
                                 child: Row(
@@ -223,24 +313,43 @@ class TableSetupHeader extends StatelessWidget {
                                     Text(
                                       name,
                                       style: TextStyle(
-                                        color: Colors.black87,
+                                        color: isDark
+                                            ? Colors.white
+                                            : Colors.black87,
                                         fontWeight: FontWeight.w500,
                                         fontSize: 13,
                                       ),
                                     ),
-                                    SizedBox(width: name == currentAreaName ? 8 : 0),
+                                    SizedBox(
+                                      width: name == currentAreaName ? 8 : 0,
+                                    ),
                                     if (name == currentAreaName)
                                       GestureDetector(
                                         onTap: () => onShowAreaOptions(name),
                                         child: Container(
                                           width: 20,
                                           height: 20,
-                                          padding: EdgeInsets.all(3),
+                                          padding: const EdgeInsets.all(3),
                                           decoration: BoxDecoration(
-                                            color: Color(0xFFEE796A),
+                                            color: isDark
+                                                ? const Color(0xFF4C81F1)
+                                                : const Color(0xFFEE796A),
                                             borderRadius: BorderRadius.circular(15),
                                           ),
-                                          child: Image.asset('assets/edit.png'),
+                                          child: ColorFiltered(
+                                            colorFilter: isDark
+                                                ? const ColorFilter.mode(
+                                              Colors.white,
+                                              BlendMode.srcIn,
+                                            )
+                                                : const ColorFilter.mode(
+                                              Colors.transparent,
+                                              BlendMode.dst,
+                                            ),
+                                            child: Image.asset(
+                                              'assets/edit.png',
+                                            ),
+                                          ),
                                         ),
                                       ),
                                   ],
@@ -252,13 +361,27 @@ class TableSetupHeader extends StatelessWidget {
                       ),
                     ),
                   ),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   ElevatedButton(
                     onPressed: togglePopup,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xF2E76757),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      elevation: isDark ? 0 : 2,
+                      backgroundColor: isDark
+                          ? const Color(0xFF4C81F1)
+                          : const Color(0xF2E76757),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 3,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        side: BorderSide(
+                          color: isDark
+                              ? Colors.white24
+                              : Colors.transparent,
+                        ),
+                      ),
                     ),
                     child: const Text(
                       "+ Add Area",
