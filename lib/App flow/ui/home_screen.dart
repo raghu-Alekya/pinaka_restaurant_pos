@@ -335,7 +335,7 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         },
         child: Scaffold(
-            backgroundColor: const Color(0xFFF0F1F5),
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
             appBar: TopBar(
               token: widget.token,
               pin: widget.pin,
@@ -511,7 +511,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       "QUICK ACCESS",
                                       style: TextStyle(
                                         fontWeight: FontWeight.w600,
-                                        color: Colors.grey.shade600,
+                                        color: Theme.of(context).colorScheme.onSurface,
                                         fontSize: 16,
                                         letterSpacing: 1,
                                       ),
@@ -1240,24 +1240,51 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
   Widget _topSellingItems() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark
+            ? const Color(0xFF202433)
+            : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
             blurRadius: 6,
-            color: Colors.black12,
-          )
+            offset: const Offset(0, 2),
+            color: isDark
+                ? Colors.black.withOpacity(0.35)
+                : Colors.black12,
+          ),
         ],
       ),
       child: Column(
         children: [
-          _foodRow("Chicken Biryani", "Main Course", "48"),
-          _foodRow("Chicken Dum Biryani", "Main Course", "35"),
-          _foodRow("Paneer Biryani", "Main Course", "28"),
-          _foodRow("Chicken 65", "Starters", "21"),
+          _foodRow(
+            "Chicken Biryani",
+            "Main Course",
+            "48",
+            isDark,
+          ),
+          _foodRow(
+            "Chicken Dum Biryani",
+            "Main Course",
+            "35",
+            isDark,
+          ),
+          _foodRow(
+            "Paneer Biryani",
+            "Main Course",
+            "28",
+            isDark,
+          ),
+          _foodRow(
+            "Chicken 65",
+            "Starters",
+            "21",
+            isDark,
+          ),
         ],
       ),
     );
@@ -1265,38 +1292,79 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _foodRow(
       String name,
       String category,
-      String qty,
+      String qty, bool isDark,
       ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
         children: [
-
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: Colors.orange.shade200,
-            child: const Icon(Icons.fastfood),
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color(0xFF4A527A)
+                  : Colors.orange.shade100,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.fastfood,
+              color: isDark ? Colors.white : Colors.orange,
+              size: 20,
+            ),
           ),
 
           const SizedBox(width: 12),
 
           Expanded(
-            child: Text(name),
-          ),
-
-          SizedBox(
-            width: 100,
-            child: Text(
-              category,
-              style: const TextStyle(color: Colors.red),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  category,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark
+                        ? Colors.white70
+                        : Colors.grey.shade600,
+                  ),
+                ),
+              ],
             ),
           ),
 
-          SizedBox(
-            width: 40,
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 6,
+            ),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color(0xFF4A527A)
+                  : Colors.orange.shade50,
+              borderRadius: BorderRadius.circular(20),
+            ),
             child: Text(
               qty,
-              textAlign: TextAlign.end,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: isDark
+                    ? Colors.white
+                    : Colors.deepOrange,
+              ),
             ),
           ),
         ],
@@ -1304,26 +1372,30 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
   Widget _tableStatusWidget() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF202433) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
             blurRadius: 6,
-            color: Colors.black12,
-          )
+            color: isDark
+                ? Colors.black.withOpacity(0.35)
+                : Colors.black12,
+          ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
-          const Text(
+          Text(
             "Table Status",
             style: TextStyle(
               fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black87,
             ),
           ),
 
@@ -1332,39 +1404,42 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-
               _statusBox("15", "Available", Colors.green),
-
               _statusBox("17", "Dine-In", Colors.red),
-
               _statusBox("2", "Ready", Colors.blue),
-
               _statusBox("8", "Shared", Colors.orange),
-
               _statusBox("6", "Reserve", Colors.grey),
             ],
-          )
+          ),
         ],
       ),
     );
   }
+
   Widget _statusBox(
       String count,
       String title,
       Color color,
       ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       width: 70,
       height: 90,
       decoration: BoxDecoration(
-        color: color.withOpacity(.08),
+        color: isDark
+            ? const Color(0xFF2A3148)
+            : color.withOpacity(.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(.3)),
+        border: Border.all(
+          color: isDark
+              ? color.withOpacity(.5)
+              : color.withOpacity(.3),
+        ),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-
           Text(
             count,
             style: TextStyle(
@@ -1380,8 +1455,9 @@ class _HomeScreenState extends State<HomeScreen> {
             title,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: color,
+              color: isDark ? Colors.white70 : color,
               fontSize: 12,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -1399,9 +1475,10 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Text(
               "Welcome, $userName 👋",
-              style: const TextStyle(
+              style:  TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: 4),
@@ -1412,10 +1489,10 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Text(
               _currentTime.toLowerCase(),
-              style: const TextStyle(
+              style:  TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1F2937),
+                color: Theme.of(context).colorScheme.onSurface,
                 height: 1,
               ),
             ),
@@ -1433,9 +1510,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _sectionTitle(String title) {
     return Text(
       title,
-      style: const TextStyle(
+      style:  TextStyle(
         fontSize: 18,
         fontWeight: FontWeight.bold,
+        color: Theme.of(context).colorScheme.onSurface,
       ),
     );
   }
@@ -1515,23 +1593,28 @@ class _HomeScreenState extends State<HomeScreen> {
       IconData icon,
       Color color,
       ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: ShapeDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
         shape: RoundedRectangleBorder(
           side: BorderSide(
             width: 0.8,
-            color: color.withOpacity(0.25),
+            color: isDark
+                ? Colors.grey.shade700
+                : color.withOpacity(0.25),
           ),
           borderRadius: BorderRadius.circular(16),
         ),
-        shadows: const [
+        shadows: [
           BoxShadow(
-            color: Color(0x2602B443),
-            blurRadius: 2,
-            offset: Offset(0, 1),
-            spreadRadius: -1,
+            color: isDark
+                ? Colors.black.withOpacity(0.35)
+                : const Color(0x2602B443),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -1540,7 +1623,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
+              color: color.withOpacity(isDark ? 0.20 : 0.12),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(
@@ -1555,13 +1638,13 @@ class _HomeScreenState extends State<HomeScreen> {
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(
-                color: Color(0xFF1C2333),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: isDark ? Colors.white : const Color(0xFF1C2333),
                 fontWeight: FontWeight.w600,
                 fontSize: 16,
               ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
             ),
           ),
 
@@ -1744,7 +1827,7 @@ class _HomeScreenState extends State<HomeScreen> {
         height: 110,
         padding: const EdgeInsets.all(14),
         decoration: ShapeDecoration(
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
           shape: RoundedRectangleBorder(
             side: const BorderSide(
               width: 0.1,
@@ -1800,8 +1883,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     Text(
                       countLabel,
-                      style: const TextStyle(
-                        color: Colors.grey,
+                      style:  TextStyle(
+                        color: Theme.of(context).hintColor,
                         fontSize: 11,
                       ),
                     ),
@@ -1814,10 +1897,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF23263A),
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
 
@@ -1836,10 +1919,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 4),
 
-            const Text(
+            Text(
               "Open Module →",
               style: TextStyle(
-                color: Color(0xFF9CA3AF),
+                color: Theme.of(context).hintColor,
                 fontSize: 10,
                 fontWeight: FontWeight.w500,
               ),

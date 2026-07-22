@@ -36,6 +36,7 @@ import '../../repositories/table_repository.dart';
 import '../../repositories/zone_repository.dart';
 import '../../utils/GlobalReservationMonitor.dart';
 import '../../utils/SessionManager.dart';
+import '../../utils/app_theme.dart';
 import '../../utils/logger.dart';
 import '../widgets/CreateTableWidget.dart';
 import '../widgets/DeleteConfirmationDialog.dart';
@@ -663,7 +664,7 @@ class _TablesScreenState extends State<TablesScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          backgroundColor: const Color(0xFFF9F6F6),
+          backgroundColor: Theme.of(context).cardColor,
           insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
           contentPadding: const EdgeInsets.all(25),
           content: IntrinsicHeight(
@@ -1792,8 +1793,8 @@ class _TablesScreenState extends State<TablesScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: Colors.grey.shade300),
+          color: AppColors.card(context),
+          border: Border.all(color: AppColors.border(context)),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
@@ -1829,7 +1830,9 @@ class _TablesScreenState extends State<TablesScreen> {
                                 ? const Color(0xFFFD6464)
                                 : Colors.transparent,
                             foregroundColor:
-                            isSelected ? Colors.white : Colors.black87,
+                            isSelected
+                                ? Colors.white
+                                : AppColors.text(context),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(5),
                             ),
@@ -1867,20 +1870,20 @@ class _TablesScreenState extends State<TablesScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.grey.shade300),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 4,
-            )
-          ],
-        ),
-        child: Icon(icon, size: 18, color: Colors.black87),
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: AppColors.card(context),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.grey.shade300),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 4,
+              )
+            ],
+          ),
+          child: Icon(icon, size: 18,color: AppColors.text(context),)
       ),
     );
   }
@@ -2085,7 +2088,7 @@ class _TablesScreenState extends State<TablesScreen> {
         ),
       ],
       child: Scaffold(
-        backgroundColor: const Color(0xFFF0F1F5),
+        backgroundColor: AppColors.bg(context),
         resizeToAvoidBottomInset: false,
         // appBar: TopBar(
         //   token: widget.token,
@@ -2328,11 +2331,11 @@ class _TablesScreenState extends State<TablesScreen> {
                     child: Container(
                       padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                       decoration: BoxDecoration(
-                        color: Color(0xFFFAFBFF),
+                        color: Theme.of(context).cardColor,
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black12,
+                            color: AppColors.shadow(context),
                             blurRadius: 4,
                             offset: Offset(0, 2),
                           ),
@@ -2341,13 +2344,29 @@ class _TablesScreenState extends State<TablesScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          TableHelpers.buildLegendDot(Colors.green, "Available"),
-                          SizedBox(width: 20),
-                          TableHelpers.buildLegendDot(Colors.red, "Dine In"),
-                          SizedBox(width: 20),
-                          TableHelpers.buildLegendDot(Colors.grey, "Reserve"),
-                          SizedBox(width: 20),
                           TableHelpers.buildLegendDot(
+                            context,
+                            Colors.green,
+                            "Available",
+                          ),
+                          const SizedBox(width: 20),
+
+                          TableHelpers.buildLegendDot(
+                            context,
+                            Colors.red,
+                            "Dine In",
+                          ),
+                          const SizedBox(width: 20),
+
+                          TableHelpers.buildLegendDot(
+                            context,
+                            Colors.grey,
+                            "Reserve",
+                          ),
+                          const SizedBox(width: 20),
+
+                          TableHelpers.buildLegendDot(
+                            context,
                             Colors.blue,
                             "Ready to Pay",
                           ),

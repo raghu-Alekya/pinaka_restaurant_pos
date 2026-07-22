@@ -35,6 +35,7 @@ class _SideBarWidgetsState extends State<SideBarWidgets> {
   int _selectedSubCategoryIndex = -1;
   bool _initialSubCategoryTriggered = false; // ✅ ADD
 
+
   @override
   void initState() {
     // ✅ ADD — wipe any leftover state/cache from a previous session
@@ -67,7 +68,9 @@ class _SideBarWidgetsState extends State<SideBarWidgets> {
     required Category category,
     required bool isSelected,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Material(
+
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
@@ -99,21 +102,29 @@ class _SideBarWidgetsState extends State<SideBarWidgets> {
           padding: const EdgeInsets.all(6),
           decoration: ShapeDecoration(
             color: isSelected
-                ? const Color(0xFFFF364C)
-                : const Color(0xFF1C3471),
+                ? (isDark
+                ? const Color(0xFFB53A48) // Selected in dark mode
+                : const Color(0xFFFF364C))
+                : (isDark
+                ? const Color(0xFF2B3045) // Unselected in dark mode
+                : const Color(0xFF1C3471)),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(7),
+              side: BorderSide(
+                color: isSelected
+                    ? const Color(0xFFFF4D5E)
+                    : (isDark
+                    ? const Color(0xFF40475A)
+                    : Colors.transparent),
+              ),
             ),
             shadows: [
               BoxShadow(
                 color: isSelected
-                    ? const Color(0x66FF364C) // Red shadow
-                    : const Color(0x19000000), // Default shadow
-                blurRadius: isSelected ? 20 : 10,
-                offset: isSelected
-                    ? const Offset(0, 6)
-                    : const Offset(0, 1),
-                spreadRadius: 0,
+                    ? const Color(0x66FF364C)
+                    : Colors.black.withOpacity(0.20),
+                blurRadius: isSelected ? 12 : 6,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
@@ -162,6 +173,7 @@ class _SideBarWidgetsState extends State<SideBarWidgets> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final sidebarWidth = MediaQuery.of(context).size.width * 0.15;
 
     return MultiBlocListener(
@@ -236,11 +248,14 @@ class _SideBarWidgetsState extends State<SideBarWidgets> {
             );
           } else if (state is CategoryLoaded) {
             return Container(
+
               margin: const EdgeInsets.only(left: 12, top: 12, bottom: 12),
               width: sidebarWidth,
               height: MediaQuery.of(context).size.height * 0.9,
               decoration: BoxDecoration(
-                color: const Color(0xFF0B2967),
+                color: isDark
+                    ? const Color(0xFF1E2233)
+                    : const Color(0xFF0B2967),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Padding(

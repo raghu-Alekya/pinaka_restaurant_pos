@@ -38,6 +38,7 @@ class ShapeBasedGridItem extends StatelessWidget {
       onTap: onTap,
       onLongPress: onLongPress,
       child: _buildGridItem(
+        context,
         tableData,
         imagePath,
         tableColor,
@@ -49,6 +50,7 @@ class ShapeBasedGridItem extends StatelessWidget {
   }
 
   Widget _buildGridItem(
+      BuildContext context,
       Map<String, dynamic> tableData,
       String imagePath,
       Color bgColor,
@@ -61,10 +63,17 @@ class ShapeBasedGridItem extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(10),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 2, offset: Offset(0, 1)),
+        border: Border.all(
+          color: Theme.of(context).dividerColor,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).shadowColor.withOpacity(0.2),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
         ],
       ),
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),

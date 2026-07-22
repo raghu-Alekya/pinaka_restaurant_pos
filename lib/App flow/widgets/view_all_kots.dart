@@ -516,6 +516,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     if (_kots.isEmpty && widget.kots.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -589,7 +590,9 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF152148),
+                    color: isDark
+                        ? const Color(0xFF4A527A)
+                        : kCardBg,
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(8),
                       topRight: const Radius.circular(8),
@@ -638,7 +641,9 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: kCardBg,
+                        color: isDark
+                            ? const Color(0xFF202433)
+                            : kCardBg,
                         borderRadius: const BorderRadius.only(
                           bottomLeft: Radius.circular(10),
                           bottomRight: Radius.circular(10),
@@ -678,10 +683,15 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                             return Container(
                               margin: const EdgeInsets.only(bottom: 12),
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: isDark
+                                    ? const Color(0xFF2A2F45)
+                                    : Colors.white,
                                 borderRadius: BorderRadius.circular(14),
                                 border: Border.all(
-                                  color: const Color(0xffC6D4F5),
+                                  color: isDark
+                                      ? const Color(0xFF5A5A5A)
+                                      : const Color(0xFFC6D4F5),
+                                  width: 1,
                                 ),
                                 boxShadow: [
                                   BoxShadow(
@@ -704,7 +714,9 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                       height: 52,
                                       padding: const EdgeInsets.symmetric(horizontal: 10),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xffEEF2FF),
+                                        color: isDark
+                                            ? const Color(0xFF34384F)
+                                            : const Color(0xffEEF2FF),
                                         borderRadius: BorderRadius.only(
                                           topLeft: Radius.circular(14),
                                           topRight: Radius.circular(14),
@@ -716,7 +728,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                         children: [
                                           /// KOT Number
                                           Container(
-                                            padding: const EdgeInsets.symmetric(
+                                            padding:  EdgeInsets.symmetric(
                                               horizontal: 10,
                                               vertical: 6,
                                             ),
@@ -766,7 +778,9 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                               vertical: 6,
                                             ),
                                             decoration: BoxDecoration(
-                                              color: Colors.white,
+                                              color: isDark
+                                                  ? Colors.black87
+                                                  : Colors.white,
                                               borderRadius: BorderRadius.circular(8),
                                               border: Border.all(
                                                 color: _getStatusColor(kot.status),
@@ -1040,7 +1054,9 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                             isOpen
                                                 ? Icons.keyboard_arrow_up
                                                 : Icons.keyboard_arrow_down,
-                                            color: Colors.black87,
+                                            color: isDark
+                                                ? Colors.white
+                                                : Colors.black87,
                                           ),
                                         ],
                                       ),
@@ -1050,7 +1066,9 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                   if (isOpen)
                                     Container(
                                       decoration: BoxDecoration(
-                                        color: Colors.white,
+                                        color: isDark
+                                            ? Colors.black
+                                            : Colors.white,
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: Column(
@@ -1058,8 +1076,10 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                           Container(
                                             height: 45,
                                             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                                            decoration: const BoxDecoration(
-                                              color: Colors.white,
+                                            decoration:  BoxDecoration(
+                                              color: isDark
+                                                  ? Colors.black
+                                                  : Colors.white,
                                             ),
                                             child: Row(
                                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1093,18 +1113,24 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                           // Items Table Container
                                           Container(
                                             decoration: BoxDecoration(
-                                              color: Colors.white,
+                                              color: isDark
+                                                  ? Colors.black
+                                                  : Colors.white,
                                               borderRadius: const BorderRadius.only(
                                                 bottomLeft: Radius.circular(10),
                                                 bottomRight: Radius.circular(10),
                                               ),
                                               border: Border(
                                                 top: BorderSide(
-                                                  color: Color(0xffE4E4E4),
+                                                  color: isDark
+                                                      ? const Color(0xFF5A5A5A)
+                                                      : const Color(0xFFE4E4E4),
                                                   width: 1,
                                                 ),
                                                 bottom: BorderSide(
-                                                  color: Color(0xffE4E4E4),
+                                                  color: isDark
+                                                      ? const Color(0xFF5A5A5A)
+                                                      : const Color(0xFFE4E4E4),
                                                   width: 1,
                                                 ),
                                               ),
@@ -1141,7 +1167,9 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                 "${index + 1}",
                                                                 style: TextStyle(
                                                                   decoration: isCancelled ? TextDecoration.lineThrough : null,
-                                                                  color: isCancelled ? Colors.red.shade700 : Colors.black87,
+                                                                  color: isCancelled
+                                                                      ? Colors.red.shade700
+                                                                      : (isDark ? Colors.white : Colors.black87),
                                                                   fontWeight: isCancelled ? FontWeight.w700 : FontWeight.w500,
                                                                   fontSize: isCancelled ? 13 : 14,
                                                                 ),
@@ -1159,7 +1187,9 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                     style: TextStyle(
                                                                       fontSize: 14,
                                                                       decoration: isCancelled ? TextDecoration.lineThrough : null,
-                                                                      color: isCancelled ? Colors.red.shade700 : Colors.black87,
+                                                                      color: isCancelled
+                                                                          ? Colors.red.shade700
+                                                                          : (isDark ? Colors.white : Colors.black87),
                                                                       fontWeight: isCancelled ? FontWeight.w600 : FontWeight.normal,
                                                                     ),
                                                                     overflow: TextOverflow.ellipsis,
@@ -1180,7 +1210,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                               fontSize: 11,
                                                                               color: isCancelled
                                                                                   ? Colors.red.shade400
-                                                                                  : Colors.blueGrey,
+                                                                                  : (isDark ? Colors.white70 : Colors.blueGrey),
                                                                               fontStyle: FontStyle.italic,
                                                                               decoration: isCancelled
                                                                                   ? TextDecoration.lineThrough
@@ -1237,8 +1267,9 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                     "${item.quantity ?? 0}",
                                                                     style: TextStyle(
                                                                       decoration: isCancelled ? TextDecoration.lineThrough : null,
-                                                                      color: isCancelled ? Colors.red.shade700 : Colors.black87,
-                                                                      fontWeight: isCancelled ? FontWeight.w700 : FontWeight.w500,
+                                                                      color: isCancelled
+                                                                          ? Colors.red.shade700
+                                                                          : (isDark ? Colors.white : Colors.black87),
                                                                     ),
                                                                   ),
                                                                 ),
@@ -1257,8 +1288,9 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                     style: TextStyle(
                                                                       fontWeight: isCancelled ? FontWeight.w800 : FontWeight.bold,
                                                                       decoration: isCancelled ? TextDecoration.lineThrough : null,
-                                                                      color: isCancelled ? Colors.red.shade700 : Colors.black87,
-                                                                      fontSize: isCancelled ? 13 : 14,
+                                                                      color: isCancelled
+                                                                          ? Colors.red.shade700
+                                                                          : (isDark ? Colors.white : Colors.black87),
                                                                     ),
                                                                   ),
                                                                   Text(
@@ -1266,7 +1298,9 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                     // (item.amount ?? 0).toStringAsFixed(2),
                                                                     style: TextStyle(
                                                                       fontSize: 11,
-                                                                      color: isCancelled ? Colors.red.shade400 : Colors.grey.shade500,
+                                                                      color: isCancelled
+                                                                          ? Colors.red.shade700
+                                                                          : (isDark ? Colors.white : Colors.black87),
                                                                       decoration: isCancelled ? TextDecoration.lineThrough : null,
                                                                     ),
                                                                   ),
@@ -1277,11 +1311,11 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                         ),
                                                       ),
                                                       if (index != kot.items.length - 1)
-                                                      const Divider(
-                                                        thickness: 1,
-                                                        height: 1,
-                                                        color: Color(0xffECECEC),
-                                                      ),
+                                                        Divider(
+                                                          color: isDark
+                                                              ? const Color(0xFF444A63)
+                                                              : const Color(0xffECECEC),
+                                                        )
                                                     ],
                                                   );                                                }),
                                               ],

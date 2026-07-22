@@ -2517,6 +2517,7 @@ Net Payable      : $netPayableTemp
   }
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     // ✅ FIX: no longer block the whole screen on the paymentSummary network
     // call. Read data already loaded on the Order screen from OrderBloc
     // (instant, local, no fetch) — preferring KOT items (since the cart is
@@ -2565,12 +2566,16 @@ Net Payable      : $netPayableTemp
 
         child: Scaffold(
             resizeToAvoidBottomInset: false, // <-- ADD THIS
-            backgroundColor: const Color(0xFFF5F5F6),
+            backgroundColor: isDark
+                ? const Color(0xFF1E2233)
+                : const Color(0xFFF5F5F6),
             body: Padding(
               padding: const EdgeInsets.all(12),
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: isDark
+                      ? const Color(0xFF202433)
+                      : Colors.white,
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: [
                     BoxShadow(
@@ -2622,13 +2627,16 @@ Net Payable      : $netPayableTemp
                                       Image.asset(
                                         "assets/icon/calender.png",
                                         width: 16,
+                                        color: isDark ? Colors.white70 : null,
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
                                         "$formattedDate | $formattedTime",
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 14,
-                                          color: Color(0xFF4C5F7D),
+                                          color: isDark
+                                              ? Colors.white
+                                              : const Color(0xFF4C5F7D),
                                         ),
                                       ),
                                     ],
@@ -2658,6 +2666,33 @@ Net Payable      : $netPayableTemp
                                     contentPadding: const EdgeInsets.symmetric(
                                       horizontal: 14,
                                       vertical: 10,
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(
+                                        color: isDark
+                                            ? const Color(0xFF5A5A5A)
+                                            : const Color(0xFFD9D9D9),
+                                        width: 1.2,
+                                      ),
+                                    ),
+
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: const BorderSide(
+                                        color: Color(0xFF1A3C71),
+                                        width: 1.5,
+                                      ),
+                                    ),
+
+                                    disabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(
+                                        color: isDark
+                                            ? const Color(0xFF5A5A5A)
+                                            : const Color(0xFFD9D9D9),
+                                        width: 1.2,
+                                      ),
                                     ),
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
@@ -2715,13 +2750,17 @@ Net Payable      : $netPayableTemp
                           Expanded(
                             child: Container(
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF1F1F3),
+                                color: isDark
+                                    ? const Color(0xFF2A2F45)
+                                    : const Color(0xFFDEE8FF),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               padding: const EdgeInsets.all(10),
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF1F1F3),
+                                  color: isDark
+                                      ? const Color(0xFF25283A)
+                                      : const Color(0xFFF1F1F3),
                                   borderRadius: BorderRadius.circular(5),
                                 ),
                                 child: Column(
@@ -2813,47 +2852,47 @@ Net Payable      : $netPayableTemp
                                                 // your model has one), and matched the
                                                 // column widths used in the header above.
                                                 child: Row(
-                                                  crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
                                                   children: [
                                                     SizedBox(
                                                       width: 30,
                                                       child: Text(
                                                         '${index + 1}',
-                                                        style: const TextStyle(
+                                                        style: TextStyle(
                                                           fontSize: 13,
                                                           fontWeight: FontWeight.w600,
-                                                          color: Color(0xFF111827),
+                                                          color: isDark
+                                                              ? Colors.white
+                                                              : const Color(0xFF111827),
                                                         ),
                                                       ),
                                                     ),
                                                     Expanded(
                                                       child: Column(
-                                                        crossAxisAlignment:
-                                                        CrossAxisAlignment.start,
+                                                        crossAxisAlignment: CrossAxisAlignment.start,
                                                         children: [
                                                           Text(
                                                             item.name,
-                                                            overflow:
-                                                            TextOverflow.ellipsis,
-                                                            style: const TextStyle(
+                                                            overflow: TextOverflow.ellipsis,
+                                                            style: TextStyle(
                                                               fontSize: 13,
-                                                              fontWeight:
-                                                              FontWeight.w600,
-                                                              color: Color(0xFF111827),
+                                                              fontWeight: FontWeight.w600,
+                                                              color: isDark
+                                                                  ? Colors.white
+                                                                  : const Color(0xFF111827),
                                                             ),
                                                           ),
                                                           if (item.modifiers.isNotEmpty)
                                                             Text(
-                                                              "${item.modifiers.join(", ")}  (+$_currency${item.modifierAmount.toStringAsFixed(0)})",
-                                                              style: const TextStyle(
+                                                              "${item.modifiers.join(", ")} (+$_currency${item.modifierAmount.toStringAsFixed(0)})",
+                                                              overflow: TextOverflow.ellipsis,
+                                                              style: TextStyle(
                                                                 fontSize: 10,
-                                                                color: Colors.blue,
-                                                                fontWeight:
-                                                                FontWeight.w600,
+                                                                color: isDark
+                                                                    ? Colors.lightBlueAccent
+                                                                    : Colors.blue,
+                                                                fontWeight: FontWeight.w600,
                                                               ),
-                                                              overflow:
-                                                              TextOverflow.ellipsis,
                                                             ),
                                                         ],
                                                       ),
@@ -2865,9 +2904,11 @@ Net Payable      : $netPayableTemp
                                                       child: Text(
                                                         '${item.qty} × ${((item.qty > 0 ? ((item.total - item.modifierAmount) / item.qty) : 0)).toStringAsFixed(0)}',
                                                         textAlign: TextAlign.right,
-                                                        style: const TextStyle(
+                                                        style: TextStyle(
                                                           fontSize: 12,
-                                                          color: Color(0xFF656161),
+                                                          color: isDark
+                                                              ? Colors.white70
+                                                              : const Color(0xFF656161),
                                                         ),
                                                       ),
                                                     ),
@@ -2880,18 +2921,22 @@ Net Payable      : $netPayableTemp
                                                       child: Text(
                                                         "$_currency${item.total.toStringAsFixed(2)}",
                                                         textAlign: TextAlign.right,
-                                                        style: const TextStyle(
+                                                        style: TextStyle(
                                                           fontSize: 13,
                                                           fontWeight: FontWeight.w600,
-                                                          color: Color(0xFF111827),
+                                                          color: isDark
+                                                              ? Colors.white
+                                                              : const Color(0xFF111827),
                                                         ),
                                                       ),
                                                     ),
                                                   ],
                                                 ),
                                               ),
-                                              const Divider(
-                                                color: Color(0xFFE6E7E8),
+                                              Divider(
+                                                color: isDark
+                                                    ? const Color(0xFF5A5A5A)
+                                                    : const Color(0xFFE6E7E8),
                                                 thickness: 1,
                                               ),
                                             ],
@@ -2919,7 +2964,9 @@ Net Payable      : $netPayableTemp
                         width: MediaQuery.of(context).size.width * 0.315,
                         margin: const EdgeInsets.only(bottom: 8,left:3,right:3),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFFFFFF),
+                          color: isDark
+                              ? const Color(0xFF202433)
+                              : Colors.white,
                           borderRadius: BorderRadius.circular(10),
                           boxShadow: [
                             BoxShadow(
@@ -3224,7 +3271,9 @@ Net Payable      : $netPayableTemp
                                   vertical: 12,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFDEE8FF), // SAME COLOR AS IMAGE
+                                  color: isDark
+                                      ? const Color(0xFF2A2F45)
+                                      : const Color(0xFFDEE8FF),/// SAME COLOR AS IMAGE
                                   borderRadius: BorderRadius.only(
                                     bottomLeft: Radius.circular(8),
                                     bottomRight: Radius.circular(8),

@@ -17,8 +17,10 @@ import 'package:pinaka_restaurant_pos/repositories/subcategory_repository.dart';
 import 'package:pinaka_restaurant_pos/repositories/variant_repository.dart';
 import 'package:pinaka_restaurant_pos/utils/GlobalReservationMonitor.dart';
 import 'package:pinaka_restaurant_pos/utils/ShiftMonitor.dart';
+import 'package:pinaka_restaurant_pos/utils/app_theme.dart';
 // import 'package:pinaka_restaurant_pos/utils/app.config.dart';
 import 'package:pinaka_restaurant_pos/utils/global_navigator.dart';
+import 'package:pinaka_restaurant_pos/utils/theme_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
@@ -90,10 +92,13 @@ void main() async {
       prefs.getString('store_base_url')?.isNotEmpty ?? false;
 
   runApp(
-    MyApp(
-      orderRepo: orderRepo,
-      token: token,
-      hasMerchantValidation: hasMerchantValidation,
+    ChangeNotifierProvider(
+      create: (_) => ThemeProvider(),
+      child: MyApp(
+        orderRepo: orderRepo,
+        token: token,
+        hasMerchantValidation: hasMerchantValidation,
+      ),
     ),
   );
 }
@@ -257,19 +262,27 @@ class MyApp extends StatelessWidget {
             create: (context) => CheckInBloc(CheckInRepository()),
           ),
         ],
-        child: MaterialApp(
-          navigatorKey: navigatorKey,
-          debugShowCheckedModeBanner: false,
-          title: 'Employee Login',
-          theme: ThemeData(primarySwatch: Colors.blue),
-          home:
-              hasMerchantValidation
+        child: Consumer<ThemeProvider>(
+          builder: (context, themeProvider, child) {
+            return MaterialApp(
+              navigatorKey: navigatorKey,
+              debugShowCheckedModeBanner: false,
+              title: 'Employee Login',
+
+              theme: AppTheme.lightTheme,
+
+              darkTheme: AppTheme.darkTheme,
+              themeMode: themeProvider.themeMode,
+
+              home: hasMerchantValidation
                   ? const EmployeeLoginPage(
-                    storeBaseUrl: '',
-                    storeName: '',
-                    storeId: '',
-                  )
+                storeBaseUrl: '',
+                storeName: '',
+                storeId: '',
+              )
                   : const MerchantOnboardingScreen(),
+            );
+          },
         ),
       ),
     );

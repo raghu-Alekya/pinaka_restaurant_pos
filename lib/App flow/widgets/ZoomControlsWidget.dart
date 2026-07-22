@@ -28,24 +28,35 @@ class ZoomControlsWidget extends StatelessWidget {
   /// Builds a single zoom control button with a given [icon] and [onTap] callback.
   ///
   /// The button is a small square with white background, rounded corners, and a subtle shadow.
-  Widget _zoomButton({required IconData icon, required VoidCallback onTap}) {
+  Widget _zoomButton({
+    required BuildContext context,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 30,
         height: 30,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: Theme.of(context).dividerColor,
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black26,
+              color: Theme.of(context).shadowColor.withOpacity(0.3),
               blurRadius: 4,
-              offset: Offset(0, 2),
+              offset: const Offset(0, 2),
             ),
           ],
         ),
-        child: Icon(icon, size: 15, color: Colors.black87),
+        child: Icon(
+          icon,
+          size: 15,
+          color: Theme.of(context).colorScheme.onSurface,
+        ),
       ),
     );
   }
@@ -60,9 +71,9 @@ class ZoomControlsWidget extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _zoomButton(icon: Icons.add, onTap: onZoomIn),
+          _zoomButton(  context: context,icon: Icons.add, onTap: onZoomIn),
           SizedBox(height: 10),
-          _zoomButton(icon: Icons.remove, onTap: onZoomOut),
+          _zoomButton(  context: context,icon: Icons.remove, onTap: onZoomOut),
           SizedBox(height: 10),
 
           /// Scale to fit button with label next to it.
@@ -70,20 +81,23 @@ class ZoomControlsWidget extends StatelessWidget {
             children: [
               SizedBox(
                 width: 30,
-                child: _zoomButton(icon: Icons.fit_screen, onTap: onScaleToFit),
+                child: _zoomButton(
+                  icon: Icons.fit_screen,
+                  onTap: onScaleToFit,  context: context,
+                ),
               ),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text(
                 "Scaled to fit",
                 style: TextStyle(
                   fontSize: 12,
-                  color: Color(0xFF4C5F7D),
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.w500,
                   fontFamily: 'Inter',
                 ),
               ),
             ],
-          ),
+          )
         ],
       ),
     );

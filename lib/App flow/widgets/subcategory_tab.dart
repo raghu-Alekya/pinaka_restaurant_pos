@@ -102,18 +102,31 @@ class _SubCategoryTabWidgetState extends State<SubCategoryTabWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     if (widget.subCategories.isEmpty) return const SizedBox(height: 50);
 
     return Container(
       margin: const EdgeInsets.all(1),
       padding: const EdgeInsets.all(6),
+
+
       decoration: BoxDecoration(
-        color: Color(0XFFFFFFFF),
-        border: Border.all(color: Color(0xFFE0E0E0), width: 1),
+        color: isDark
+            ? const Color(0xFF25283A)
+            : Colors.white,
+        border: Border.all(
+          color: isDark
+              ? const Color(0xFF3E445C)
+              : const Color(0xFFE0E0E0),
+        ),
         borderRadius: BorderRadius.circular(12),
-        // boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 0, offset: Offset(1, 2))],
-        boxShadow: const [
-          BoxShadow(color: Colors.white, blurRadius: 3, offset: Offset(0, 0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.25 : 0.08),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
         ],
       ),
       height: 114,
@@ -141,20 +154,20 @@ class _SubCategoryTabWidgetState extends State<SubCategoryTabWidget> {
                     margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? const Color(0xFFFFE5E8)
-                          : Colors.white,
+                          ? const Color(0xFFFF6B7A).withOpacity(0.25) // Light red shade
+                          : Theme.of(context).cardColor,
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
                         color: isSelected
                             ? const Color(0xFFFF364C)
-                            : const Color(0xFFC4C7D1),
+                            : Theme.of(context).dividerColor,
                         width: 1,
                       ),
-                      boxShadow: const [
+                      boxShadow: [
                         BoxShadow(
-                          color: Color(0x19000000),
-                          blurRadius: 10,
-                          offset: Offset(0, 1),
+                          color: Theme.of(context).shadowColor.withOpacity(0.15),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
                         ),
                       ],
                     ),
@@ -206,9 +219,11 @@ class _SubCategoryTabWidgetState extends State<SubCategoryTabWidget> {
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              color: isSelected
+                              color: isDark
+                                  ? Colors.white
+                                  : (isSelected
                                   ? const Color(0xFFFF364C)
-                                  : const Color(0xFF4C5F7D),
+                                  : const Color(0xFF4C5F7D)),
                               fontSize: 12,
                               fontWeight:
                               isSelected ? FontWeight.w600 : FontWeight.w500,

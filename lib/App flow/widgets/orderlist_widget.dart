@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:path/path.dart';
 import '../../blocs/Bloc Event/order_event.dart';
 import '../../blocs/Bloc Logic/order_bloc.dart';
 import '../../models/order/order_items.dart';
@@ -67,10 +68,14 @@ class OrderPanelList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return ListView.separated(
       shrinkWrap: true,
       itemCount: orderItems.length,
-      separatorBuilder: (_, __) => const Divider(height: 0),
+      separatorBuilder: (_, __) => Divider(
+        height: 0,
+        color: Theme.of(context).dividerColor,
+      ),
       itemBuilder: (context, index) {
         final item = orderItems[index];
         print("Item Name: ${item.name}");
@@ -90,19 +95,23 @@ class OrderPanelList extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 0),
             child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),// inner padding
+                // final isDark = Theme.of(context).brightness == Brightness.dark;
+
                 decoration: BoxDecoration(
-                  color: Colors.white, // white background
+                  color: isDark
+                      ? Colors.black
+                      : Colors.white,
                   borderRadius: index == orderItems.length - 1
                       ? const BorderRadius.only(
                     bottomLeft: Radius.circular(12),
                     bottomRight: Radius.circular(12),
                   )
                       : BorderRadius.zero,
-                  boxShadow: const [
+                  boxShadow: [
                     BoxShadow(
-                      color: Colors.black12,
+                      color: Colors.black.withOpacity(isDark ? 0.25 : 0.08),
                       blurRadius: 1,
-                      offset: Offset(1, 1),
+                      offset: const Offset(1, 1),
                     ),
                   ],
                 ),
@@ -129,9 +138,10 @@ class OrderPanelList extends StatelessWidget {
                         children: [
                           Text(
                             item.name,
-                            style: const TextStyle(
+                            style:  TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
+                              color: isDark ? Colors.white : Colors.black,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -207,7 +217,7 @@ class OrderPanelList extends StatelessWidget {
                         // '₹${item.price.toStringAsFixed(2)}',
                         '$currency${item.price.toStringAsFixed(2)}',
                         textAlign: TextAlign.right,
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                        style:  TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: isDark ? Colors.white : Colors.black,),
                       ),
                     ),
 
@@ -217,6 +227,7 @@ class OrderPanelList extends StatelessWidget {
                     Row(
                       children: [
                         _quantityButton(
+                          context,
                           Icons.remove,
                               () => onDecreaseQuantity(index),
                         ),
@@ -227,13 +238,17 @@ class OrderPanelList extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(horizontal: 6),
                           child: Text(
                             '${item.quantity}',
-                            style: const TextStyle(fontSize: 14),
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: isDark ? Colors.white : Colors.black,
+                            ),
                           ),
                         ),
 
                         const SizedBox(width: 3), // ✅ space between qty and +
 
                         _quantityButton(
+                          context,
                           Icons.add,
                               () => onIncreaseQuantity(index),
                         ),
@@ -250,7 +265,7 @@ class OrderPanelList extends StatelessWidget {
                         // '₹${item.totalWithAddons.toStringAsFixed(2)}',
                         '$currency${item.totalWithAddons.toStringAsFixed(2)}',
                         textAlign: TextAlign.right,
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                        style:  TextStyle(fontSize: 14, fontWeight: FontWeight.w500,  color: isDark ? Colors.white : Colors.black,),
                       ),
                     ),
                   ],
@@ -264,18 +279,29 @@ class OrderPanelList extends StatelessWidget {
     );
   }
 
-  Widget _quantityButton(IconData icon, VoidCallback? onPressed) {
+  Widget _quantityButton( BuildContext context,IconData icon, VoidCallback? onPressed) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: 30,
       height: 30,
       decoration: BoxDecoration(
-        color: const Color(0xFFFCDFDC),
+        color: isDark
+            ?  Color(0xFFFF6B5F)
+            :  Color(0xFFFCDFDC),
         borderRadius: BorderRadius.circular(4),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(4),
         onTap: onPressed,
-        child: Center(child: Icon(icon, size: 15, color: Colors.black)),
+        child: Center(
+          child: Icon(
+            icon,
+            size: 15,
+            color: isDark
+                ? Colors.white
+                : Colors.black,
+          ),
+        ),
       ),
     );
   }

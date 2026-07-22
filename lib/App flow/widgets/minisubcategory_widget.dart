@@ -2172,6 +2172,8 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
     final directItems =
     currentSubCategories.where((e) => !e.isFolder).toList();
     final folderItems = selectedFolder?.products ?? [];
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
 
     // NOTE: intentionally no loading/spinner branch here. Whatever is in
     // `currentSubCategories` / `selectedFolder` right now is exactly what
@@ -2187,11 +2189,22 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
         bottom: 4.5,
       ),
       decoration: BoxDecoration(
-        border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
+        border: Border.all(
+          color: Theme.of(context).dividerColor,
+          width: 1,
+        ),
         borderRadius: BorderRadius.circular(12),
-        color: const Color(0XFFFFFFFF),
-        boxShadow: const [
-          BoxShadow(color: Colors.white, blurRadius: 3, offset: Offset(0, 0)),
+        color: isDark
+            ? const Color(0xFF202433)
+            : Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? Colors.black.withOpacity(0.25)
+                : Colors.grey.withOpacity(0.15),
+            blurRadius: 3,
+            offset: const Offset(0, 0),
+          ),
         ],
       ),
       child: ListView(
@@ -2212,6 +2225,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
   }
 
   Widget _buildFolderGrid(List<MiniSubCategory> folders) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return SizedBox(
       height: 35,
       child: ListView.separated(
@@ -2230,30 +2244,38 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
               const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
               decoration: isSelected
                   ? BoxDecoration(
-                color: const Color(0xFFFF364C),
+                color: isDark
+                    ? const Color(0x66FF364C) // Light red in dark mode
+                    : const Color(0xFFFF364C),
                 borderRadius: BorderRadius.circular(8),
-                boxShadow: const [
+                border: Border.all(
+                  color: const Color(0xFFFF364C),
+                  width: 1,
+                ),
+                boxShadow: [
                   BoxShadow(
-                    color: Color(0x19000000),
-                    blurRadius: 10,
-                    offset: Offset(0, 1),
-                    spreadRadius: 0,
+                    color: Theme.of(context).shadowColor.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 1),
                   ),
                 ],
               )
                   : BoxDecoration(
-                color: Colors.white,
+                color: isDark
+                    ? const Color(0xFF2B3045)
+                    : Colors.white,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: const Color(0xFFC4C7D1),
+                  color: isDark
+                      ? const Color(0xFF444A63)
+                      : const Color(0xFFC4C7D1),
                   width: 1,
                 ),
-                boxShadow: const [
+                boxShadow: [
                   BoxShadow(
-                    color: Color(0x4F2B4D82),
+                    color: Theme.of(context).shadowColor.withOpacity(0.15),
                     blurRadius: 8,
-                    offset: Offset(1, 1),
-                    spreadRadius: 0,
+                    offset: const Offset(1, 1),
                   ),
                 ],
               ),
@@ -2271,7 +2293,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
                         fontWeight: FontWeight.w500,
                         color: isSelected
                             ? Colors.white
-                            : const Color(0xFF4C5F7D),
+                            : (isDark ? Colors.white : const Color(0xFF4C5F7D)),
                         height: 1.5,
                         letterSpacing: 0.6,
                       ),
@@ -2289,6 +2311,8 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
   Widget _buildItemsGrid(List<Product> items) {
     const double stripWidth = 0;
     const double stripGap = 1;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
 
     return GridView.builder(
       shrinkWrap: true,
@@ -2319,16 +2343,20 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
                   0,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: isDark
+                      ? const Color(0xFF2B3045)
+                      : Colors.white,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: const Color(0x7FC4C7D1),
+                    color: isDark
+                        ? const Color(0xFF444A63)
+                        : const Color(0x7FC4C7D1),
                   ),
-                  boxShadow: const [
+                  boxShadow: [
                     BoxShadow(
-                      color: Color(0x19000000),
-                      blurRadius: 14,
-                      offset: Offset(0, 1),
+                      color: Colors.black.withOpacity(isDark ? 0.25 : 0.10),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
@@ -2380,17 +2408,19 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 softWrap: true,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
+                                  color: isDark ? Colors.white : Colors.black,
                                 ),
                               ),
                               const SizedBox(height: 4),
                               Text(
                                 '$_currency${item.price.toStringAsFixed(2)}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
+                                  color: isDark ? Colors.white : Colors.black,
                                 ),
                               ),
                             ],

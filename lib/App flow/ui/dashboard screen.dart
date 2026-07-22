@@ -807,7 +807,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             },
           ),
           body: Container(
-            color: const Color(0xFFECEDF4),
+            color: Theme.of(context).scaffoldBackgroundColor,
             child: Row(
               children: [
                 // LEFT SIDE

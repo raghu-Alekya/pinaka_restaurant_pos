@@ -1674,6 +1674,7 @@ class _OrderPanelState extends State<OrderPanel> {
   Widget build(BuildContext context) {
     // 1️⃣ Trigger KOT loading for existing order
     final orderBloc = context.read<OrderBloc>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final kotBloc = context.read<KotBloc>();
 
     // ✅ Initialize OrderBloc with existing order items if not already loaded
@@ -1747,11 +1748,14 @@ class _OrderPanelState extends State<OrderPanel> {
             width: 700,
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isDark
+                  ? const Color(0xFF202433)
+                  : Colors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: const Color(0xFFE0E0E0), // Border color
-                width: 1, // Border width
+                color: isDark
+                    ? const Color(0xFF444A63)
+                    : const Color(0xFFE0E0E0),
               ),
             ),
             child: Column(
@@ -1764,7 +1768,9 @@ class _OrderPanelState extends State<OrderPanel> {
                     vertical: 12,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: isDark
+                        ? const Color(0xFF2A2F45)
+                        : Colors.white,
                     borderRadius: BorderRadius.circular(14),
                     // boxShadow: [
                     //   BoxShadow(
@@ -1789,15 +1795,18 @@ class _OrderPanelState extends State<OrderPanel> {
                                   "assets/order.png",
                                   width: 18,
                                   height: 18,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                 ),
                                 const SizedBox(width: 6),
                                 RichText(
                                   text: TextSpan(
                                     children: [
-                                      const TextSpan(
+                                      TextSpan(
                                         text: "Order Id ",
                                         style: TextStyle(
-                                          color: Color(0xFF656565),
+                                          color: isDark
+                                              ? Colors.white
+                                              : const Color(0xFF152148),
                                           fontSize: 18,
                                           fontWeight: FontWeight.w400,
                                         ),
@@ -1809,8 +1818,10 @@ class _OrderPanelState extends State<OrderPanel> {
                                             ? "${state.orderId}"
                                             : "----")
                                             : "${state.orderId}",
-                                        style: const TextStyle(
-                                          color: Color(0xFF152148),
+                                        style: TextStyle(
+                                          color: isDark
+                                              ? Colors.white
+                                              : const Color(0xFF152148),
                                           fontSize: 20,
                                           fontWeight: FontWeight.w700,
                                         ),
@@ -1832,10 +1843,12 @@ class _OrderPanelState extends State<OrderPanel> {
                                   size: 22,
                                 ),
                                 const SizedBox(width: 8),
-                                const Text(
+                                Text(
                                   "Take Away",
                                   style: TextStyle(
-                                    color: Color(0xFF002053),
+                                    color: isDark
+                                        ? Colors.white
+                                        : Color(0xff002053),
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -1848,21 +1861,26 @@ class _OrderPanelState extends State<OrderPanel> {
                                   "assets/dine.png",
                                   width: 25,
                                   height: 25,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
                                   "${state.zoneName}-${state.tableName}",
-                                  style: const TextStyle(
-                                    color: Color(0xff002053),
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? Colors.white
+                                        : const Color(0xff002053),
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
                                 const SizedBox(width: 10),
-                                const Icon(
+                                Icon(
                                   Icons.people,
                                   size: 18,
-                                  color: Colors.black54,
+                                  color: isDark
+                                      ? Colors.white70
+                                      : Colors.black54,
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
@@ -1883,18 +1901,22 @@ class _OrderPanelState extends State<OrderPanel> {
                         children: [
                           Row(
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.calendar_today_outlined,
                                 size: 18,
-                                color: Colors.black54,
+                                color: isDark
+                                    ? Colors.white70
+                                    : Colors.black54,
                               ),
                               const SizedBox(width: 6),
                               Text(
                                 DateFormat('dd MMMM, yyyy').format(DateTime.now()),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w500,
-                                  color: Color(0xFF121212),
+                                  color: isDark
+                                      ? Colors.white
+                                      : const Color(0xFF121212),
                                 ),
                               ),
                             ],
@@ -1925,9 +1947,18 @@ class _OrderPanelState extends State<OrderPanel> {
                                     builder: (context, setState) {
                                       return ConfirmationPopup(
                                         title: "Are you sure?",
-                                        message: "Do you really want to delete Order ID ",
-                                        highlightedText: currentOrderId.toString(),
-                                        trailingMessage: "?",
+                                        message:
+                                        widget.isTakeAway
+                                            ? "Do you want to really cancel this order?\nThis action cannot be undone."
+                                            : "Do you want to really delete the ",
+                                        highlightedText:
+                                        widget.isTakeAway
+                                            ? null
+                                            : state.tableName,
+                                        trailingMessage:
+                                        widget.isTakeAway
+                                            ? null
+                                            : "?\nThis will remove it from ${state.zoneName}.",
                                         imagePath: "assets/warning_icon.png",
                                         confirmButtonText: "Yes, Cancel!",
                                         cancelButtonText: "No, Keep It",
@@ -1958,7 +1989,9 @@ class _OrderPanelState extends State<OrderPanel> {
                                 horizontal: 12,
                               ),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF6F6F6),
+                                color: isDark
+                                    ? const Color(0xFF34384F)
+                                    : const Color(0xFFF6F6F6),
                                 borderRadius: BorderRadius.circular(6),
                                 border: Border.all(
                                   width: 1,
@@ -1982,19 +2015,17 @@ class _OrderPanelState extends State<OrderPanel> {
                                     "assets/icon/delete.png",
                                     width: 18,
                                     height: 18,
-                                    color:
-                                    hasOrder
+                                    color: hasOrder
                                         ? const Color(0xFFFE2222)
-                                        : Colors.grey.shade700,
+                                        : (isDark ? Colors.white : Colors.grey.shade700),
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
                                     "Cancel",
                                     style: TextStyle(
-                                      color:
-                                      hasOrder
+                                      color: hasOrder
                                           ? const Color(0xFFFE2222)
-                                          : Colors.grey.shade700,
+                                          : (isDark ? Colors.white : Colors.grey.shade700),
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -2334,7 +2365,9 @@ class _OrderPanelState extends State<OrderPanel> {
                               Container(
                                 height: 30,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF989292),
+                                  color: isDark
+                                      ? const Color(0xFF34384F)
+                                      : const Color(0xFF989292),
                                   borderRadius: const BorderRadius.only(
                                     topLeft: Radius.circular(6),
                                     topRight: Radius.circular(6),
@@ -2382,10 +2415,12 @@ class _OrderPanelState extends State<OrderPanel> {
                               /// Order List
                               Expanded(
                                 child: Container(
-                                  color: const Color(0xFFF1F1F3),
+                                  color: isDark
+                                      ? const Color(0xFF202433)
+                                      : const Color(0xFFF1F1F3),
                                   child:
                                   state.orderItems.isEmpty
-                                      ? const Center(
+                                      ?  Center(
                                     child: Column(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
@@ -2394,7 +2429,9 @@ class _OrderPanelState extends State<OrderPanel> {
                                           style: TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.w600,
-                                            color: Color(0xFFB8B8B8),
+                                            color: isDark
+                                                ? Colors.white70
+                                                : const Color(0xFFB8B8B8),
                                           ),
                                         ),
                                         SizedBox(height: 8),
@@ -2483,7 +2520,7 @@ class _OrderPanelState extends State<OrderPanel> {
                                   vertical: 6,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFE9EAFC),
+                                  color: const Color(0xFF1A3C71),
                                   borderRadius: const BorderRadius.only(
                                     bottomLeft: Radius.circular(6),
                                     bottomRight: Radius.circular(6),
@@ -2498,7 +2535,7 @@ class _OrderPanelState extends State<OrderPanel> {
                                       style: const TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w600,
-                                        color: const Color(0xFF1A3C71),
+                                        color: Colors.white,
                                       ),
                                     ),
                                     Text(
@@ -2509,10 +2546,10 @@ class _OrderPanelState extends State<OrderPanel> {
                                         sum + item.totalWithAddons,
                                       )
                                           .toStringAsFixed(2),
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w700,
-                                        color: const Color(0xFF1A3C71),
+                                        color: Colors.white,
                                       ),
                                     ),
                                   ],
@@ -2531,7 +2568,9 @@ class _OrderPanelState extends State<OrderPanel> {
                 Container(
                   padding: const EdgeInsets.all(2),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: isDark
+                        ? const Color(0xFF2A2F45)
+                        : Colors.white,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child:

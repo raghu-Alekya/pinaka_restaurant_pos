@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/widgets/print_receipt.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/UserPermissions.dart';
 import '../../repositories/auth_repository.dart';
 import '../../repositories/employee_repository.dart';
+import '../../utils/theme_provider.dart';
 import '../ui/CheckinPopup.dart';
 import '../ui/DailyAttendanceScreen.dart';
 import '../ui/SettingsScreen.dart';
@@ -535,6 +537,8 @@ class _TopBarState extends State<TopBar> {
                       ],
                       _buildNotificationIconButton(),
                       const SizedBox(width: 10),
+                      _buildThemeButton(),
+                      const SizedBox(width: 10),
                       _buildSettingsButton(),
                       const SizedBox(width: 10),
                       _buildLogoutButton(),
@@ -550,6 +554,8 @@ class _TopBarState extends State<TopBar> {
 
                       _buildNotificationIconButton(),
                       const SizedBox(width: 10),
+                      _buildThemeButton(),
+                      const SizedBox(width: 10),
                       _buildSettingsButton(),
                       const SizedBox(width: 10),
                       _buildProfileSection(),
@@ -557,6 +563,8 @@ class _TopBarState extends State<TopBar> {
                       _buildHomeButton(),
                       const SizedBox(width: 10),
                       _buildNotificationIconButton(),
+                      const SizedBox(width: 10),
+                      _buildThemeButton(),
                       const SizedBox(width: 10),
                       _buildSettingsButton(),
                       const SizedBox(width: 10),
@@ -687,6 +695,38 @@ class _TopBarState extends State<TopBar> {
                 fontFamily: 'Inter',
                 fontWeight: FontWeight.w400,
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  Widget _buildThemeButton() {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
+    return GestureDetector(
+      onTap: () {
+        themeProvider.toggleTheme();
+      },
+      child: Container(
+        width: 55,
+        height: 55,
+        decoration: BoxDecoration(
+          color: const Color(0xFF6366F1),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              themeProvider.isDark
+                  ? Icons.light_mode
+                  : Icons.dark_mode,
+              color: Colors.white,
+            ),
+            Text(
+              themeProvider.isDark ? "Light" : "Dark",
+              style: const TextStyle(color: Colors.white, fontSize: 9),
             ),
           ],
         ),

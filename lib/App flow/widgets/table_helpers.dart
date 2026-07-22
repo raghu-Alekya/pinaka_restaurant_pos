@@ -18,19 +18,26 @@ class TableHelpers {
     );
   }
 
-  static Widget buildLegendDot(Color color, String label) {
+  static Widget buildLegendDot(
+      BuildContext context,
+      Color dotColor,
+      String label,
+      ) {
     return Row(
       children: [
         Container(
           width: 10,
           height: 10,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          decoration: BoxDecoration(
+            color: dotColor,
+            shape: BoxShape.circle,
+          ),
         ),
-        SizedBox(width: 4),
+        const SizedBox(width: 4),
         Text(
           label,
           style: TextStyle(
-            color: color,
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 12,
             fontWeight: FontWeight.w500,
           ),
