@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/sidebar/category_model_.dart';
@@ -20,7 +19,13 @@ class CategoryRepository {
   }) async {
     final prefs = await SharedPreferences.getInstance();
 
-    final cachedData = prefs.getString(_cacheKey);
+    // Clean up legacy global cache if present
+    if (prefs.containsKey(_cacheKey)) {
+      await prefs.remove(_cacheKey);
+    }
+
+    final scopedCacheKey = '${_cacheKey}_$restaurantId';
+    final cachedData = prefs.getString(scopedCacheKey);
 
     if (cachedData != null) {
       try {
@@ -72,8 +77,9 @@ class CategoryRepository {
 
         final List data = jsonData["category"] ?? [];
 
+        final scopedCacheKey = '${_cacheKey}_$restaurantId';
         await prefs.setString(
-          _cacheKey,
+          scopedCacheKey,
           jsonEncode(data),
         );
 

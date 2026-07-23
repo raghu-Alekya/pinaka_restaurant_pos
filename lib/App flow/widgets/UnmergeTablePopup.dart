@@ -42,12 +42,14 @@ class UnmergeTablePopup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mergedTables = tableData['merged_tables'] ?? tableData['tableName'] ?? '';
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return AlertDialog(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
       ),
-      backgroundColor: const Color(0xFFFDFDFD),
+      backgroundColor: theme.cardColor,
       contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       content: SizedBox(
         width: 350,
@@ -55,6 +57,7 @@ class UnmergeTablePopup extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(height: 8),
+
             Center(
               child: Image.asset(
                 'assets/check-broken.png',
@@ -63,53 +66,82 @@ class UnmergeTablePopup extends StatelessWidget {
                 fit: BoxFit.cover,
               ),
             ),
+
             const SizedBox(height: 12),
-            const Text(
+
+            Text(
               'Are you sure ?',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
+
             const SizedBox(height: 8),
+
             RichText(
               textAlign: TextAlign.center,
               text: TextSpan(
-                style: const TextStyle(color: Colors.black87, fontSize: 15),
+                style: TextStyle(
+                  color: theme.textTheme.bodyLarge?.color,
+                  fontSize: 15,
+                ),
                 children: [
-                  const TextSpan(text: 'Do you want to really unmerge the table(s): '),
+                  const TextSpan(
+                    text: 'Do you want to really unmerge the table(s): ',
+                  ),
                   TextSpan(
                     text: mergedTables,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: theme.textTheme.bodyLarge?.color,
+                    ),
                   ),
                   const TextSpan(text: '?'),
                 ],
               ),
             ),
+
             const SizedBox(height: 16),
+
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 TextButton(
                   style: TextButton.styleFrom(
-                    backgroundColor: const Color(0xFFF1F4F8),
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    backgroundColor: isDark
+                        ? Colors.grey.shade800
+                        : const Color(0xFFF1F4F8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 14,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
+                    ),
+                    side: BorderSide(
+                      color: theme.dividerColor,
                     ),
                   ),
                   onPressed: () {
                     Navigator.of(context).pop();
                   },
-                  child: const Text(
+                  child: Text(
                     'No, Keep It.',
-                    style: TextStyle(color: Color(0xFF4C5F7D)),
+                    style: TextStyle(
+                      color: theme.textTheme.bodyLarge?.color,
+                    ),
                   ),
                 ),
+
                 const SizedBox(width: 12),
+
                 TextButton(
                   style: TextButton.styleFrom(
                     backgroundColor: const Color(0xFFFE6464),
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 14,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -117,11 +149,14 @@ class UnmergeTablePopup extends StatelessWidget {
                   onPressed: () => _unmergeTable(context),
                   child: const Text(
                     'Yes, Unmerge!',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ],
             ),
+
             const SizedBox(height: 12),
           ],
         ),

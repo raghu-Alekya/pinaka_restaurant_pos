@@ -403,7 +403,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
                             // ),
                             const SizedBox(width: 8),
 
-                             Text(
+                            Text(
                               "Orders List",
                               style: TextStyle(
                                 color: isDark
@@ -701,7 +701,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
                             clipBehavior: Clip.antiAlias,
                             child: Theme(
                               data: Theme.of(context).copyWith(
-                                dividerColor: isDark ? Colors.white24 : Colors.grey.shade300,
+                                dividerColor: Colors.grey.shade200,
                               ),
                               child: SingleChildScrollView(
                                 scrollDirection: Axis.horizontal,

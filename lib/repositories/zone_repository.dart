@@ -4,6 +4,7 @@ import '../local database/login_dao.dart';
 import '../utils/logger.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ZoneRepository {
   final areaDao = AreaDao();
@@ -196,8 +197,36 @@ class ZoneRepository {
     }
   }
 
-  /// ✅ Get all zones from server and return as a list
-  Future<List<Map<String, dynamic>>> getAllZones(String token) async {
+  static List<Map<String, dynamic>>? _memoryZoneCache;
+
+  static void clearMemoryCache() {
+    _memoryZoneCache = null;
+  }
+
+  /// ✅ Get all zones (cache first for instant rendering, then API)
+  Future<List<Map<String, dynamic>>> getAllZones(String token, {bool forceRefresh = false}) async {
+    if (!forceRefresh && _memoryZoneCache != null && _memoryZoneCache!.isNotEmpty) {
+      return _memoryZoneCache!;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final cachedStr = prefs.getString('zones_cache');
+    if (!forceRefresh && cachedStr != null && cachedStr.isNotEmpty) {
+      try {
+        final List decoded = jsonDecode(cachedStr);
+        final List<Map<String, dynamic>> cached =
+        decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+        if (cached.isNotEmpty) {
+          _memoryZoneCache = cached;
+          return cached;
+        }
+      } catch (_) {}
+    }
+
+    return await fetchZonesFromApi(token);
+  }
+
+  Future<List<Map<String, dynamic>>> fetchZonesFromApi(String token) async {
     final url = Uri.parse(AppConstants.getAllZonesEndpoint);
 
     try {
@@ -206,7 +235,7 @@ class ZoneRepository {
         headers: {
           'Authorization': 'Bearer $token',
         },
-      );
+      ).timeout(const Duration(seconds: 8));
 
       AppLogger.debug('Get All Zones Response: ${response.body}');
 
@@ -215,24 +244,23 @@ class ZoneRepository {
 
         if (responseData['success'] == true && responseData['zone_details'] is List) {
           final List zoneDetails = responseData['zone_details'];
-          return zoneDetails.map<Map<String, dynamic>>((zone) {
+          final zones = zoneDetails.map<Map<String, dynamic>>((zone) {
             return {
               'zone_id': zone['zone_id'],
               'zone_name': zone['zone_name'],
             };
           }).toList();
-        } else {
-          AppLogger.error('Unexpected data structure in response');
-          return [];
+
+          _memoryZoneCache = zones;
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('zones_cache', jsonEncode(zones));
+          return zones;
         }
-      } else {
-        AppLogger.error('Failed to fetch zones: ${response.body}');
-        return [];
       }
     } catch (e) {
       AppLogger.error('Exception while fetching zones: $e');
-      return [];
     }
+    return _memoryZoneCache ?? [];
   }
 
   /// ✅ Delete zone from server and local DB

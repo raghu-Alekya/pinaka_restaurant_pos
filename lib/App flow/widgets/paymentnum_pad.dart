@@ -71,7 +71,7 @@ class _paymentsummaryState extends State<paymentsummary> {
   String _currencySymbol = "₹";
 
   double? calculatedChange;
-  String selectedPaymentMode = "Cash";
+  String selectedPaymentMode = "";
   bool isCashSelected = true;
   bool _isPaymentLoading = false;
   String _loadingPaymentMode = "";
@@ -315,10 +315,19 @@ class _paymentsummaryState extends State<paymentsummary> {
 
   Future<void> _submitPayment() async {
     debugPrint("🟡 SUBMIT PAYMENT CALLED");
-
+    // Validate amount only for normal payments
+    void _resetLoadingState() {
+      if (mounted) {
+        setState(() {
+          _isPaymentLoading = false;
+          _loadingPaymentMode = "";
+        });
+      }
+    }
     // Validate amount only for normal payments
     if (!_isNcDiscount) {
       if (amount.isEmpty) {
+        _resetLoadingState();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Please enter payment amount"),
@@ -332,6 +341,7 @@ class _paymentsummaryState extends State<paymentsummary> {
 
       final double enteredAmount = double.tryParse(amount) ?? 0.0;
       if (enteredAmount <= 0) {
+        _resetLoadingState();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Please enter a valid amount greater than 0"),
@@ -346,6 +356,7 @@ class _paymentsummaryState extends State<paymentsummary> {
 
     // Validate payment mode
     if (selectedPaymentMode.isEmpty) {
+      _resetLoadingState();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Please select a payment method (Cash / Card / UPI)"),
@@ -363,6 +374,7 @@ class _paymentsummaryState extends State<paymentsummary> {
     final int? shiftId = await SessionManager.getShiftId();
 
     if (orderId == null) {
+      _resetLoadingState();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Order not created"),
@@ -373,6 +385,7 @@ class _paymentsummaryState extends State<paymentsummary> {
     }
 
     if (userId == null) {
+      _resetLoadingState();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("User not logged in"),
@@ -383,6 +396,7 @@ class _paymentsummaryState extends State<paymentsummary> {
     }
 
     if (shiftId == null) {
+      _resetLoadingState();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Shift not started"),
@@ -440,7 +454,10 @@ class _paymentsummaryState extends State<paymentsummary> {
       await _submitPayment();
       return;
     }
-
+    setState(() {
+      _isPaymentLoading = true;
+      _loadingPaymentMode = selectedPaymentMode.isNotEmpty ? selectedPaymentMode : "Cash";
+    });
     if (key == "C") {
       setState(() {
         amount = '';
@@ -536,7 +553,7 @@ class _paymentsummaryState extends State<paymentsummary> {
       }
     }
 
-    // Show loader
+    // Show loader immediately and start submit
     setState(() {
       selectedPaymentMode = mode;
       isCashSelected = mode == "Cash";
@@ -544,42 +561,23 @@ class _paymentsummaryState extends State<paymentsummary> {
 
       _isPaymentLoading = true;
       _loadingPaymentMode = mode;
+      _balanceRevealed = true;
+      _confirmedTenderForBalance =
+      _isNcDiscount ? 0.0 : (double.tryParse(amount) ?? 0.0);
     });
 
-    try {
-      await Future.delayed(const Duration(milliseconds: 350));
+    final double remainingBeforeThisTxn = _getCurrentNetPayable();
+    final double enteredAmountForLog =
+    _isNcDiscount ? 0.0 : (double.tryParse(amount) ?? 0.0);
+    final bool isPartialAttempt =
+        enteredAmountForLog < remainingBeforeThisTxn - 0.01;
+    debugPrint(
+      isPartialAttempt
+          ? "🟠 PARTIAL PAYMENT — sending ₹${enteredAmountForLog.toStringAsFixed(2)} via create-payment (balance before this txn: ₹${remainingBeforeThisTxn.toStringAsFixed(2)})"
+          : "🟢 FULL PAYMENT — sending $_currencySymbol${enteredAmountForLog.toStringAsFixed(2)} via create-payment",
+    );
 
-      if (!mounted) return;
-
-      setState(() {
-        _balanceRevealed = true;
-        _confirmedTenderForBalance =
-        _isNcDiscount ? 0.0 : (double.tryParse(amount) ?? 0.0);
-      });
-
-      // ➕ NEW — purely informational: lets us log whether this tap is
-      // going to be a partial ("split") payment or a full settlement.
-      // Does not change any control flow.
-      final double remainingBeforeThisTxn = _getCurrentNetPayable();
-      final double enteredAmountForLog =
-      _isNcDiscount ? 0.0 : (double.tryParse(amount) ?? 0.0);
-      final bool isPartialAttempt =
-          enteredAmountForLog < remainingBeforeThisTxn - 0.01;
-      debugPrint(
-        isPartialAttempt
-            ? "🟠 PARTIAL PAYMENT — sending ₹${enteredAmountForLog.toStringAsFixed(2)} via create-payment (balance before this txn: ₹${remainingBeforeThisTxn.toStringAsFixed(2)})"
-            : "🟢 FULL PAYMENT — sending $_currencySymbol${enteredAmountForLog.toStringAsFixed(2)} via create-payment",
-      );
-
-      await _submitPayment();
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isPaymentLoading = false;
-          _loadingPaymentMode = "";
-        });
-      }
-    }
+    await _submitPayment();
   }
 
   void _onPresetAmountTap(String value) {
@@ -917,6 +915,10 @@ class _paymentsummaryState extends State<paymentsummary> {
         BlocListener<CreatePaymentBloc, CreatePaymentState>(
           listener: (context, state) async {
             if (state is CreatePaymentSuccess) {
+              setState(() {
+                _isPaymentLoading = false;
+                _loadingPaymentMode = "";
+              });
               final paymentBlocState = context.read<PaymentBloc>().state;
               if (paymentBlocState is! PaymentSummaryLoaded) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -1122,6 +1124,8 @@ class _paymentsummaryState extends State<paymentsummary> {
                 _balanceRevealed = false;
                 _confirmedTenderForBalance = 0.0;
               });
+              _isPaymentLoading = false;
+              _loadingPaymentMode = "";
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(state.error),
@@ -1421,18 +1425,15 @@ class _paymentsummaryState extends State<paymentsummary> {
                             i < presets.length ? presets[i] : 0.0,
                             payDisabled,
                           ),
-                        Padding(
-                          padding: const EdgeInsets.all(4),
-                          child: GestureDetector(
-                            onTap:
-                            payDisabled ? null : () => handleKeyPress("C"),
-                            child: Opacity(
-                              opacity: payDisabled ? 0.5 : 1.0,
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: GestureDetector(
+                              onTap: payDisabled ? null : () => handleKeyPress("C"),
                               child: Container(
-                                height: 110,
                                 decoration: ShapeDecoration(
                                   color: payDisabled
-                                      ? Colors.grey.shade700
+                                      ? (isDark ? const Color(0xFF3A3A3A) : Colors.grey.shade200)
                                       : (isDark
                                       ? const Color(0xFF8B2C2C)
                                       : const Color(0xFFFFDADA)),
@@ -1441,18 +1442,20 @@ class _paymentsummaryState extends State<paymentsummary> {
                                   ),
                                   shadows: payDisabled
                                       ? []
-                                      : isDark
-                                      ? []
-                                      : const [
+                                      : [
                                     BoxShadow(
-                                      color: Colors.white,
-                                      offset: Offset(-4, -4),
-                                      blurRadius: 4,
+                                      color: isDark
+                                          ? Colors.black.withOpacity(0.35)
+                                          : Colors.white,
+                                      offset: const Offset(-4, -4),
+                                      blurRadius: 6,
                                     ),
                                     BoxShadow(
-                                      color: Color(0xFFFFCCCC),
-                                      offset: Offset(4, 4),
-                                      blurRadius: 2,
+                                      color: isDark
+                                          ? Colors.black54
+                                          : const Color(0xFFFFCCCC),
+                                      offset: const Offset(4, 4),
+                                      blurRadius: 6,
                                     ),
                                   ],
                                 ),
@@ -1462,8 +1465,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                                   style: TextStyle(
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
-                                    color:
-                                    payDisabled
+                                    color: payDisabled
                                         ? Colors.grey
                                         : const Color(0xFFFF4D20),
                                   ),
@@ -1528,7 +1530,7 @@ class _paymentsummaryState extends State<paymentsummary> {
           final bool isBackspace = k == "⌫";
           return Expanded(
             child: Padding(
-              padding: const EdgeInsets.all(6),
+              padding: const EdgeInsets.all(10),
               child: GestureDetector(
                 onTap: disabled ? null : () => handleKeyPress(k),
                 child: Container(
@@ -1596,7 +1598,7 @@ class _paymentsummaryState extends State<paymentsummary> {
     final bool isSelected = amount == value.toStringAsFixed(2);
     return Expanded(
       child: Padding(
-        padding: const EdgeInsets.all(6),
+        padding: const EdgeInsets.all(10),
         child: GestureDetector(
           onTap:
           disabled
@@ -1797,7 +1799,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                   const SizedBox(height: 15),
                   _balanceAmountCard(balAmt),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 10),
 
                   Expanded(
                     flex: 3,
@@ -1826,7 +1828,15 @@ class _paymentsummaryState extends State<paymentsummary> {
                           ),
                         ],
                       ),
-                      child: _buildActionButtons(context, netPayableVal),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          return _buildActionButtons(
+                            context,
+                            netPayableVal,
+                            availableHeight: constraints.maxHeight,
+                          );
+                        },
+                      ),
                     ),
                   ),
                 ],
@@ -1881,7 +1891,6 @@ class _paymentsummaryState extends State<paymentsummary> {
               letterSpacing: 0.2,
             ),
           ),
-          if (_totalPaidAmount > 0)
             const SizedBox(height: 7),
           if (!isReady)
             Container(
@@ -2278,12 +2287,21 @@ class _paymentsummaryState extends State<paymentsummary> {
   }
 
   // Action buttons section
-  Widget _buildActionButtons(BuildContext context, double netPayable) {
+  Widget _buildActionButtons(
+      BuildContext context,
+      double netPayable, {
+        double? availableHeight,
+      }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final double gap = availableHeight != null
+        ? ((availableHeight - 280) / 5).clamp(8.0, 24.0)
+        : 8.0;
     debugPrint("_buildActionButtons -> _isNcDiscount = $_isNcDiscount");
     return Column(
       children: [
         // Discounts
+    Expanded(
+    child:
         _actionTile(
           label: "Discounts",
           borderColor: const Color(0xFF6BACC3),
@@ -2292,8 +2310,8 @@ class _paymentsummaryState extends State<paymentsummary> {
           iconWidget: Image.asset(
             // ← Now correctly passed
             "assets/Discount Icon.png",
-            width: 34,
-            height: 32,
+            width: 38,
+            height: 38,
             color: Colors.white,
           ),
           isApplied: _isDiscountApplied,
@@ -2375,11 +2393,13 @@ class _paymentsummaryState extends State<paymentsummary> {
           }
               : null,
         ),
+    ),
 
-        const SizedBox(height: 8),
+        SizedBox(height: gap),
 
         // Coupons
-        IgnorePointer(
+    Expanded(
+    child: IgnorePointer(
           ignoring: _isNcDiscount,
           child: Opacity(
             opacity: _isNcDiscount ? 0.4 : 1.0,
@@ -2530,10 +2550,12 @@ class _paymentsummaryState extends State<paymentsummary> {
             ),
           ),
         ),
-        const SizedBox(height: 8),
+    ),
+        SizedBox(height: gap),
 
         // Tips
-        _actionTile(
+    Expanded(
+    child:_actionTile(
           label: "Tips",
           borderColor: const Color(0xFF50AC9A),
           iconBg: const Color(0xFF50AC9A),
@@ -2619,11 +2641,13 @@ class _paymentsummaryState extends State<paymentsummary> {
           }
               : null,
         ),
-
-        const SizedBox(height: 8),
+    ),
+        SizedBox(height: gap),
 
         // Svc Charges
-        _svcChargeTile(context),
+        Expanded(
+          child: _svcChargeTile(context),
+        ),
       ],
     );
   }
@@ -2711,12 +2735,15 @@ class _paymentsummaryState extends State<paymentsummary> {
             children: [
               Expanded(
                 child: Column(
+                  mainAxisAlignment: appliedText == null
+                      ? MainAxisAlignment.center
+                      : MainAxisAlignment.spaceEvenly,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       label,
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: 17,
                         fontWeight: FontWeight.w600,
                         color: labelColor,
                       ),
@@ -2726,8 +2753,8 @@ class _paymentsummaryState extends State<paymentsummary> {
                       Text(
                         appliedText,
                         style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
                           color: subColor,
                         ),
                       ),
@@ -2750,7 +2777,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                     // ── Only change: trash icon instead of close ──
                     child: Icon(
                       Icons.delete_outline_rounded,
-                      size: 25,
+                      size: 28,
                       color: isDark
                           ? Colors.white
                           : Colors.red,
@@ -2848,25 +2875,25 @@ class _paymentsummaryState extends State<paymentsummary> {
                 Text(
                   "Svc Charges",
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: labelColor,
                   ),
                 ),
                 if (applied) ...[
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   Text(
                     "${selectedServiceCharge}%",
                     style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
                       color: subColor,
                     ),
                   ),
                 ],
                 if (!applied)
                   SizedBox(
-                    height: 26,
+                    height: 18,
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<int>(
                         value: selectedServiceCharge,
@@ -2874,13 +2901,13 @@ class _paymentsummaryState extends State<paymentsummary> {
                         hint: Text(
                           "Select %",
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 15,
                             color: isDark ? Colors.white70 : const Color(0xFF777777),
                           ),
                         ),
 
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 16,
                           color: isDark ? Colors.white : const Color(0xFF212121),
                         ),
 
@@ -2921,7 +2948,7 @@ class _paymentsummaryState extends State<paymentsummary> {
 
                 child: Icon(
                   Icons.delete_outline_rounded,
-                  size: 25,
+                  size: 28,
                   color: isDark
                       ? Colors.white
                       : Colors.red,

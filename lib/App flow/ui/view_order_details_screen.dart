@@ -362,6 +362,8 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final blockHeight = MediaQuery.of(context).size.height * 0.9;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       // backgroundColor: const Color(0xFFE5EFFF),
@@ -382,6 +384,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
       // BODY
       body: FutureBuilder<List<OrderlistModel>>(
+
         future: _ordersFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -442,13 +445,13 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
               padding: const EdgeInsets.fromLTRB(4, 2, 4, 2),
 
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: theme.cardColor,
                 borderRadius: BorderRadius.circular(12),
-                boxShadow: const [
+                boxShadow: [
                   BoxShadow(
-                    color: Colors.black12,
+                    color: Colors.black.withOpacity(isDark ? 0.20 : 0.12),
                     blurRadius: 4,
-                    offset: Offset(0, 2),
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
@@ -460,7 +463,9 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                       height: blockHeight,
                       margin: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF6F6F6),
+                        color: isDark
+                            ? const Color(0xFF202433)
+                            : const Color(0xFFF6F6F6),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Column(
@@ -665,11 +670,11 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                             context: context,
                                             barrierDismissible: false,
                                             builder: (context) => Dialog(
-                                              backgroundColor: Colors.white,
+                                              backgroundColor: theme.cardColor,
                                               shape: RoundedRectangleBorder(
                                                 borderRadius: BorderRadius.circular(16),
                                               ),
-                                              child: SizedBox(
+                                              child:  SizedBox(
                                                 width: 400,
                                                 child: Padding(
                                                   padding: const EdgeInsets.all(20),
@@ -682,10 +687,10 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                       ),
                                                       const SizedBox(height: 16),
 
-                                                      const Text(
+                                                      Text(
                                                         'Cancel Order?',
                                                         textAlign: TextAlign.center,
-                                                        style: TextStyle(
+                                                        style: theme.textTheme.titleLarge?.copyWith(
                                                           fontSize: 22,
                                                           fontWeight: FontWeight.w600,
                                                         ),
@@ -693,12 +698,12 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
                                                       const SizedBox(height: 10),
 
-                                                      const Text(
-                                                        'Are you sure do you want cancel the order?',
+                                                      Text(
+                                                        'Are you sure you want to cancel the order?',
                                                         textAlign: TextAlign.center,
-                                                        style: TextStyle(
+                                                        style: theme.textTheme.bodyMedium?.copyWith(
                                                           fontSize: 16,
-                                                          color: Colors.black54,
+                                                          color: isDark ? Colors.white70 : Colors.black54,
                                                         ),
                                                       ),
 
@@ -713,12 +718,22 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                               onPressed: () => Navigator.pop(context),
                                                               style: OutlinedButton.styleFrom(
                                                                 minimumSize: const Size(110, 40),
-                                                                side: const BorderSide(color: Colors.grey),
+                                                                backgroundColor: isDark
+                                                                    ? const Color(0xFF2A2F3D)
+                                                                    : Colors.white,
+                                                                side: BorderSide(
+                                                                  color: theme.dividerColor,
+                                                                ),
                                                                 shape: RoundedRectangleBorder(
                                                                   borderRadius: BorderRadius.circular(8),
                                                                 ),
                                                               ),
-                                                              child: const Text('Back'),
+                                                              child: Text(
+                                                                'Back',
+                                                                style: TextStyle(
+                                                                  color: theme.textTheme.bodyLarge?.color,
+                                                                ),
+                                                              ),
                                                             ),
                                                           ),
 
@@ -756,7 +771,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
                                         // 🎨 Button UI
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.white,
+                                          backgroundColor: Theme.of(context).cardColor,
                                           elevation: 2,
                                           shadowColor: const Color(0x554C5F7D),
                                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
@@ -810,7 +825,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                           height: 120,
                                           padding: const EdgeInsets.all(12),
                                           decoration: BoxDecoration(
-                                            color: Colors.white,
+                                            color: theme.cardColor,
                                             borderRadius: BorderRadius.circular(
                                               10,
                                             ),
@@ -841,11 +856,12 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                   // ),
                                                   Text(
                                                     orderModel.date ?? "-",
-                                                    style: const TextStyle(
-                                                      fontWeight:
-                                                      FontWeight.w700,
+                                                    style: theme.textTheme.bodySmall?.copyWith(
+                                                      fontWeight: FontWeight.w700,
                                                       fontSize: 13,
-                                                      color: const Color(0xFF555555),
+                                                      color: isDark
+                                                          ? Colors.white70
+                                                          : const Color(0xFF555555),
                                                     ),
                                                   ),
                                                 ],
@@ -860,20 +876,24 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                               RichText(
                                                 text: TextSpan(
                                                   children: [
-                                                    const TextSpan(
+                                                    TextSpan(
                                                       text: "Order ID : ",
-                                                      style: TextStyle(
+                                                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                                         fontWeight: FontWeight.w400,
                                                         fontSize: 14,
-                                                        color: Colors.grey,// label color
+                                                        color: Theme.of(context).brightness == Brightness.dark
+                                                            ? Colors.white70
+                                                            : Colors.grey,
                                                       ),
                                                     ),
                                                     TextSpan(
                                                       text: "${orderModel.orderId ?? '-'}",
-                                                      style: const TextStyle(
+                                                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                                         fontWeight: FontWeight.bold,
                                                         fontSize: 14,
-                                                        color: Color(0xFF4C5F7D), // ID number color
+                                                        color: Theme.of(context).brightness == Brightness.dark
+                                                            ? Colors.white
+                                                            : const Color(0xFF4C5F7D),
                                                       ),
                                                     ),
                                                   ],
@@ -896,9 +916,11 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                       text:
                                                       "${orderModel.orderType ?? '-'}"
                                                           "${orderModel.tableName != null ? ', ${orderModel.tableName}' : ''}",
-                                                      style: const TextStyle(
-                                                        color: Colors.black,
+                                                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                                         fontWeight: FontWeight.w400,
+                                                        color: Theme.of(context).brightness == Brightness.dark
+                                                            ? Colors.white
+                                                            : Colors.black,
                                                       ),
                                                     ),
                                                   ],
@@ -929,9 +951,11 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                     ),
                                                     TextSpan(
                                                       text: orderModel.paymentType ?? '-',
-                                                      style: const TextStyle(
-                                                        color: Colors.black,
+                                                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                                         fontWeight: FontWeight.w400,
+                                                        color: Theme.of(context).brightness == Brightness.dark
+                                                            ? Colors.white
+                                                            : Colors.black,
                                                       ),
                                                     ),
                                                   ],
@@ -951,7 +975,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                           height: 120,
                                           padding: const EdgeInsets.all(12),
                                           decoration: BoxDecoration(
-                                            color: Colors.white,
+                                            color: theme.cardColor,
                                             borderRadius: BorderRadius.circular(
                                               10,
                                             ),
@@ -1077,7 +1101,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                       margin: const EdgeInsets.fromLTRB(4, 2, 4, 0),
                                       padding: const EdgeInsets.fromLTRB(10, 6, 10, 0),
                                       decoration: BoxDecoration(
-                                        color: Colors.white,
+                                        color: theme.cardColor,
                                         borderRadius: BorderRadius.circular(10),
                                       ),
                                       // child: ShaderMask(
@@ -1519,7 +1543,9 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                       margin: const EdgeInsets.all(6),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF6F6F6),
+                        color: isDark
+                            ? const Color(0xFF202433)
+                            : const Color(0xFFF6F6F6),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Column(
@@ -1532,7 +1558,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                               padding: const EdgeInsets.all(12),
                               margin: const EdgeInsets.only(bottom: 12),
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: theme.cardColor,
                                 borderRadius: BorderRadius.circular(8),
                                 boxShadow: [
                                   BoxShadow(
@@ -1863,11 +1889,13 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
     (showVoided && !isVoidedLoading && voidedItemsResponse != null)
         ? voidedItemsResponse!.items
         : [];
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         border: Border.all(color: Colors.grey[300]!),
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
@@ -2005,11 +2033,13 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                       ? const EdgeInsets.symmetric(vertical: 8, horizontal: 16)
                       : const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                   decoration: BoxDecoration(
-                    color: isNormal ? Colors.white : Colors.grey.shade200, // optional
-                    border: const Border(
-                      bottom: BorderSide(color: Color(0xFFB9B9B9)),
-                      left: BorderSide(color: Color(0xFFB9B9B9)),
-                      right: BorderSide(color: Color(0xFFB9B9B9)),
+                    color: isNormal
+                        ? (isDark ? const Color(0xFF202433) : Colors.white)
+                        : (isDark ? const Color(0xFF2A2F3D) : Colors.grey.shade200),
+                    border: Border(
+                      bottom: BorderSide(color: theme.dividerColor),
+                      left: BorderSide(color: theme.dividerColor),
+                      right: BorderSide(color: theme.dividerColor),
                     ),
                     borderRadius: isLast
                         ? const BorderRadius.only(
@@ -2078,10 +2108,15 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
   Widget paymentRow(
       String title,
       String amount, {
-        Color color = Colors.black,
+        Color? color,
         double fontSize = 14,
         FontWeight fontWeight = FontWeight.normal,
       }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final textColor = color ?? (isDark ? Colors.white : Colors.black);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 1),
       child: Row(
@@ -2089,16 +2124,16 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
         children: [
           Text(
             title,
-            style: TextStyle(
-              color: color,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: textColor,
               fontSize: fontSize,
               fontWeight: fontWeight,
             ),
           ),
           Text(
             amount,
-            style: TextStyle(
-              color: color,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: textColor,
               fontSize: fontSize,
               fontWeight: fontWeight,
             ),
@@ -2110,20 +2145,39 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
   Widget _buildNormalRow(Map<String, dynamic> item, int index) {
     final modifierNames = extractModifierNames(item);
 
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Row(
       children: [
-        Expanded(flex: 1, child: Text("${index + 1}")),
+        Expanded(
+          flex: 1,
+          child: Text(
+            "${index + 1}",
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: isDark ? Colors.white : Colors.black,
+            ),
+          ),
+        ),
         Expanded(
           flex: 3,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(item['name'] ?? "-",
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text(
+                item['name'] ?? "-",
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
+              ),
               if (modifierNames.isNotEmpty)
                 Text(
                   modifierNames.join(", "),
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontSize: 12,
+                    color: isDark ? Colors.white70 : Colors.grey,
+                  ),
                 ),
             ],
           ),
@@ -2132,29 +2186,39 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
           flex: 2,
           child: Text(
             "${item['qty']} x $_currency${(item['item_price'] ?? 0).toStringAsFixed(2)}",
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: isDark ? Colors.white : Colors.black,
+            ),
           ),
         ),
-
         Expanded(
           flex: 1,
           child: Text(
             item['total_wo_tax'] != null
                 ? "$_currency${item['total_wo_tax'].toStringAsFixed(2)}"
                 : "-",
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: isDark ? Colors.white : Colors.black,
+            ),
           ),
         ),
       ],
     );
   }
   Widget _buildVoidedRow(VoidedItem item, int index) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final voidColor = isDark ? Colors.white54 : const Color(0xFFB9B9B9);
+
     return Row(
       children: [
         Expanded(
           flex: 1,
           child: Text(
             "${index + 1}",
-            style: const TextStyle(
-              color: Color(0xFFB9B9B9),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: voidColor,
               // decoration: TextDecoration.lineThrough,
             ),
           ),
@@ -2163,9 +2227,9 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
           flex: 3,
           child: Text(
             item.product,
-            style: const TextStyle(
+            style: theme.textTheme.bodyMedium?.copyWith(
               fontWeight: FontWeight.w600,
-              color:  Color(0xFFB9B9B9),
+              color: voidColor,
               // decoration: TextDecoration.lineThrough,
             ),
           ),
@@ -2174,8 +2238,8 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
           flex: 2,
           child: Text(
             "${item.origQty}",
-            style: const TextStyle(
-              color:  Color(0xFFB9B9B9),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: voidColor,
               // decoration: TextDecoration.lineThrough,
             ),
           ),
@@ -2183,9 +2247,9 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
         Expanded(
           flex: 1,
           child: Text(
-            "${item.itemTotal.toStringAsFixed(2)}",
-            style: const TextStyle(
-              color: Color(0xFFB9B9B9),
+            item.itemTotal.toStringAsFixed(2),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: voidColor,
               // decoration: TextDecoration.lineThrough,
             ),
           ),
@@ -2193,5 +2257,4 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
       ],
     );
   }
-
 }

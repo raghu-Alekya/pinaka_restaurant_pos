@@ -111,8 +111,12 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Dialog(
-      backgroundColor: const Color(0xFFF0F4FF),
+      backgroundColor: isDark
+          ? const Color(0xFF202433)
+          : const Color(0xFFF0F4FF),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Container(
         width: 600,
@@ -128,11 +132,12 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Choose Variants',
-                      style: TextStyle(
+                      style: theme.textTheme.titleLarge?.copyWith(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -140,10 +145,12 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
                       widget.product.name.length > 25
                           ? '${widget.product.name.substring(0, 25)}...'
                           : widget.product.name,
-                      style: TextStyle(
+                      style: theme.textTheme.bodyMedium?.copyWith(
                         fontSize: 14,
-                        color: Colors.grey.shade600,
                         fontWeight: FontWeight.w500,
+                        color: isDark
+                            ? Colors.white70
+                            : Colors.grey.shade600,
                       ),
                     ),
                   ],
@@ -152,12 +159,21 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
                 Container(
                   width: 30,
                   height: 30,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: Colors.red,
                     shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: isDark
+                            ? Colors.black45
+                            : Colors.black12,
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: IconButton(
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.close,
                       color: Colors.white,
                       size: 16,
@@ -179,18 +195,23 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFFFFF), // Background for variants section
+                color: isDark
+                    ? const Color(0xFF2A2F3D)
+                    : Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: const [
+                boxShadow: [
                   BoxShadow(
-                    color: Color(0x1A000000), // Black with ~10% opacity
+                    color: isDark
+                        ? Colors.black38
+                        : const Color(0x1A000000),
                     blurRadius: 12,
-                    spreadRadius: 0,
-                    offset: Offset(0, 4),
+                    offset: const Offset(0, 4),
                   ),
                 ],
                 border: Border.all(
-                  color: const Color(0xFFFFFFFF),
+                  color: isDark
+                      ? Colors.white24
+                      : Colors.white,
                   width: 1,
                 ),
               ),
@@ -213,13 +234,17 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
                       width: 170,
                       padding: const EdgeInsets.only(top: 10),
                       decoration: ShapeDecoration(
-                        color: Colors.white,
+                        color: isDark
+                            ? const Color(0xFF3B4259)
+                            : Colors.white,
 
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
-                          side: const BorderSide(
-                            color: Color(0xFFE1E1E1), // Border color
-                            width: 1.5,               // Border width
+                          side: BorderSide(
+                            color: isDark
+                                ? Colors.white24
+                                : const Color(0xFFE1E1E1),
+                            width: 1.5,
                           ),
                         ),
 
@@ -244,14 +269,21 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
                             displayVariantName.length > 12
                                 ? '${displayVariantName.substring(0, 12)}...'
                                 : displayVariantName,
-                            style: const TextStyle(
+                            style: theme.textTheme.bodyMedium?.copyWith(
                               fontWeight: FontWeight.bold,
+                              color: isDark
+                                  ? Colors.white
+                                  : Colors.black,
                             ),
                             textAlign: TextAlign.center,
                           ),
                           Text(
                             'Rs.${variant.price.toStringAsFixed(0)}/-',
-                            style: const TextStyle(color: Colors.black),
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: isDark
+                                  ? Colors.white70
+                                  : Colors.black,
+                            ),
                           ),
                           const SizedBox(height: 6),
 
@@ -259,7 +291,9 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
                               ? ElevatedButton(
                             onPressed: () => _increment(variant),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF4C5F7D),
+                              backgroundColor: isDark
+                                  ? const Color(0xFF3B4259)
+                                  : const Color(0xFF4C5F7D),
                               foregroundColor: Colors.white,
                               minimumSize: const Size(150, 40),
                               shape: RoundedRectangleBorder(
@@ -282,19 +316,23 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
                               MainAxisAlignment.spaceBetween,
                               children: [
                                 _qtyButton(
+                                  context: context,
                                   icon: Icons.remove,
                                   onTap: () => _decrement(variant),
                                 ),
                                 Text(
                                   '$quantity',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFFFFFFFF)
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: isDark
+                                        ? const Color(0xFF3B4259)
+                                        : const Color(0xFF4C5F7D),
                                   ),
                                 ),
                                 _qtyButton(
-                                  icon: Icons.add,
-                                  onTap: () => _increment(variant),
+                                  context: context,
+                                  icon: Icons.remove,
+                                  onTap: () => _decrement(variant),
                                 ),
                               ],
                             ),
@@ -342,19 +380,35 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
 
   /// SMALL +/- BUTTON
   Widget _qtyButton({
+    required BuildContext context,
     required IconData icon,
     required VoidCallback onTap,
   }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       width: 50,
       height: 40,
       decoration: BoxDecoration(
-        color: Colors.white,
-        // border: Border.all(color: Colors.blue),
+        color: isDark
+            ? const Color(0xFF2A2F3D)
+            : Colors.white,
         borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: isDark
+              ? Colors.white24
+              : Colors.transparent,
+        ),
       ),
       child: IconButton(
-        icon: Icon(icon, size: 20, color: Color(0xFF4C5F7D)),
+        icon: Icon(
+          icon,
+          size: 20,
+          color: isDark
+              ? Colors.white
+              : const Color(0xFF4C5F7D),
+        ),
         padding: EdgeInsets.zero,
         constraints: const BoxConstraints(),
         onPressed: onTap,

@@ -11,6 +11,7 @@ import '../constants/constants.dart';
 import '../local database/table_dao.dart';
 import '../services/api_exception.dart';
 import '../utils/logger.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class TableRepository {
   final TableDao tableDao = TableDao();
@@ -40,8 +41,36 @@ class TableRepository {
     }
   }
 
-  /// Get all tables from server
-  Future<List<Map<String, dynamic>>> getAllTables(String token) async {
+  static List<Map<String, dynamic>>? _memoryTableCache;
+
+  static void clearMemoryCache() {
+    _memoryTableCache = null;
+  }
+
+  /// Get all tables (cache first for instant rendering, then API)
+  Future<List<Map<String, dynamic>>> getAllTables(String token, {bool forceRefresh = false}) async {
+    if (!forceRefresh && _memoryTableCache != null && _memoryTableCache!.isNotEmpty) {
+      return _memoryTableCache!;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final cachedStr = prefs.getString('tables_cache');
+    if (!forceRefresh && cachedStr != null && cachedStr.isNotEmpty) {
+      try {
+        final List decoded = jsonDecode(cachedStr);
+        final List<Map<String, dynamic>> cached =
+        decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+        if (cached.isNotEmpty) {
+          _memoryTableCache = cached;
+          return cached;
+        }
+      } catch (_) {}
+    }
+
+    return await fetchTablesFromApi(token);
+  }
+
+  Future<List<Map<String, dynamic>>> fetchTablesFromApi(String token) async {
     try {
       final response = await ApiExceptionHandler.get(
         Uri.parse(AppConstants.getAllTablesEndpoint),
@@ -64,7 +93,12 @@ class TableRepository {
         debugPrint("🧪 table_details = $tableList");
 
         if (tableList != null && tableList is List) {
-          return List<Map<String, dynamic>>.from(tableList);
+          final List<Map<String, dynamic>> tables =
+          List<Map<String, dynamic>>.from(tableList);
+          _memoryTableCache = tables;
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('tables_cache', jsonEncode(tables));
+          return tables;
         }
 
         throw Exception("No table data found.");
@@ -77,6 +111,9 @@ class TableRepository {
         ),
       );
     } catch (e) {
+      if (_memoryTableCache != null && _memoryTableCache!.isNotEmpty) {
+        return _memoryTableCache!;
+      }
       if (e is Exception) {
         rethrow;
       }

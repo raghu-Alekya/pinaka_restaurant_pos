@@ -12,9 +12,17 @@ class NumberPad extends StatelessWidget {
   const NumberPad({super.key, required this.onKeyPressed});
 
   @override
+  @override
   Widget build(BuildContext context) {
-    // List of keys to display on the keypad
-    List<String> keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "C", "0", "⌫"];
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    List<String> keys = [
+      "1", "2", "3",
+      "4", "5", "6",
+      "7", "8", "9",
+      "C", "0", "⌫"
+    ];
 
     return GridView.builder(
       shrinkWrap: true,
@@ -26,44 +34,37 @@ class NumberPad extends StatelessWidget {
       itemCount: keys.length,
       itemBuilder: (context, index) {
         final keyLabel = keys[index];
+
         return GestureDetector(
           onTap: () => onKeyPressed(keyLabel),
           child: Container(
             margin: const EdgeInsets.all(9),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isDark
+                  ? const Color(0xFF3B4259)
+                  : Colors.white,
               borderRadius: BorderRadius.circular(8),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0x25000000),
+                  color: isDark
+                      ? Colors.black38
+                      : const Color(0x25000000),
                   blurRadius: 7,
                   offset: const Offset(0, 4),
-                  spreadRadius: 0,
                 ),
               ],
             ),
             alignment: Alignment.center,
-            child: keyLabel == "⌫"
-                ? Padding(
-              padding: const EdgeInsets.only(top: 6.0),
-              child: Text(
-                keyLabel,
-                style: const TextStyle(
-                  fontSize: 25,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF4C5F7D),
-                  height: 0.35,
-                ),
-              ),
-            )
-                : Text(
+            child: Text(
               keyLabel,
-              style: const TextStyle(
+              style: theme.textTheme.titleLarge?.copyWith(
                 fontSize: 25,
                 fontWeight: FontWeight.w500,
-                color: Color(0xFF4C5F7D),
                 height: 0.35,
+                color: isDark
+                    ? Colors.white
+                    : const Color(0xFF4C5F7D),
               ),
             ),
           ),

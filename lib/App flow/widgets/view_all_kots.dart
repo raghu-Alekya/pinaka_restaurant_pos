@@ -196,39 +196,37 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
         ),
       );
 
+      final tableName = widget.tableNo;
+      final dineInTitle =
+      tableName.isNotEmpty ? "Dine In: $tableName" : "Dine In";
+
       bytes += generator.text(
-        "Dine In",
-        styles: const PosStyles(align: PosAlign.center, bold: true),
+        dineInTitle,
+        styles: const PosStyles(
+          align: PosAlign.center,
+          bold: true,
+          height: PosTextSize.size3,
+          width: PosTextSize.size2,
+        ),
       );
 
       bytes += generator.hr();
 
-      final dateText = "Date: ${DateFormat('dd/MM/yyyy hh:mm a').format(kot.time)}";
-      final dineInText = "Dine In: ${widget.tableNo}";
+      final dateText = "Date: ${DateFormat('dd/MM/yyyy').format(kot.time)}";
+      final timeText = "Time: ${DateFormat('hh:mm a').format(kot.time)}";
 
-      if ((dateText.length + dineInText.length) < 45) {
-        bytes += generator.row([
-          PosColumn(
-            width: 7,
-            text: dateText,
-            styles: const PosStyles(bold: true),
-          ),
-          PosColumn(
-            width: 5,
-            text: dineInText,
-            styles: const PosStyles(align: PosAlign.right, bold: true),
-          ),
-        ]);
-      } else {
-        bytes += generator.text(
-          dateText,
-          styles: const PosStyles(align: PosAlign.left, bold: true),
-        );
-        bytes += generator.text(
-          dineInText,
-          styles: const PosStyles(align: PosAlign.left, bold: true),
-        );
-      }
+      bytes += generator.row([
+        PosColumn(
+          width: 6,
+          text: dateText,
+          styles: const PosStyles(bold: true),
+        ),
+        PosColumn(
+          width: 6,
+          text: timeText,
+          styles: const PosStyles(align: PosAlign.right, bold: true),
+        ),
+      ]);
 
       bytes += [27, 74, 16]; // spacing
 
@@ -458,7 +456,6 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
       }
     }
   }
-
   /// zoneId -> zoneName
   Map<String, String> buildZoneNameMapFromZones(
       List<Map<String, dynamic>> zones) {
@@ -517,6 +514,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
     if (_kots.isEmpty && widget.kots.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -753,10 +751,12 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                             children: [
                                               Text(
                                                 DateFormat('hh:mm a').format(kot.time),
-                                                style: const TextStyle(
+                                                style: theme.textTheme.bodyMedium?.copyWith(
                                                   fontWeight: FontWeight.w500,
                                                   fontSize: 13,
-                                                  color: Colors.black87,
+                                                  color: isDark
+                                                      ? Colors.white70
+                                                      : Colors.black87,
                                                 ),
                                               ),
                                               const SizedBox(width: 8),

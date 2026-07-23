@@ -139,11 +139,16 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
   // ================= HEADER =================
 
   Widget _header() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-      decoration: const BoxDecoration(
-        color: Color(0xFFF0F3FC),
-        borderRadius: BorderRadius.only(
+      decoration: BoxDecoration(
+        color: isDark
+            ? const Color(0xFF2A2F3D)
+            : const Color(0xFFF0F3FC),
+        borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(16),
           topRight: Radius.circular(16),
         ),
@@ -151,12 +156,12 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
+          Text(
             "Transfer KOT",
-            style: TextStyle(
+            style: theme.textTheme.titleLarge?.copyWith(
               fontSize: 22,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF2C3E50),
+              color: theme.textTheme.bodyLarge?.color,
             ),
           ),
           InkWell(
@@ -168,8 +173,11 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
                 color: Color(0xFFFF4B4B),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.close,
-                  color: Colors.white, size: 18),
+              child: const Icon(
+                Icons.close,
+                color: Colors.white,
+                size: 18,
+              ),
             ),
           ),
         ],
@@ -180,27 +188,35 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
   // ================= LEFT TOP INFO =================
 
   Widget _leftTopInfoRow() {
+    final theme = Theme.of(context);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-      // decoration: BoxDecoration(
-      //   color: const Color(0xFFF3F6FF),
-      //   borderRadius: BorderRadius.circular(6),
-      // ),
       child: Row(
         children: [
           Text(
             "Table : #${widget.tableName}",
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+            style: theme.textTheme.bodyLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+            ),
           ),
           const SizedBox(width: 18),
           Text(
             "KOT : ${widget.kotNo}",
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+            style: theme.textTheme.bodyLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+            ),
           ),
           const Spacer(),
           Text(
             onlyTime,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+            ),
           ),
         ],
       ),
@@ -210,36 +226,75 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
   // ================= TABLE HEADER =================
 
   Widget _tableHeaderRow() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       height: 44,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFDCDADA),
+        color: isDark
+            ? const Color(0xFF3A3F4B)
+            : const Color(0xFFDCDADA),
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(12),
           topRight: Radius.circular(12),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withOpacity(isDark ? 0.25 : 0.08),
             blurRadius: 6,
             offset: const Offset(0, 0),
           ),
         ],
       ),
-      child: const Row(
+      child: Row(
         children: [
           SizedBox(
             width: 30,
-            child: Center(child: Text("#")),
+            child: Center(
+              child: Text(
+                "#",
+                style: TextStyle(
+                  color: theme.textTheme.bodyLarge?.color,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           ),
-          Expanded(flex: 4, child: Text("Item Name")),
-          Expanded(flex: 2, child: Center(child: Text("Quantity"))),
+          Expanded(
+            flex: 4,
+            child: Text(
+              "Item Name",
+              style: TextStyle(
+                color: theme.textTheme.bodyLarge?.color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Center(
+              child: Text(
+                "Quantity",
+                style: TextStyle(
+                  color: theme.textTheme.bodyLarge?.color,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
           Expanded(
             flex: 2,
             child: Align(
               alignment: Alignment.centerRight,
-              child: Text("Amount"),
+              child: Text(
+                "Amount",
+                style: TextStyle(
+                  color: theme.textTheme.bodyLarge?.color,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
         ],
@@ -249,20 +304,25 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
   // ================= LEFT ITEMS =================
 
   Widget _leftItemsTable() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Expanded(
       child: Container(
-        // margin: const EdgeInsets.only(top: 6),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark
+              ? const Color(0xFF202433)
+              : Colors.white,
           borderRadius: const BorderRadius.only(
             bottomLeft: Radius.circular(12),
             bottomRight: Radius.circular(12),
           ),
-
-          border: Border.all(color: const Color(0xFFE8E8E8)),
+          border: Border.all(
+            color: theme.dividerColor,
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withOpacity(isDark ? 0.20 : 0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -274,13 +334,18 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
           child: ListView.separated(
             controller: _itemsScrollController,
             itemCount: items.length,
-            separatorBuilder: (_, __) =>
-            const Divider(height: 1, color: Color(0xFFEDEDED)),
+            separatorBuilder: (_, __) => Divider(
+              height: 1,
+              color: theme.dividerColor,
+            ),
             itemBuilder: (context, index) {
               final item = items[index];
+
               return Padding(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 10,
+                ),
                 child: Row(
                   children: [
                     SizedBox(
@@ -288,18 +353,26 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
                       child: Center(
                         child: Text(
                           "${index + 1}",
-                          style: const TextStyle(fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: theme.textTheme.bodyLarge?.color,
+                          ),
                         ),
                       ),
                     ),
+
                     Expanded(
                       flex: 4,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(item.name,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w600)),
+                          Text(
+                            item.name,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: theme.textTheme.bodyLarge?.color,
+                            ),
+                          ),
                           if ((item.note ?? "").isNotEmpty)
                             Text(
                               item.note!,
@@ -311,21 +384,30 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
                         ],
                       ),
                     ),
+
                     Expanded(
                       flex: 2,
                       child: Center(
-                        child: Text("${item.qty}",
-                            style:
-                            const TextStyle(fontWeight: FontWeight.w700)),
+                        child: Text(
+                          "${item.qty}",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: theme.textTheme.bodyLarge?.color,
+                          ),
+                        ),
                       ),
                     ),
+
                     Expanded(
                       flex: 2,
                       child: Align(
                         alignment: Alignment.centerRight,
                         child: Text(
                           item.amount.toStringAsFixed(2),
-                          style: const TextStyle(fontWeight: FontWeight.w700),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: theme.textTheme.bodyLarge?.color,
+                          ),
                         ),
                       ),
                     ),
@@ -377,6 +459,9 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
   // ================= TABLE GRID =================
 
   Widget _tableGrid() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return GridView.builder(
       controller: _tableScrollController,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -390,13 +475,11 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
         final table = tables[index];
         final isSelected = selectedTable == table;
 
-        // ✅ normalize status
         final rawStatus = widget.tableStatus[table] ?? "Available";
         final status = rawStatus.trim().toLowerCase();
 
-        // 🎨 colors only (NO blocking)
         final tableColor = TableStatusColors.getTableColor(status);
-        final textColor  = TableStatusColors.getChairColor(status);
+        final textColor = TableStatusColors.getChairColor(status);
 
         return Material(
           color: Colors.transparent,
@@ -412,14 +495,14 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: isSelected
-                    ? const Color(0xFF4CAF50) // 🔵 selected
-                    : tableColor,             // 🎨 status color
+                    ? theme.colorScheme.primary
+                    : tableColor,
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(
                   color: isSelected
-                      ? const Color(0xFF4CAF50)
-                      : Colors.transparent,
-                  width: 2,
+                      ? theme.colorScheme.primary
+                      : theme.dividerColor,
+                  width: isSelected ? 2 : 1,
                 ),
               ),
               child: Column(
@@ -428,14 +511,16 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
                   Text(
                     table,
                     style: TextStyle(
-                      color: isSelected ? Colors.white : textColor,
+                      color: isSelected
+                          ? Colors.white
+                          : textColor,
                       fontWeight: FontWeight.w700,
                       fontSize: 12,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    rawStatus, // show status text
+                    rawStatus,
                     style: TextStyle(
                       fontSize: 9,
                       color: isSelected
@@ -456,6 +541,9 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
   // ================= RIGHT PANEL =================
 
   Widget _rightPanel() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -464,21 +552,23 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const Text(
+            Text(
               "Select Table",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
             ),
             Text(
               "Zone : ${widget.zoneNames[selectedZone] ?? ''}",
-              style: const TextStyle(
+              style: theme.textTheme.bodyMedium?.copyWith(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF6B7280),
+                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
               ),
             ),
           ],
         ),
-
 
         const SizedBox(height: 8),
 
@@ -487,12 +577,18 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
           child: Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isDark
+                  ? const Color(0xFF202433)
+                  : Colors.white,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE8E8E8)),
+              border: Border.all(
+                color: theme.dividerColor,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
+                  color: Colors.black.withOpacity(
+                    isDark ? 0.20 : 0.06,
+                  ),
                   blurRadius: 10,
                   offset: const Offset(0, 3),
                 ),
@@ -505,6 +601,7 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
             ),
           ),
         ),
+
         const SizedBox(height: 14),
 
         // 🔹 Action button
@@ -524,8 +621,8 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text("Select at least one item"),
-                      duration: Duration(seconds: 1),
                       backgroundColor: Colors.red,
+                      duration: Duration(seconds: 1),
                     ),
                   );
                   return;
@@ -536,8 +633,7 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
                     orderId: widget.orderId,
                     kotId: widget.kotId,
                     fromTableId: widget.fromTableId,
-                    toTableId:
-                    widget.tableIds[selectedTable!]!,
+                    toTableId: widget.tableIds[selectedTable!]!,
                     restaurantId: widget.restaurantId,
                     zoneId: widget.zoneIds[selectedZone!]!,
                     token: widget.authToken,
@@ -548,19 +644,13 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
                 backgroundColor: MaterialStateProperty.resolveWith<Color>(
                       (states) {
                     if (states.contains(MaterialState.disabled)) {
-                      return Colors.grey.shade400; // Disabled color
+                      return const Color(0xFFBDBDBD);
                     }
-                    return const Color(0xFFFE6464); // Enabled color
+                    return const Color(0xFFFE6464);
                   },
                 ),
-                foregroundColor: MaterialStateProperty.resolveWith<Color>(
-                      (states) {
-                    if (states.contains(MaterialState.disabled)) {
-                      return Colors.white70;
-                    }
-                    return Colors.white;
-                  },
-                ),
+                foregroundColor:
+                MaterialStateProperty.all(Colors.white),
                 shape: MaterialStateProperty.all(
                   RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -569,7 +659,10 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
               ),
               child: const Text(
                 "Yes, Continue",
-                style: TextStyle(color: Colors.white),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
@@ -583,88 +676,89 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
   // ================= BUILD =================
 
   @override
+  @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return BlocListener<TransferKotBloc, TransferKotState>(
-        listener: (context, state) {
-          if (state is KotTransferSuccess) {
-            Navigator.pop(context, {
-              "newParentId": state.newParentId,
-              "toTableId": state.toTableId,
-            });
+      listener: (context, state) {
+        if (state is KotTransferSuccess) {
+          Navigator.pop(context, {
+            "newParentId": state.newParentId,
+            "toTableId": state.toTableId,
+          });
+        }
 
-            // ScaffoldMessenger.of(context).showSnackBar(
-            //   SnackBar(content: Text(state.message)),
-            // );
-          }
-
-          if (state is KotTransferFailure) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.error),
-                backgroundColor: Colors.red,
-                duration: Duration(seconds: 1),),
-            );
-          }
-        },
-        child: Dialog(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 26, vertical: 16),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              width: MediaQuery.of(context).size.width * 0.86,
-              height: MediaQuery.of(context).size.height * 0.86,
-              child: Column(
-                children: [
-                  _header(),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 12,
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            flex: 4,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // const Text(
-                                //   "To transfer KOT, please select the items and choose the table.",
-                                //   style: TextStyle(
-                                //     fontSize: 12,
-                                //     color: Color(0xFF4C5F7D),
-                                //   ),
-                                // ),
-                                // const SizedBox(height: 10),
-                                _leftTopInfoRow(),
-                                const SizedBox(height: 10),
-                                _tableHeaderRow(),
-                                _leftItemsTable(),
-                                const SizedBox(height: 50),
-
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 18),
-                          Expanded(
-                            flex: 4,
-                            child: _rightPanel(),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+        if (state is KotTransferFailure) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.error),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 1),
+            ),
+          );
+        }
+      },
+      child: Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        insetPadding: const EdgeInsets.symmetric(
+          horizontal: 26,
+          vertical: 16,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color(0xFF2A2F3D)
+                  : theme.cardColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: theme.dividerColor,
               ),
             ),
+            width: MediaQuery.of(context).size.width * 0.86,
+            height: MediaQuery.of(context).size.height * 0.86,
+            child: Column(
+              children: [
+                _header(),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: 4,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _leftTopInfoRow(),
+                              const SizedBox(height: 10),
+                              _tableHeaderRow(),
+                              _leftItemsTable(),
+                              const SizedBox(height: 50),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 18),
+                        Expanded(
+                          flex: 4,
+                          child: _rightPanel(),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        )
+        ),
+      ),
     );
   }
 }

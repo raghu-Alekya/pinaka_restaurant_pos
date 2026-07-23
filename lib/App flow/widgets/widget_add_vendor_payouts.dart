@@ -39,12 +39,13 @@ class _AddVendorPayoutDialogState extends State<AddVendorPayoutDialog> {
   TextEditingController();
 
   Widget _label(String text) {
+    final theme = Theme.of(context);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Text(
         text,
-        style: const TextStyle(
-          color: Color(0xFF0A0A0A),
+        style: theme.textTheme.bodyMedium?.copyWith(
           fontSize: 14,
           fontWeight: FontWeight.w500,
         ),
@@ -105,29 +106,29 @@ class _AddVendorPayoutDialogState extends State<AddVendorPayoutDialog> {
     }
   }
   InputDecoration _fieldDecoration(String hint) {
+    final theme = Theme.of(context);
+
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(
-        color: Color(0xFF717182),
-        fontSize: 14,
+      hintStyle: TextStyle(
+        color: theme.hintColor,
       ),
       filled: true,
-      fillColor: const Color(0xFFF3F3F5),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide.none,
-      ),
+      fillColor: theme.inputDecorationTheme.fillColor ??
+          (theme.brightness == Brightness.dark
+              ? Colors.grey.shade900
+              : Colors.white),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide.none,
+        borderSide: BorderSide(
+          color: theme.dividerColor,
+        ),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide.none,
-      ),
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 12,
+        borderSide: BorderSide(
+          color: theme.colorScheme.primary,
+        ),
       ),
     );
   }
@@ -237,16 +238,19 @@ class _AddVendorPayoutDialogState extends State<AddVendorPayoutDialog> {
   }
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
         width: 780,
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: theme.cardColor,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: Colors.black.withOpacity(0.10),
+            color: theme.dividerColor,
             width: 0.8,
           ),
           boxShadow: const [
@@ -271,8 +275,8 @@ class _AddVendorPayoutDialogState extends State<AddVendorPayoutDialog> {
                 widget.editData == null
                     ? "Add Vendor Payout"
                     : "Edit Vendor Payout",
-                style: const TextStyle(
-                  color: Color(0xFF1E2939),
+                style: theme.textTheme.titleLarge?.copyWith(
+                  color: isDark ? Colors.white : const Color(0xFF1E2939),
                   fontSize: 24,
                   fontWeight: FontWeight.w700,
                 ),
@@ -291,7 +295,7 @@ class _AddVendorPayoutDialogState extends State<AddVendorPayoutDialog> {
                         _label("Select Vendor *"),
                         DropdownButtonFormField<int>(
                           value: selectedVendorId,
-                          dropdownColor: const Color(0xFFF3F3F5),
+                          dropdownColor: theme.cardColor,
                           decoration: _fieldDecoration("Vendor"),
                           items: vendors.map((vendor) {
                             return DropdownMenuItem<int>(
@@ -366,8 +370,7 @@ class _AddVendorPayoutDialogState extends State<AddVendorPayoutDialog> {
                         _label("Purpose *"),
                         DropdownButtonFormField<String>(
                           value: selectedPurpose,
-                          dropdownColor:
-                          const Color(0xFFF3F3F5),
+                          dropdownColor: theme.cardColor,
                           decoration:
                           _fieldDecoration("Purpose"),
                           items: const [
@@ -422,8 +425,7 @@ class _AddVendorPayoutDialogState extends State<AddVendorPayoutDialog> {
                         _label("Payment Mode *"),
                         DropdownButtonFormField<String>(
                           value: selectedPaymentMode,
-                          dropdownColor:
-                          const Color(0xFFF3F3F5),
+                          dropdownColor: theme.cardColor,
                           decoration:
                           _fieldDecoration("Cash"),
                           items: const [
@@ -478,36 +480,32 @@ class _AddVendorPayoutDialogState extends State<AddVendorPayoutDialog> {
                 children: [
                   Expanded(
                     child: SizedBox(
-                      height: 45,
-                      child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        style:
-                        OutlinedButton.styleFrom(
-                          backgroundColor:
-                          Colors.white,
-                          side: BorderSide(
-                            color: Colors.black
-                                .withOpacity(0.10),
+                        height: 45,
+                        child: OutlinedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
+                          style: OutlinedButton.styleFrom(
+                            backgroundColor: theme.cardColor,
+                            side: BorderSide(
+                              color: isDark
+                                  ? Colors.grey.shade600
+                                  : Colors.grey.shade300,
+                              width: 1.2,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                           ),
-                          shape:
-                          RoundedRectangleBorder(
-                            borderRadius:
-                            BorderRadius.circular(
-                                8),
+                          child: Text(
+                            "Cancel",
+                            style: TextStyle(
+                              color: theme.textTheme.bodyLarge?.color,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                        ),
-                        child: const Text(
-                          "Cancel",
-                          style: TextStyle(
-                            color: Color(0xFF0A0A0A),
-                            fontSize: 16,
-                            fontWeight:
-                            FontWeight.w500,
-                          ),
-                        ),
-                      ),
+                        )
                     ),
                   ),
 
@@ -540,9 +538,8 @@ class _AddVendorPayoutDialogState extends State<AddVendorPayoutDialog> {
                         )
                             :  Text(
                           widget.editData == null ? "Save" : "Update",
-                          style: TextStyle(
+                          style: theme.textTheme.titleMedium?.copyWith(
                             color: Colors.white,
-                            fontSize: 16,
                             fontWeight: FontWeight.w500,
                           ),
                         ),

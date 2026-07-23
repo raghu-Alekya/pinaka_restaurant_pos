@@ -540,6 +540,8 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Scaffold(
       // backgroundColor: const Color(0xFFF1F1F3),
       backgroundColor: const Color(0xFFF6F6F6),
@@ -634,13 +636,17 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                 padding: const EdgeInsets.all(10),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: isDark
+                        ? const Color(0xFF202433)
+                        : Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    boxShadow: const [
+                    boxShadow: [
                       BoxShadow(
-                        color: Colors.black12,
+                        color: isDark
+                            ? Colors.black45
+                            : Colors.black12,
                         blurRadius: 4,
-                        offset: Offset(0, 2),
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
@@ -687,12 +693,12 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                           const SizedBox(width: 16),
 
                           // 🧾 Order ID label
-                          const Text(
+                          Text(
                             "Order ID :",
-                            style: TextStyle(
+                            style: theme.textTheme.bodyMedium?.copyWith(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF7A7A7A),
+                              color: isDark ? Colors.white70 : const Color(0xFF7A7A7A),
                             ),
                           ),
 
@@ -701,32 +707,45 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                           //  Order ID value
                           Text(
                             "${widget.orderId}",
-                            style: const TextStyle(
+                            style: theme.textTheme.bodyLarge?.copyWith(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF4C5F7D),
+                              color: isDark ? Colors.white : const Color(0xFF4C5F7D),
                             ),
                           ),
-
                           const Spacer(),
                           if (kots.isNotEmpty)
                             Container(
                               height: 40,
                               padding: const EdgeInsets.symmetric(horizontal: 16),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF125BCE),
+                                color: isDark
+                                    ? const Color(0xFF2A2F3D)
+                                    : const Color(0xFF125BCE),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: DropdownButtonHideUnderline(
                                 child: DropdownButton<int>(
                                   value: _selectedKotId,
-                                  icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
-                                  dropdownColor: const Color(0xFF125BCE),
-                                  style: const TextStyle(color: Colors.white),
+                                  icon: Icon(
+                                    Icons.keyboard_arrow_down,
+                                    color: theme.iconTheme.color,
+                                  ),
+                                  dropdownColor: isDark
+                                      ? const Color(0xFF2A2F3D)
+                                      : const Color(0xFF125BCE),
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: Colors.white,
+                                  ),
                                   items: kots.map((kot) {
                                     return DropdownMenuItem<int>(
                                       value: kot.kotOrderId,
-                                      child: Text("KOT ${kot.kotOrderId}"),
+                                      child: Text(
+                                        "KOT ${kot.kotOrderId}",
+                                        style: theme.textTheme.bodyMedium?.copyWith(
+                                          color: Colors.white,
+                                        ),
+                                      ),
                                     );
                                   }).toList(),
                                   onChanged: (value) {
@@ -750,7 +769,9 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                               child: Container(
                                 margin: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF6F6F6),
+                                  color: isDark
+                                      ? const Color(0xFF202433)
+                                      : const Color(0xFFF6F6F6),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Stack(
@@ -764,8 +785,15 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                                         bottom: 20, // leave space for overlay summary
                                       ),
                                       child: _selectedKot == null
-                                          ? const Center(child: Text("Select a KOT"))
-                                          : _buildLeftPanel(order, kots), // your existing left panel content
+                                          ? Center(
+                                        child: Text(
+                                          "Select a KOT",
+                                          style: theme.textTheme.bodyLarge?.copyWith(
+                                            color: isDark ? Colors.white70 : Colors.black87,
+                                          ),
+                                        ),
+                                      )
+                                          : _buildLeftPanel(order, kots),// your existing left panel content
                                     ),
 
                                     // Overlay summary inside the container
@@ -803,7 +831,9 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                               child: Container(
                                 margin: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF6F6F6),
+                                  color: isDark
+                                      ? const Color(0xFF202433)
+                                      : const Color(0xFFF6F6F6),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Stack(
@@ -876,8 +906,6 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                               "Order Net Payable",
                               "$_currency${(order.orderPrevTotal ?? 0).toStringAsFixed(2)}",
                               bold: true,
-                              labelColor: Colors.black87,
-                              valueColor: Colors.black87,
                               labelFontWeight: FontWeight.w600,
                               valueFontWeight: FontWeight.w600,
                             ),
@@ -889,9 +917,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                               "Order Updated Net Payable",
                               "$_currency${_dynamicNetPayable.toStringAsFixed(2)}",
                               bold: true,
-                              labelColor: Colors.black87,
-                              valueColor: Colors.black87, //  second value color valueColor: Color(0xFF086888),
-                              labelFontWeight: FontWeight.w700,  // Label weight: light
+                              labelFontWeight: FontWeight.w700,
                               valueFontWeight: FontWeight.w700,
                             ),
                           ),
@@ -911,60 +937,68 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                               padding: const EdgeInsets.fromLTRB(24, 8, 8, 8),
 
                               decoration: BoxDecoration(
-                                color: const Color(0xFFE5EFFF),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: const Color(0xFFE5EFFF)),
+                                color: isDark
+                                    ? const Color(0xFF2A2F3D)
+                                    : const Color(0xFFE5EFFF),
+                                border: Border.all(
+                                  color: isDark
+                                      ? theme.dividerColor
+                                      : const Color(0xFFE5EFFF),
+                                ),
+                                // border: Border.all(color: const Color(0xFFE5EFFF)),
                               ),
                               child: Row(
                                 children: [
-                                  const Text(
+                                  Text(
                                     "Enter Reason:",
-                                    style: TextStyle(
+                                    style: theme.textTheme.bodyLarge?.copyWith(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
-                                      color: Color(0xFF393A3B),
+                                      color: isDark ? Colors.white : const Color(0xFF393A3B),
                                     ),
                                   ),
                                   const SizedBox(width: 20),
-                                  // dropdown
+
                                   SizedBox(
                                     width: 450,
                                     height: 30,
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 12),
                                       decoration: BoxDecoration(
-                                        color: Colors.white,
+                                        color: theme.cardColor,
                                         borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(color: const Color(0xFFE0E0E0)),
+                                        border: Border.all(
+                                          color: theme.dividerColor,
+                                        ),
                                       ),
                                       child: DropdownButtonHideUnderline(
                                         child: DropdownButton<String>(
                                           value: selectedReason,
-                                          hint: const Text(
+                                          isExpanded: true,
+                                          dropdownColor: theme.cardColor,
+                                          icon: Icon(
+                                            Icons.keyboard_arrow_down,
+                                            color: theme.iconTheme.color,
+                                          ),
+                                          hint: Text(
                                             "Select Reason",
-                                            style: TextStyle(
+                                            style: theme.textTheme.bodySmall?.copyWith(
                                               fontSize: 12,
-                                              color: Color(0xFF9E9E9E),
+                                              color: isDark ? Colors.white54 : const Color(0xFF9E9E9E),
                                             ),
                                           ),
-                                          isExpanded: true,
-                                          dropdownColor: Colors.white,
-                                          icon: const Icon(
-                                            Icons.keyboard_arrow_down,
-                                            color: Color(0xFF757575),
-                                          ),
-                                          style: const TextStyle(
+                                          style: theme.textTheme.bodySmall?.copyWith(
                                             fontSize: 12,
-                                            color: Color(0xFF212121),
+                                            color: isDark ? Colors.white : const Color(0xFF212121),
                                           ),
                                           items: kot_remarks.map((reason) {
                                             return DropdownMenuItem<String>(
                                               value: reason,
                                               child: Text(
                                                 reason,
-                                                style: const TextStyle(
+                                                style: theme.textTheme.bodySmall?.copyWith(
                                                   fontSize: 12,
-                                                  color: Color(0xFF212121),
+                                                  color: isDark ? Colors.white : const Color(0xFF212121),
                                                 ),
                                               ),
                                             );
@@ -994,14 +1028,12 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                             Flexible(
                               child: Row(
                                 children: [
-                                  // 🔄 Loader while updating
                                   if (_isUpdatingKot)
                                     const SizedBox(
                                       width: 18,
                                       height: 18,
                                       child: CircularProgressIndicator(strokeWidth: 2),
                                     )
-                                  // ✅ Success tick
                                   else
                                     Image.asset(
                                       "assets/success_tick.png",
@@ -1016,7 +1048,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                                       _isUpdatingKot
                                           ? "Updating KOT, please wait..."
                                           : _updateMessage!,
-                                      style: TextStyle(
+                                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                         color: _isUpdatingKot ? Colors.orange : Colors.green,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -1102,6 +1134,8 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 // =========================================================
   Widget _buildLeftPanel(OrderlistModel order, List<KotOrder> kots) {
     final kot = _selectedKot;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     if (kot != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1125,17 +1159,23 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       margin: const EdgeInsets.all(8),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: const Color(0xFFF6F6F6),
+        color: isDark
+            ? const Color(0xFF202433)
+            : const Color(0xFFF6F6F6),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark
+              ? const Color(0xFF202433)
+              : Colors.white,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black12,
+              color: isDark
+                  ? Colors.black45
+                  : Colors.black12,
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -1149,19 +1189,19 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
               children: [
                 Text(
                   "KOT ID: ${kot?.kotOrderId ?? '-'}",
-                  style: const TextStyle(
+                  style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
-                    color: Colors.black87,
+                    color: isDark ? Colors.white : Colors.black87,
                   ),
                 ),
                 Expanded(
                   child: Text(
                     "All ordered items are listed here KOT wise",
                     textAlign: TextAlign.right,
-                    style: const TextStyle(
+                    style: theme.textTheme.bodyMedium?.copyWith(
                       fontSize: 14,
-                      color: Color(0xFF092044),
+                      color: isDark ? Colors.white70 : const Color(0xFF092044),
                     ),
                   ),
                 ),
@@ -1214,9 +1254,17 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                         ? const EdgeInsets.symmetric(vertical: 8, horizontal: 16)
                         : const EdgeInsets.symmetric(vertical: 2, horizontal: 16),
                     decoration: BoxDecoration(
-                      color: isNormal ? const Color(0xFFFBFBFC) : const Color(0xFFF2F2F2),
+                      color: isNormal
+                          ? (isDark
+                          ? const Color(0xFF2A2F3D)
+                          : const Color(0xFFFBFBFC))
+                          : (isDark
+                          ? const Color(0xFF3A2A2A)
+                          : const Color(0xFFF2F2F2)),
                       border: Border(
-                        bottom: BorderSide(color: Colors.grey.shade300),
+                        bottom: BorderSide(
+                          color: theme.dividerColor,
+                        ),
                       ),
                       borderRadius: isLast
                           ? const BorderRadius.only(
@@ -1280,11 +1328,22 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
     );
   }
   Widget _buildNormalRowUI(LineItem item, int index) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     final modifiers = parseModifiers(item.modifiers);
 
     return Row(
       children: [
-        Expanded(flex: 1, child: Text("${index + 1}")),
+        Expanded(
+          flex: 1,
+          child: Text(
+            "${index + 1}",
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: isDark ? Colors.white : Colors.black,
+            ),
+          ),
+        ),
         Expanded(
           flex: 3,
           child: Column(
@@ -1292,34 +1351,58 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
             children: [
               Text(
                 item.name ?? "-",
-                style: const TextStyle(fontWeight: FontWeight.w600),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
               ),
               if (modifiers.isNotEmpty)
                 Text(
                   modifiers.join(", "),
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontSize: 12,
+                    color: isDark ? Colors.white70 : Colors.grey,
+                  ),
                 ),
             ],
           ),
         ),
-        Expanded(flex: 2, child: Text("${item.quantity ?? 0}")),
+        Expanded(
+          flex: 2,
+          child: Text(
+            "${item.quantity ?? 0}",
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: isDark ? Colors.white : Colors.black,
+            ),
+          ),
+        ),
         Expanded(
           flex: 1,
           child: Text(
             "$_currency${(item.totalWoTax ?? 0).toStringAsFixed(2)}",
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: isDark ? Colors.white : Colors.black,
+            ),
           ),
         ),
       ],
     );
   }
   Widget _buildVoidedRowUI(VoidedItem item, int index) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final voidColor = isDark ? Colors.white54 : const Color(0xFFB9B9B9);
+
     return Row(
       children: [
         Expanded(
           flex: 1,
           child: Text(
             "${index + 1}",
-            style: const TextStyle(color: Color(0xFFB9B9B9)),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: voidColor,
+            ),
           ),
         ),
         Expanded(
@@ -1329,9 +1412,10 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
             children: [
               Text(
                 item.product,
-                style: const TextStyle(
+                style: theme.textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFFB9B9B9),
+                  color: voidColor,
+                  // decoration: TextDecoration.lineThrough,
                 ),
               ),
               const Text(
@@ -1349,15 +1433,17 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
           flex: 2,
           child: Text(
             "${item.origQty} → 0",
-            style: const TextStyle(color: Color(0xFFB9B9B9)),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: voidColor,
+            ),
           ),
         ),
         Expanded(
           flex: 1,
           child: Text(
             "$_currency${item.itemTotal.toStringAsFixed(2)}",
-            style: const TextStyle(
-              color: Color(0xFFB9B9B9),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: voidColor,
               // decoration: TextDecoration.lineThrough,
             ),
           ),
@@ -1371,11 +1457,14 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       String label,
       String value, {
         bool bold = false,
-        Color labelColor = Colors.black87,
-        Color valueColor = Colors.black87,
-        FontWeight labelFontWeight = FontWeight.normal, // Default to normal
-        FontWeight valueFontWeight = FontWeight.normal, // Default to normal
+        Color? labelColor,
+        Color? valueColor,
+        FontWeight labelFontWeight = FontWeight.normal,
+        FontWeight valueFontWeight = FontWeight.normal,
       }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
       child: Row(
@@ -1384,10 +1473,11 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
           Text(
             label,
-            style: TextStyle(
-              fontWeight: labelFontWeight, // Apply labelFontWeight
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: labelFontWeight,
               fontSize: 14,
-              color: labelColor,
+              color: labelColor ??
+                  (isDark ? Colors.white70 : Colors.black87),
             ),
           ),
 
@@ -1397,10 +1487,11 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
             child: Text(
               value,
               textAlign: TextAlign.right,
-              style: TextStyle(
-                fontWeight: valueFontWeight, // Apply valueFontWeight
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: valueFontWeight,
                 fontSize: 16,
-                color: valueColor,
+                color: valueColor ??
+                    (isDark ? Colors.white : Colors.black87),
               ),
             ),
           ),
@@ -1411,10 +1502,11 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
     );
   }
 
-
   // =========================================================
   // RIGHT PANEL (Editable KOT)
   Widget buildSelectedKotCard(KotOrder kot) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     // Use the editable copy
     final items = _editedKotItems[_selectedKotId] ?? [];
 
@@ -1423,7 +1515,9 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         return Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark
+                ? const Color(0xFF202433)
+                : Colors.white,
             borderRadius: BorderRadius.circular(12),
             boxShadow: const [
               BoxShadow(
@@ -1437,10 +1531,15 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Center(
-                child: const Text(
+                child:  Text(
                   "To edit an item, adjust quantity or add/remove items as needed.",
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, color: Color(0xFF092044)),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontSize: 14,
+                    color: isDark
+                        ? Colors.white
+                        : const Color(0xFF092044),
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
@@ -1448,7 +1547,9 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
               // Header
               Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFF999393),
+                  color: isDark
+                      ? const Color(0xFF3A3F4B)
+                      : const Color(0xFF999393),
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(8),
                     topRight: Radius.circular(8),
@@ -1480,9 +1581,19 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                     return Container(
                       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                       decoration: BoxDecoration(
-                        color: isVoided ? const Color(0xFFFFEEEE) : const Color(0xFFFBFBFC),
+                        color: isVoided
+                            ? (isDark
+                            ? const Color(0xFF4A2A2A)
+                            : const Color(0xFFFFEEEE))
+                            : (isDark
+                            ? const Color(0xFF2A2F3D)
+                            : const Color(0xFFFBFBFC)),
                         border: Border(
-                          bottom: BorderSide(color: isVoided ? Colors.red.shade200 : Colors.grey[300]!),
+                          bottom: BorderSide(
+                            color: isVoided
+                                ? Colors.red.shade300
+                                : theme.dividerColor,
+                          ),
                         ),
                       ),
                       child: Row(
@@ -1496,10 +1607,13 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                               children: [
                                 Text(
                                   item.name ?? "-",
-                                  style: TextStyle(
+                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                     fontWeight: FontWeight.w600,
-                                    color: isVoided ? Colors.red : Colors.black,
-                                    decoration: isVoided ? TextDecoration.lineThrough : null,
+                                    color: isVoided
+                                        ? Colors.red
+                                        : (isDark ? Colors.white : Colors.black),
+                                    decoration:
+                                    isVoided ? TextDecoration.lineThrough : null,
                                   ),
                                 ),
 
@@ -1508,7 +1622,10 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                                     padding: const EdgeInsets.only(top: 2),
                                     child: Text(
                                       modifiers.join(", "),
-                                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        fontSize: 12,
+                                        color: isDark ? Colors.white70 : Colors.grey,
+                                      ),
                                     ),
                                   ),
 
@@ -1578,8 +1695,11 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                               isVoided
                                   ? "${_currency}0.00"
                                   : "${_currency}${(item.totalWoTax ?? 0).toStringAsFixed(2)}",
-                              style: TextStyle(
-                                color: isVoided ? Colors.red : Colors.black,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: isVoided
+                                    ? Colors.red
+                                    : (isDark ? Colors.white : Colors.black),
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ),
@@ -1605,15 +1725,19 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       String label,
       String value, {
         bool bold = false,
-        Color labelColor = const Color(0xFF252525),
-        Color valueColor = const Color(0xFF373535),
+        Color? labelColor,
+        Color? valueColor,
       }) {
-    return Container(
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
+    return Container(
       clipBehavior: Clip.antiAlias,
       decoration: ShapeDecoration(
-        color: const Color(0xFFECECEC),
-        shape: RoundedRectangleBorder(
+        color: isDark
+            ? const Color(0xFF2A2F3D)
+            : const Color(0xFFECECEC),
+        shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.only(
             bottomLeft: Radius.circular(14),
             bottomRight: Radius.circular(14),
@@ -1621,35 +1745,37 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         ),
         shadows: [
           BoxShadow(
-            color: Color(0x3F000000),
+            color: isDark
+                ? Colors.black26
+                : const Color(0x3F000000),
             blurRadius: 6,
-            offset: Offset(0, -4),
+            offset: const Offset(0, -4),
             spreadRadius: 0,
           ),
         ],
       ),
       padding: const EdgeInsets.fromLTRB(30, 12, 50, 8),
-
       child: Row(
         children: [
           Text(
             label,
-            style: TextStyle(
+            style: theme.textTheme.bodyMedium?.copyWith(
               fontWeight: bold ? FontWeight.w500 : FontWeight.normal,
               fontSize: 12,
               fontFamily: 'Inter',
-              color: labelColor,
+              color: labelColor ??
+                  (isDark ? Colors.white70 : const Color(0xFF252525)),
             ),
           ),
-          // const SizedBox(width: 280), // fixed width gap
           const Spacer(),
           Text(
             value,
-            style: TextStyle(
+            style: theme.textTheme.bodyMedium?.copyWith(
               fontWeight: bold ? FontWeight.w500 : FontWeight.normal,
               fontSize: 14,
               fontFamily: 'Inter',
-              color: valueColor,
+              color: valueColor ??
+                  (isDark ? Colors.white : const Color(0xFF373535)),
             ),
           ),
         ],
@@ -1660,20 +1786,27 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
 // Qty button with red when clickable, grey when disabled
   Widget _qtyButton(IconData icon, {VoidCallback? onTap}) {
-    final isEnabled = onTap != null; // if onTap is null, button is disabled
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final isEnabled = onTap != null;
 
     return InkWell(
-      onTap: onTap, // null disables tap automatically
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
       child: Container(
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFE5E5), // light red background always
+          color: isDark
+              ? const Color(0xFF4A2A2A)
+              : const Color(0xFFFFE5E5),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Icon(
           icon,
           size: 14,
-          color: isEnabled ? Colors.red : Colors.grey, // red if enabled, grey if disabled
+          color: isEnabled
+              ? const Color(0xFFFE6464)
+              : Colors.grey,
         ),
       ),
     );

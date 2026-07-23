@@ -1,871 +1,43 @@
-// import 'dart:convert';
-// import 'dart:typed_data';
-// import 'package:dotted_border/dotted_border.dart';
-// import 'package:flutter/material.dart';
-// import 'package:http/http.dart' as http;
-// import 'package:image_picker/image_picker.dart';
-// import 'package:package_info_plus/package_info_plus.dart';
-// import 'package:shared_preferences/shared_preferences.dart';
-// import '../../repositories/settings_repository.dart';
-// import '../../utils/logger.dart';
-//
-// class SettingsScreen extends StatefulWidget {
-//   final String token;
-//   final String pin;
-//   final String userId;
-//   final String displayName;
-//   final String role;
-//
-//   const SettingsScreen({
-//     super.key,
-//     required this.token,
-//     required this.pin,
-//     required this.userId,
-//     required this.displayName,
-//     required this.role,
-//   });
-//
-//   @override
-//   State<SettingsScreen> createState() => _SettingsScreenState();
-// }
-//
-// class _SettingsScreenState extends State<SettingsScreen> {
-//   final _formKey = GlobalKey<FormState>();
-//
-//   final TextEditingController _fullNameController = TextEditingController();
-//   final TextEditingController _contactController = TextEditingController();
-//   final TextEditingController _emailController = TextEditingController();
-//   final TextEditingController _deviceIdController = TextEditingController();
-//   final TextEditingController _companyController = TextEditingController();
-//   final TextEditingController _gstinController = TextEditingController();
-//   final TextEditingController _headerController = TextEditingController();
-//   final TextEditingController _footerController = TextEditingController();
-//
-//   Uint8List? _photoBytes;
-//   Uint8List? _logoBytes;
-//   String? _photoBase64;
-//   String? _logoBase64;
-//   String? _selectedDefaultMethod;
-//   Map<String, bool> _paymentSelections = {
-//     "Cash": true,
-//     "Card": true,
-//     "UPI": true,
-//     "Wallets": true,
-//   };
-//   Map<String, bool> _otherSelections = {
-//     "Coupons": true,
-//     "Tips": true,
-//     "Payouts": true,
-//   };
-//   Map<String, bool> _orderTypeSelections = {
-//     "Dine-in": true,
-//     "Takeaway": true,
-//   };
-//   final ImagePicker _picker = ImagePicker();
-//   String _selectedLabel = "General";
-//   bool _isLoading = true;
-//   final _settingsRepo = SettingsRepository();
-//
-//   @override
-//   void initState() {
-//     super.initState();
-//     print("SettingsScreen initialized with:");
-//     print("User ID: ${widget.userId}");
-//     print("Display Name: ${widget.displayName}");
-//     print("Role: ${widget.role}");
-//     _fetchGeneralSettings();
-//   }
-//   Future<void> _fetchGeneralSettings() async {
-//     AppLogger.info("🔹 Fetching General Settings for User ID: ${widget.userId}");
-//
-//     setState(() => _isLoading = true);
-//
-//     final result = await _settingsRepo.fetchGeneralSettings(
-//       token: widget.token,
-//       userId: widget.userId,
-//     );
-//
-//     if (result["success"] == true) {
-//       final userData = result["data"];
-//
-//       setState(() {
-//         _fullNameController.text = userData["full_name"] ?? '';
-//         _emailController.text = userData["email"] ?? '';
-//         _contactController.text = userData["phone_number"] ?? '';
-//         _deviceIdController.text = userData["user_device_id"] ?? '';
-//         _companyController.text = userData["company_name"] ?? '';
-//         _gstinController.text = userData["gstin"] ?? '';
-//
-//         if (userData["profile_url"] != null &&
-//             userData["profile_url"].toString().isNotEmpty) {
-//           _loadImageFromUrl(userData["profile_url"], isProfile: true);
-//         }
-//
-//         if (userData["receipt_logo"] != null &&
-//             userData["receipt_logo"].toString().isNotEmpty) {
-//           _loadImageFromUrl(userData["receipt_logo"], isProfile: false);
-//         }
-//
-//         _isLoading = false;
-//       });
-//     } else {
-//       setState(() => _isLoading = false);
-//     }
-//   }
-//
-//   /// 🔹 Load image from URL into memory
-//   Future<void> _loadImageFromUrl(String url, {required bool isProfile}) async {
-//     try {
-//       final response = await http.get(Uri.parse(url));
-//       if (response.statusCode == 200) {
-//         final bytes = response.bodyBytes;
-//         setState(() {
-//           if (isProfile) {
-//             _photoBytes = bytes;
-//             _photoBase64 = base64Encode(bytes);
-//           } else {
-//             _logoBytes = bytes;
-//             _logoBase64 = base64Encode(bytes);
-//           }
-//         });
-//       }
-//     } catch (e) {
-//       print("Failed to load image: $e");
-//     }
-//   }
-//
-//   Future<void> _pickImage(bool isProfile) async {
-//     try {
-//       final XFile? picked = await _picker.pickImage(
-//         source: ImageSource.gallery,
-//         imageQuality: 80,
-//       );
-//       if (picked == null) return;
-//       final bytes = await picked.readAsBytes();
-//       final base64Str = base64Encode(bytes);
-//       setState(() {
-//         if (isProfile) {
-//           _photoBytes = bytes;
-//           _photoBase64 = base64Str;
-//         } else {
-//           _logoBytes = bytes;
-//           _logoBase64 = base64Str;
-//         }
-//       });
-//     } catch (e) {
-//       ScaffoldMessenger.of(
-//         context,
-//       ).showSnackBar(const SnackBar(content: Text('Image selection failed')));
-//     }
-//   }
-//
-//   Future<void> _saveSettings() async {
-//     final prefs = await SharedPreferences.getInstance();
-//     await prefs.setString('header', _headerController.text);
-//     await prefs.setString('footer', _footerController.text);
-//     if (_logoBase64 != null) await prefs.setString('logoBase64', _logoBase64!);
-//     await prefs.setString(
-//       'selectedDefaultMethod',
-//       _selectedDefaultMethod ?? '',
-//     );
-//     await prefs.setString('paymentSelections', jsonEncode(_paymentSelections));
-//     await prefs.setString('otherSelections', jsonEncode(_otherSelections));
-//     await prefs.setString('orderTypeSelections', jsonEncode(_orderTypeSelections));
-//
-//     ScaffoldMessenger.of(context).showSnackBar(
-//       const SnackBar(content: Text('Settings saved successfully')),
-//     );
-//   }
-//
-//   Widget _photoBox(Uint8List? bytes) {
-//     return DottedBorder(
-//       color: Colors.black,
-//       strokeWidth: 1.5,
-//       dashPattern: const [6, 5],
-//       borderType: BorderType.RRect,
-//       radius: const Radius.circular(12),
-//       child: Container(
-//         width: 90,
-//         height: 90,
-//         decoration: BoxDecoration(
-//           borderRadius: BorderRadius.circular(12),
-//           color: Colors.white,
-//         ),
-//         child: bytes == null
-//             ? const Center(
-//           child: Icon(
-//             Icons.image_outlined,
-//             size: 28,
-//             color: Colors.black54,
-//           ),
-//         )
-//             : ClipRRect(
-//           borderRadius: BorderRadius.circular(12),
-//           child: Image.memory(bytes, fit: BoxFit.cover),
-//         ),
-//       ),
-//     );
-//   }
-//
-//   Widget _logoBox(Uint8List? bytes) {
-//     return Row(
-//       crossAxisAlignment: CrossAxisAlignment.center,
-//       children: [
-//         GestureDetector(
-//           onTap: () => _pickImage(false),
-//           child: DottedBorder(
-//             color: Colors.black,
-//             strokeWidth: 1.5,
-//             dashPattern: const [6, 5],
-//             borderType: BorderType.RRect,
-//             radius: const Radius.circular(12),
-//             child: Container(
-//               width: 90,
-//               height: 90,
-//               decoration: BoxDecoration(
-//                 borderRadius: BorderRadius.circular(12),
-//                 color: Colors.white,
-//               ),
-//               child:
-//               bytes == null
-//                   ? const Center(
-//                 child: Icon(
-//                   Icons.add_photo_alternate_outlined,
-//                   size: 28,
-//                   color: Colors.black,
-//                 ),
-//               )
-//                   : ClipRRect(
-//                 borderRadius: BorderRadius.circular(12),
-//                 child: Image.memory(bytes, fit: BoxFit.cover),
-//               ),
-//             ),
-//           ),
-//         ),
-//         if (bytes != null) ...[
-//           const SizedBox(width: 12),
-//           Column(
-//             children: [
-//               // Edit button
-//               InkWell(
-//                 onTap: () => _pickImage(false),
-//                 borderRadius: BorderRadius.circular(6),
-//                 child: Container(
-//                   padding: const EdgeInsets.all(6),
-//                   decoration: BoxDecoration(
-//                     color: Colors.white,
-//                     border: Border.all(color: Colors.grey.shade300),
-//                     borderRadius: BorderRadius.circular(6),
-//                   ),
-//                   child: const Icon(
-//                     Icons.edit,
-//                     color: Colors.black54,
-//                     size: 20,
-//                   ),
-//                 ),
-//               ),
-//               const SizedBox(height: 8),
-//               // Delete button
-//               InkWell(
-//                 onTap: () {
-//                   setState(() {
-//                     _logoBytes = null;
-//                     _logoBase64 = null;
-//                   });
-//                 },
-//                 borderRadius: BorderRadius.circular(6),
-//                 child: Container(
-//                   padding: const EdgeInsets.all(6),
-//                   decoration: BoxDecoration(
-//                     color: Colors.white,
-//                     border: Border.all(color: Colors.grey.shade300),
-//                     borderRadius: BorderRadius.circular(6),
-//                   ),
-//                   child: const Icon(
-//                     Icons.delete,
-//                     color: Colors.redAccent,
-//                     size: 20,
-//                   ),
-//                 ),
-//               ),
-//             ],
-//           ),
-//         ],
-//       ],
-//     );
-//   }
-//
-//   Widget _buildTabs() {
-//     final List<String> labels = ["General", "Payment", "Advanced"];
-//
-//     return Row(
-//       children:
-//       labels.map((label) {
-//         final bool selected = label == _selectedLabel;
-//         return Padding(
-//           padding: const EdgeInsets.only(right: 12),
-//           child: GestureDetector(
-//             onTap: () {
-//               setState(() {
-//                 _selectedLabel = label;
-//               });
-//             },
-//             child: Container(
-//               padding: const EdgeInsets.symmetric(
-//                 horizontal: 14,
-//                 vertical: 7,
-//               ),
-//               decoration: BoxDecoration(
-//                 gradient:
-//                 selected
-//                     ? const LinearGradient(
-//                   begin: Alignment.topCenter,
-//                   end: Alignment.bottomCenter,
-//                   colors: [Color(0xFF002E63), Color(0xFF005DC9)],
-//                 )
-//                     : null,
-//                 color: selected ? null : Colors.transparent,
-//                 borderRadius: BorderRadius.circular(6),
-//                 boxShadow:
-//                 selected
-//                     ? [
-//                   const BoxShadow(
-//                     color: Color(0x3F000000),
-//                     blurRadius: 4,
-//                     offset: Offset(1, 1),
-//                   ),
-//                 ]
-//                     : [],
-//               ),
-//               child: Text(
-//                 label,
-//                 style: TextStyle(
-//                   color: selected ? Colors.white : Colors.black,
-//                   fontSize: 14,
-//                   fontFamily: 'Manrope',
-//                   fontWeight:
-//                   selected ? FontWeight.w700 : FontWeight.normal,
-//                 ),
-//               ),
-//             ),
-//           ),
-//         );
-//       }).toList(),
-//     );
-//   }
-//
-//   Widget _buildField(
-//       String label,
-//       TextEditingController controller, {
-//         String? hint,
-//         bool readOnly = false,
-//       }) {
-//     return Column(
-//       crossAxisAlignment: CrossAxisAlignment.start,
-//       children: [
-//         Text(
-//           label,
-//           style: const TextStyle(
-//             fontWeight: FontWeight.w600,
-//             color: Colors.black87,
-//             fontSize: 15,
-//           ),
-//         ),
-//         const SizedBox(height: 5),
-//         TextFormField(
-//           controller: controller,
-//           readOnly: readOnly,
-//           decoration: InputDecoration(
-//             filled: true,
-//             fillColor: const Color(0xFFEDF2F6),
-//             border: OutlineInputBorder(
-//               borderRadius: BorderRadius.circular(6),
-//               borderSide: const BorderSide(color: Color(0xFFE0E4EC)),
-//             ),
-//             enabledBorder: OutlineInputBorder(
-//               borderRadius: BorderRadius.circular(6),
-//               borderSide: const BorderSide(color: Color(0xFFE0E4EC)),
-//             ),
-//             focusedBorder: OutlineInputBorder(
-//               borderRadius: BorderRadius.circular(6),
-//               borderSide: const BorderSide(
-//                 color: Color(0xFFE0E4EC),
-//                 width: 1.5,
-//               ),
-//             ),
-//             contentPadding: const EdgeInsets.symmetric(
-//               horizontal: 14,
-//               vertical: 12,
-//             ),
-//             hintText: hint,
-//           ),
-//           style: TextStyle(
-//             color: readOnly ? Colors.grey[700] : Colors.black,
-//           ),
-//         ),
-//       ],
-//     );
-//   }
-//
-//   // =================== MAIN BUILD ===================
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       backgroundColor: const Color(0xFFF4F6FC),
-//       body: SafeArea(
-//         child: Padding(
-//           padding: const EdgeInsets.all(22.0),
-//           child: LayoutBuilder(
-//             builder: (context, constraints) {
-//               return SingleChildScrollView(
-//                 child: ConstrainedBox(
-//                   constraints: BoxConstraints(minHeight: constraints.maxHeight),
-//                   child: IntrinsicHeight(
-//                     child: Container(
-//                       padding: const EdgeInsets.all(27),
-//                       decoration: BoxDecoration(
-//                         color: Colors.white,
-//                         borderRadius: BorderRadius.circular(14),
-//                       ),
-//                       child: Column(
-//                         crossAxisAlignment: CrossAxisAlignment.start,
-//                         children: [
-//                           // ===== Header =====
-//                           Container(
-//                             padding: const EdgeInsets.symmetric(
-//                               horizontal: 16,
-//                               vertical: 8,
-//                             ),
-//                             decoration: BoxDecoration(
-//                               color: const Color(0xFFF4F6FB),
-//                               borderRadius: BorderRadius.circular(8),
-//                             ),
-//                             child: Row(
-//                               children: [
-//                                 // back button
-//                                 Container(
-//                                   height: 40,
-//                                   padding: const EdgeInsets.symmetric(
-//                                     horizontal: 10,
-//                                   ),
-//                                   decoration: BoxDecoration(
-//                                     color: Colors.white,
-//                                     border: Border.all(
-//                                       color: Colors.grey.shade300,
-//                                     ),
-//                                     borderRadius: BorderRadius.circular(10),
-//                                   ),
-//                                   child: InkWell(
-//                                     onTap: () => Navigator.pop(context),
-//                                     borderRadius: BorderRadius.circular(10),
-//                                     child: const Row(
-//                                       mainAxisSize: MainAxisSize.min,
-//                                       children: [
-//                                         Icon(Icons.arrow_back, size: 18),
-//                                         SizedBox(width: 5),
-//                                         Text(
-//                                           'Back',
-//                                           style: TextStyle(
-//                                             fontSize: 16,
-//                                             fontWeight: FontWeight.w500,
-//                                           ),
-//                                         ),
-//                                       ],
-//                                     ),
-//                                   ),
-//                                 ),
-//                                 const SizedBox(width: 16),
-//                                 _buildTabs(),
-//                                 const Spacer(),
-//                                 ElevatedButton(
-//                                   style: ElevatedButton.styleFrom(
-//                                     backgroundColor: Colors.redAccent,
-//                                     foregroundColor: Colors.white,
-//                                     padding: const EdgeInsets.symmetric(
-//                                       horizontal: 30,
-//                                       vertical: 10,
-//                                     ),
-//                                     shape: RoundedRectangleBorder(
-//                                       borderRadius: BorderRadius.circular(8),
-//                                     ),
-//                                   ),
-//                                   onPressed: _saveSettings,
-//                                   child: const Text("Save Changes"),
-//                                 ),
-//                               ],
-//                             ),
-//                           ),
-//                           const SizedBox(height: 22),
-//
-//                           // ===== Tab Content =====
-//                           if (_selectedLabel == "General")
-//                             _buildGeneralSection(),
-//                           if (_selectedLabel == "Payment")
-//                             _buildPaymentSection(),
-//                           if (_selectedLabel == "Advanced")
-//                             _buildAdvancedSection(),
-//                         ],
-//                       ),
-//                     ),
-//                   ),
-//                 ),
-//               );
-//             },
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-//
-//   Widget _buildGeneralSection() {
-//     return Row(
-//       crossAxisAlignment: CrossAxisAlignment.start,
-//       children: [
-//         // LEFT COLUMN
-//         Expanded(
-//           child: Column(
-//             crossAxisAlignment: CrossAxisAlignment.start,
-//             children: [
-//               const Text(
-//                 "Personal Information",
-//                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-//               ),
-//               const SizedBox(height: 6),
-//               const Text(
-//                 "Change your personal information",
-//                 style: TextStyle(color: Colors.grey, fontSize: 13),
-//               ),
-//               const SizedBox(height: 20),
-//               Row(
-//                 children: [
-//                   _photoBox(_photoBytes),
-//                   const SizedBox(width: 20),
-//                   Expanded(
-//                     child: Column(
-//                       crossAxisAlignment: CrossAxisAlignment.start,
-//                       children: [
-//                         Text(
-//                           "User",
-//                           style: const TextStyle(
-//                             fontSize: 14,
-//                             color: Colors.black,
-//                             fontWeight: FontWeight.bold,
-//                           ),
-//                         ),
-//                         const SizedBox(height: 2),
-//                         Text(
-//                           widget.role.isNotEmpty ? widget.role : "Role",
-//                           style: const TextStyle(
-//                             fontSize: 16,
-//                             color: const Color(0xFF002E63),
-//                             fontWeight: FontWeight.w400,
-//                           ),
-//                         ),
-//                       ],
-//                     ),
-//                   ),
-//                 ],
-//               ),
-//               const SizedBox(height: 25),
-//               _buildField("Full Name", _fullNameController, readOnly: true),
-//               const SizedBox(height: 18),
-//               _buildField("Contact No.", _contactController, readOnly: true),
-//               const SizedBox(height: 18),
-//               _buildField("Email Address", _emailController, readOnly: true),
-//               const SizedBox(height: 18),
-//               _buildField("Device ID :", _deviceIdController, readOnly: true),
-//               const SizedBox(height: 18),
-//               FutureBuilder<PackageInfo>(
-//                 future: PackageInfo.fromPlatform(),
-//                 builder: (context, snapshot) {
-//                   if (snapshot.connectionState == ConnectionState.waiting) {
-//                     return const Text(
-//                       "Loading version...",
-//                       style: TextStyle(
-//                         fontWeight: FontWeight.w600,
-//                         color: Colors.black54,
-//                         fontSize: 15,
-//                       ),
-//                     );
-//                   } else if (snapshot.hasError) {
-//                     return const Text(
-//                       "Version info not available",
-//                       style: TextStyle(
-//                         fontWeight: FontWeight.w600,
-//                         color: Colors.black54,
-//                         fontSize: 15,
-//                       ),
-//                     );
-//                   } else if (snapshot.hasData) {
-//                     final packageInfo = snapshot.data!;
-//                     final version = '${packageInfo.version}+${packageInfo.buildNumber}';
-//                     return Text(
-//                       "App Version $version",
-//                       style: const TextStyle(
-//                         fontWeight: FontWeight.w600,
-//                         color: Colors.black87,
-//                         fontSize: 15,
-//                       ),
-//                     );
-//                   } else {
-//                     return const SizedBox();
-//                   }
-//                 },
-//               ),
-//             ],
-//           ),
-//         ),
-//         const SizedBox(width: 50),
-//
-//         // RIGHT COLUMN
-//         Expanded(
-//           child: Column(
-//             crossAxisAlignment: CrossAxisAlignment.start,
-//             children: [
-//               const Text(
-//                 "Receipt Settings",
-//                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-//               ),
-//               const SizedBox(height: 6),
-//               const Text(
-//                 "Customise your own receipt",
-//                 style: TextStyle(color: Colors.grey, fontSize: 14),
-//               ),
-//               const SizedBox(height: 20),
-//               Row(
-//                 children: [
-//                   _logoBox(_logoBytes),
-//                   const SizedBox(width: 16),
-//                   Expanded(
-//                     child: _buildField("Company Name", _companyController,readOnly: true),
-//                   ),
-//                 ],
-//               ),
-//               const SizedBox(height: 20),
-//               _buildField("GSTIN", _gstinController,readOnly: true),
-//               const SizedBox(height: 20),
-//               _buildField("Header", _headerController),
-//               const SizedBox(height: 20),
-//               _buildField("Footer", _footerController),
-//               const SizedBox(height: 20),
-//               Row(
-//                 crossAxisAlignment: CrossAxisAlignment.center,
-//                 children: [
-//                   Expanded(
-//                     child: Column(
-//                       crossAxisAlignment: CrossAxisAlignment.start,
-//                       children: const [
-//                         Text(
-//                           "Printer Settings",
-//                           style: TextStyle(
-//                             fontSize: 15,
-//                             fontWeight: FontWeight.w600,
-//                           ),
-//                         ),
-//                         SizedBox(height: 4),
-//                         Text(
-//                           "Connected Printer",
-//                           style: TextStyle(color: Colors.black54),
-//                         ),
-//                       ],
-//                     ),
-//                   ),
-//                   ElevatedButton(
-//                     onPressed: () {},
-//                     style: ElevatedButton.styleFrom(
-//                       backgroundColor: const Color(0xFF007BFF),
-//                       padding: const EdgeInsets.symmetric(
-//                         horizontal: 30,
-//                         vertical: 8,
-//                       ),
-//                       shape: RoundedRectangleBorder(
-//                         borderRadius: BorderRadius.circular(8),
-//                       ),
-//                     ),
-//                     child: const Text(
-//                       "+ Add",
-//                       style: TextStyle(color: Colors.white, fontSize: 14),
-//                     ),
-//                   ),
-//                 ],
-//               ),
-//             ],
-//           ),
-//         ),
-//       ],
-//     );
-//   }
-//
-//   Widget _buildPaymentSection() {
-//     return Padding(
-//       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
-//       child: Column(
-//         crossAxisAlignment: CrossAxisAlignment.start,
-//         children: [
-//           const Text(
-//             "Payment Settings",
-//             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-//           ),
-//           const SizedBox(height: 24),
-//
-//           const Text(
-//             "Default Payment Method",
-//             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-//           ),
-//           const SizedBox(height: 6),
-//
-//           DropdownButtonFormField<String>(
-//             value: _selectedDefaultMethod != null &&
-//                 _paymentSelections.containsKey(_selectedDefaultMethod)
-//                 ? _selectedDefaultMethod
-//                 : null,
-//             items: _paymentSelections.keys
-//                 .map((method) => DropdownMenuItem(
-//               value: method,
-//               child: Text(method),
-//             ))
-//                 .toList(),
-//             onChanged: (val) {
-//               setState(() {
-//                 _selectedDefaultMethod = val;
-//               });
-//             },
-//             decoration: InputDecoration(
-//               hintText: "Select Payment Method",
-//               filled: true,
-//               fillColor: const Color(0xFFF4F6FB),
-//               contentPadding:
-//               const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-//               border: OutlineInputBorder(
-//                 borderRadius: BorderRadius.circular(12),
-//                 borderSide: BorderSide.none,
-//               ),
-//               enabledBorder: OutlineInputBorder(
-//                 borderRadius: BorderRadius.circular(12),
-//                 borderSide: BorderSide.none,
-//               ),
-//               focusedBorder: OutlineInputBorder(
-//                 borderRadius: BorderRadius.circular(12),
-//                 borderSide: BorderSide.none,
-//               ),
-//             ),
-//           ),
-//
-//           const SizedBox(height: 26),
-//           const Text(
-//             "Payment Methods",
-//             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-//           ),
-//           const SizedBox(height: 10),
-//
-//           Wrap(
-//             spacing: 20,
-//             runSpacing: 8,
-//             children: [
-//               for (var method in _paymentSelections.keys)
-//                 Row(
-//                   mainAxisSize: MainAxisSize.min,
-//                   children: [
-//                     Checkbox(
-//                       value: _paymentSelections[method],
-//                       onChanged:
-//                           (val) =>
-//                           setState(() => _paymentSelections[method] = val!),
-//                       activeColor: Colors.black,
-//                     ),
-//                     Text(method, style: const TextStyle(fontSize: 14)),
-//                   ],
-//                 ),
-//             ],
-//           ),
-//
-//           const SizedBox(height: 30),
-//           const Text(
-//             "Other Options",
-//             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-//           ),
-//           const SizedBox(height: 10),
-//
-//           Wrap(
-//             spacing: 20,
-//             runSpacing: 8,
-//             children: [
-//               for (var opt in _otherSelections.keys)
-//                 Row(
-//                   mainAxisSize: MainAxisSize.min,
-//                   children: [
-//                     Checkbox(
-//                       value: _otherSelections[opt],
-//                       onChanged:
-//                           (val) => setState(() => _otherSelections[opt] = val!),
-//                       activeColor: Colors.black,
-//                     ),
-//                     Text(opt, style: const TextStyle(fontSize: 14)),
-//                   ],
-//                 ),
-//             ],
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-//
-//   Widget _buildAdvancedSection() {
-//     return Padding(
-//       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
-//       child: Column(
-//         crossAxisAlignment: CrossAxisAlignment.start,
-//         children: [
-//           const Text(
-//             "Advanced Settings",
-//             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-//           ),
-//           const SizedBox(height: 24),
-//           const Text(
-//             "Order Type",
-//             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-//           ),
-//           const SizedBox(height: 10),
-//           Wrap(
-//             spacing: 20,
-//             runSpacing: 8,
-//             children: [
-//               for (var opt in _orderTypeSelections.keys)
-//                 Row(
-//                   mainAxisSize: MainAxisSize.min,
-//                   children: [
-//                     Checkbox(
-//                       value: _orderTypeSelections[opt],
-//                       onChanged: (val) {
-//                         setState(() => _orderTypeSelections[opt] = val!);
-//                       },
-//                       activeColor: Colors.black,
-//                     ),
-//                     Text(opt, style: const TextStyle(fontSize: 14)),
-//                   ],
-//                 ),
-//             ],
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:dotted_border/dotted_border.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:thermal_printer/thermal_printer.dart';
 
 import '../../models/General_Settings_Model.dart';
+import '../../printer/printer_settings.dart';
 import '../../printer/printer_setup_screen.dart';
 import '../../printer/printer_db_helper.dart';
 import '../../repositories/settings_repository.dart';
 import '../../utils/SessionManager.dart';
+
+// Add this model for printer selection
+class PrinterSelection {
+  final String name;
+  final String address;
+  final String port;
+  final String type;        // NEW: 'network' | 'usb' | 'bluetooth'
+  final String? vendorId;   // NEW
+  final String? productId;  // NEW
+  final bool isBle;         // NEW
+  bool isSelected;
+
+  PrinterSelection({
+    required this.name,
+    required this.address,
+    required this.port,
+    this.type = 'network',
+    this.vendorId,
+    this.productId,
+    this.isBle = false,
+    this.isSelected = false,
+  });
+}
 
 class SettingsScreen extends StatefulWidget {
   final String token;
@@ -913,7 +85,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Map<String, bool> _otherSelections = {
     "Coupons": true,
     "Tips": true,
-    // "Payouts": true,
   };
   Map<String, bool> _orderTypeSelections = {
     "Dine-in": true,
@@ -921,12 +92,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   };
   final ImagePicker _picker = ImagePicker();
   String _selectedLabel = "General";
-  String? _connectedPrinterName;
+
+  // Updated: Support multiple printers
+  List<PrinterSelection> _connectedPrinters = [];
+  bool _isLoadingPrinters = false;
+
   final GeneralSettingsRepository _settingsRepository =
   GeneralSettingsRepository();
 
   String? _receiptLogoUrl;
   String? _profileImageUrl;
+
   @override
   void initState() {
     super.initState();
@@ -934,9 +110,302 @@ class _SettingsScreenState extends State<SettingsScreen> {
     print("User ID: ${widget.userId}");
     print("Display Name: ${widget.displayName}");
     _loadSavedSettings();
-    _loadConnectedPrinter();
+    _loadConnectedPrinters();
     _loadGeneralSettings();
   }
+
+  // ==================== PRINTER NAME HELPER ====================
+
+  // NEW: Get printer name based on index
+  String _getPrinterName(int index, String defaultName) {
+    if (index == 0) {
+      return "KOT Printer";
+    } else if (index == 1) {
+      return "Cash Printer";
+    } else {
+      return "Printer ${index + 1}";
+    }
+  }
+
+  // NEW: Get printer badge info based on index
+  Map<String, dynamic> _getPrinterBadge(int index) {
+    if (index == 0) {
+      return {
+        'text': 'KOT',
+        'color': Colors.blue,
+        'icon': Icons.receipt_long,
+      };
+    } else if (index == 1) {
+      return {
+        'text': 'Cash',
+        'color': Colors.green,
+        'icon': Icons.attach_money,
+      };
+    } else {
+      return {
+        'text': 'P${index + 1}',
+        'color': Colors.grey,
+        'icon': Icons.print,
+      };
+    }
+  }
+
+  // ==================== PRINTER DB METHODS ====================
+
+  // NEW: Save printers to database
+  Future<void> _savePrintersToDB() async {
+    try {
+      final printerDb = PrinterDBHelper();
+
+      // Clear existing printers from DB
+      await printerDb.clearAllPrinters();
+
+      // Add each printer to DB
+      for (var printer in _connectedPrinters) {
+        final printerType = printer.type == 'usb'
+            ? PrinterType.usb
+            : printer.type == 'bluetooth'
+            ? PrinterType.bluetooth
+            : PrinterType.network;
+
+        final bluetoothPrinter = BluetoothPrinter(
+          deviceName: printer.name,
+          address: printer.address,
+          port: printer.port,
+          vendorId: printer.vendorId,
+          productId: printer.productId,
+          isBle: printer.isBle,
+          typePrinter: printerType,   // FIXED
+          state: false,
+        );
+
+        await printerDb.addPrinterToDB(bluetoothPrinter);
+      }
+
+      for (var printer in _connectedPrinters) {
+        await printerDb.updatePrinterSelection(
+          printer.address,
+          printer.isSelected,
+          deviceName: printer.name,
+        );
+      }
+
+      if (kDebugMode) {
+        print("#### Saved ${_connectedPrinters.length} printers to DB");
+      }
+    } catch (e) {
+      print("Error saving printers to DB: $e");
+    }
+  }
+
+  // NEW: Load all connected printers
+// NEW: Load all connected printers
+  Future<void> _loadConnectedPrinters() async {
+    if (_isLoadingPrinters) return;
+
+    setState(() {
+      _isLoadingPrinters = true;
+    });
+
+    try {
+      final printerDb = PrinterDBHelper();
+
+      // First try to load from DB (this will include all printers)
+      final dbPrinters = await printerDb.getAllPrintersFromDB();
+      List<PrinterSelection> tempPrinters = [];
+
+      // Load from database — SINGLE pass, with type/vendorId/productId included
+      if (dbPrinters.isNotEmpty) {
+        for (var printer in dbPrinters) {
+          final deviceName = printer['deviceName'] ?? printer['device_name'] ?? 'Unknown';
+          final address = printer['printer_address'] ?? '';
+          final port = printer['port'] ?? '9100';
+          final isSelected = (printer['is_selected'] ?? 1) == 1;
+          final type = printer[AppDBConst.printerType] ?? 'network';
+          final vendorId = printer[AppDBConst.printerVendorId]?.toString();
+          final productId = printer[AppDBConst.printerProductId]?.toString();
+
+          tempPrinters.add(PrinterSelection(
+            name: deviceName,
+            address: address,
+            port: port,
+            isSelected: isSelected,
+            type: type,
+            vendorId: vendorId,
+            productId: productId,
+          ));
+        }
+      }
+
+      // Also load network printers from shared preferences (for backward compatibility)
+      final prefs = await SharedPreferences.getInstance();
+      final savedPrinters = prefs.getString('network_printers');
+
+      if (savedPrinters != null && savedPrinters.isNotEmpty) {
+        try {
+          final List<dynamic> printerList = jsonDecode(savedPrinters);
+          for (var printer in printerList) {
+            final ip = printer['ip'] ?? '';
+            final port = printer['port'] ?? '9100';
+            final name = printer['name'] ?? 'Network Printer';
+
+            // Check if already exists in tempPrinters
+            final exists = tempPrinters.any((p) => p.address == ip);
+            if (!exists && ip.isNotEmpty) {
+              tempPrinters.add(PrinterSelection(
+                name: name,
+                address: ip,
+                port: port,
+                isSelected: true,
+              ));
+            }
+          }
+        } catch (e) {
+          print('Error parsing network printers: $e');
+        }
+      }
+
+      // Load selected printers from shared preferences
+      final selectedPrinters = prefs.getString('selected_printers');
+      if (selectedPrinters != null && selectedPrinters.isNotEmpty) {
+        try {
+          final List<dynamic> selectedList = jsonDecode(selectedPrinters);
+          for (var printer in tempPrinters) {
+            printer.isSelected = selectedList.any((p) =>
+            p['address'] == printer.address && p['port'] == printer.port
+            );
+          }
+        } catch (e) {
+          print('Error loading selected printers: $e');
+        }
+      }
+
+      // Apply proper names based on index — RENAME ONLY, no re-adding
+      for (int i = 0; i < tempPrinters.length; i++) {
+        final printer = tempPrinters[i];
+        if (printer.name == 'Network Printer' ||
+            printer.name == 'Unknown' ||
+            printer.name == 'Unknown Printer' ||
+            printer.name.startsWith('Printer ')) {
+          tempPrinters[i] = PrinterSelection(
+            name: _getPrinterName(i, printer.name),
+            address: printer.address,
+            port: printer.port,
+            isSelected: printer.isSelected,
+            type: printer.type,           // preserve type on rename
+            vendorId: printer.vendorId,   // preserve vendorId on rename
+            productId: printer.productId, // preserve productId on rename
+          );
+        }
+      }
+
+      setState(() {
+        _connectedPrinters = tempPrinters;
+        _isLoadingPrinters = false;
+      });
+
+      // If we have printers but they're not in DB, save them
+      if (_connectedPrinters.isNotEmpty && dbPrinters.isEmpty) {
+        await _savePrintersToDB();
+      }
+    } catch (e) {
+      debugPrint("Error loading connected printers: $e");
+      setState(() {
+        _isLoadingPrinters = false;
+      });
+    }
+  }
+  // NEW: Save selected printers to SharedPreferences
+  Future<void> _saveSelectedPrinters() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final selectedList = _connectedPrinters
+          .where((p) => p.isSelected)
+          .map((p) => {
+        'name': p.name,
+        'address': p.address,
+        'port': p.port,
+        'type': p.type,           // NEW
+        'vendorId': p.vendorId,   // NEW
+        'productId': p.productId, // NEW
+      })
+          .toList();
+      await prefs.setString('selected_printers', jsonEncode(selectedList));
+
+      // Also save to DB
+      await _savePrintersToDB();
+    } catch (e) {
+      print('Error saving selected printers: $e');
+    }
+  }
+
+  // NEW: Toggle printer selection
+  void _togglePrinterSelection(int index) {
+    setState(() {
+      _connectedPrinters[index].isSelected = !_connectedPrinters[index].isSelected;
+    });
+    _saveSelectedPrinters();
+  }
+
+  // NEW: Remove printer from list
+  Future<void> _removePrinter(int index) async {
+    final printer = _connectedPrinters[index];
+
+    // Show confirmation dialog
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove Printer'),
+        content: Text('Are you sure you want to remove "${printer.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Remove', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      // Remove from database
+      final printerDb = PrinterDBHelper();
+      await printerDb.deletePrinterFromDBByAddress(printer.address);
+
+      // Remove from list
+      setState(() {
+        _connectedPrinters.removeAt(index);
+      });
+
+      // Save updated list
+      await _saveSelectedPrinters();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Printer removed successfully'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 1),
+        ),
+      );
+    } catch (e) {
+      debugPrint("Error removing printer: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error removing printer: $e'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  // ==================== SETTINGS METHODS ====================
+
   Future<void> _loadGeneralSettings() async {
     try {
       final token = await SessionManager.getToken();
@@ -976,6 +445,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       debugPrint(e.toString());
     }
   }
+
   Future<void> _loadProfileImage(String url) async {
     try {
       final response = await http.get(Uri.parse(url));
@@ -989,6 +459,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       debugPrint(e.toString());
     }
   }
+
   Future<void> _loadLogoImage(String url) async {
     try {
       final response = await http.get(Uri.parse(url));
@@ -1002,6 +473,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       debugPrint("Logo image error: $e");
     }
   }
+
   Future<void> _saveGeneralSettings() async {
     try {
       final token = await SessionManager.getToken();
@@ -1017,11 +489,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return;
       }
 
+      // Save printers to DB first
+      await _savePrintersToDB();
+
+      // Get selected printer names
+      final selectedPrinterNames = _connectedPrinters
+          .where((p) => p.isSelected)
+          .map((p) => p.name)
+          .join(', ');
+
       final request = SaveGeneralSettingsRequest(
         headerText: _headerController.text.trim(),
         footerText: _footerController.text.trim(),
-        printSettings: _connectedPrinterName ?? "",
-        receiptLogoUrl: "", // Replace with uploaded logo URL if available
+        printSettings: selectedPrinterNames.isEmpty ? "" : selectedPrinterNames,
+        receiptLogoUrl: "",
       );
 
       final response = await _settingsRepository.saveGeneralSettings(
@@ -1029,8 +510,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         request: request,
       );
 
-      // Save locally if required
       await _saveSettings();
+      await _saveSelectedPrinters();
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1040,7 +521,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       );
 
-      // Refresh data from server
       await _loadGeneralSettings();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1050,22 +530,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           duration: Duration(seconds: 1),
         ),
       );
-    }
-  }
-  Future<void> _loadConnectedPrinter() async {
-    try {
-      final printerData = await PrinterDBHelper().getPrinterFromDB();
-      if (printerData.isNotEmpty) {
-        setState(() {
-          _connectedPrinterName = printerData.first['deviceName'] ?? printerData.first['device_name'];
-        });
-      } else {
-        setState(() {
-          _connectedPrinterName = null;
-        });
-      }
-    } catch (e) {
-      debugPrint("Error loading connected printer: $e");
     }
   }
 
@@ -1132,7 +596,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       final token = await SessionManager.getToken();
 
-      // Upload image to WordPress
       final uploadedUrl = await _settingsRepository.uploadImage(
         token: token!,
         imagePath: picked.path,
@@ -1197,18 +660,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await prefs.setString('orderTypeSelections', jsonEncode(_orderTypeSelections));
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Settings saved successfully'),
+      const SnackBar(
+        content: Text('Settings saved successfully'),
         duration: Duration(seconds: 1),
-        backgroundColor: Colors.green,),
+        backgroundColor: Colors.green,
+      ),
     );
   }
+
+  // ==================== UI WIDGETS ====================
 
   Widget _photoBox(Uint8List? bytes) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         GestureDetector(
-          onTap: () => _pickImage(true), // ✅ Profile image
+          onTap: () => _pickImage(true),
           child: DottedBorder(
             color: Colors.black,
             strokeWidth: 1.5,
@@ -1315,7 +782,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _logoBox(Uint8List? bytes, String? imageUrl,) {
+  Widget _logoBox(Uint8List? bytes, String? imageUrl) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -1354,7 +821,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(width: 12),
           Column(
             children: [
-              // Edit button
               InkWell(
                 onTap: () => _pickImage(false),
                 borderRadius: BorderRadius.circular(6),
@@ -1373,7 +839,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              // Delete button
               InkWell(
                 onTap: () async {
                   try {
@@ -1430,7 +895,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildTabs() {
-    final List<String> labels = ["General","Payment", "Advanced"];
+    final List<String> labels = ["General", "Payment", "Advanced"];
 
     return Row(
       children:
@@ -1477,8 +942,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   color: selected ? Colors.white : Colors.black,
                   fontSize: 14,
                   fontFamily: 'Manrope',
-                  fontWeight:
-                  selected ? FontWeight.w700 : FontWeight.normal,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.normal,
                 ),
               ),
             ),
@@ -1511,9 +975,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           readOnly: readOnly,
           decoration: InputDecoration(
             filled: true,
-            fillColor: readOnly
-                ? const Color(0xFFF5F5F5) // Grey background for non-editable fields
-                : const Color(0xFFEDF2F6),
+            fillColor: readOnly ? const Color(0xFFF5F5F5) : const Color(0xFFEDF2F6),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(6),
               borderSide: const BorderSide(color: Color(0xFFE0E4EC)),
@@ -1540,7 +1002,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // =================== MAIN BUILD ===================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1563,7 +1024,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // ===== Header =====
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 16,
@@ -1575,7 +1035,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                             child: Row(
                               children: [
-                                // back button
                                 Container(
                                   height: 40,
                                   padding: const EdgeInsets.symmetric(
@@ -1630,7 +1089,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                           const SizedBox(height: 22),
 
-                          // ===== Tab Content =====
                           if (_selectedLabel == "General")
                             _buildGeneralSection(),
                           if (_selectedLabel == "Payment")
@@ -1654,7 +1112,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // LEFT COLUMN
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1682,13 +1139,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
               const SizedBox(height: 25),
-              _buildField("Full Name", _fullNameController,readOnly: true,),
+              _buildField("Full Name", _fullNameController, readOnly: true),
               const SizedBox(height: 18),
-              _buildField("Contact No.", _contactController,readOnly: true,),
+              _buildField("Contact No.", _contactController, readOnly: true),
               const SizedBox(height: 18),
-              _buildField("Email Address", _emailController,readOnly: true,),
+              _buildField("Email Address", _emailController, readOnly: true),
               const SizedBox(height: 18),
-              _buildField("Device ID :", _deviceIdController,readOnly: true,),
+              _buildField("Device ID :", _deviceIdController, readOnly: true),
               const SizedBox(height: 18),
               FutureBuilder<PackageInfo>(
                 future: PackageInfo.fromPlatform(),
@@ -1713,7 +1170,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     );
                   } else if (snapshot.hasData) {
                     final packageInfo = snapshot.data!;
-                    final version = '${packageInfo.version}+${packageInfo.buildNumber}';
+                    final version =
+                        '${packageInfo.version}+${packageInfo.buildNumber}';
                     return Text(
                       "App Version $version",
                       style: const TextStyle(
@@ -1732,7 +1190,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         const SizedBox(width: 50),
 
-        // RIGHT COLUMN
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1749,96 +1206,279 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 20),
               Row(
                 children: [
-                  _logoBox(
-                    _logoBytes,
-                    _receiptLogoUrl,
-                  ),
+                  _logoBox(_logoBytes, _receiptLogoUrl),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: _buildField("Company Name", _companyController,readOnly: true,),
+                    child: _buildField("Company Name", _companyController, readOnly: true),
                   ),
                 ],
               ),
               const SizedBox(height: 20),
-              _buildField("GSTIN", _gstinController,readOnly: true,),
+              _buildField("GSTIN", _gstinController, readOnly: true),
               const SizedBox(height: 20),
               _buildField("Header", _headerController),
               const SizedBox(height: 20),
               _buildField("Footer", _footerController),
               const SizedBox(height: 20),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+
+              // UPDATED: Printer Settings Section with Multiple Printers
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          "Printer Settings",
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            const Text(
-                              "Connected Printer: ",
-                              style: TextStyle(color: Colors.black54),
-                            ),
-                            Text(
-                              _connectedPrinterName ?? "None",
-                              style: TextStyle(
-                                color: _connectedPrinterName != null
-                                    ? Colors.green
-                                    : Colors.black54,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            if (_connectedPrinterName != null)
-                              IconButton(
-                                icon: const Icon(Icons.cancel, color: Colors.red, size: 20),
-                                onPressed: () async {
-                                  try {
-                                    await PrinterDBHelper().deletePrinterFromDB();
-                                    setState(() {
-                                      _connectedPrinterName = null;
-                                    });
-                                  } catch (e) {
-                                    debugPrint("Error removing printer: $e");
-                                  }
-                                },
-                              ),
-                          ],
-                        ),
-                      ],
+                  const Text(
+                    "Printer Settings",
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  ElevatedButton(
-                    onPressed: () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const PrinterSetup(),
-                        ),
-                      );
-                      _loadConnectedPrinter();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF007BFF),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 30,
-                        vertical: 8,
+                  const SizedBox(height: 8),
+
+                  // Loading indicator
+                  if (_isLoadingPrinters)
+                    const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Center(
+                        child: CircularProgressIndicator(),
                       ),
-                      shape: RoundedRectangleBorder(
+                    ),
+
+                  // Printer List
+                  if (!_isLoadingPrinters && _connectedPrinters.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
                         borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.info_outline, color: Colors.orange, size: 20),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'No printers connected. Please add a printer.',
+                              style: TextStyle(color: Colors.black54),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    child: const Text(
-                      "+ Add",
-                      style: TextStyle(color: Colors.white, fontSize: 14),
+
+                  if (!_isLoadingPrinters && _connectedPrinters.isNotEmpty)
+                    Column(
+                      children: [
+                        ..._connectedPrinters.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final printer = entry.value;
+                          final badge = _getPrinterBadge(index);
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            decoration: BoxDecoration(
+                              color: printer.isSelected
+                                  ? Colors.green.shade50
+                                  : Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: printer.isSelected
+                                    ? Colors.green.shade300
+                                    : Colors.grey.shade300,
+                              ),
+                            ),
+                            child: ListTile(
+                              dense: true,
+                              leading: Checkbox(
+                                value: printer.isSelected,
+                                onChanged: (value) => _togglePrinterSelection(index),
+                                activeColor: Colors.green,
+                              ),
+                              title: Row(
+                                children: [
+                                  Text(
+                                    printer.name,
+                                    style: TextStyle(
+                                      fontWeight: printer.isSelected
+                                          ? FontWeight.w600
+                                          : FontWeight.normal,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  // Badge for KOT and Cash printers
+                                  if (index == 0 || index == 1)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: badge['color'],
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            badge['icon'],
+                                            color: Colors.white,
+                                            size: 12,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            badge['text'],
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              subtitle: Text(
+                                '${printer.address}:${printer.port}',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.close, color: Colors.red, size: 20),
+                                onPressed: () => _removePrinter(index),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+
+                        // Selected printers count with type indicators
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Selected Printers:',
+                                style: TextStyle(fontWeight: FontWeight.w500),
+                              ),
+                              Row(
+                                children: [
+                                  // Show KOT and Cash indicators if selected
+                                  if (_connectedPrinters.isNotEmpty && _connectedPrinters[0].isSelected)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      margin: const EdgeInsets.only(right: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue,
+                                        borderRadius: BorderRadius.circular(3),
+                                      ),
+                                      child: const Text(
+                                        'KOT',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  if (_connectedPrinters.length > 1 && _connectedPrinters[1].isSelected)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      margin: const EdgeInsets.only(right: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green,
+                                        borderRadius: BorderRadius.circular(3),
+                                      ),
+                                      child: const Text(
+                                        'Cash',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${_connectedPrinters.where((p) => p.isSelected).length} / ${_connectedPrinters.length}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blue,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
                     ),
+
+                  // Add Printer Button
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const PrinterSetup(),
+                              ),
+                            );
+                            await _loadConnectedPrinters();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF007BFF),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          icon: const Icon(Icons.add, color: Colors.white, size: 18),
+                          label: const Text(
+                            "Add Printer",
+                            style: TextStyle(color: Colors.white, fontSize: 14),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      if (_connectedPrinters.isNotEmpty)
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            // Select all printers
+                            setState(() {
+                              for (var printer in _connectedPrinters) {
+                                printer.isSelected = true;
+                              }
+                            });
+                            _saveSelectedPrinters();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          icon: const Icon(Icons.select_all, color: Colors.white, size: 18),
+                          label: const Text(
+                            "All",
+                            style: TextStyle(color: Colors.white, fontSize: 14),
+                          ),
+                        ),
+                    ],
                   ),
                 ],
               ),
@@ -1921,8 +1561,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     Checkbox(
                       value: _paymentSelections[method],
-                      onChanged:
-                          (val) =>
+                      onChanged: (val) =>
                           setState(() => _paymentSelections[method] = val!),
                       activeColor: Colors.black,
                     ),
@@ -1949,8 +1588,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     Checkbox(
                       value: _otherSelections[opt],
-                      onChanged:
-                          (val) => setState(() => _otherSelections[opt] = val!),
+                      onChanged: (val) =>
+                          setState(() => _otherSelections[opt] = val!),
                       activeColor: Colors.black,
                     ),
                     Text(opt, style: const TextStyle(fontSize: 14)),

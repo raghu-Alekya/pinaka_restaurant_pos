@@ -1,6 +1,7 @@
 //order_screen
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -13,6 +14,7 @@ import 'package:thermal_printer/esc_pos_utils_platform/src/enums.dart';
 import 'package:thermal_printer/esc_pos_utils_platform/src/generator.dart';
 import 'package:thermal_printer/esc_pos_utils_platform/src/pos_column.dart';
 import 'package:thermal_printer/esc_pos_utils_platform/src/pos_styles.dart';
+import 'package:thermal_printer/thermal_printer.dart';
 
 import '../../blocs/Bloc Event/kot_event.dart';
 import '../../blocs/Bloc Event/kot_event.dart' as kot_evt;
@@ -31,6 +33,7 @@ import '../../local database/table_dao.dart';
 import '../../models/order/order_items.dart';
 import '../../models/order/KOT_model.dart';
 import '../../models/order/guest_details.dart';
+import '../../printer/printer_db_helper.dart';
 import '../../printer/printer_settings.dart';
 import '../../repositories/checkin_repository.dart';
 import '../../repositories/discount_repository.dart';
@@ -207,42 +210,39 @@ class _OrderPanelState extends State<OrderPanel> {
     );
 
     final orderType = widget.isTakeAway ? "Take Away" : "Dine In";
+    final dineInTitle = widget.isTakeAway
+        ? "Take Away"
+        : (tableName.isNotEmpty ? "$orderType: $tableName" : orderType);
 
     bytes += generator.text(
-      orderType,
-      styles: const PosStyles(align: PosAlign.center, bold: true),
+      dineInTitle,
+      styles: const PosStyles(
+        align: PosAlign.center,
+        bold: true,
+        height: PosTextSize.size3,
+        width: PosTextSize.size2,
+      ),
     );
 
     bytes += generator.hr();
     // table row
 
-    final dateText =
-        "Date: ${DateFormat('dd/MM/yyyy hh:mm a').format(DateTime.now())}";
-    final dineInText = "$orderType: $tableName";
+    final now = DateTime.now();
+    final dateText = "Date: ${DateFormat('dd/MM/yyyy').format(now)}";
+    final timeText = "Time: ${DateFormat('hh:mm a').format(now)}";
 
-    if ((dateText.length + dineInText.length) < 45) {
-      bytes += generator.row([
-        PosColumn(
-          width: 7,
-          text: dateText,
-          styles: const PosStyles(bold: true),
-        ),
-        PosColumn(
-          width: 5,
-          text: dineInText,
-          styles: const PosStyles(align: PosAlign.right, bold: true),
-        ),
-      ]);
-    } else {
-      bytes += generator.text(
-        dateText,
-        styles: const PosStyles(align: PosAlign.left, bold: true),
-      );
-      bytes += generator.text(
-        dineInText,
-        styles: const PosStyles(align: PosAlign.left, bold: true),
-      );
-    }
+    bytes += generator.row([
+      PosColumn(
+        width: 6,
+        text: dateText,
+        styles: const PosStyles(bold: true),
+      ),
+      PosColumn(
+        width: 6,
+        text: timeText,
+        styles: const PosStyles(align: PosAlign.right, bold: true),
+      ),
+    ]);
 
     // add a row of space between date row and Order id row
     bytes += [27, 74, 16];
@@ -448,38 +448,204 @@ class _OrderPanelState extends State<OrderPanel> {
     bytes += generator.feed(3);
     bytes += generator.cut();
 
-    final printerSettings = PrinterSettings();
-    await printerSettings.loadPrinter();
 
-    if (printerSettings.selectedPrinter != null) {
+
+    // First, try to get selected printers from SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    final selectedPrintersJson = prefs.getString('selected_printers');
+
+    // Also get from database as fallback
+    final printerDb = PrinterDBHelper();
+    final dbPrinters = await printerDb.getSelectedPrintersFromDB();
+
+    // Collect all printer addresses to print to
+    List<Map<String, dynamic>> printersToPrint = [];
+
+    // Add from SharedPreferences
+    if (selectedPrintersJson != null && selectedPrintersJson.isNotEmpty) {
       try {
-        await printerSettings.printTicket(bytes, generator);
+        final List<dynamic> selectedList = jsonDecode(selectedPrintersJson);
+        for (var printer in selectedList) {
+          final address = printer['address'] ?? '';
+          final name = printer['name'] ?? 'Printer';
+          if (address.isNotEmpty) {
+            printersToPrint.add({
+              'address': address,
+              'name': name,
+              'port': printer['port'] ?? '9100',
+            });
+          }
+        }
       } catch (e) {
-        debugPrint("KOT print error: $e");
+        debugPrint("Error parsing selected printers: $e");
+      }
+    }
+
+    // Add from Database (if not already added)
+    for (var printer in dbPrinters) {
+      final address = printer['printer_address'] ?? '';
+      if (address.isNotEmpty) {
+        final exists = printersToPrint.any((p) => p['address'] == address);
+        if (!exists) {
+          printersToPrint.add({
+            'address': address,
+            'name': printer['deviceName'] ?? printer['device_name'] ?? 'Printer',
+            'port': printer['port'] ?? '9100',
+          });
+        }
+      }
+    }
+
+    // ============================================
+    // 🆕 NEW: Find KOT Printer (first printer with "KOT" in name)
+    // ============================================
+
+    // Try to find KOT Printer
+    Map<String, dynamic>? kotPrinter;
+    List<Map<String, dynamic>> otherPrinters = [];
+
+    for (var printer in printersToPrint) {
+      final name = printer['name']?.toLowerCase() ?? '';
+      // Check if this is the KOT Printer (exact match or contains "kot")
+      if (name == 'kot printer' || name.contains('kot')) {
+        kotPrinter = printer;
+      } else {
+        otherPrinters.add(printer);
+      }
+    }
+
+    // If KOT Printer is not found, use the first printer (fallback)
+    if (kotPrinter == null && printersToPrint.isNotEmpty) {
+      debugPrint("⚠️ KOT Printer not found. Using first printer as fallback.");
+      kotPrinter = printersToPrint.first;
+    }
+
+    // If no printers found, try the old single printer method
+    if (kotPrinter == null) {
+      final printerSettings = PrinterSettings();
+      await printerSettings.loadPrinter();
+
+      if (printerSettings.selectedPrinter != null) {
+        try {
+          await printerSettings.printTicket(bytes, generator);
+          debugPrint("KOT printed to single printer (legacy mode)");
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("KOT printed successfully"),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        } catch (e) {
+          debugPrint("KOT print error: $e");
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text("KOT print failed: $e"),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      } else {
+        debugPrint("KOT print: No printer selected");
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("KOT print failed: $e"),
+            const SnackBar(
+              content: Text(
+                "No printer selected. Please set up a printer in settings.",
+              ),
               backgroundColor: Colors.red,
             ),
           );
         }
       }
-    } else {
-      debugPrint("KOT print: No printer selected");
+      return;
+    }
+
+    // ============================================
+    // 🆕 PRINT KOT ONLY TO KOT PRINTER
+    // ============================================
+
+    final address = kotPrinter['address'] ?? '';
+    final name = kotPrinter['name'] ?? 'KOT Printer';
+    final port = kotPrinter['port'] ?? '9100';
+
+    if (address.isEmpty) {
+      debugPrint("❌ KOT Printer address is empty");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text(
-              "No printer selected. Please set up a printer in settings.",
-            ),
+            content: Text("KOT Printer address is invalid"),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      debugPrint("🖨️ Printing KOT to: $name ($address:$port)");
+
+      // Connect to printer
+      final connected = await PrinterManager.instance.connect(
+        type: PrinterType.network,
+        model: TcpPrinterInput(ipAddress: address),
+      );
+
+      if (connected) {
+        // Send data
+        await PrinterManager.instance.send(
+          type: PrinterType.network,
+          bytes: bytes,
+        );
+        // Disconnect
+        await PrinterManager.instance.disconnect(type: PrinterType.network);
+
+        debugPrint("✅ KOT successfully printed to: $name ($address)");
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("KOT printed successfully to KOT Printer"),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      } else {
+        debugPrint("❌ Failed to connect to KOT Printer: $name ($address)");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Failed to connect to KOT Printer"),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint("❌ Error printing KOT to $name: $e");
+      // Try to disconnect if still connected
+      try {
+        await PrinterManager.instance.disconnect(type: PrinterType.network);
+      } catch (_) {}
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error printing KOT: $e"),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
           ),
         );
       }
     }
   }
-
   Future<void> _cancelOrder(int currentOrderId) async {
     showDialog(
       context: context,

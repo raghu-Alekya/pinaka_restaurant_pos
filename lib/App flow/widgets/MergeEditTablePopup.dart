@@ -119,10 +119,12 @@ class _MergeEditTablePopupState extends State<MergeEditTablePopup> {
   @override
   Widget build(BuildContext context) {
     final bool isUpdateMode = widget.tableData['is_merged'] == true;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      backgroundColor: Colors.white,
+      backgroundColor: theme.cardColor,
       insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
       contentPadding: const EdgeInsets.all(20),
       content: SizedBox(
@@ -137,14 +139,13 @@ class _MergeEditTablePopupState extends State<MergeEditTablePopup> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const SizedBox(width: 28),
-                const Expanded(
+                Expanded(
                   child: Text(
                     "Merge/Edit Table",
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: theme.textTheme.titleLarge?.copyWith(
                       fontSize: 20,
                       fontWeight: FontWeight.w600,
-                      color: Colors.black,
                     ),
                   ),
                 ),
@@ -168,28 +169,29 @@ class _MergeEditTablePopupState extends State<MergeEditTablePopup> {
             Text.rich(
               TextSpan(
                 children: [
-                  const TextSpan(
-                    text:
-                    "Choose a parent table and one or more child tables to merge within the ",
+                  TextSpan(
+                    text: "Choose a parent table and one or more child tables to merge within the ",
                     style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black54),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                    ),
                   ),
                   TextSpan(
                     text: "${widget.tableData['areaName']}",
-                    style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black),
-                  ),
-                  const TextSpan(
-                    text:
-                    " area. The parent table will act as the primary table, and all selected child tables will be combined under it.",
                     style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black54),
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: theme.textTheme.bodyLarge?.color,
+                    ),
+                  ),
+                  TextSpan(
+                    text: " area. The parent table will act as the primary table, and all selected child tables will be combined under it.",
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                    ),
                   ),
                 ],
               ),
@@ -205,9 +207,12 @@ class _MergeEditTablePopupState extends State<MergeEditTablePopup> {
                       title: "Choose Table to modify (Parent) Available:",
                       children: [
                         if (parentTables.where((t) => t['status'] == 'Available').isEmpty)
-                          const Text(
+                          Text(
                             "No tables available",
-                            style: TextStyle(fontSize: 14, color: Colors.grey),
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: theme.disabledColor,
+                            ),
                           )
                         else
                           Wrap(
@@ -225,12 +230,12 @@ class _MergeEditTablePopupState extends State<MergeEditTablePopup> {
                                 .toList(),
                           ),
                         const SizedBox(height: 18),
-                        const Text(
+                        Text(
                           "Choose Table to modify (Parent) Running:",
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
-                            color: Colors.black,
+                            color: theme.textTheme.bodyLarge?.color,
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -263,9 +268,12 @@ class _MergeEditTablePopupState extends State<MergeEditTablePopup> {
                       title: "Choose Table to modify (Child) Available:",
                       children: [
                         if (childTables.where((t) => t['status'] == 'Available').isEmpty)
-                          const Text(
+                          Text(
                             "No tables available",
-                            style: TextStyle(fontSize: 14, color: Colors.grey),
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Theme.of(context).disabledColor,
+                            ),
                           )
                         else
                           Wrap(
@@ -273,13 +281,15 @@ class _MergeEditTablePopupState extends State<MergeEditTablePopup> {
                             runSpacing: 10,
                             children: childTables
                                 .where((t) => t['status'] == 'Available')
-                                .map((t) => _buildTableButton(
-                              tableName: t['table_name'],
-                              status: t['status'],
-                              isParent: false,
-                              isMerged: t['is_merged'] == true,
-                              isUpdateMode: isUpdateMode,
-                            ))
+                                .map(
+                                  (t) => _buildTableButton(
+                                tableName: t['table_name'],
+                                status: t['status'],
+                                isParent: false,
+                                isMerged: t['is_merged'] == true,
+                                isUpdateMode: isUpdateMode,
+                              ),
+                            )
                                 .toList(),
                           ),
                       ],
@@ -298,6 +308,8 @@ class _MergeEditTablePopupState extends State<MergeEditTablePopup> {
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFF5A5A),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
@@ -372,10 +384,10 @@ class _MergeEditTablePopupState extends State<MergeEditTablePopup> {
                   widget.tableData['is_merged'] == true
                       ? "Update & Proceed"
                       : "Merge & Proceed",
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
                   ),
                 ),
               ),
@@ -386,18 +398,35 @@ class _MergeEditTablePopupState extends State<MergeEditTablePopup> {
     );
   }
 
-  Widget _buildPanel({required String title, required List<Widget> children}) {
+  Widget _buildPanel({
+    required String title,
+    required List<Widget> children,
+  }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-          color: const Color(0xFFF0F3FC), borderRadius: BorderRadius.circular(12)),
+        color: isDark
+            ? theme.cardColor
+            : const Color(0xFFF0F3FC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark
+              ? Colors.grey.shade700
+              : Colors.grey.shade300,
+        ),
+      ),
       child: ListView(
         children: [
-          Text(title,
-              style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black)),
+          Text(
+            title,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: 12),
           ...children,
         ],

@@ -88,56 +88,81 @@ class TableBloc extends Bloc<TableEvent, TableState> {
       }
     });
 
-    on<LoadTablesEvent>((event, emit) async {
-      emit(TableLoadingState());
+    void emitProcessedState(
+        List<Map<String, dynamic>> zones,
+        List<Map<String, dynamic>> tablesRaw,
+        Emitter<TableState> emit,
+        ) {
+      final zoneIdToName = {
+        for (var zone in zones)
+          zone['zone_id'].toString(): zone['zone_name'].toString(),
+      };
 
-      try {
-        AppLogger.info('Fetching zones from server...');
-        final zones = await zoneRepository.getAllZones(event.token);
-        final zoneIdToName = {
-          for (var zone in zones)
-            zone['zone_id'].toString(): zone['zone_name'].toString(),
+      final List<Map<String, dynamic>> tables = tablesRaw.map((table) {
+        final zoneId = table['zone_id'].toString();
+        if (!zoneIdToName.containsKey(zoneId)) return null;
+
+        final zoneName = zoneIdToName[zoneId]!;
+
+        return {
+          ...table,
+          'tableName': table['table_name'],
+          'areaName': zoneName,
+          'position': Offset(
+            double.tryParse(table['pos_x'].toString()) ?? 0.0,
+            double.tryParse(table['pos_y'].toString()) ?? 0.0,
+          ),
+          'status': table['status'] ?? 'Available',
+          'reservationDate': table['reservation_date'],
+          'reservationTime': table['reservation_time'],
+          'rotation':
+          double.tryParse(table['rotation']?.toString() ?? '0') ?? 0.0,
+          'capacity': int.tryParse(table['capacity'].toString()) ?? 0,
+          'shape': table['shape'],
         };
+      }).whereType<Map<String, dynamic>>().toList();
 
-        AppLogger.info('Fetching tables from API...');
-        final tablesRaw = await tableRepository.getAllTables(event.token);
-        final List<Map<String, dynamic>> tables = tablesRaw.map((table) {
-          final zoneId = table['zone_id'].toString();
-          if (!zoneIdToName.containsKey(zoneId)) return null;
+      final usedTableNames =
+      tables.map((t) => t['tableName'].toString().toLowerCase()).toSet();
+      final usedAreaNames =
+      tables.map((t) => t['areaName'].toString().toLowerCase()).toSet();
 
-          final zoneName = zoneIdToName[zoneId]!;
+      emit(TableLoadedState(
+        tables: tables,
+        usedTableNames: usedTableNames,
+        usedAreaNames: usedAreaNames,
+      ));
+    }
 
-          return {
-            ...table,
-            'tableName': table['table_name'],
-            'areaName': zoneName,
-            'position': Offset(
-              double.tryParse(table['pos_x'].toString()) ?? 0.0,
-              double.tryParse(table['pos_y'].toString()) ?? 0.0,
-            ),
-            'status': table['status'] ?? 'Available',
-            'reservationDate': table['reservation_date'],
-            'reservationTime': table['reservation_time'],
-            'rotation': double.tryParse(table['rotation']?.toString() ?? '0') ?? 0.0,
-            'capacity': int.tryParse(table['capacity'].toString()) ?? 0,
-            'shape': table['shape'],
-          };
-        }).whereType<Map<String, dynamic>>().toList();
+    on<LoadTablesEvent>((event, emit) async {
+      // 1. Instant Cache-First Load
+      final cachedZones = await zoneRepository.getAllZones(event.token);
+      final cachedTables = await tableRepository.getAllTables(event.token);
 
-        final usedTableNames = tables.map((t) => t['tableName'].toString().toLowerCase()).toSet();
-        final usedAreaNames = tables.map((t) => t['areaName'].toString().toLowerCase()).toSet();
+      bool hasRenderedCache = false;
+      if (cachedZones.isNotEmpty && cachedTables.isNotEmpty) {
+        emitProcessedState(cachedZones, cachedTables, emit);
+        hasRenderedCache = true;
+      } else {
+        emit(TableLoadingState());
+      }
 
-        emit(TableLoadedState(
-          tables: tables,
-          usedTableNames: usedTableNames,
-          usedAreaNames: usedAreaNames,
-        ));
+      // 2. Background Revalidation from Server API
+      try {
+        final freshZones =
+        await zoneRepository.fetchZonesFromApi(event.token);
+        final freshTables =
+        await tableRepository.fetchTablesFromApi(event.token);
+
+        if (freshZones.isNotEmpty && freshTables.isNotEmpty) {
+          emitProcessedState(freshZones, freshTables, emit);
+        }
       } catch (e) {
         final message = e.toString().replaceFirst("Exception: ", "");
-
         AppLogger.error("Error loading tables: $message");
-
-        emit(TableLoadErrorState(message));
+        if (!hasRenderedCache) {
+          emit(TableLoadErrorState(message));
+        }
       }
     });
 

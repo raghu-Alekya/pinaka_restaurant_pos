@@ -37,6 +37,8 @@ class ConfirmationPopup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return GestureDetector(
       onTap: onCancel,
       child: Material(
@@ -48,19 +50,23 @@ class ConfirmationPopup extends StatelessWidget {
               width: 556,
               padding: const EdgeInsets.fromLTRB(34, 30, 1, 30),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
+                gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
+                  colors: isDark
+                      ? const [
+                    Color(0xFF46333A),
+                    Color(0xFF202433),
+                  ]
+                      : const [
                     Color(0xFFEFCDCD),
                     Colors.white,
                   ],
                 ),
                 borderRadius: BorderRadius.circular(20),
-                border: const Border(
-                  top: BorderSide(color: Color(0xFFD83434), width: 4),
-                  left: BorderSide(color: Color(0xFFD83434), width: 0.1),
-                  right: BorderSide(color: Color(0xFFD83434), width: 0.1),
+                border: Border.all(
+                  color: primaryColor,
+                  width: 1,
                 ),
                 boxShadow: const [
                   BoxShadow(
@@ -83,7 +89,9 @@ class ConfirmationPopup extends StatelessWidget {
                         width: 72,
                         height: 72,
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: isDark
+                              ? const Color(0xFF2A2F3D)
+                              : Colors.white,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
                             color: primaryColor,
@@ -107,10 +115,10 @@ class ConfirmationPopup extends StatelessWidget {
 
                             Text(
                               title,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 28,
                                 fontWeight: FontWeight.w600,
-                                color: Color(0xFF373535),
+                                color: isDark ? Colors.white : const Color(0xFF373535),
                               ),
                             ),
 
@@ -118,8 +126,10 @@ class ConfirmationPopup extends StatelessWidget {
 
                             RichText(
                               text: TextSpan(
-                                style: const TextStyle(
-                                  color: Color(0xFF656161),
+                                style: TextStyle(
+                                  color: isDark
+                                      ? Colors.white70
+                                      : const Color(0xFF656161),
                                   fontSize: 16,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -130,8 +140,10 @@ class ConfirmationPopup extends StatelessWidget {
                                   if (highlightedText != null)
                                     TextSpan(
                                       text: highlightedText,
-                                      style: const TextStyle(
-                                        color: Color(0xFF373535), // Same as normal text
+                                      style: TextStyle(
+                                        color: isDark
+                                            ? Colors.white
+                                            : const Color(0xFF373535),
                                         fontWeight: FontWeight.bold,
                                         fontSize: 16,
                                       ),
@@ -139,9 +151,12 @@ class ConfirmationPopup extends StatelessWidget {
                                   if (trailingMessage != null)
                                     TextSpan(
                                       text: trailingMessage,
-                                      style: const TextStyle(
-                                        color: Color(0xFF656161),
-                                        fontWeight: FontWeight.w600,
+                                      style: TextStyle(
+                                        color: isDark
+                                            ? Colors.white70
+                                            : const Color(0xFF656161),
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
                                       ),
                                     ),
                                 ],
@@ -165,9 +180,12 @@ class ConfirmationPopup extends StatelessWidget {
                         child: OutlinedButton(
                           onPressed: isLoading ? null : onCancel,
                           style: OutlinedButton.styleFrom(
-                            backgroundColor: const Color(0xFFF6F6F6),
-                            side: const BorderSide(
-                              color: Color(0xFFC3C3C3),
+                            backgroundColor: isDark
+                                ? const Color(0xFF2A2F3D)
+                                : const Color(0xFFF6F6F6),
+
+                            side: BorderSide(
+                              color: theme.dividerColor,
                             ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
@@ -175,9 +193,11 @@ class ConfirmationPopup extends StatelessWidget {
                           ),
                           child: Text(
                             cancelButtonText,
-                            style: const TextStyle(
-                              color: Color(0xFF535353),
-                              fontWeight: FontWeight.w600,
+                            style: TextStyle(
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF373535),
+                              fontWeight: FontWeight.bold,
                               fontSize: 16,
                             ),
                           ),

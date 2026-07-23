@@ -173,6 +173,7 @@ class _MerchantOnboardingScreenState
 
                                           final prefs =
                                           await SharedPreferences.getInstance();
+                                          await prefs.clear(); // 🧹 Clear cache from previous store
 
                                           await prefs.setString(
                                             'store_base_url',

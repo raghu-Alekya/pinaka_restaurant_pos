@@ -338,41 +338,39 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         ),
       );
 
+      final tableName = (_selectedTable?['table_name'] ?? '').toString();
+      final dineInTitle =
+      tableName.isNotEmpty ? "Dine In: $tableName" : "Dine In";
+
       bytes += generator.text(
-        "Dine In",
-        styles: const PosStyles(align: PosAlign.center, bold: true),
+        dineInTitle,
+        styles: const PosStyles(
+          align: PosAlign.center,
+          bold: true,
+          height: PosTextSize.size3,
+          width: PosTextSize.size2,
+        ),
       );
 
       bytes += generator.hr();
       // table row
 
-      final tableName = (_selectedTable?['table_name'] ?? '').toString();
-      final dateText = "Date: ${DateFormat('dd/MM/yyyy hh:mm a').format(DateTime.now())}";
-      final dineInText = "Dine In: $tableName";
+      final now = DateTime.now();
+      final dateText = "Date: ${DateFormat('dd/MM/yyyy').format(now)}";
+      final timeText = "Time: ${DateFormat('hh:mm a').format(now)}";
 
-      if ((dateText.length + dineInText.length) < 45) {
-        bytes += generator.row([
-          PosColumn(
-            width: 7,
-            text: dateText,
-            styles: const PosStyles(bold: true),
-          ),
-          PosColumn(
-            width: 5,
-            text: dineInText,
-            styles: const PosStyles(align: PosAlign.right, bold: true),
-          ),
-        ]);
-      } else {
-        bytes += generator.text(
-          dateText,
-          styles: const PosStyles(align: PosAlign.left, bold: true),
-        );
-        bytes += generator.text(
-          dineInText,
-          styles: const PosStyles(align: PosAlign.left, bold: true),
-        );
-      }
+      bytes += generator.row([
+        PosColumn(
+          width: 6,
+          text: dateText,
+          styles: const PosStyles(bold: true),
+        ),
+        PosColumn(
+          width: 6,
+          text: timeText,
+          styles: const PosStyles(align: PosAlign.right, bold: true),
+        ),
+      ]);
 
       // add a row of space between date row and Order id row
       bytes += [27, 74, 16];
@@ -597,11 +595,11 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text(
-                "No printer selected. Please set up a printer in settings.",
-              ),
-              backgroundColor: Colors.red,
-              duration: Duration(seconds: 1)
+                content: Text(
+                  "No printer selected. Please set up a printer in settings.",
+                ),
+                backgroundColor: Colors.red,
+                duration: Duration(seconds: 1)
             ),
           );
         }

@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/UserPermissions.dart';
+import '../repositories/zone_repository.dart';
+import '../repositories/table_repository.dart';
 
 class SessionManager {
   static const _permissionsKey = 'user_permissions';
@@ -141,6 +143,8 @@ class SessionManager {
   static Future<void> clearSession() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
+    ZoneRepository.clearMemoryCache();
+    TableRepository.clearMemoryCache();
     print("🧹 Session cleared");
   }
   static Future<void> saveCurrencySymbol(String symbol) async {

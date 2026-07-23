@@ -2752,7 +2752,7 @@ Net Payable      : $netPayableTemp
                               decoration: BoxDecoration(
                                 color: isDark
                                     ? const Color(0xFF2A2F45)
-                                    : const Color(0xFFDEE8FF),
+                                    : const Color(0xFFF6F6F6),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               padding: const EdgeInsets.all(10),
@@ -2760,7 +2760,7 @@ Net Payable      : $netPayableTemp
                                 decoration: BoxDecoration(
                                   color: isDark
                                       ? const Color(0xFF25283A)
-                                      : const Color(0xFFF1F1F3),
+                                      : const Color(0xFFFFFFFF),
                                   borderRadius: BorderRadius.circular(5),
                                 ),
                                 child: Column(
@@ -3275,7 +3275,7 @@ Net Payable      : $netPayableTemp
                                 decoration: BoxDecoration(
                                   color: isDark
                                       ? const Color(0xFF2A2F45)
-                                      : const Color(0xFFDEE8FF),/// SAME COLOR AS IMAGE
+                                      : const Color(0xFFECEEFB),/// SAME COLOR AS IMAGE
                                   borderRadius: BorderRadius.only(
                                     bottomLeft: Radius.circular(8),
                                     bottomRight: Radius.circular(8),

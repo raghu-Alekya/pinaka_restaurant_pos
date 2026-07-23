@@ -891,21 +891,34 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
     required Color borderColor,
     required Color titleColor,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: bgColor,
+        color: isDark ? const Color(0xFF12171E) : bgColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderColor),
+        border: Border.all(
+          color: isDark ? const Color(0xFF374151) : borderColor,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? Colors.black.withOpacity(0.35)
+                : Colors.black12,
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min, // <-- Important
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             title,
             style: TextStyle(
-              color: titleColor,
+              color: isDark ? Colors.grey.shade300 : titleColor,
               fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
@@ -913,8 +926,8 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
           const SizedBox(width: 8),
           Text(
             value,
-            style: const TextStyle(
-              color: Color(0xFF111827),
+            style: TextStyle(
+              color: isDark ? Colors.white : const Color(0xFF111827),
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
@@ -1006,11 +1019,31 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
             height: 40,
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF374151) : Colors.white,
+              color: isDark
+                  ? const Color(0xFF12171E) // same dark background as your cards
+                  : Colors.white,
               border: Border.all(
-                color: isDark ? const Color(0xFF4B5563) : Colors.grey.shade300,
+                color: isDark
+                    ? const Color(0xFF374151) // dark border
+                    : Colors.grey.shade300,
+                width: 1,
               ),
               borderRadius: BorderRadius.circular(10),
+              boxShadow: isDark
+                  ? [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.35),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+                  : [
+                const BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 4,
+                  offset: Offset(0, 2),
+                ),
+              ],
             ),
             child: InkWell(
               onTap: () async {
@@ -1035,6 +1068,25 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                         : selectedDate,
                     firstDate: dateRange.start,
                     lastDate: dateRange.end,
+                    builder: (context, child) {
+                      return Theme(
+                        data: Theme.of(context).copyWith(
+                          colorScheme: isDark
+                              ? const ColorScheme.dark(
+                            primary: Color(0xFFFFFFFF), // Selected date background
+                            onPrimary: Colors.black,    // Selected date text
+                            surface: Color(0xFF1F2937), // Calendar background
+                            onSurface: Colors.white,    // Calendar text
+                          )
+                              : Theme.of(context).colorScheme,
+                          dialogTheme: DialogThemeData(
+                            backgroundColor:
+                            isDark ? const Color(0xFF1F2937) : Colors.white,
+                          ),
+                        ),
+                        child: child!,
+                      );
+                    },
                   );
                   if (picked != null) {
                     setState(() {
@@ -1540,39 +1592,35 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                                 vertical: 8,
                               ),
                               decoration: BoxDecoration(
-                                color:
-                                isSelected
-                                    ? const Color(
-                                  0xFFE7FAEF,
-                                )
+                                color: isSelected
+                                    ? (isDark
+                                    ? const Color(0xFF1F4D37)
+                                    : const Color(0xFFE7FAEF))
                                     : isActive
-                                    ? Colors.white
-                                    : Colors.grey.shade200,
-                                borderRadius:
-                                BorderRadius.circular(7),
+                                    ? (isDark
+                                    ? const Color(0xFF111827)//0xFF111827
+                                    : Colors.white)
+                                    : (isDark
+                                    ? const Color(0xFF12171E)//0xFF374151
+                                    : Colors.grey.shade200),
+                                borderRadius: BorderRadius.circular(7),
                                 border: Border.all(
-                                  color:
-                                  isSelected
+                                  color: isSelected
                                       ? Colors.green
-                                      : isActive
-                                      ? Colors.grey.shade300
-                                      : Colors
-                                      .grey
-                                      .shade300,
+                                      : isDark
+                                      ? const Color(0xFF4B5563)
+                                      : Colors.grey.shade300,
                                 ),
                               ),
                               child: Text(
                                 formattedSlot,
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  color:
-                                  isSelected
-                                      ? const Color(
-                                    0xFF4CAF50,
-                                  )
+                                  color: isSelected
+                                      ? Colors.green
                                       : isActive
-                                      ? Colors.black
-                                      : Colors.grey,
+                                      ? (isDark ? Colors.grey.shade300 : Colors.black)
+                                      : (isDark ? Colors.grey.shade800 : Colors.grey),
                                   fontWeight: FontWeight.w500,
                                   fontSize: 14,
                                 ),
@@ -1626,16 +1674,22 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       return peopleCount == 0 || capacity >= peopleCount;
     }).toList();
 
-    return Card(
-      shape: RoundedRectangleBorder(
+    return  Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1F2937) : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
+        border: Border.all(
           color: isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB),
           width: 1,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: isDark ? Colors.black26 : Colors.black12,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      color: isDark ? const Color(0xFF1F2937) : Colors.white,
-      elevation: 0,
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -1824,20 +1878,28 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                   }
 
                   // Colors
-                  Color cardColor = Colors.white;
+                  Color cardColor = isDark
+                      ? const Color(0xFF12171E)
+                      : Colors.white;
                   Color borderColor = Colors.grey.shade300;
-                  Color textColor = Colors.black;
+                  Color textColor = isDark
+                      ? Colors.white70
+                      : Colors.black;
                   Color iconColor = Colors.green;
 
                   if (status == 'available') {
-                    cardColor =
-                    isSelected
-                        ? const Color(0xFFE7FAEF)
-                        : Colors.white;
-                    borderColor =
-                    isSelected
+                    cardColor = isSelected
+                        ? (isDark
+                        ? const Color(0xFF1E3A2A)
+                        : const Color(0xFFE7FAEF))
+                        : (isDark
+                        ? const Color(0xFF12171E)
+                        : Colors.white);
+                    borderColor = isSelected
                         ? Colors.green
-                        : Colors.grey.shade300;
+                        : (isDark
+                        ? const Color(0xFF4B5563) // Better visible in dark mode
+                        : Colors.grey.shade300);
                   } else if (status == 'reserve') {
                     cardColor = const Color(0xFFE0E0E0);
                     textColor = Colors.grey;
@@ -1942,7 +2004,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                               isSelected
                                   ? Colors.green
                                   : borderColor,
-                              width: 1.5,
+                              width: 1,
                             ),
                             borderRadius: BorderRadius.circular(
                               12,
@@ -2469,24 +2531,41 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   };
 
   Widget _mealTabs() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Row(
-      children:
-      availableMeals.map((meal) {
+      children: availableMeals.map((meal) {
         final isSelected = selectedMeal == meal;
+
         return Padding(
-          padding: const EdgeInsets.only(right: 9, left: 0),
+          padding: const EdgeInsets.only(right: 6),
           child: Container(
             decoration: BoxDecoration(
-              color: isSelected ? Colors.white : const Color(0xFFF5F7FF),
+              color: isSelected
+                  ? (isDark
+                  ? const Color(0xFF371111)
+                  : Color(0xFFFAE8E8))
+                  : (isDark
+                  ? const Color(0xFF1F2937)
+                  : const Color(0xFFF5F7FF)),
               borderRadius: BorderRadius.circular(12),
-              boxShadow:
-              isSelected
+              border: Border.all(
+                color: isSelected
+                    ? (isDark
+                    ? const Color(0xFFEF4444)
+                    : Colors.red)
+                    : (isDark
+                    ? const Color(0xFF374151)
+                    : Colors.transparent),
+              ),
+              boxShadow: isSelected
                   ? [
-                const BoxShadow(
-                  color: Color(0x3F000000),
+                BoxShadow(
+                  color: isDark
+                      ? Colors.black45
+                      : const Color(0x3F000000),
                   blurRadius: 6,
-                  offset: Offset(0, 1),
-                  spreadRadius: 0,
+                  offset: const Offset(0, 1),
                 ),
               ]
                   : [],
@@ -2495,9 +2574,8 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
               borderRadius: BorderRadius.circular(12),
               onTap: () {
                 final slots = mealSlots[meal] ?? [];
-                final hasActiveSlot = slots.any(
-                      (slot) => slot['is_active'] == true,
-                );
+                final hasActiveSlot =
+                slots.any((slot) => slot['is_active'] == true);
 
                 if (!hasActiveSlot) {
                   AreaMovementNotifier.showPopup(
@@ -2515,12 +2593,15 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                   selectedMeal = meal;
                   selectedTables.clear();
                   _isLoadingTables = false;
+
                   final firstActiveSlot = slots.firstWhere(
                         (slot) => slot['is_active'] == true,
                     orElse: () => slots.isNotEmpty ? slots.first : {},
                   );
 
-                  selectedSlot = firstActiveSlot['Time Slot']?.trim() ?? '';
+                  selectedSlot =
+                      firstActiveSlot['Time Slot']?.trim() ?? '';
+
                   if (selectedSlot.isNotEmpty) {
                     _fetchTables();
                   }
@@ -2536,14 +2617,22 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                     Icon(
                       mealIcons[meal.toLowerCase()] ?? Icons.fastfood,
                       size: 14,
-                      color: isSelected ? Colors.red : Colors.grey[600],
+                      color: isSelected
+                          ? Colors.red
+                          : (isDark
+                          ? Colors.white70
+                          : Colors.grey[600]),
                     ),
                     const SizedBox(width: 6),
                     Text(
                       meal[0].toUpperCase() + meal.substring(1),
                       style: TextStyle(
-                        color: isSelected ? Colors.red : Colors.grey[600],
-                        fontWeight: FontWeight.w500,
+                        color: isSelected
+                            ? Colors.red
+                            : (isDark
+                            ? Colors.white
+                            : Colors.grey[600]),
+                        fontWeight: FontWeight.w600,
                         fontSize: 14,
                       ),
                     ),
@@ -2556,7 +2645,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       }).toList(),
     );
   }
-
   Widget _styledCard({required Widget child, required bool isDark}) {
     return Container(
       padding: const EdgeInsets.all(20),

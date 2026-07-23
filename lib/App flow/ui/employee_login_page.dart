@@ -105,11 +105,15 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return BlocProvider(
       create: (_) => AuthBloc(RepositoryProvider.of(context)),
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: isDark
+            ? const Color(0xFF202433)
+            : Colors.white,
         body: SafeArea(
           child: BlocConsumer<AuthBloc, AuthState>(
             listener: (context, state) async {
@@ -236,29 +240,26 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Image.asset(
-                                'assets/pinaka.png',
+                                isDark
+                                    ?'assets/pinaka_dark.png'
+                                    : 'assets/pinaka.png',
                                 height: screenHeight * 0.1,
                               ),
                               const SizedBox(height: 18),
-                              const Text(
+                              Text(
                                 'Employee Login',
-                                style: TextStyle(
-                                  color: Colors.red,
-                                  fontSize: 23,
-                                  fontFamily: 'Inter',
+                                style: theme.textTheme.headlineSmall?.copyWith(
+                                  color: const Color(0xFFFE6464),
                                   fontWeight: FontWeight.w600,
-                                  height: 0.9,
                                 ),
                               ),
                               const SizedBox(height: 22),
-                              const Text(
+                              Text(
                                 'Please Input your PIN to Validate yourself',
-                                style: TextStyle(
-                                  color: Color(0xFF4C5F7D),
-                                  fontSize: 18,
-                                  fontFamily: 'Inter',
-                                  fontWeight: FontWeight.w500,
-                                  height: 0.92,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: isDark
+                                      ? Colors.white70
+                                      : const Color(0xFF4C5F7D),
                                 ),
                               ),
                               const SizedBox(height: 22),
@@ -315,10 +316,9 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
                                           backgroundColor: Colors.transparent,
                                         ),
                                       )
-                                          : const Text(
+                                          :Text(
                                         "Login",
-                                        style: TextStyle(
-                                          fontSize: 20,
+                                        style: theme.textTheme.titleMedium?.copyWith(
                                           color: Colors.white,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -341,15 +341,16 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
                                             MaterialPageRoute(
                                               builder: (_) => const MerchantOnboardingScreen(),
                                             ),
-                                            (route) => false,
+                                                (route) => false,
                                           );
                                         }
                                       },
-                                      child: const Text(
+                                      child: Text(
                                         'Switch Store / Merchant Login',
-                                        style: TextStyle(
-                                          color: Colors.blue,
-                                          fontSize: 16,
+                                        style: theme.textTheme.bodyMedium?.copyWith(
+                                          color: isDark
+                                              ? Colors.lightBlueAccent
+                                              : Colors.blue,
                                           fontWeight: FontWeight.w500,
                                         ),
                                       ),

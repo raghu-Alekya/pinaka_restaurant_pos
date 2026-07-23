@@ -2,14 +2,26 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 import '../../blocs/Bloc Event/order_event.dart';
 import '../../blocs/Bloc Logic/order_bloc.dart';
 import '../../models/UserPermissions.dart';
 import '../../models/payment/payment_summary_model.dart';
 import '../../printer/printer_service.dart';
+import '../../printer/printer_db_helper.dart';
+import '../../printer/printer_settings.dart';
 import '../ui/dashboard screen.dart';
 import '../ui/tables_screen.dart';
+
+// Add these imports for printer functionality
+import 'package:thermal_printer/esc_pos_utils_platform/src/capability_profile.dart';
+import 'package:thermal_printer/esc_pos_utils_platform/src/enums.dart';
+import 'package:thermal_printer/esc_pos_utils_platform/src/generator.dart';
+import 'package:thermal_printer/esc_pos_utils_platform/src/pos_column.dart';
+import 'package:thermal_printer/esc_pos_utils_platform/src/pos_styles.dart';
+import 'package:thermal_printer/thermal_printer.dart';
 
 class PrintRecipt extends StatefulWidget {
   final PaymentSummary paymentSummary;
@@ -47,20 +59,554 @@ class PrintRecipt extends StatefulWidget {
 
 class _PrintReciptState extends State<PrintRecipt> {
   String _selectedOption = 'Printer';
-  // final theme = Theme.of(context);
-  // final isDark = theme.brightness == Brightness.dark;
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _smsController = TextEditingController();
   final List<String> options = ['Printer', 'Email', 'SMS'];
+
+  // Add printing guard
+  bool _isPrinting = false;
+
   @override
   void initState() {
     super.initState();
     _selectedOption = 'Printer';
   }
 
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _smsController.dispose();
+    super.dispose();
+  }
+
+  // ============ PRINTER SELECTION METHOD (copied from TopBar) ============
+  Future<Map<String, dynamic>?> _getCashPrinter() async {
+    final prefs = await SharedPreferences.getInstance();
+    List<Map<String, dynamic>> printers = [];
+
+    final printerDb = PrinterDBHelper();
+    final dbPrinters = await printerDb.getSelectedPrintersFromDB();
+
+    for (var printer in dbPrinters) {
+      final address = printer['printer_address'] ?? '';
+      final name = printer['deviceName'] ?? printer['device_name'] ?? 'Printer';
+      String type = printer[AppDBConst.printerType] ?? 'network';
+      final vendorId = printer[AppDBConst.printerVendorId];
+      final productId = printer[AppDBConst.printerProductId];
+
+      // Self-heal mis-saved network printers
+      if (type == 'network' && address.isEmpty) {
+        debugPrint("⚠️ Detected mis-saved printer type for '$name' — correcting network -> usb");
+        type = 'usb';
+        await printerDb.fixPrinterRecord(
+          address: address,
+          currentDeviceName: name,
+          correctedType: 'usb',
+        );
+      }
+
+      printers.add({
+        'address': address,
+        'name': name,
+        'port': printer['port'] ?? '9100',
+        'type': type,
+        'vendorId': vendorId,
+        'productId': productId,
+      });
+    }
+
+    // Fallback: SharedPreferences
+    if (printers.isEmpty) {
+      final selectedPrintersJson = prefs.getString('selected_printers');
+      if (selectedPrintersJson != null && selectedPrintersJson.isNotEmpty) {
+        try {
+          final List<dynamic> selectedList = jsonDecode(selectedPrintersJson);
+          for (var printer in selectedList) {
+            final address = printer['address'] ?? '';
+            final name = printer['name'] ?? 'Printer';
+            String type = printer['type'] ?? 'network';
+            if (type == 'network' && address.isEmpty) type = 'usb';
+            printers.add({
+              'address': address,
+              'name': name,
+              'port': printer['port'] ?? '9100',
+              'type': type,
+              'vendorId': printer['vendorId'],
+              'productId': printer['productId'],
+            });
+          }
+        } catch (e) {
+          debugPrint("Error parsing selected printers: $e");
+        }
+      }
+    }
+
+    if (printers.isEmpty) {
+      return null;
+    }
+
+    Map<String, dynamic>? chosen;
+
+    // 1️⃣ Try exact/contains name match first
+    for (var printer in printers) {
+      final name = printer['name']?.toLowerCase() ?? '';
+      if (name == 'cash printer' || name.contains('cash')) {
+        chosen = printer;
+        break;
+      }
+    }
+
+    // 2️⃣ No name match → always fall back to the SECOND selected printer
+    //    (matches the "KOT" / "Cash" position convention used in Settings)
+    chosen ??= printers.length > 1 ? printers[1] : printers.first;
+
+    // 🏷️ Persist the "Cash Printer" label onto this record if it doesn't
+    //    already carry a cash-related name
+    final chosenName = (chosen['name'] as String? ?? '').toLowerCase();
+    if (!chosenName.contains('cash')) {
+      debugPrint("🏷️ Labeling printer '${chosen['name']}' as Cash Printer");
+      await printerDb.fixPrinterRecord(
+        address: chosen['address'] ?? '',
+        currentDeviceName: chosen['name'] ?? '',
+        correctedName: 'Cash Printer',
+      );
+      chosen['name'] = 'Cash Printer';
+    }
+
+    return chosen;
+  }
+
+  // ============ BILL GENERATION METHOD (copied from TopBar) ============
+  Future<List<int>> _generateBillBytes(PaymentSummary summary) async {
+    final profile = await CapabilityProfile.load(name: 'XP-N160I');
+    final generator = Generator(PaperSize.mm80, profile);
+
+    List<int> bytes = [];
+
+    // Restaurant Header
+    final prefs = await SharedPreferences.getInstance();
+    final restaurantName = prefs.getString('store_name') ?? 'Restaurant';
+    final address = prefs.getString('store_address') ?? '';
+    final phone = prefs.getString('store_phone') ?? '';
+    final gstNumber = prefs.getString('store_gst') ?? '';
+
+    bytes += generator.text(
+      restaurantName,
+      styles: const PosStyles(
+        align: PosAlign.center,
+        bold: true,
+        height: PosTextSize.size2,
+        width: PosTextSize.size2,
+      ),
+    );
+
+    if (address.isNotEmpty) {
+      bytes += generator.text(
+        address,
+        styles: const PosStyles(align: PosAlign.center),
+      );
+    }
+
+    if (gstNumber.isNotEmpty) {
+      bytes += generator.text(
+        "GSTIN: $gstNumber",
+        styles: const PosStyles(align: PosAlign.center),
+      );
+    }
+
+    if (phone.isNotEmpty) {
+      bytes += generator.text(
+        "Ph: $phone",
+        styles: const PosStyles(align: PosAlign.center),
+      );
+    }
+
+    bytes += generator.hr();
+
+    // Bill Details
+    bytes += generator.row([
+      PosColumn(
+        width: 6,
+        text: "Date: ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}",
+      ),
+      PosColumn(
+        width: 6,
+        text: "Table: ${summary.tableName}",
+        styles: const PosStyles(align: PosAlign.right),
+      ),
+    ]);
+
+    bytes += generator.row([
+      PosColumn(
+        width: 6,
+        text: "Cashier: ${widget.cashierName.isNotEmpty ? widget.cashierName : widget.userPermissions?.displayName ?? 'Admin'}",
+      ),
+      PosColumn(
+        width: 6,
+        text: "Order: ${summary.orderId}",
+        styles: const PosStyles(align: PosAlign.right),
+      ),
+    ]);
+
+    bytes += generator.hr();
+
+    // Column Header
+    bytes += generator.row([
+      PosColumn(
+        width: 6,
+        text: "Item",
+        styles: const PosStyles(bold: true),
+      ),
+      PosColumn(
+        width: 2,
+        text: "Qty",
+        styles: const PosStyles(bold: true, align: PosAlign.center),
+      ),
+      PosColumn(
+        width: 2,
+        text: "Price",
+        styles: const PosStyles(bold: true, align: PosAlign.right),
+      ),
+      PosColumn(
+        width: 2,
+        text: "Amt",
+        styles: const PosStyles(bold: true, align: PosAlign.right),
+      ),
+    ]);
+
+    bytes += generator.hr();
+
+    // Items
+    for (final item in summary.lineItems) {
+      final qty = item.qty.toString();
+      final price = item.price.toStringAsFixed(2);
+      final amount = item.total.toStringAsFixed(2);
+
+      bytes += generator.row([
+        PosColumn(
+          width: 6,
+          text: item.name,
+        ),
+        PosColumn(
+          width: 2,
+          text: qty,
+          styles: const PosStyles(align: PosAlign.center),
+        ),
+        PosColumn(
+          width: 2,
+          text: price,
+          styles: const PosStyles(align: PosAlign.right),
+        ),
+        PosColumn(
+          width: 2,
+          text: amount,
+          styles: const PosStyles(align: PosAlign.right),
+        ),
+      ]);
+
+      // Modifiers
+      if (item.modifiers != null && item.modifiers.isNotEmpty) {
+        for (var modifier in item.modifiers) {
+          bytes += generator.row([
+            PosColumn(
+              width: 6,
+              text: "  + $modifier",
+            ),
+            PosColumn(width: 2, text: ""),
+            PosColumn(width: 2, text: ""),
+            PosColumn(width: 2, text: ""),
+          ]);
+        }
+      }
+    }
+
+    bytes += generator.hr();
+
+    // Totals
+    bytes += generator.row([
+      PosColumn(
+        width: 8,
+        text: "Subtotal",
+        styles: const PosStyles(bold: true),
+      ),
+      PosColumn(
+        width: 4,
+        text: summary.grossTotal.toStringAsFixed(2),
+        styles: const PosStyles(bold: true, align: PosAlign.right),
+      ),
+    ]);
+
+    if (summary.coupons > 0) {
+      bytes += generator.row([
+        PosColumn(
+          width: 8,
+          text: "Coupon Discount",
+        ),
+        PosColumn(
+          width: 4,
+          text: "-${summary.coupons.toStringAsFixed(2)}",
+          styles: const PosStyles(align: PosAlign.right),
+        ),
+      ]);
+    }
+
+    if (summary.discount > 0) {
+      bytes += generator.row([
+        PosColumn(
+          width: 8,
+          text: "Merchant Discount",
+        ),
+        PosColumn(
+          width: 4,
+          text: "-${summary.discount.toStringAsFixed(2)}",
+          styles: const PosStyles(align: PosAlign.right),
+        ),
+      ]);
+    }
+
+    if (summary.tipAmount > 0) {
+      bytes += generator.row([
+        PosColumn(
+          width: 8,
+          text: "Tip",
+        ),
+        PosColumn(
+          width: 4,
+          text: summary.tipAmount.toStringAsFixed(2),
+          styles: const PosStyles(align: PosAlign.right),
+        ),
+      ]);
+    }
+
+    if (summary.tax > 0) {
+      bytes += generator.row([
+        PosColumn(
+          width: 8,
+          text: "Tax",
+        ),
+        PosColumn(
+          width: 4,
+          text: summary.tax.toStringAsFixed(2),
+          styles: const PosStyles(align: PosAlign.right),
+        ),
+      ]);
+    }
+
+    if (summary.serviceChargeValue > 0) {
+      bytes += generator.row([
+        PosColumn(
+          width: 8,
+          text: "Service Charge",
+        ),
+        PosColumn(
+          width: 4,
+          text: summary.serviceChargeValue.toStringAsFixed(2),
+          styles: const PosStyles(align: PosAlign.right),
+        ),
+      ]);
+    }
+
+    bytes += generator.hr();
+
+    // Net Total
+    bytes += generator.row([
+      PosColumn(
+        width: 8,
+        text: "TOTAL",
+        styles: const PosStyles(
+          bold: true,
+          height: PosTextSize.size2,
+        ),
+      ),
+      PosColumn(
+        width: 4,
+        text: summary.netTotal.toStringAsFixed(2),
+        styles: const PosStyles(
+          bold: true,
+          align: PosAlign.right,
+          height: PosTextSize.size2,
+        ),
+      ),
+    ]);
+
+    bytes += generator.feed(2);
+    bytes += generator.cut();
+
+    return bytes;
+  }
+
+  // ============ CORE PRINTING LOGIC ============
+  Future<void> _printToPrinter() async {
+    if (_isPrinting) return;
+    setState(() => _isPrinting = true);
+
+    try {
+      debugPrint("========== PRINTING BILL FROM PRINT RECEIPT ==========");
+      debugPrint("Order ID: ${widget.paymentSummary.orderId}");
+      debugPrint("Table Name: ${widget.paymentSummary.tableName}");
+      debugPrint("Cashier: ${widget.cashierName.isNotEmpty ? widget.cashierName : widget.userPermissions?.displayName ?? 'Admin'}");
+      debugPrint("Net Payable: ${widget.paymentSummary.netTotal}");
+
+      // Use the printer selection method
+      final cashPrinter = await _getCashPrinter();
+      debugPrint("🔍 Resolved printer -> $cashPrinter");
+
+      if (cashPrinter == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("No printer selected. Please set up a printer in settings."),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+        setState(() => _isPrinting = false);
+        return;
+      }
+
+      final address = cashPrinter['address'] ?? '';
+      final name = cashPrinter['name'] ?? 'Cash Printer';
+      final port = cashPrinter['port'] ?? '9100';
+      final type = cashPrinter['type'] ?? 'network';
+      final vendorId = cashPrinter['vendorId'];
+      final productId = cashPrinter['productId'];
+
+      // Only network printers truly require a non-empty address
+      if (type == 'network' && address.isEmpty) {
+        debugPrint("❌ Blocked: type=network but address is empty for '$name'");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Printer address is invalid"),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+        setState(() => _isPrinting = false);
+        return;
+      }
+
+      List<int> bytes = await _generateBillBytes(widget.paymentSummary);
+
+      try {
+        debugPrint("🖨️ Printing bill to: $name (type=$type, address='$address', port=$port, vendorId=$vendorId, productId=$productId)");
+
+        bool connected = false;
+        PrinterType sendType;
+
+        switch (type) {
+          case 'usb':
+            sendType = PrinterType.usb;
+            connected = await PrinterManager.instance.connect(
+              type: PrinterType.usb,
+              model: UsbPrinterInput(
+                name: name,
+                vendorId: vendorId,
+                productId: productId,
+              ),
+            );
+            break;
+
+          case 'bluetooth':
+            sendType = PrinterType.bluetooth;
+            connected = await PrinterManager.instance.connect(
+              type: PrinterType.bluetooth,
+              model: BluetoothPrinterInput(
+                name: name,
+                address: address,
+                isBle: false,
+                autoConnect: false,
+              ),
+            );
+            break;
+
+          case 'network':
+          default:
+            sendType = PrinterType.network;
+            connected = await PrinterManager.instance.connect(
+              type: PrinterType.network,
+              model: TcpPrinterInput(ipAddress: address),
+            );
+            break;
+        }
+
+        debugPrint("🔌 Connect result for $name ($type): $connected");
+
+        if (connected) {
+          final sendResult = await PrinterManager.instance.send(type: sendType, bytes: bytes);
+          debugPrint("📤 Send result: $sendResult");
+
+          await PrinterManager.instance.disconnect(type: sendType);
+          debugPrint("🔌 Disconnected from $name");
+
+          debugPrint("✅ Bill successfully printed to: $name ($type - $address)");
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Receipt printed successfully"),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        } else {
+          debugPrint("❌ Failed to connect to printer: $name ($type - $address)");
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text("Failed to connect to printer: $name"),
+                backgroundColor: Colors.red,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        }
+      } catch (e, stack) {
+        debugPrint("❌ Error printing bill to $name: $e");
+        debugPrint("Stack trace: $stack");
+        try {
+          final fallbackType = type == 'usb'
+              ? PrinterType.usb
+              : type == 'bluetooth'
+              ? PrinterType.bluetooth
+              : PrinterType.network;
+          await PrinterManager.instance.disconnect(type: fallbackType);
+        } catch (_) {}
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Error printing bill: ${e.toString().replaceFirst('Exception: ', '')}"),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+
+    } catch (e, stack) {
+      debugPrint("Print Bill Error: $e");
+      debugPrint("Stack trace: $stack");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Failed to print: ${e.toString().replaceFirst('Exception: ', '')}"),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isPrinting = false);
+    }
+  }
+
   void _onDonePressed({bool isNoReceipt = false}) async {
     if (!isNoReceipt) {
-      // 1️⃣ Validation
+      //  Validation
       if (_selectedOption == 'Email') {
         final email = _emailController.text.trim();
         if (email.isEmpty || !email.contains("@")) {
@@ -91,38 +637,11 @@ class _PrintReciptState extends State<PrintRecipt> {
 
       // ✅ Print receipt when Printer is selected
       if (_selectedOption == 'Printer') {
-        try {
-          await Printer.printBill(
-            context: context,
-            orderId: widget.paymentSummary.orderId.toString(),
-            tableName: widget.paymentSummary.tableName,
-            cashierName: widget.cashierName,
-            items: widget.paymentSummary.lineItems.map((item) {
-              return {
-                "name": item.name,
-                "qty": item.qty,
-                "price": item.price,
-                "amount": item.total,
-                "modifiers": item.modifiers,
-              };
-            }).toList(),
-            grossTotal: widget.paymentSummary.grossTotal,
-            couponDiscount: widget.paymentSummary.coupons,
-            merchantDiscount: widget.paymentSummary.discount,
-            tipAmount: widget.paymentSummary.tipAmount,
-            taxAmount: widget.paymentSummary.tax,
-            serviceCharge: widget.paymentSummary.serviceChargeValue,
-            netPayable: widget.paymentSummary.netTotal,
-            couponDetails: widget.paymentSummary.couponDetails,
-            isCopy: widget.isCopy,
-          );
-        } catch (e) {
-          debugPrint("Print failed: $e");
-        }
+        await _printToPrinter();
       }
     }
 
-    // ✅ STEP 1: CLOSE THE PRINT DIALOG
+    // STEP 1: CLOSE THE PRINT DIALOG
     Navigator.of(context).pop();
 
     if (widget.isFromOrderDetails) {
@@ -130,7 +649,6 @@ class _PrintReciptState extends State<PrintRecipt> {
     }
 
     // ✅ STEP 2: CLEAR ORDER STATE
-    // context.read<OrderBloc>().add(ClearOrder());
     context.read<OrderBloc>().add(ResetOrder());
     // ⏳ Small delay ensures Bloc processes event before navigation
     await Future.delayed(const Duration(milliseconds: 100));
@@ -398,6 +916,7 @@ class _PrintReciptState extends State<PrintRecipt> {
       ),
     );
   }
+
   Widget _buildDialogButton({
     required String label,
     required Color color,

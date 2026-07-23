@@ -655,10 +655,13 @@ class _TablesScreenState extends State<TablesScreen> {
       ) async {
     final bool isMerged = tableData['is_merged'] ?? false;
     final String mergedTables = tableData['merged_tables'] ?? tableData['tableName'] ?? '';
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     await showDialog(
       context: context,
       barrierDismissible: false,
+
       builder: (ctx) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
@@ -679,14 +682,13 @@ class _TablesScreenState extends State<TablesScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const SizedBox(width: 28),
-                      const Expanded(
+                      Expanded(
                         child: Text(
                           "Merge/Modify Tables",
                           textAlign: TextAlign.center,
-                          style: TextStyle(
+                          style: theme.textTheme.titleLarge?.copyWith(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
-                            color: Colors.black,
                           ),
                         ),
                       ),
@@ -714,62 +716,64 @@ class _TablesScreenState extends State<TablesScreen> {
                     TextSpan(
                       children: isMerged
                           ? [
-                        const TextSpan(
+                        TextSpan(
                           text: "This table is already merged with the following tables in ",
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w400,
-                            color: Colors.black54,
+                            color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                           ),
                         ),
                         TextSpan(
                           text: "${tableData['areaName']}",
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black,
+                            color: theme.textTheme.bodyLarge?.color,
                           ),
                         ),
-                        const TextSpan(
-                          text: ". Modify this merge or unmerge to restore individual tables.\n\n",
+                        TextSpan(
+                          text:
+                          ". Modify this merge or unmerge to restore individual tables.\n\n",
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w400,
-                            color: Colors.black54,
+                            color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                           ),
                         ),
                         TextSpan(
                           text: mergedTables,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black,
+                            color: theme.textTheme.bodyLarge?.color,
                           ),
                         ),
                       ]
                           : [
-                        const TextSpan(
+                        TextSpan(
                           text: "Select the tables you want to merge in this ",
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w400,
-                            color: Colors.black54,
+                            color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                           ),
                         ),
                         TextSpan(
                           text: "${tableData['areaName']}",
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black,
+                            color: theme.textTheme.bodyLarge?.color,
                           ),
                         ),
-                        const TextSpan(
-                          text: ". Merging will combine them into a single reservation under the same guest.",
+                        TextSpan(
+                          text:
+                          ". Merging will combine them into a single reservation under the same guest.",
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w400,
-                            color: Colors.black54,
+                            color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                           ),
                         ),
                       ],
@@ -790,8 +794,12 @@ class _TablesScreenState extends State<TablesScreen> {
                         child: TextButton(
                           style: TextButton.styleFrom(
                             backgroundColor: isMerged
-                                ? const Color(0xFFFFE6E6)
-                                : Colors.black12,
+                                ? (isDark
+                                ? Colors.red.withOpacity(0.15)
+                                : const Color(0xFFFFE6E6))
+                                : (isDark
+                                ? Colors.grey.shade800
+                                : Colors.grey.shade200),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -829,7 +837,9 @@ class _TablesScreenState extends State<TablesScreen> {
                           child: Text(
                             "Unmerge Table",
                             style: TextStyle(
-                              color: isMerged ? Colors.red : Colors.black26,
+                              color: isMerged
+                                  ? Colors.red
+                                  : (isDark ? Colors.grey.shade400 : Colors.grey.shade500),
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),

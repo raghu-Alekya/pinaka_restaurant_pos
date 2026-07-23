@@ -18,30 +18,25 @@ class ApiExceptionHandler {
         "Unable to connect to the server. Please check your internet connection.",
       );
     } on TimeoutException {
-      throw Exception(
-        "Request timed out. Please try again.",
-      );
+      throw Exception("Request timed out. Please try again.");
     } on http.ClientException {
       throw Exception(
         "Unable to connect to the server. Please try again later.",
       );
     }
   }
+
   static Future<http.StreamedResponse> multipart(
       http.MultipartRequest request,
       ) async {
     try {
-      return await request
-          .send()
-          .timeout(const Duration(seconds: 30));
+      return await request.send().timeout(const Duration(seconds: 30));
     } on SocketException {
       throw Exception(
         "Unable to connect to the server. Please check your internet connection.",
       );
     } on TimeoutException {
-      throw Exception(
-        "Request timed out. Please try again.",
-      );
+      throw Exception("Request timed out. Please try again.");
     } on http.ClientException {
       throw Exception(
         "Unable to connect to the server. Please try again later.",
@@ -56,47 +51,14 @@ class ApiExceptionHandler {
       }) async {
     try {
       return await http
-          .post(
-        url,
-        headers: headers,
-        body: body,
-      )
+          .post(url, headers: headers, body: body)
           .timeout(const Duration(seconds: 30));
     } on SocketException {
       throw Exception(
         "Unable to connect to the server. Please check your internet connection.",
       );
     } on TimeoutException {
-      throw Exception(
-        "Request timed out. Please try again.",
-      );
-    } on http.ClientException {
-      throw Exception(
-        "Unable to connect to the server. Please try again later.",
-      );
-    }
-  }
-  static Future<http.Response> put(
-      Uri url, {
-        required Map<String, String> headers,
-        Object? body,
-      }) async {
-    try {
-      return await http
-          .put(
-        url,
-        headers: headers,
-        body: body,
-      )
-          .timeout(const Duration(seconds: 30));
-    } on SocketException {
-      throw Exception(
-        "Unable to connect to the server. Please check your internet connection.",
-      );
-    } on TimeoutException {
-      throw Exception(
-        "Request timed out. Please try again.",
-      );
+      throw Exception("Request timed out. Please try again.");
     } on http.ClientException {
       throw Exception(
         "Unable to connect to the server. Please try again later.",
@@ -104,8 +66,32 @@ class ApiExceptionHandler {
     }
   }
 
-  static String parseError(http.Response response,
-      {String defaultMessage = "Something went wrong."}) {
+  static Future<http.Response> put(
+      Uri url, {
+        required Map<String, String> headers,
+        Object? body,
+      }) async {
+    try {
+      return await http
+          .put(url, headers: headers, body: body)
+          .timeout(const Duration(seconds: 30));
+    } on SocketException {
+      throw Exception(
+        "Unable to connect to the server. Please check your internet connection.",
+      );
+    } on TimeoutException {
+      throw Exception("Request timed out. Please try again.");
+    } on http.ClientException {
+      throw Exception(
+        "Unable to connect to the server. Please try again later.",
+      );
+    }
+  }
+
+  static String parseError(
+      http.Response response, {
+        String defaultMessage = "Something went wrong.",
+      }) {
     try {
       final error = jsonDecode(response.body);
 
@@ -140,7 +126,6 @@ class ApiExceptionHandler {
         case "woocommerce_rest_coupon_usage_limit":
           return "This coupon has reached its usage limit.";
 
-
         default:
           final message = (error["message"] ?? "").toString().toLowerCase();
 
@@ -172,8 +157,9 @@ class ApiExceptionHandler {
             return "This coupon has reached its usage limit.";
           }
 
-          return (error["message"] != null && error["message"].toString().isNotEmpty) 
-              ? error["message"].toString() 
+          return (error["message"] != null &&
+              error["message"].toString().isNotEmpty)
+              ? error["message"].toString()
               : defaultMessage;
       }
     } catch (_) {

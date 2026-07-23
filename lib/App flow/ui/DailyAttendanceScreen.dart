@@ -114,6 +114,8 @@ class _AttendancePopupState extends State<AttendancePopup> {
     }).toList();
 
     final viewInsets = MediaQuery.of(context).viewInsets;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Center(
       child: Material(
@@ -126,7 +128,9 @@ class _AttendancePopupState extends State<AttendancePopup> {
               width: 850,
               padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
-                color: Color(0xFF0A1B4D),
+                color: isDark
+                    ? theme.cardColor
+                    : const Color(0xFF0A1B4D),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Stack(
@@ -145,7 +149,14 @@ class _AttendancePopupState extends State<AttendancePopup> {
                         ),
                         child: Scrollbar(
                           child: filteredEmployees.isEmpty
-                              ? const Center(child: Text("No results found."))
+                              ?Center(
+                            child: Text(
+                              "No results found.",
+                              style: TextStyle(
+                                color: theme.textTheme.bodyLarge?.color,
+                              ),
+                            ),
+                          )
                               : ListView.builder(
                             shrinkWrap: true,
                             itemCount: filteredEmployees.length,
@@ -153,11 +164,11 @@ class _AttendancePopupState extends State<AttendancePopup> {
                               final emp = filteredEmployees[index];
                               return Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
+                                  color: theme.cardColor,
                                   border: Border(
-                                    left: BorderSide(color: Colors.grey.shade500),
-                                    right: BorderSide(color: Colors.grey.shade500),
-                                    bottom: BorderSide(color: Colors.grey.shade500),
+                                    left: BorderSide(color: theme.dividerColor),
+                                    right: BorderSide(color: theme.dividerColor),
+                                    bottom: BorderSide(color: theme.dividerColor),
                                   ),
                                 ),
                                 child: Row(
@@ -350,15 +361,19 @@ class _AttendancePopupState extends State<AttendancePopup> {
                           },
                           style: TextButton.styleFrom(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            backgroundColor: const Color(0xFFFFF3EE),
+                            backgroundColor: isDark
+                                ? Colors.grey.shade800
+                                : const Color(0xFFFFF3EE),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
                             ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              Icon(Icons.logout, color: Color(0xFFFF3D00), size: 22),
+                            children:  [
+                              Icon(Icons.logout,color: isDark
+                                  ? Colors.orange.shade300
+                                  : const Color(0xFFFF3D00), size: 22),
                               SizedBox(width: 8),
                               Text(
                                 'Logout',
@@ -413,64 +428,118 @@ class _AttendancePopupState extends State<AttendancePopup> {
   }
 
   Widget _buildHeader() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Center(
+        Center(
           child: Text(
             "Daily Attendance",
-            style: TextStyle(color: Colors.white,fontSize: 22, fontWeight: FontWeight.bold),
+            style: theme.textTheme.headlineSmall?.copyWith(
+              color: theme.colorScheme.onSurface,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         const SizedBox(height: 10),
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const Text("Search:", style: TextStyle(color: Colors.white,fontSize: 16)),
+            Text(
+              "Search:",
+              style: TextStyle(
+                color: theme.textTheme.bodyLarge?.color,
+                fontSize: 16,
+              ),
+            ),
             const SizedBox(width: 10),
+
             SizedBox(
               width: 240,
               height: 40,
               child: TextField(
                 onChanged: (val) => setState(() => searchQuery = val),
+                style: TextStyle(
+                  color: theme.textTheme.bodyLarge?.color,
+                ),
                 decoration: InputDecoration(
-                  hintText: 'Employee ID or Name',
-                  prefixIcon: const Icon(Icons.search, size: 20),
+                  hintText: "Employee ID or Name",
+                  hintStyle: TextStyle(color: theme.hintColor),
+                  prefixIcon: Icon(
+                    Icons.search,
+                    size: 20,
+                    color: theme.iconTheme.color,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: theme.dividerColor),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
                   isDense: true,
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: isDark
+                      ? Colors.grey.shade900
+                      : Colors.white,
                 ),
               ),
             ),
+
             const SizedBox(width: 30),
-            const Text("Running Shift:", style: TextStyle(fontSize: 16,color: Colors.white)),
+
+            Text(
+              "Running Shift:",
+              style: TextStyle(
+                fontSize: 16,
+                color: theme.textTheme.bodyLarge?.color,
+              ),
+            ),
+
             const SizedBox(width: 8),
+
             BlocBuilder<AttendanceBloc, AttendanceState>(
               builder: (context, state) {
                 if (state is ShiftListLoaded) {
                   if (selectedShift.isEmpty && state.shifts.isNotEmpty) {
                     selectedShift = state.shifts.first;
                   }
+
                   return Container(
                     width: 180,
                     height: 40,
                     alignment: Alignment.centerLeft,
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: Colors.grey.shade500),
+                      color: theme.cardColor,
+                      border: Border.all(
+                        color: theme.dividerColor,
+                      ),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       selectedShift,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: theme.textTheme.bodyLarge?.color,
+                      ),
                     ),
                   );
                 } else if (state is AttendanceErrorState) {
-                  return const Text("Error loading shifts", style: TextStyle(color: Colors.red));
+                  return const Text(
+                    "Error loading shifts",
+                    style: TextStyle(color: Colors.red),
+                  );
                 } else {
                   return const SizedBox(
                     width: 16,
@@ -480,17 +549,24 @@ class _AttendancePopupState extends State<AttendancePopup> {
                 }
               },
             ),
+
             const Spacer(),
+
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
                   currentTime,
-                  style: const TextStyle(fontSize: 18,color: Colors.white, fontWeight: FontWeight.bold),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 Text(
                   currentDate,
-                  style: TextStyle(fontSize: 14, color: Colors.white),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontSize: 14,
+                  ),
                 ),
               ],
             ),
@@ -501,14 +577,21 @@ class _AttendancePopupState extends State<AttendancePopup> {
   }
 
   Widget _buildTableHeader() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFD7D7D7),
+        color: isDark
+            ? Colors.grey.shade800
+            : const Color(0xFFD7D7D7),
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(10),
           topRight: Radius.circular(10),
         ),
-        border: Border.all(color: Colors.grey.shade500),
+        border: Border.all(
+          color: theme.dividerColor,
+        ),
       ),
       child: ClipRRect(
         borderRadius: const BorderRadius.only(
@@ -517,32 +600,53 @@ class _AttendancePopupState extends State<AttendancePopup> {
         ),
         child: Row(
           children: [
-            _buildHeaderCell('Employee ID', flex: 2, showRightBorder: true),
-            _buildHeaderCell('Employee Name', flex: 4, showRightBorder: true),
-            _buildHeaderCell('Status', flex: 5, showRightBorder: false),
+            _buildHeaderCell(
+              'Employee ID',
+              flex: 2,
+              showRightBorder: true,
+            ),
+            _buildHeaderCell(
+              'Employee Name',
+              flex: 4,
+              showRightBorder: true,
+            ),
+            _buildHeaderCell(
+              'Status',
+              flex: 5,
+              showRightBorder: false,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHeaderCell(String text, {required int flex, bool showRightBorder = true}) {
+  Widget _buildHeaderCell(
+      String text, {
+        required int flex,
+        bool showRightBorder = true,
+      }) {
+    final theme = Theme.of(context);
+
     return Expanded(
       flex: flex,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
           border: Border(
-            right: showRightBorder ? const BorderSide(color: Colors.grey) : BorderSide.none,
+            right: showRightBorder
+                ? BorderSide(
+              color: theme.dividerColor,
+            )
+                : BorderSide.none,
           ),
         ),
         child: Center(
           child: Text(
             text,
-            style: const TextStyle(
-              color: Color(0xFF0A1B4D),
-              fontWeight: FontWeight.bold,
+            style: theme.textTheme.titleSmall?.copyWith(
               fontSize: 17,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ),
@@ -550,6 +654,8 @@ class _AttendancePopupState extends State<AttendancePopup> {
     );
   }
   Widget _buildCell(String text, {required int flex}) {
+    final theme = Theme.of(context);
+
     String line1 = text;
     String? line2;
 
@@ -558,6 +664,7 @@ class _AttendancePopupState extends State<AttendancePopup> {
       line1 = match.group(1)!;
       line2 = match.group(2);
     }
+
     final bool isFirstColumn = flex == 2;
 
     return Expanded(
@@ -565,8 +672,12 @@ class _AttendancePopupState extends State<AttendancePopup> {
       child: Container(
         decoration: BoxDecoration(
           border: Border(
-            left: isFirstColumn ? BorderSide.none : const BorderSide(color: Colors.grey),
-            right: isFirstColumn ? BorderSide.none : const BorderSide(color: Colors.grey),
+            left: isFirstColumn
+                ? BorderSide.none
+                : BorderSide(color: theme.dividerColor),
+            right: isFirstColumn
+                ? BorderSide.none
+                : BorderSide(color: theme.dividerColor),
           ),
         ),
         padding: const EdgeInsets.symmetric(vertical: 6),
@@ -575,7 +686,7 @@ class _AttendancePopupState extends State<AttendancePopup> {
           children: [
             Text(
               line1,
-              style: const TextStyle(
+              style: theme.textTheme.bodyLarge?.copyWith(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
@@ -584,9 +695,9 @@ class _AttendancePopupState extends State<AttendancePopup> {
             if (line2 != null)
               Text(
                 line2,
-                style: TextStyle(
+                style: theme.textTheme.bodyMedium?.copyWith(
                   fontSize: 14,
-                  color: Colors.grey[700],
+                  color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -624,7 +735,15 @@ class _AttendancePopupState extends State<AttendancePopup> {
   }
 
 
-  Widget _buildStatusButton(bool selected, String label, Color color, VoidCallback onTap) {
+  Widget _buildStatusButton(
+      bool selected,
+      String label,
+      Color color,
+      VoidCallback onTap,
+      ) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return SizedBox(
       width: 155,
       child: GestureDetector(
@@ -632,12 +751,21 @@ class _AttendancePopupState extends State<AttendancePopup> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
-            color: selected ? color : const Color(0xFFE0E0E0),
+            color: selected
+                ? color
+                : (isDark
+                ? Colors.grey.shade800
+                : const Color(0xFFE0E0E0)),
             borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: selected
+                  ? color
+                  : theme.dividerColor,
+            ),
             boxShadow: selected
                 ? [
               BoxShadow(
-                color: color.withAlpha((0.3 * 255).toInt()),
+                color: color.withOpacity(0.3),
                 offset: const Offset(0, 2),
                 blurRadius: 4,
               ),
@@ -649,7 +777,9 @@ class _AttendancePopupState extends State<AttendancePopup> {
             label,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: selected ? Colors.white : Colors.black87,
+              color: selected
+                  ? Colors.white
+                  : theme.textTheme.bodyLarge?.color,
               fontWeight: FontWeight.w600,
               fontSize: 13,
             ),
