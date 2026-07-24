@@ -32,9 +32,18 @@ class AuthRepository {
       AppLogger.info("LOGIN STATUS => ${response.statusCode}");
       AppLogger.info("LOGIN RESPONSE => ${response.body}");
 
-      final responseData = jsonDecode(response.body);
+      Map<String, dynamic>? responseData;
+      try {
+        final bodyStr = response.body.trim();
+        if (bodyStr.startsWith('{') || bodyStr.startsWith('[')) {
+          responseData = jsonDecode(bodyStr) as Map<String, dynamic>?;
+        }
+      } catch (e) {
+        AppLogger.warning("Failed to parse login response JSON: $e");
+      }
 
       if (response.statusCode == 200 &&
+          responseData != null &&
           responseData["success"] == true) {
         final data = responseData["data"];
 
@@ -88,7 +97,7 @@ class AuthRepository {
         "success": false,
         "message": ApiExceptionHandler.parseError(
           response,
-          defaultMessage: "Login failed.",
+          defaultMessage: "Login failed (${response.statusCode}). Please verify your server or PIN and try again.",
         ),
       };
     } catch (e, stackTrace) {

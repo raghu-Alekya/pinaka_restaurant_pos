@@ -26,13 +26,15 @@ import '../../repositories/checkin_repository.dart';
 import '../../repositories/employee_repository.dart';
 import '../../repositories/kot_order_count_repository.dart';
 import '../../repositories/kot_status_count_repository.dart';
+import '../../repositories/kitchen_repository.dart';
 import '../../repositories/order_list_repository.dart';
 import '../../repositories/table_status_count_repository.dart';
 import '../../repositories/vendor_payment_repository.dart';
+import '../../repositories/zone_repository.dart';
 import '../../utils/SessionManager.dart';
 import '../widgets/top_bar.dart';
 import 'CheckinPopup.dart';
-import 'DailyAttendanceScreen.dart';
+import 'package:pinaka_restaurant_pos/App%20flow/ui/DailyAttendanceScreen.dart';
 import 'KitchenStatusScreen.dart';
 import 'dashboard screen.dart';
 import 'orderstatus_screen.dart';
@@ -89,11 +91,54 @@ class _HomeScreenState extends State<HomeScreen> {
     loadReservationCounts();
     loadActiveOrdersCount();
     loadTotalTipAmount();
+    _preFetchOrders();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkShiftStatus();
     });
     _loadVendorCount();
     _loadTodayVendorPaymentsCount();
+  }
+
+  Future<void> _preFetchOrders() async {
+    try {
+      final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      OrderstatusRepository().fetchOrders(
+        widget.token,
+        date: todayStr,
+        restaurantId: widget.restaurantId,
+      );
+
+      final kitchenRepo = KitchenRepository(token: widget.token);
+      final zoneRepo = ZoneRepository();
+
+      final orderTypes = await kitchenRepo.fetchOrderTypes();
+      final zones = await zoneRepo.getAllZones(widget.token);
+
+      final initialOrderType = orderTypes.isNotEmpty ? orderTypes.first : "Dine-In";
+      final initialArea = zones.isNotEmpty ? zones.first['zone_name'] : null;
+
+      final orders = await kitchenRepo.fetchOrders(
+        selectedOrderType: initialOrderType,
+        restaurantId: widget.restaurantId,
+        selectedArea: initialArea,
+        zones: zones,
+      );
+
+      await Future.wait(orders.map((o) async {
+        final parentOrderId = (o['order_id'] ?? o['id']).toString();
+        final zoneId = initialOrderType.toLowerCase().replaceAll(" ", "") != "takeaways"
+            ? (o['zone_id'] ?? o['zoneId'])?.toString()
+            : null;
+        final kots = await kitchenRepo.fetchParentKotOrders(
+          restaurantId: widget.restaurantId,
+          parentOrderId: parentOrderId,
+          orderType: initialOrderType,
+          zoneId: zoneId,
+        );
+        o['kots'] = kots.map((k) => k['kot_number']?.toString() ?? '').toList();
+        o['kotOrders'] = kots;
+      }));
+    } catch (_) {}
   }
 
 

@@ -6,6 +6,12 @@ import '../utils/logger.dart';
 class KitchenRepository {
   final String token;
 
+  static List<String>? _cachedOrderTypes;
+  static List<Map<String, dynamic>>? _cachedOrders;
+
+  List<String>? get cachedOrderTypes => _cachedOrderTypes;
+  List<Map<String, dynamic>>? get cachedOrders => _cachedOrders;
+
   KitchenRepository({required this.token});
 
   /// Fetch all order types
@@ -21,7 +27,9 @@ class KitchenRepository {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data["success"] == true && data["order_types"] != null) {
-          return List<String>.from(data["order_types"]);
+          final types = List<String>.from(data["order_types"]);
+          _cachedOrderTypes = types;
+          return types;
         }
       } else {
         AppLogger.warning("Failed to fetch order types: ${response.body}");
@@ -29,7 +37,7 @@ class KitchenRepository {
     } catch (e) {
       AppLogger.error("Error fetching order types: $e");
     }
-    return [];
+    return _cachedOrderTypes ?? [];
   }
 
   /// Fetch all users
@@ -63,7 +71,7 @@ class KitchenRepository {
   }) async {
     if (selectedOrderType.isEmpty || restaurantId.isEmpty) {
       AppLogger.warning("Cannot fetch orders: Missing order type or restaurantId");
-      return [];
+      return _cachedOrders ?? [];
     }
 
     final params = {
@@ -104,14 +112,16 @@ class KitchenRepository {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        return List<Map<String, dynamic>>.from(data);
+        final orders = List<Map<String, dynamic>>.from(data);
+        _cachedOrders = orders;
+        return orders;
       } else {
         AppLogger.warning("Failed to fetch orders: ${response.body}");
       }
     } catch (e) {
       AppLogger.error("Error fetching orders: $e");
     }
-    return [];
+    return _cachedOrders ?? [];
   }
 
   /// Fetch parent KOT orders

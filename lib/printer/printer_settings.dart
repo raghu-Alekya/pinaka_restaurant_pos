@@ -209,8 +209,6 @@
 //   });
 // }
 
-
-
 import 'dart:async';
 import 'dart:io';
 import 'package:enum_to_string/enum_to_string.dart';
@@ -267,22 +265,25 @@ class PrinterSettings {
 
     // FIXED: use the real address column, fall back to the old
     // (buggy) productId-based value only for backward compatibility.
-    printer.address = printerDB.first[AppDBConst.printerAddress] ??
+    printer.address =
+        printerDB.first[AppDBConst.printerAddress] ??
         printerDB.first[AppDBConst.printerProductId] ??
         "";
 
-    printer.typePrinter = EnumToString.fromString(
-      PrinterType.values,
-      printerDB.first[AppDBConst.printerType],
-    ) ??
+    printer.typePrinter =
+        EnumToString.fromString(
+          PrinterType.values,
+          printerDB.first[AppDBConst.printerType],
+        ) ??
         PrinterType.usb;
     printer.isBle = false;
     _currentStatus =
-    (((printer.typePrinter == PrinterType.bluetooth ||
-        printer.typePrinter == PrinterType.network) &&
-        printer.address != "") || (printer.typePrinter == PrinterType.usb && Platform.isWindows))
-        ? BTStatus.connected
-        : BTStatus.none;
+        (((printer.typePrinter == PrinterType.bluetooth ||
+                        printer.typePrinter == PrinterType.network) &&
+                    printer.address != "") ||
+                (printer.typePrinter == PrinterType.usb && Platform.isWindows))
+            ? BTStatus.connected
+            : BTStatus.none;
     selectedPrinter = printer;
   }
 
@@ -343,10 +344,7 @@ class PrinterSettings {
     return true;
   }
 
-  Future<void> printTicket(
-      List<int> bytes,
-      Generator generator,
-      ) async {
+  Future<void> printTicket(List<int> bytes, Generator generator) async {
     await loadPrinter();
 
     if (selectedPrinter == null) {
@@ -390,17 +388,12 @@ class PrinterSettings {
         case PrinterType.network:
           await printerManager.connect(
             type: printer.typePrinter,
-            model: TcpPrinterInput(
-              ipAddress: printer.address ?? "",
-            ),
+            model: TcpPrinterInput(ipAddress: printer.address ?? ""),
           );
           break;
       }
 
-      printerManager.send(
-        type: printer.typePrinter,
-        bytes: bytes,
-      );
+      printerManager.send(type: printer.typePrinter, bytes: bytes);
     }
 
     try {
@@ -433,9 +426,9 @@ class PrinterSettings {
   // ---- existing selectDevice / connectDevice / saveSelectedPrinterToDB ----
   // ---- functions above exactly as they are — no old logic changed.     ----
   Future<bool> connectToWifiPrinter(
-      String ipAddress, {
-        String? deviceName,
-      }) async {
+    String ipAddress, {
+    String? deviceName,
+  }) async {
     final ip = ipAddress.trim();
 
     if (ip.isEmpty) {

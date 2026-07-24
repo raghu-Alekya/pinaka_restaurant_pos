@@ -14,7 +14,7 @@ class PrinterDBHelper {
     try {
       await db.execute(
         'ALTER TABLE ${AppDBConst.printerTable} '
-            'ADD COLUMN ${AppDBConst.printerAddress} TEXT',
+        'ADD COLUMN ${AppDBConst.printerAddress} TEXT',
       );
     } catch (_) {
       // Column already exists (or table not created yet) - ignore.
@@ -26,7 +26,7 @@ class PrinterDBHelper {
     try {
       await db.execute(
         'ALTER TABLE ${AppDBConst.printerTable} '
-            'ADD COLUMN port TEXT',
+        'ADD COLUMN port TEXT',
       );
     } catch (_) {
       // Column already exists - ignore.
@@ -38,7 +38,7 @@ class PrinterDBHelper {
     try {
       await db.execute(
         'ALTER TABLE ${AppDBConst.printerTable} '
-            'ADD COLUMN is_selected INTEGER DEFAULT 1',
+        'ADD COLUMN is_selected INTEGER DEFAULT 1',
       );
     } catch (_) {
       // Column already exists - ignore.
@@ -57,7 +57,8 @@ class PrinterDBHelper {
       };
     } else if (deviceName != null && deviceName.isNotEmpty) {
       return {
-        'where': '${AppDBConst.printerAddress} = ? AND ${AppDBConst.printerDeviceName} = ?',
+        'where':
+            '${AppDBConst.printerAddress} = ? AND ${AppDBConst.printerDeviceName} = ?',
         'args': ['', deviceName],
       };
     } else {
@@ -81,21 +82,21 @@ class PrinterDBHelper {
 
     // Insert all printers
     for (var printer in printers) {
-      await db.insert(
-        AppDBConst.printerTable,
-        {
-          AppDBConst.printerDeviceName: printer.deviceName,
-          AppDBConst.printerProductId: printer.productId ?? printer.address ?? 'network',
-          AppDBConst.printerVendorId: printer.vendorId ?? 'network',
-          AppDBConst.printerType: EnumToString.convertToString(printer.typePrinter),
-          AppDBConst.printerAddress: printer.address ?? '',
-          'port': printer.port ?? '9100',
-          'is_selected': 1, // Default selected
-          AppDBConst.receiptIconPath: printer.receiptIconPath,
-          AppDBConst.receiptHeaderText: printer.receiptHeaderText,
-          AppDBConst.receiptFooterText: printer.receiptFooterText,
-        },
-      );
+      await db.insert(AppDBConst.printerTable, {
+        AppDBConst.printerDeviceName: printer.deviceName,
+        AppDBConst.printerProductId:
+            printer.productId ?? printer.address ?? 'network',
+        AppDBConst.printerVendorId: printer.vendorId ?? 'network',
+        AppDBConst.printerType: EnumToString.convertToString(
+          printer.typePrinter,
+        ),
+        AppDBConst.printerAddress: printer.address ?? '',
+        'port': printer.port ?? '9100',
+        'is_selected': 1, // Default selected
+        AppDBConst.receiptIconPath: printer.receiptIconPath,
+        AppDBConst.receiptHeaderText: printer.receiptHeaderText,
+        AppDBConst.receiptFooterText: printer.receiptFooterText,
+      });
     }
 
     if (kDebugMode) {
@@ -109,7 +110,11 @@ class PrinterDBHelper {
   // USB row with address = ''. Existing callers that don't pass
   // deviceName keep working exactly as before for network/bluetooth
   // printers, since those still match on address alone.
-  Future<int> updatePrinterSelection(String address, bool isSelected, {String? deviceName}) async {
+  Future<int> updatePrinterSelection(
+    String address,
+    bool isSelected, {
+    String? deviceName,
+  }) async {
     final db = await DatabaseInitializer().initDatabase();
     await _ensureAddressColumn(db);
     await _ensureIsSelectedColumn(db);
@@ -124,7 +129,9 @@ class PrinterDBHelper {
     );
 
     if (kDebugMode) {
-      print("#### updatePrinterSelection: address='$address' deviceName='$deviceName' isSelected=$isSelected -> rowsAffected=$rowsAffected");
+      print(
+        "#### updatePrinterSelection: address='$address' deviceName='$deviceName' isSelected=$isSelected -> rowsAffected=$rowsAffected",
+      );
     }
 
     return rowsAffected;
@@ -161,7 +168,9 @@ class PrinterDBHelper {
     if (kDebugMode) {
       print("#### PrinterDb Retrieved ${printers.length} printers from DB");
       for (var printer in printers) {
-        print("#### Printer: ${printer[AppDBConst.printerDeviceName]} - ${printer[AppDBConst.printerAddress]} - Type: ${printer[AppDBConst.printerType]} - Selected: ${printer['is_selected'] ?? 1}");
+        print(
+          "#### Printer: ${printer[AppDBConst.printerDeviceName]} - ${printer[AppDBConst.printerAddress]} - Type: ${printer[AppDBConst.printerType]} - Selected: ${printer['is_selected'] ?? 1}",
+        );
       }
     }
 
@@ -184,7 +193,9 @@ class PrinterDBHelper {
     if (kDebugMode) {
       print("#### Retrieved ${printers.length} selected printers from DB");
       for (var printer in printers) {
-        print("#### Selected Printer: ${printer[AppDBConst.printerDeviceName]} - ${printer[AppDBConst.printerAddress]} - Type: ${printer[AppDBConst.printerType]}");
+        print(
+          "#### Selected Printer: ${printer[AppDBConst.printerDeviceName]} - ${printer[AppDBConst.printerAddress]} - Type: ${printer[AppDBConst.printerType]}",
+        );
       }
     }
 
@@ -192,13 +203,17 @@ class PrinterDBHelper {
   }
 
   // NEW: Fix a mis-saved printer record's type and/or name in place.
-// Matches the same way addPrinterToDB does (address, or address+deviceName
-// for USB rows with empty address) so it only touches the intended row.
+  // Matches the same way addPrinterToDB does (address, or address+deviceName
+  // for USB rows with empty address) so it only touches the intended row.
   Future<void> fixPrinterRecord({
     required String address,
     required String currentDeviceName,
     String? correctedType,
     String? correctedName,
+    String? correctedVendorId, // NEW
+    String? correctedProductId, // NEW
+    bool clearVendorId = false, // NEW: explicitly blank it out
+    bool clearProductId = false, // NEW: explicitly blank it out
   }) async {
     final db = await DatabaseInitializer().initDatabase();
     await _ensureAddressColumn(db);
@@ -207,7 +222,14 @@ class PrinterDBHelper {
 
     final Map<String, dynamic> updates = {};
     if (correctedType != null) updates[AppDBConst.printerType] = correctedType;
-    if (correctedName != null) updates[AppDBConst.printerDeviceName] = correctedName;
+    if (correctedName != null)
+      updates[AppDBConst.printerDeviceName] = correctedName;
+    if (correctedVendorId != null)
+      updates[AppDBConst.printerVendorId] = correctedVendorId;
+    if (correctedProductId != null)
+      updates[AppDBConst.printerProductId] = correctedProductId;
+    if (clearVendorId) updates[AppDBConst.printerVendorId] = '';
+    if (clearProductId) updates[AppDBConst.printerProductId] = '';
 
     if (updates.isEmpty) return;
 
@@ -219,14 +241,19 @@ class PrinterDBHelper {
     );
 
     if (kDebugMode) {
-      print("#### fixPrinterRecord: address='$address' name='$currentDeviceName' -> $updates (rowsAffected=$rows)");
+      print(
+        "#### fixPrinterRecord: address='$address' name='$currentDeviceName' -> $updates (rowsAffected=$rows)",
+      );
     }
   }
 
   // NEW: Delete a specific printer
   // UPDATED: now accepts optional deviceName so USB printers (empty
   // address) get deleted precisely instead of deleting every USB row.
-  Future<void> deletePrinterFromDBByAddress(String address, {String? deviceName}) async {
+  Future<void> deletePrinterFromDBByAddress(
+    String address, {
+    String? deviceName,
+  }) async {
     final db = await DatabaseInitializer().initDatabase();
 
     final match = _matchClause(address, deviceName);
@@ -238,7 +265,9 @@ class PrinterDBHelper {
     );
 
     if (kDebugMode) {
-      print("#### Deleted printer with address: '$address' deviceName: '$deviceName'");
+      print(
+        "#### Deleted printer with address: '$address' deviceName: '$deviceName'",
+      );
     }
   }
 
@@ -280,9 +309,12 @@ class PrinterDBHelper {
         AppDBConst.printerTable,
         {
           AppDBConst.printerDeviceName: printer.deviceName,
-          AppDBConst.printerProductId: printer.productId ?? printer.address ?? 'network',
+          AppDBConst.printerProductId:
+              printer.productId ?? printer.address ?? 'network',
           AppDBConst.printerVendorId: printer.vendorId ?? 'network',
-          AppDBConst.printerType: EnumToString.convertToString(printer.typePrinter),
+          AppDBConst.printerType: EnumToString.convertToString(
+            printer.typePrinter,
+          ),
           AppDBConst.printerAddress: printer.address ?? '',
           'port': printer.port ?? '9100',
           'is_selected': 1,
@@ -295,21 +327,21 @@ class PrinterDBHelper {
       );
     } else {
       // Insert new
-      return await db.insert(
-        AppDBConst.printerTable,
-        {
-          AppDBConst.printerDeviceName: printer.deviceName,
-          AppDBConst.printerProductId: printer.productId ?? printer.address ?? 'network',
-          AppDBConst.printerVendorId: printer.vendorId ?? 'network',
-          AppDBConst.printerType: EnumToString.convertToString(printer.typePrinter),
-          AppDBConst.printerAddress: printer.address ?? '',
-          'port': printer.port ?? '9100',
-          'is_selected': 1,
-          AppDBConst.receiptIconPath: printer.receiptIconPath,
-          AppDBConst.receiptHeaderText: printer.receiptHeaderText,
-          AppDBConst.receiptFooterText: printer.receiptFooterText,
-        },
-      );
+      return await db.insert(AppDBConst.printerTable, {
+        AppDBConst.printerDeviceName: printer.deviceName,
+        AppDBConst.printerProductId:
+            printer.productId ?? printer.address ?? 'network',
+        AppDBConst.printerVendorId: printer.vendorId ?? 'network',
+        AppDBConst.printerType: EnumToString.convertToString(
+          printer.typePrinter,
+        ),
+        AppDBConst.printerAddress: printer.address ?? '',
+        'port': printer.port ?? '9100',
+        'is_selected': 1,
+        AppDBConst.receiptIconPath: printer.receiptIconPath,
+        AppDBConst.receiptHeaderText: printer.receiptHeaderText,
+        AppDBConst.receiptFooterText: printer.receiptFooterText,
+      });
     }
   }
 
@@ -323,7 +355,9 @@ class PrinterDBHelper {
     final printerDevice = await db.query(AppDBConst.printerTable);
 
     if (kDebugMode) {
-      print("#### PrinterDb Retrieved ${printerDevice.length} printer(s) from DB");
+      print(
+        "#### PrinterDb Retrieved ${printerDevice.length} printer(s) from DB",
+      );
     }
 
     return printerDevice;
@@ -356,30 +390,33 @@ class PrinterDBHelper {
 
     if (existing.isEmpty) {
       // Insert new
-      return await db.insert(
-        AppDBConst.printerTable,
-        {
-          AppDBConst.printerDeviceName: printer.deviceName,
-          AppDBConst.printerProductId: printer.productId ?? printer.address ?? 'network',
-          AppDBConst.printerVendorId: printer.vendorId ?? 'network',
-          AppDBConst.printerType: EnumToString.convertToString(printer.typePrinter),
-          AppDBConst.printerAddress: printer.address ?? '',
-          'port': printer.port ?? '9100',
-          'is_selected': 1,
-          AppDBConst.receiptIconPath: printer.receiptIconPath,
-          AppDBConst.receiptHeaderText: printer.receiptHeaderText,
-          AppDBConst.receiptFooterText: printer.receiptFooterText,
-        },
-      );
+      return await db.insert(AppDBConst.printerTable, {
+        AppDBConst.printerDeviceName: printer.deviceName,
+        AppDBConst.printerProductId:
+            printer.productId ?? printer.address ?? 'network',
+        AppDBConst.printerVendorId: printer.vendorId ?? 'network',
+        AppDBConst.printerType: EnumToString.convertToString(
+          printer.typePrinter,
+        ),
+        AppDBConst.printerAddress: printer.address ?? '',
+        'port': printer.port ?? '9100',
+        'is_selected': 1,
+        AppDBConst.receiptIconPath: printer.receiptIconPath,
+        AppDBConst.receiptHeaderText: printer.receiptHeaderText,
+        AppDBConst.receiptFooterText: printer.receiptFooterText,
+      });
     } else {
       // Update existing
       return await db.update(
         AppDBConst.printerTable,
         {
           AppDBConst.printerDeviceName: printer.deviceName,
-          AppDBConst.printerProductId: printer.productId ?? printer.address ?? 'network',
+          AppDBConst.printerProductId:
+              printer.productId ?? printer.address ?? 'network',
           AppDBConst.printerVendorId: printer.vendorId ?? 'network',
-          AppDBConst.printerType: EnumToString.convertToString(printer.typePrinter),
+          AppDBConst.printerType: EnumToString.convertToString(
+            printer.typePrinter,
+          ),
           AppDBConst.printerAddress: printer.address ?? '',
           'port': printer.port ?? '9100',
           'is_selected': 1,

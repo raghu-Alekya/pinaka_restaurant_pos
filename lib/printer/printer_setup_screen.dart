@@ -65,7 +65,9 @@ class _PrinterSetupState extends State<PrinterSetup> {
     _portController.text = _port;
     _scan();
 
-    _subscriptionBtStatus = PrinterManager.instance.stateBluetooth.listen((status) {
+    _subscriptionBtStatus = PrinterManager.instance.stateBluetooth.listen((
+      status,
+    ) {
       log(' ----------------- status bt $status ------------------ ');
       _currentStatus = status;
       if (status == BTStatus.connected) {
@@ -81,11 +83,17 @@ class _PrinterSetupState extends State<PrinterSetup> {
       if (status == BTStatus.connected && pendingTask != null) {
         if (Platform.isAndroid) {
           Future.delayed(const Duration(milliseconds: 1000), () {
-            PrinterManager.instance.send(type: PrinterType.bluetooth, bytes: pendingTask!);
+            PrinterManager.instance.send(
+              type: PrinterType.bluetooth,
+              bytes: pendingTask!,
+            );
             pendingTask = null;
           });
         } else if (Platform.isIOS) {
-          PrinterManager.instance.send(type: PrinterType.bluetooth, bytes: pendingTask!);
+          PrinterManager.instance.send(
+            type: PrinterType.bluetooth,
+            bytes: pendingTask!,
+          );
           pendingTask = null;
         }
       }
@@ -99,7 +107,10 @@ class _PrinterSetupState extends State<PrinterSetup> {
       if (Platform.isAndroid) {
         if (status == USBStatus.connected && pendingTask != null) {
           Future.delayed(const Duration(milliseconds: 1000), () {
-            PrinterManager.instance.send(type: PrinterType.usb, bytes: pendingTask!);
+            PrinterManager.instance.send(
+              type: PrinterType.usb,
+              bytes: pendingTask!,
+            );
             pendingTask = null;
           });
         }
@@ -137,33 +148,38 @@ class _PrinterSetupState extends State<PrinterSetup> {
     try {
       // Use PrinterManager to discover network printers
       // First, try to discover via broadcast
-      final subscription = printerManager.discovery(
-        type: PrinterType.network,
-        isBle: false,
-      ).listen((device) {
-        if (kDebugMode) {
-          print("Network device found: ${device.name}, address: ${device.address}");
-        }
+      final subscription = printerManager
+          .discovery(type: PrinterType.network, isBle: false)
+          .listen((device) {
+            if (kDebugMode) {
+              print(
+                "Network device found: ${device.name}, address: ${device.address}",
+              );
+            }
 
-        if (device.name == null || device.name!.isEmpty) return;
-        if (device.address == null || device.address!.isEmpty) return;
+            if (device.name == null || device.name!.isEmpty) return;
+            if (device.address == null || device.address!.isEmpty) return;
 
-        // Check if device is already in the list
-        final exists = _networkDevices.any((d) => d.address == device.address);
+            // Check if device is already in the list
+            final exists = _networkDevices.any(
+              (d) => d.address == device.address,
+            );
 
-        if (!exists) {
-          setState(() {
-            _networkDevices.add(BluetoothPrinter(
-              deviceName: device.name ?? "Unknown Printer",
-              address: device.address ?? "",
-              vendorId: device.vendorId,
-              productId: device.productId,
-              isBle: false,
-              typePrinter: PrinterType.network,
-            ));
+            if (!exists) {
+              setState(() {
+                _networkDevices.add(
+                  BluetoothPrinter(
+                    deviceName: device.name ?? "Unknown Printer",
+                    address: device.address ?? "",
+                    vendorId: device.vendorId,
+                    productId: device.productId,
+                    isBle: false,
+                    typePrinter: PrinterType.network,
+                  ),
+                );
+              });
+            }
           });
-        }
-      });
 
       // Wait for discovery to complete (5 seconds)
       await Future.delayed(const Duration(seconds: 5));
@@ -185,18 +201,19 @@ class _PrinterSetupState extends State<PrinterSetup> {
           // Try to ping or check if printer exists (optional)
           // For now, just add as discovered
           setState(() {
-            _networkDevices.add(BluetoothPrinter(
-              deviceName: 'Printer at $ip',
-              address: ip,
-              vendorId: null,
-              productId: null,
-              isBle: false,
-              typePrinter: PrinterType.network,
-            ));
+            _networkDevices.add(
+              BluetoothPrinter(
+                deviceName: 'Printer at $ip',
+                address: ip,
+                vendorId: null,
+                productId: null,
+                isBle: false,
+                typePrinter: PrinterType.network,
+              ),
+            );
           });
         }
       }
-
     } catch (e) {
       if (kDebugMode) {
         print("Network scan error: $e");
@@ -234,16 +251,17 @@ class _PrinterSetupState extends State<PrinterSetup> {
   Future<void> _saveNetworkPrinters() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final List<Map<String, String>> printerList = _networkPrinters.asMap().entries.map((entry) {
-        final index = entry.key;
-        final p = entry.value;
-        return {
-          'ip': p.ipAddress,
-          'port': p.port,
-          'name': p.name, // Keep the custom name if set
-          'index': index.toString(),
-        };
-      }).toList();
+      final List<Map<String, String>> printerList =
+          _networkPrinters.asMap().entries.map((entry) {
+            final index = entry.key;
+            final p = entry.value;
+            return {
+              'ip': p.ipAddress,
+              'port': p.port,
+              'name': p.name, // Keep the custom name if set
+              'index': index.toString(),
+            };
+          }).toList();
       await prefs.setString('network_printers', jsonEncode(printerList));
     } catch (e) {
       print('Error saving network printers: $e');
@@ -258,20 +276,21 @@ class _PrinterSetupState extends State<PrinterSetup> {
       if (saved != null && saved.isNotEmpty) {
         final List<dynamic> list = jsonDecode(saved);
         setState(() {
-          _networkPrinters = list.asMap().entries.map((entry) {
-            final index = entry.key;
-            final item = entry.value;
-            // Use saved name if exists, otherwise generate based on index
-            String name = item['name'] ?? '';
-            if (name.isEmpty) {
-              name = _getPrinterName(index, '');
-            }
-            return NetworkPrinterConfig(
-              ipAddress: item['ip'] ?? '',
-              port: item['port'] ?? '9100',
-              name: name,
-            );
-          }).toList();
+          _networkPrinters =
+              list.asMap().entries.map((entry) {
+                final index = entry.key;
+                final item = entry.value;
+                // Use saved name if exists, otherwise generate based on index
+                String name = item['name'] ?? '';
+                if (name.isEmpty) {
+                  name = _getPrinterName(index, '');
+                }
+                return NetworkPrinterConfig(
+                  ipAddress: item['ip'] ?? '',
+                  port: item['port'] ?? '9100',
+                  name: name,
+                );
+              }).toList();
         });
       }
     } catch (e) {
@@ -286,11 +305,13 @@ class _PrinterSetupState extends State<PrinterSetup> {
       final name = _getPrinterName(index, '');
 
       setState(() {
-        _networkPrinters.add(NetworkPrinterConfig(
-          ipAddress: _ipController.text,
-          port: _portController.text,
-          name: name,
-        ));
+        _networkPrinters.add(
+          NetworkPrinterConfig(
+            ipAddress: _ipController.text,
+            port: _portController.text,
+            name: name,
+          ),
+        );
         _ipController.clear();
         _saveNetworkPrinters();
       });
@@ -312,14 +333,19 @@ class _PrinterSetupState extends State<PrinterSetup> {
     }
 
     final index = _networkPrinters.length;
-    final name = _getPrinterName(index, printer.deviceName ?? 'Unknown Printer');
+    final name = _getPrinterName(
+      index,
+      printer.deviceName ?? 'Unknown Printer',
+    );
 
     setState(() {
-      _networkPrinters.add(NetworkPrinterConfig(
-        ipAddress: printer.address ?? '',
-        port: '9100',
-        name: name,
-      ));
+      _networkPrinters.add(
+        NetworkPrinterConfig(
+          ipAddress: printer.address ?? '',
+          port: '9100',
+          name: name,
+        ),
+      );
       _saveNetworkPrinters();
     });
 
@@ -337,9 +363,7 @@ class _PrinterSetupState extends State<PrinterSetup> {
       final printer = _networkPrinters[index];
       _networkPrinters.removeAt(index);
       // Also remove from selected list if present
-      _selectedPrinters.removeWhere((p) =>
-      p.address == printer.ipAddress
-      );
+      _selectedPrinters.removeWhere((p) => p.address == printer.ipAddress);
       _saveNetworkPrinters();
     });
   }
@@ -347,8 +371,8 @@ class _PrinterSetupState extends State<PrinterSetup> {
   // Toggle printer selection
   void _togglePrinterSelection(BluetoothPrinter printer) {
     setState(() {
-      final index = _selectedPrinters.indexWhere((p) =>
-      p.address == printer.address && p.port == printer.port
+      final index = _selectedPrinters.indexWhere(
+        (p) => p.address == printer.address && p.port == printer.port,
       );
       if (index >= 0) {
         _selectedPrinters.removeAt(index);
@@ -359,9 +383,14 @@ class _PrinterSetupState extends State<PrinterSetup> {
   }
 
   // NEW: Print to single printer (supports ALL types: USB, Network, Bluetooth)
-  Future<bool> _printToSinglePrinter(BluetoothPrinter printer, List<int> bytes) async {
+  Future<bool> _printToSinglePrinter(
+    BluetoothPrinter printer,
+    List<int> bytes,
+  ) async {
     try {
-      print('Attempting to connect to: ${printer.deviceName} (${printer.typePrinter})');
+      print(
+        'Attempting to connect to: ${printer.deviceName} (${printer.typePrinter})',
+      );
 
       bool connected = false;
 
@@ -439,9 +468,7 @@ class _PrinterSetupState extends State<PrinterSetup> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
+      builder: (context) => const Center(child: CircularProgressIndicator()),
     );
 
     try {
@@ -470,14 +497,21 @@ class _PrinterSetupState extends State<PrinterSetup> {
         if (successCount > 0) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Printed to $successCount of ${_selectedPrinters.length} printer(s)'),
-              backgroundColor: successCount == _selectedPrinters.length ? Colors.green : Colors.orange,
+              content: Text(
+                'Printed to $successCount of ${_selectedPrinters.length} printer(s)',
+              ),
+              backgroundColor:
+                  successCount == _selectedPrinters.length
+                      ? Colors.green
+                      : Colors.orange,
             ),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Failed to print to all selected printers. Please check connections.'),
+              content: Text(
+                'Failed to print to all selected printers. Please check connections.',
+              ),
               backgroundColor: Colors.red,
             ),
           );
@@ -503,58 +537,59 @@ class _PrinterSetupState extends State<PrinterSetup> {
   void _scan() {
     devices.clear();
 
-    _subscription = printerManager.discovery(
-      type: defaultPrinterType,
-      isBle: _isBle,
-    ).listen((device) {
-      if (kDebugMode) {
-        print("device found: ${device.name}, address: ${device.address}");
-      }
-
-      if (device.name == null || device.name!.isEmpty) return;
-
-      if (defaultPrinterType == PrinterType.usb) {
-        if (!Platform.isWindows) {
-          if (device.vendorId == null || device.productId == null) {
-            return;
+    _subscription = printerManager
+        .discovery(type: defaultPrinterType, isBle: _isBle)
+        .listen((device) {
+          if (kDebugMode) {
+            print("device found: ${device.name}, address: ${device.address}");
           }
-        }
 
-        final name = device.name!.toLowerCase();
-        if (!name.contains('printer') &&
-            !name.contains('xp') &&
-            !name.contains('thermal') &&
-            !name.contains('rocket') &&
-            !name.contains('pos') &&
-            !name.contains('80mm') &&
-            !name.contains('58mm')) {
-          return;
-        }
-      }
+          if (device.name == null || device.name!.isEmpty) return;
 
-      if (defaultPrinterType != PrinterType.usb) {
-        if (device.address == null || device.address!.isEmpty) {
-          return;
-        }
-      }
+          if (defaultPrinterType == PrinterType.usb) {
+            if (!Platform.isWindows) {
+              if (device.vendorId == null || device.productId == null) {
+                return;
+              }
+            }
 
-      try {
-        devices.add(BluetoothPrinter(
-          deviceName: device.name ?? "Unknown Printer",
-          address: device.address ?? "",
-          vendorId: device.vendorId,
-          productId: device.productId,
-          isBle: _isBle,
-          typePrinter: defaultPrinterType,
-        ));
+            final name = device.name!.toLowerCase();
+            if (!name.contains('printer') &&
+                !name.contains('xp') &&
+                !name.contains('thermal') &&
+                !name.contains('rocket') &&
+                !name.contains('pos') &&
+                !name.contains('80mm') &&
+                !name.contains('58mm')) {
+              return;
+            }
+          }
 
-        if (mounted) setState(() {});
-      } catch (e) {
-        if (kDebugMode) {
-          print("Printer discovery error (ignored): $e");
-        }
-      }
-    });
+          if (defaultPrinterType != PrinterType.usb) {
+            if (device.address == null || device.address!.isEmpty) {
+              return;
+            }
+          }
+
+          try {
+            devices.add(
+              BluetoothPrinter(
+                deviceName: device.name ?? "Unknown Printer",
+                address: device.address ?? "",
+                vendorId: device.vendorId,
+                productId: device.productId,
+                isBle: _isBle,
+                typePrinter: defaultPrinterType,
+              ),
+            );
+
+            if (mounted) setState(() {});
+          } catch (e) {
+            if (kDebugMode) {
+              print("Printer discovery error (ignored): $e");
+            }
+          }
+        });
   }
 
   Future<void> setPort(String value) async {
@@ -638,9 +673,20 @@ class _PrinterSetupState extends State<PrinterSetup> {
     bytes += generator.hr();
 
     bytes += generator.row([
-      PosColumn(width: 7, text: 'Lemon lime export quality per pound x 5 units'),
-      PosColumn(width: 3, text: 'USD 2.00', styles: const PosStyles(align: PosAlign.right)),
-      PosColumn(width: 2, text: 'Desc', styles: const PosStyles(align: PosAlign.right)),
+      PosColumn(
+        width: 7,
+        text: 'Lemon lime export quality per pound x 5 units',
+      ),
+      PosColumn(
+        width: 3,
+        text: 'USD 2.00',
+        styles: const PosStyles(align: PosAlign.right),
+      ),
+      PosColumn(
+        width: 2,
+        text: 'Desc',
+        styles: const PosStyles(align: PosAlign.right),
+      ),
     ]);
 
     bytes += generator.row([
@@ -673,10 +719,7 @@ class _PrinterSetupState extends State<PrinterSetup> {
     if (footer.isNotEmpty) {
       bytes += generator.text(
         footer,
-        styles: const PosStyles(
-          align: PosAlign.center,
-          bold: true,
-        ),
+        styles: const PosStyles(align: PosAlign.center, bold: true),
       );
     }
 
@@ -740,7 +783,8 @@ class _PrinterSetupState extends State<PrinterSetup> {
     bytes += generator.row([
       PosColumn(
         width: 6,
-        text: "Date: ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}",
+        text:
+            "Date: ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}",
       ),
       PosColumn(
         width: 6,
@@ -750,10 +794,7 @@ class _PrinterSetupState extends State<PrinterSetup> {
     ]);
 
     bytes += generator.row([
-      PosColumn(
-        width: 6,
-        text: "Cashier: $cashierName",
-      ),
+      PosColumn(width: 6, text: "Cashier: $cashierName"),
       PosColumn(
         width: 6,
         text: "Order: $orderId",
@@ -764,11 +805,7 @@ class _PrinterSetupState extends State<PrinterSetup> {
     bytes += generator.hr();
 
     bytes += generator.row([
-      PosColumn(
-        width: 6,
-        text: "Item",
-        styles: const PosStyles(bold: true),
-      ),
+      PosColumn(width: 6, text: "Item", styles: const PosStyles(bold: true)),
       PosColumn(
         width: 2,
         text: "Qty",
@@ -794,10 +831,7 @@ class _PrinterSetupState extends State<PrinterSetup> {
       final amount = (item['amount'] ?? 0).toString();
 
       bytes += generator.row([
-        PosColumn(
-          width: 6,
-          text: item['name'] ?? '',
-        ),
+        PosColumn(width: 6, text: item['name'] ?? ''),
         PosColumn(
           width: 2,
           text: qty,
@@ -822,10 +856,7 @@ class _PrinterSetupState extends State<PrinterSetup> {
       PosColumn(
         width: 8,
         text: "TOTAL",
-        styles: const PosStyles(
-          bold: true,
-          height: PosTextSize.size2,
-        ),
+        styles: const PosStyles(bold: true, height: PosTextSize.size2),
       ),
       PosColumn(
         width: 4,
@@ -844,7 +875,8 @@ class _PrinterSetupState extends State<PrinterSetup> {
   void _printEscPos(List<int> bytes, Generator generator) async {
     if (_isPrinting) return;
 
-    if (defaultPrinterType == PrinterType.network && _selectedPrinters.isNotEmpty) {
+    if (defaultPrinterType == PrinterType.network &&
+        _selectedPrinters.isNotEmpty) {
       await _printToMultiplePrinters(bytes);
       return;
     }
@@ -858,31 +890,42 @@ class _PrinterSetupState extends State<PrinterSetup> {
         bytes += generator.feed(2);
         bytes += generator.cut();
         await printerManager.connect(
-            type: bluetoothPrinter.typePrinter,
-            model: UsbPrinterInput(name: bluetoothPrinter.deviceName, productId: bluetoothPrinter.productId, vendorId: bluetoothPrinter.vendorId));
+          type: bluetoothPrinter.typePrinter,
+          model: UsbPrinterInput(
+            name: bluetoothPrinter.deviceName,
+            productId: bluetoothPrinter.productId,
+            vendorId: bluetoothPrinter.vendorId,
+          ),
+        );
         pendingTask = null;
         break;
       case PrinterType.bluetooth:
         bytes += generator.cut();
         await printerManager.connect(
-            type: bluetoothPrinter.typePrinter,
-            model: BluetoothPrinterInput(
-                name: bluetoothPrinter.deviceName,
-                address: bluetoothPrinter.address!,
-                isBle: bluetoothPrinter.isBle ?? false,
-                autoConnect: _reconnect));
+          type: bluetoothPrinter.typePrinter,
+          model: BluetoothPrinterInput(
+            name: bluetoothPrinter.deviceName,
+            address: bluetoothPrinter.address!,
+            isBle: bluetoothPrinter.isBle ?? false,
+            autoConnect: _reconnect,
+          ),
+        );
         pendingTask = null;
         if (Platform.isAndroid) pendingTask = bytes;
         break;
       case PrinterType.network:
         bytes += generator.feed(2);
         bytes += generator.cut();
-        connectedTCP = await printerManager.connect(type: bluetoothPrinter.typePrinter, model: TcpPrinterInput(ipAddress: bluetoothPrinter.address!));
+        connectedTCP = await printerManager.connect(
+          type: bluetoothPrinter.typePrinter,
+          model: TcpPrinterInput(ipAddress: bluetoothPrinter.address!),
+        );
         if (!connectedTCP) print(' --- please review your connection ---');
         break;
       default:
     }
-    if (bluetoothPrinter.typePrinter == PrinterType.bluetooth && Platform.isAndroid) {
+    if (bluetoothPrinter.typePrinter == PrinterType.bluetooth &&
+        Platform.isAndroid) {
       if (_currentStatus == BTStatus.connected) {
         printerManager.send(type: bluetoothPrinter.typePrinter, bytes: bytes);
         pendingTask = null;
@@ -922,71 +965,100 @@ class _PrinterSetupState extends State<PrinterSetup> {
                       children: [
                         Expanded(
                           child: ElevatedButton(
-                            onPressed: selectedPrinter == null || _isConnected
-                                ? null
-                                : () async {
-                              try {
-                                _isConnected = await _printerSettings.connectDevice();
-                                if (!_isConnected && mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text("Printer does not have required details. Please select another printer."),
-                                      backgroundColor: Colors.red,
-                                      duration: Duration(seconds: 3),
-                                    ),
-                                  );
-                                  return;
-                                }
+                            onPressed:
+                                selectedPrinter == null || _isConnected
+                                    ? null
+                                    : () async {
+                                      try {
+                                        _isConnected =
+                                            await _printerSettings
+                                                .connectDevice();
+                                        if (!_isConnected && mounted) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                "Printer does not have required details. Please select another printer.",
+                                              ),
+                                              backgroundColor: Colors.red,
+                                              duration: Duration(seconds: 3),
+                                            ),
+                                          );
+                                          return;
+                                        }
 
-                                if (selectedPrinter != null && mounted) {
-                                  try {
-                                    final printerDb = PrinterDBHelper();
-                                    final existing = await printerDb.getPrinterFromDB();
-                                    if (existing.isEmpty) {
-                                      await printerDb.addPrinterToDB(selectedPrinter!);
-                                    } else {
-                                      await printerDb.updatePrinterToDB(selectedPrinter!);
-                                    }
-                                  } catch (dbError) {
-                                    print("DB save error (non-fatal): $dbError");
-                                  }
-                                }
+                                        if (selectedPrinter != null &&
+                                            mounted) {
+                                          try {
+                                            final printerDb = PrinterDBHelper();
+                                            final existing =
+                                                await printerDb
+                                                    .getPrinterFromDB();
+                                            if (existing.isEmpty) {
+                                              await printerDb.addPrinterToDB(
+                                                selectedPrinter!,
+                                              );
+                                            } else {
+                                              await printerDb.updatePrinterToDB(
+                                                selectedPrinter!,
+                                              );
+                                            }
+                                          } catch (dbError) {
+                                            print(
+                                              "DB save error (non-fatal): $dbError",
+                                            );
+                                          }
+                                        }
 
-                                if (mounted) {
-                                  setState(() {});
-                                }
-                              } catch (e, s) {
-                                print("Exception: $e, Stack: $s");
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text("Error connecting to printer."),
-                                      backgroundColor: Colors.red,
-                                      duration: Duration(seconds: 3),
-                                    ),
-                                  );
-                                }
-                              }
-                            },
-                            child: const Text("Connect", textAlign: TextAlign.center),
+                                        if (mounted) {
+                                          setState(() {});
+                                        }
+                                      } catch (e, s) {
+                                        print("Exception: $e, Stack: $s");
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                "Error connecting to printer.",
+                                              ),
+                                              backgroundColor: Colors.red,
+                                              duration: Duration(seconds: 3),
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    },
+                            child: const Text(
+                              "Connect",
+                              textAlign: TextAlign.center,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: ElevatedButton(
-                            onPressed: selectedPrinter == null || !_isConnected
-                                ? null
-                                : () {
-                              if (selectedPrinter != null) {
-                                printerManager.disconnect(type: selectedPrinter!.typePrinter);
-                              }
-                              if (mounted) {
-                                setState(() {
-                                  _isConnected = false;
-                                });
-                              }
-                            },
-                            child: const Text("Disconnect", textAlign: TextAlign.center),
+                            onPressed:
+                                selectedPrinter == null || !_isConnected
+                                    ? null
+                                    : () {
+                                      if (selectedPrinter != null) {
+                                        printerManager.disconnect(
+                                          type: selectedPrinter!.typePrinter,
+                                        );
+                                      }
+                                      if (mounted) {
+                                        setState(() {
+                                          _isConnected = false;
+                                        });
+                                      }
+                                    },
+                            child: const Text(
+                              "Disconnect",
+                              textAlign: TextAlign.center,
+                            ),
                           ),
                         ),
                       ],
@@ -1031,9 +1103,14 @@ class _PrinterSetupState extends State<PrinterSetup> {
                     },
                   ),
                   Visibility(
-                    visible: defaultPrinterType == PrinterType.bluetooth && Platform.isAndroid,
+                    visible:
+                        defaultPrinterType == PrinterType.bluetooth &&
+                        Platform.isAndroid,
                     child: SwitchListTile.adaptive(
-                      contentPadding: const EdgeInsets.only(bottom: 20.0, left: 20),
+                      contentPadding: const EdgeInsets.only(
+                        bottom: 20.0,
+                        left: 20,
+                      ),
                       title: const Text(
                         "This device supports ble (low energy)",
                         textAlign: TextAlign.start,
@@ -1053,9 +1130,14 @@ class _PrinterSetupState extends State<PrinterSetup> {
                     ),
                   ),
                   Visibility(
-                    visible: defaultPrinterType == PrinterType.bluetooth && Platform.isAndroid,
+                    visible:
+                        defaultPrinterType == PrinterType.bluetooth &&
+                        Platform.isAndroid,
                     child: SwitchListTile.adaptive(
-                      contentPadding: const EdgeInsets.only(bottom: 20.0, left: 20),
+                      contentPadding: const EdgeInsets.only(
+                        bottom: 20.0,
+                        left: 20,
+                      ),
                       title: const Text(
                         "Reconnect",
                         textAlign: TextAlign.start,
@@ -1081,14 +1163,20 @@ class _PrinterSetupState extends State<PrinterSetup> {
                           padding: EdgeInsets.all(8.0),
                           child: Text(
                             'Network Printers Management',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
 
                         // NEW: Show discovered network printers
                         if (_networkDevices.isNotEmpty) ...[
                           const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 8.0,
+                              vertical: 4.0,
+                            ),
                             child: Text(
                               'Discovered Printers:',
                               style: TextStyle(
@@ -1097,30 +1185,46 @@ class _PrinterSetupState extends State<PrinterSetup> {
                               ),
                             ),
                           ),
-                          ..._networkDevices.map((device) => ListTile(
-                            title: Text(device.deviceName ?? 'Unknown Printer'),
-                            subtitle: Text(device.address ?? 'No IP'),
-                            leading: const Icon(Icons.wifi, color: Colors.blue),
-                            trailing: ElevatedButton(
-                              onPressed: () => _addDiscoveredNetworkPrinter(device),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
-                                foregroundColor: Colors.white,
-                              ),
-                              child: const Text('Add'),
-                            ),
-                            onTap: () {
-                              // Option to test connection
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Testing connection to ${device.address}...'),
-                                  duration: const Duration(seconds: 2),
+                          ..._networkDevices
+                              .map(
+                                (device) => ListTile(
+                                  title: Text(
+                                    device.deviceName ?? 'Unknown Printer',
+                                  ),
+                                  subtitle: Text(device.address ?? 'No IP'),
+                                  leading: const Icon(
+                                    Icons.wifi,
+                                    color: Colors.blue,
+                                  ),
+                                  trailing: ElevatedButton(
+                                    onPressed:
+                                        () => _addDiscoveredNetworkPrinter(
+                                          device,
+                                        ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.green,
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    child: const Text('Add'),
+                                  ),
+                                  onTap: () {
+                                    // Option to test connection
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Testing connection to ${device.address}...',
+                                        ),
+                                        duration: const Duration(seconds: 2),
+                                      ),
+                                    );
+                                    // Test connection
+                                    _testNetworkConnection(
+                                      device.address ?? '',
+                                    );
+                                  },
                                 ),
-                              );
-                              // Test connection
-                              _testNetworkConnection(device.address ?? '');
-                            },
-                          )).toList(),
+                              )
+                              .toList(),
                           const Divider(),
                         ],
 
@@ -1133,7 +1237,10 @@ class _PrinterSetupState extends State<PrinterSetup> {
                                 flex: 3,
                                 child: TextFormField(
                                   controller: _ipController,
-                                  keyboardType: const TextInputType.numberWithOptions(signed: true),
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                        signed: true,
+                                      ),
                                   decoration: const InputDecoration(
                                     label: Text("IP Address"),
                                     prefixIcon: Icon(Icons.wifi, size: 24),
@@ -1146,16 +1253,25 @@ class _PrinterSetupState extends State<PrinterSetup> {
                                 flex: 2,
                                 child: TextFormField(
                                   controller: _portController,
-                                  keyboardType: const TextInputType.numberWithOptions(signed: true),
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                        signed: true,
+                                      ),
                                   decoration: const InputDecoration(
                                     label: Text("Port"),
-                                    prefixIcon: Icon(Icons.numbers_outlined, size: 24),
+                                    prefixIcon: Icon(
+                                      Icons.numbers_outlined,
+                                      size: 24,
+                                    ),
                                   ),
                                   onChanged: setPort,
                                 ),
                               ),
                               IconButton(
-                                icon: const Icon(Icons.add_circle, color: Colors.green),
+                                icon: const Icon(
+                                  Icons.add_circle,
+                                  color: Colors.green,
+                                ),
                                 onPressed: _addNetworkPrinter,
                                 tooltip: 'Add printer manually',
                               ),
@@ -1166,7 +1282,10 @@ class _PrinterSetupState extends State<PrinterSetup> {
                         // Saved printers list
                         if (_networkPrinters.isNotEmpty) ...[
                           const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 8.0,
+                              vertical: 4.0,
+                            ),
                             child: Text(
                               'Saved Printers:',
                               style: TextStyle(
@@ -1178,8 +1297,10 @@ class _PrinterSetupState extends State<PrinterSetup> {
                           ..._networkPrinters.asMap().entries.map((entry) {
                             final index = entry.key;
                             final printer = entry.value;
-                            final isSelected = _selectedPrinters.any((p) =>
-                            p.address == printer.ipAddress && p.port == printer.port
+                            final isSelected = _selectedPrinters.any(
+                              (p) =>
+                                  p.address == printer.ipAddress &&
+                                  p.port == printer.port,
                             );
 
                             // Show printer type badge
@@ -1200,7 +1321,10 @@ class _PrinterSetupState extends State<PrinterSetup> {
                                   if (badgeText.isNotEmpty) ...[
                                     const SizedBox(width: 8),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 2,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: badgeColor,
                                         borderRadius: BorderRadius.circular(4),
@@ -1217,7 +1341,9 @@ class _PrinterSetupState extends State<PrinterSetup> {
                                   ],
                                 ],
                               ),
-                              subtitle: Text('${printer.ipAddress}:${printer.port}'),
+                              subtitle: Text(
+                                '${printer.ipAddress}:${printer.port}',
+                              ),
                               leading: Checkbox(
                                 value: isSelected,
                                 onChanged: (bool? value) {
@@ -1232,7 +1358,10 @@ class _PrinterSetupState extends State<PrinterSetup> {
                                 },
                               ),
                               trailing: IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.red),
+                                icon: const Icon(
+                                  Icons.delete,
+                                  color: Colors.red,
+                                ),
                                 onPressed: () => _removeNetworkPrinter(index),
                               ),
                             );
@@ -1253,13 +1382,20 @@ class _PrinterSetupState extends State<PrinterSetup> {
                         Padding(
                           padding: const EdgeInsets.all(8.0),
                           child: ElevatedButton(
-                            onPressed: _selectedPrinters.isEmpty || _isPrinting ? null : _printReceiveTest,
+                            onPressed:
+                                _selectedPrinters.isEmpty || _isPrinting
+                                    ? null
+                                    : _printReceiveTest,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.blue,
                               foregroundColor: Colors.white,
                               minimumSize: const Size(double.infinity, 50),
                             ),
-                            child: Text(_isPrinting ? 'Printing...' : 'Print Test to Selected Printers'),
+                            child: Text(
+                              _isPrinting
+                                  ? 'Printing...'
+                                  : 'Print Test to Selected Printers',
+                            ),
                           ),
                         ),
                       ],
@@ -1269,94 +1405,193 @@ class _PrinterSetupState extends State<PrinterSetup> {
                   // Bluetooth/USB devices list
                   if (defaultPrinterType != PrinterType.network)
                     Column(
-                      children: devices.map((device) => ListTile(
-                        title: Text(device.deviceName!),
-                        subtitle: (defaultPrinterType == PrinterType.usb || Platform.isWindows)
-                            ? null
-                            : Visibility(
-                          visible: device.address != null && device.address!.isNotEmpty,
-                          child: Text(device.address ?? ''),
-                        ),
-                        onTap: () async {
-                          await _printerSettings.selectDevice(device);
-                          if (mounted) {
-                            setState(() {
-                              selectedPrinter = device;
-                            });
-                          }
-                        },
-                        leading: selectedPrinter != null &&
-                            ((device.typePrinter == PrinterType.usb && Platform.isWindows
-                                ? device.deviceName == selectedPrinter!.deviceName
-                                : device.vendorId != null && selectedPrinter!.vendorId == device.vendorId) ||
-                                (device.address != null && selectedPrinter!.address == device.address))
-                            ? const Icon(Icons.check, color: Colors.green)
-                            : null,
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // Add checkbox for USB printers to select them for multi-printing
-                            if (defaultPrinterType == PrinterType.usb)
-                              Checkbox(
-                                value: _selectedPrinters.any((p) =>
-                                p.deviceName == device.deviceName &&
-                                    p.vendorId == device.vendorId &&
-                                    p.productId == device.productId &&
-                                    p.typePrinter == PrinterType.usb
+                      children:
+                          devices
+                              .map(
+                                (device) => ListTile(
+                                  title: Text(device.deviceName!),
+                                  subtitle:
+                                      (defaultPrinterType == PrinterType.usb ||
+                                              Platform.isWindows)
+                                          ? null
+                                          : Visibility(
+                                            visible:
+                                                device.address != null &&
+                                                device.address!.isNotEmpty,
+                                            child: Text(device.address ?? ''),
+                                          ),
+                                  onTap: () async {
+                                    await _printerSettings.selectDevice(device);
+                                    if (mounted) {
+                                      setState(() {
+                                        selectedPrinter = device;
+                                      });
+                                    }
+                                  },
+                                  leading:
+                                      selectedPrinter != null &&
+                                              ((device.typePrinter ==
+                                                              PrinterType.usb &&
+                                                          Platform.isWindows
+                                                      ? device.deviceName ==
+                                                          selectedPrinter!
+                                                              .deviceName
+                                                      : device.vendorId !=
+                                                              null &&
+                                                          selectedPrinter!
+                                                                  .vendorId ==
+                                                              device
+                                                                  .vendorId) ||
+                                                  (device.address != null &&
+                                                      selectedPrinter!
+                                                              .address ==
+                                                          device.address))
+                                          ? const Icon(
+                                            Icons.check,
+                                            color: Colors.green,
+                                          )
+                                          : null,
+                                  //Raghu
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      // Add checkbox for USB printers to select them for multi-printing
+                                      if (defaultPrinterType == PrinterType.usb)
+                                        Checkbox(
+                                          value: _selectedPrinters.any(
+                                            (p) =>
+                                                p.deviceName ==
+                                                    device.deviceName &&
+                                                p.vendorId == device.vendorId &&
+                                                p.productId ==
+                                                    device.productId &&
+                                                p.typePrinter ==
+                                                    PrinterType.usb,
+                                          ),
+                                          onChanged: (bool? value) async {
+                                            if (value == true) {
+                                              // Add printer to selection (existing behavior, unchanged)
+                                              final printerToAdd =
+                                                  BluetoothPrinter(
+                                                    deviceName:
+                                                        device.deviceName,
+                                                    address: device.address,
+                                                    vendorId: device.vendorId,
+                                                    productId: device.productId,
+                                                    isBle: device.isBle,
+                                                    typePrinter:
+                                                        PrinterType.usb,
+                                                    state: device.state,
+                                                  );
+                                              setState(() {
+                                                final exists = _selectedPrinters
+                                                    .any(
+                                                      (p) =>
+                                                          p.deviceName ==
+                                                              printerToAdd
+                                                                  .deviceName &&
+                                                          p.vendorId ==
+                                                              printerToAdd
+                                                                  .vendorId &&
+                                                          p.productId ==
+                                                              printerToAdd
+                                                                  .productId &&
+                                                          p.typePrinter ==
+                                                              PrinterType.usb,
+                                                    );
+                                                if (!exists) {
+                                                  _selectedPrinters.add(
+                                                    printerToAdd,
+                                                  );
+                                                }
+                                              });
+
+                                              // NEW: persist to DB too — Windows USB fix.
+                                              // Without this, TopBar's real bill print
+                                              // (which reads only from the DB) never
+                                              // sees USB printers checked here, even
+                                              // though the on-screen test print works
+                                              // fine off the in-memory list.
+                                              try {
+                                                final printerDb =
+                                                    PrinterDBHelper();
+                                                await printerDb.addPrinterToDB(
+                                                  printerToAdd,
+                                                );
+                                                await printerDb
+                                                    .updatePrinterSelection(
+                                                      device.address ?? '',
+                                                      true,
+                                                      deviceName:
+                                                          device.deviceName,
+                                                    );
+                                              } catch (e) {
+                                                print(
+                                                  'Error persisting USB printer selection: $e',
+                                                );
+                                              }
+                                            } else {
+                                              // Remove printer from selection (existing behavior, unchanged)
+                                              setState(() {
+                                                _selectedPrinters.removeWhere(
+                                                  (p) =>
+                                                      p.deviceName ==
+                                                          device.deviceName &&
+                                                      p.vendorId ==
+                                                          device.vendorId &&
+                                                      p.productId ==
+                                                          device.productId &&
+                                                      p.typePrinter ==
+                                                          PrinterType.usb,
+                                                );
+                                              });
+
+                                              // NEW: mirror the un-selection in the DB.
+                                              try {
+                                                await PrinterDBHelper()
+                                                    .updatePrinterSelection(
+                                                      device.address ?? '',
+                                                      false,
+                                                      deviceName:
+                                                          device.deviceName,
+                                                    );
+                                              } catch (e) {
+                                                print(
+                                                  'Error un-persisting USB printer selection: $e',
+                                                );
+                                              }
+                                            }
+                                          },
+                                        ),
+                                      OutlinedButton(
+                                        onPressed:
+                                            selectedPrinter == null ||
+                                                    device.deviceName !=
+                                                        selectedPrinter
+                                                            ?.deviceName ||
+                                                    _isPrinting
+                                                ? null
+                                                : _printReceiveTest,
+                                        child: const Padding(
+                                          padding: EdgeInsets.symmetric(
+                                            vertical: 2,
+                                            horizontal: 20,
+                                          ),
+                                          child: Text(
+                                            "Print test ticket",
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                onChanged: (bool? value) {
-                                  if (value == true) {
-                                    // Add printer to selection
-                                    setState(() {
-                                      // Make sure we have a clean copy
-                                      final printerToAdd = BluetoothPrinter(
-                                        deviceName: device.deviceName,
-                                        address: device.address,
-                                        vendorId: device.vendorId,
-                                        productId: device.productId,
-                                        isBle: device.isBle,
-                                        typePrinter: PrinterType.usb,
-                                        state: device.state,
-                                      );
-                                      // Check if already exists
-                                      final exists = _selectedPrinters.any((p) =>
-                                      p.deviceName == printerToAdd.deviceName &&
-                                          p.vendorId == printerToAdd.vendorId &&
-                                          p.productId == printerToAdd.productId &&
-                                          p.typePrinter == PrinterType.usb
-                                      );
-                                      if (!exists) {
-                                        _selectedPrinters.add(printerToAdd);
-                                      }
-                                    });
-                                  } else {
-                                    // Remove printer from selection
-                                    setState(() {
-                                      _selectedPrinters.removeWhere((p) =>
-                                      p.deviceName == device.deviceName &&
-                                          p.vendorId == device.vendorId &&
-                                          p.productId == device.productId &&
-                                          p.typePrinter == PrinterType.usb
-                                      );
-                                    });
-                                  }
-                                },
-                              ),
-                            OutlinedButton(
-                              onPressed: selectedPrinter == null || device.deviceName != selectedPrinter?.deviceName || _isPrinting
-                                  ? null
-                                  : _printReceiveTest,
-                              child: const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 2, horizontal: 20),
-                                child: Text("Print test ticket", textAlign: TextAlign.center),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )).toList(),
+                              )
+                              .toList(),
                     ),
                   // Show selected printers count for USB/Bluetooth
-                  if (defaultPrinterType != PrinterType.network && _selectedPrinters.isNotEmpty)
+                  if (defaultPrinterType != PrinterType.network &&
+                      _selectedPrinters.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: Text(
@@ -1368,37 +1603,56 @@ class _PrinterSetupState extends State<PrinterSetup> {
                       ),
                     ),
                   // Show multi-print button for USB/Bluetooth
-                  if (defaultPrinterType != PrinterType.network && _selectedPrinters.isNotEmpty)
+                  if (defaultPrinterType != PrinterType.network &&
+                      _selectedPrinters.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: ElevatedButton(
-                        onPressed: _selectedPrinters.isEmpty || _isPrinting ? null : _printReceiveTest,
+                        onPressed:
+                            _selectedPrinters.isEmpty || _isPrinting
+                                ? null
+                                : _printReceiveTest,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blue,
                           foregroundColor: Colors.white,
                           minimumSize: const Size(double.infinity, 50),
                         ),
-                        child: Text(_isPrinting ? 'Printing...' : 'Print Test to Selected Printers'),
-                      ),
-                    ),
-                  Visibility(
-                    visible: defaultPrinterType == PrinterType.network && Platform.isWindows,
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 10.0),
-                      child: OutlinedButton(
-                        onPressed: _isPrinting ? null : () async {
-                          if (_ipController.text.isNotEmpty) {
-                            setIpAddress(_ipController.text);
-                          }
-                          await _printReceiveTest();
-                        },
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 4, horizontal: 50),
-                          child: Text("Print test ticket", textAlign: TextAlign.center),
+                        child: Text(
+                          _isPrinting
+                              ? 'Printing...'
+                              : 'Print Test to Selected Printers',
                         ),
                       ),
                     ),
-                  )
+                  Visibility(
+                    visible:
+                        defaultPrinterType == PrinterType.network &&
+                        Platform.isWindows,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 10.0),
+                      child: OutlinedButton(
+                        onPressed:
+                            _isPrinting
+                                ? null
+                                : () async {
+                                  if (_ipController.text.isNotEmpty) {
+                                    setIpAddress(_ipController.text);
+                                  }
+                                  await _printReceiveTest();
+                                },
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(
+                            vertical: 4,
+                            horizontal: 50,
+                          ),
+                          child: Text(
+                            "Print test ticket",
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),

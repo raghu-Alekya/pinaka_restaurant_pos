@@ -1,16 +1,49 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../constants/constants.dart';
 import '../models/order_list/edit_order_list_model.dart';
 import '../models/order_list/order_list_model.dart';
 import '../utils/logger.dart';
 
+List<OrderlistModel> _parseOrdersJson(String responseBody) {
+  final dynamic jsonResponse = jsonDecode(responseBody);
+  List<dynamic> dataList = [];
+
+  if (jsonResponse is List) {
+    dataList = jsonResponse;
+  } else if (jsonResponse is Map<String, dynamic>) {
+    if (jsonResponse.containsKey('orders')) {
+      dataList = jsonResponse['orders'] as List<dynamic>;
+    } else if (jsonResponse.containsKey('data')) {
+      dataList = jsonResponse['data'] as List<dynamic>;
+    } else {
+      return [];
+    }
+  }
+  return dataList.map((orderJson) => OrderlistModel.fromJson(orderJson)).toList();
+}
+
 class OrderstatusRepository {
+  static final Map<String, List<OrderlistModel>> _cache = {};
+
+  List<OrderlistModel>? getCachedOrders(String cacheKey) {
+    return _cache[cacheKey];
+  }
+
   /// Fetch all orders with detailed KOT and line item info
-  Future<List<OrderlistModel>> fetchOrders(String token, {String? date}) async {
+  Future<List<OrderlistModel>> fetchOrders(String token, {String? date, String? restaurantId}) async {
+    final cacheKey = "${restaurantId ?? ''}_${date ?? ''}";
     var urlStr = AppConstants.getAllOrdersList;
-    if (date != null) {
-      urlStr += '?date=$date';
+    List<String> queryParams = [];
+    if (restaurantId != null && restaurantId.isNotEmpty) {
+      queryParams.add('restaurant_id=$restaurantId');
+    }
+    if (date != null && date.isNotEmpty) {
+      queryParams.add('date=$date');
+    }
+    if (queryParams.isNotEmpty) {
+      urlStr += '?${queryParams.join('&')}';
     }
     final uri = Uri.parse(urlStr);
 
@@ -24,66 +57,11 @@ class OrderstatusRepository {
       );
 
       AppLogger.info('Order API Status: ${response.statusCode}');
-      AppLogger.info('Order API Response: ${response.body}');
 
       if (response.statusCode == 200) {
-        final dynamic jsonResponse = jsonDecode(response.body);
-        print("Decoded Type: ${jsonResponse.runtimeType}");
-        print("Decoded JSON: $jsonResponse");
-
-        if (jsonResponse is Map) {
-          print("Keys: ${jsonResponse.keys.toList()}");
-        }
-        List<OrderlistModel> orders = [];
-
-        List<dynamic> dataList = [];
-
-        // if (jsonResponse is List) {
-        //   dataList = jsonResponse;
-        // } else if (jsonResponse is Map && jsonResponse.containsKey('data')) {
-        //   dataList = jsonResponse['data'] as List;
-        // } else {
-        //   AppLogger.error('Unexpected JSON format');
-        // }
-        // List<dynamic> dataList = [];
-
-        if (jsonResponse is List) {
-          dataList = jsonResponse;
-        } else if (jsonResponse is Map<String, dynamic>) {
-          if (jsonResponse.containsKey('orders')) {
-            dataList = jsonResponse['orders'] as List<dynamic>;
-          } else if (jsonResponse.containsKey('data')) {
-            dataList = jsonResponse['data'] as List<dynamic>;
-          } else {
-            AppLogger.error(
-              'Unexpected JSON keys: ${jsonResponse.keys.toList()}',
-            );
-            return [];
-          }
-        }
-        orders = dataList.map((orderJson) {
-          final order = OrderlistModel.fromJson(orderJson);
-
-          // Log each KOT and line item
-          if (order.kotOrders != null && order.kotOrders!.isNotEmpty) {
-            for (var kot in order.kotOrders!) {
-              AppLogger.info('📌 KOT ID: ${kot.kotOrderId}');
-              if (kot.lineItems != null && kot.lineItems!.isNotEmpty) {
-                for (var item in kot.lineItems!) {
-                  AppLogger.info(
-                      '   Line Item ID: ${item.lineItemId}, Product ID: ${item.itemId}, Name: ${item.name}, Qty: ${item.quantity}, Price: ${item.itemPrice}, Modifiers: ${item.modifiers}');
-                }
-              } else {
-                AppLogger.info('   No line items in this KOT');
-              }
-            }
-          } else {
-            AppLogger.info('No KOTs for Order ID: ${order.orderId}');
-          }
-
-          return order;
-        }).toList();
-
+        final orders = await compute(_parseOrdersJson, response.body);
+        _cache[cacheKey] = orders;
+        AppLogger.info('Fetched ${orders.length} orders successfully');
         return orders;
       } else {
         AppLogger.error(
@@ -96,7 +74,7 @@ class OrderstatusRepository {
       );
     }
 
-    return [];
+    return _cache[cacheKey] ?? [];
   }
   Future<VoidedItemsResponse> fetchVoidedItems({
     required int kotOrderId,

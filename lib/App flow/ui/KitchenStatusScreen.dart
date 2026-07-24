@@ -108,14 +108,30 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   }
   Future<void> _initializeData() async {
     await _loadPermissions();
-    await _fetchZones();
-    await _fetchOrderTypes();
-    _fetchOrders();
+
+    final cachedOrderTypes = kitchenRepo.cachedOrderTypes;
+    final cachedOrders = kitchenRepo.cachedOrders;
+
+    if (cachedOrders != null && cachedOrders.isNotEmpty && mounted) {
+      setState(() {
+        if (cachedOrderTypes != null && cachedOrderTypes.isNotEmpty) {
+          _orderTypes = cachedOrderTypes;
+          selectedOrderType = _orderTypes.first;
+        }
+        _orders = cachedOrders;
+      });
+    }
+
+    await Future.wait([
+      _fetchZones(),
+      _fetchOrderTypes(),
+    ]);
+    await _fetchOrders();
   }
 
   Future<void> _loadPermissions() async {
     final savedPermissions = await SessionManager.loadPermissions();
-    if (savedPermissions != null) {
+    if (savedPermissions != null && mounted) {
       setState(() {
         _userPermissions = savedPermissions;
         _selectedUser = {
@@ -140,17 +156,18 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       selectedUser: _selectedUser,
     );
 
-    if (mounted) {
-      setState(() {
-        _orders = orders;
-        _selectedTable = null;
-        _selectedKot = null;
-        _kotItems.clear();
-      });
-    }
+    if (!mounted) return;
 
-    for (var order in _orders) {
-      await _fetchParentKotOrders(order);
+    _orders = orders;
+    _selectedTable = null;
+    _selectedKot = null;
+    _kotItems.clear();
+
+    // Fetch all parent KOT orders in parallel instead of a serial for-loop
+    await Future.wait(_orders.map((order) => _fetchParentKotOrders(order, updateState: false)));
+
+    if (mounted) {
+      setState(() {});
     }
   }
 
@@ -166,7 +183,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     }
   }
 
-  Future<void> _fetchParentKotOrders(Map<String, dynamic> order) async {
+  Future<void> _fetchParentKotOrders(Map<String, dynamic> order, {bool updateState = true}) async {
     if (selectedArea == null &&
         _normalizeOrderType(selectedOrderType) != "takeaways") return;
 
@@ -184,11 +201,12 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         selectedUser: _selectedUser,
       );
 
-      if (mounted) {
+      order['kots'] =
+          kotOrders.map((kot) => kot['kot_number']?.toString() ?? '').toList();
+      order['kotOrders'] = kotOrders;
+
+      if (updateState && mounted) {
         setState(() {
-          order['kots'] =
-              kotOrders.map((kot) => kot['kot_number']?.toString() ?? '').toList();
-          order['kotOrders'] = kotOrders;
           if (_selectedTable != null &&
               _selectedTable!['order_id'] == order['order_id'] &&
               order['kots'].isNotEmpty &&

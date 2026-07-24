@@ -86,22 +86,30 @@ class _OrdersListTableState extends State<OrdersListTable> {
   void initState() {
     super.initState();
     _userPermissions = widget.userPermissions;
-    // Trigger fetch
     _loadPermissions();
-    context.read<OrderstatusBloc>().add(FetchOrders(token: widget.token));
-    _selectedStatus = 'All'; // <-- Add this line
-    // Show today's date in the UI only
-    _dateController.text =
-        DateFormat('dd/MM/yyyy').format(DateTime.now());
+    _loadCurrency();
+    final today = DateTime.now();
+    selectedDate = today;
+    final todayStr = DateFormat('yyyy-MM-dd').format(today);
+    _dateController.text = DateFormat('dd/MM/yyyy').format(today);
+    context.read<OrderstatusBloc>().add(
+      FetchOrders(
+        token: widget.token,
+        date: todayStr,
+        restaurantId: widget.restaurantId,
+      ),
+    );
+    _selectedStatus = 'All';
     _searchController.addListener(() {
       _searchDebounce?.cancel();
-      _loadCurrency();   // <-- Add this
       _searchDebounce = Timer(const Duration(milliseconds: 300), () {
-        setState(() {
-          _searchQuery = _searchController.text.toLowerCase();
-          _currentPage = 0;
-          _updateFilteredOrders();
-        });
+        if (mounted) {
+          setState(() {
+            _searchQuery = _searchController.text.toLowerCase();
+            _currentPage = 0;
+            _updateFilteredOrders();
+          });
+        }
       });
     });
   }
@@ -157,12 +165,13 @@ class _OrdersListTableState extends State<OrdersListTable> {
     final query = _searchQuery.toLowerCase();
 
     return orders.where((order) {
-      final matchesSearch =
+      final matchesSearch = query.isEmpty ||
           (order.orderId?.toString().toLowerCase() ?? '').contains(query) ||
-              (order.orderType?.toLowerCase() ?? '').contains(query) ||
-              (order.zoneName?.toLowerCase() ?? '').contains(query) ||
-              (order.tableName?.toLowerCase() ?? '').contains(query) ||
-              (order.customerPhone?.toLowerCase() ?? '').contains(query);
+          (order.orderType?.toLowerCase() ?? '').contains(query) ||
+          (order.zoneName?.toLowerCase() ?? '').contains(query) ||
+          (order.tableName?.toLowerCase() ?? '').contains(query) ||
+          (order.customerPhone?.toLowerCase() ?? '').contains(query) ||
+          (order.customerName?.toLowerCase() ?? '').contains(query);
 
       bool matchesStatus = true;
       if (_selectedStatus != null && _selectedStatus != 'All') {
@@ -173,22 +182,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
 
       bool matchesDate = true;
       if (selectedDate != null) {
-        // final orderDate = _parseOrderDate(order.date);
-        DateTime? parseOrderDate(String? value) {
-          if (value == null || value.trim().isEmpty) return null;
-
-          try {
-            return DateFormat("dd MMMM, yyyy").parseStrict(value.trim());
-          } catch (_) {}
-
-          try {
-            return DateFormat("dd MMM, yyyy").parseStrict(value.trim());
-          } catch (_) {}
-
-          return null;
-        }
-        final orderDate = parseOrderDate(order.date);
-        debugPrint("Parsed Order  : $orderDate");
+        final orderDate = _parseOrderDate(order.date);
         if (orderDate == null) {
           matchesDate = false;
         } else {
@@ -534,6 +528,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                         FetchOrders(
                                           token: widget.token,
                                           date: dateStr,
+                                          restaurantId: widget.restaurantId,
                                         ),
                                       );
                                     }

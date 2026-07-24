@@ -18,54 +18,26 @@ class OrderstatusBloc extends Bloc<OrderstatusEvent, OrderstatusState> {
       FetchOrders event,
       Emitter<OrderstatusState> emit,
       ) async {
-    emit(OrderLoading());
+    final cacheKey = "${event.restaurantId ?? ''}_${event.date ?? ''}";
+    final cachedOrders = orderRepository.getCachedOrders(cacheKey);
+
+    if (cachedOrders != null && cachedOrders.isNotEmpty) {
+      emit(OrderLoaded(cachedOrders));
+    } else {
+      emit(OrderLoading());
+    }
+
     try {
-      final orders = await orderRepository.fetchOrders(event.token, date: event.date);
-
-      // Debug print each order
-      for (var order in orders) {
-        print('==============================');
-        print('Order ID    : ${order.orderId}');
-        print('Type        : ${order.orderType}');
-        print('Date        : ${order.date}');
-        print('Customer    : ${order.customerName}');
-        print('Phone       : ${order.customerPhone}');
-        print('Amount      : ${order.amount}');
-        print('Discount    : ${order.discount}');
-        print('Total       : ${order.total}');
-        print('Status      : ${order.status}');
-        print('Is Parent   : ${order.isParent}');
-        print('--- KOT ORDERS ---');
-
-        if (order.kotOrders != null && order.kotOrders!.isNotEmpty) {
-          for (var kot in order.kotOrders!) {
-            print('  KOT Order ID : ${kot.kotOrderId}');
-            print('  Status       : ${kot.status}');
-            print('  Total        : ${kot.total}');
-            print('  Created At   : ${kot.createdAt}');
-            print('  Is Parent    : ${kot.isParent}');
-            print('  --- LINE ITEMS ---');
-            if (kot.lineItems != null && kot.lineItems!.isNotEmpty) {
-              for (var item in kot.lineItems!) {
-                print('    Item ID   : ${item.itemId}');
-                print('    Name      : ${item.name}');
-                print('    Qty       : ${item.quantity}');
-                print('    Amount    : ${item.amount}');
-                print('    Total     : ${item.total}');
-              }
-            } else {
-              print('    No line items found.');
-            }
-          }
-        } else {
-          print('No KOT Orders found.');
-        }
-      }
-
+      final orders = await orderRepository.fetchOrders(
+        event.token,
+        date: event.date,
+        restaurantId: event.restaurantId,
+      );
       emit(OrderLoaded(orders));
     } catch (e) {
-      print("Error fetching orders: $e");
-      emit(OrderError('Failed to load orders: ${e.toString()}'));
+      if (cachedOrders == null || cachedOrders.isEmpty) {
+        emit(OrderError('Failed to load orders: ${e.toString()}'));
+      }
     }
   }
 

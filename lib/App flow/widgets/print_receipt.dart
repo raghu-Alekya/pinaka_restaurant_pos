@@ -79,102 +79,7 @@ class _PrintReciptState extends State<PrintRecipt> {
     super.dispose();
   }
 
-  // ============ PRINTER SELECTION METHOD (copied from TopBar) ============
-  Future<Map<String, dynamic>?> _getCashPrinter() async {
-    final prefs = await SharedPreferences.getInstance();
-    List<Map<String, dynamic>> printers = [];
 
-    final printerDb = PrinterDBHelper();
-    final dbPrinters = await printerDb.getSelectedPrintersFromDB();
-
-    for (var printer in dbPrinters) {
-      final address = printer['printer_address'] ?? '';
-      final name = printer['deviceName'] ?? printer['device_name'] ?? 'Printer';
-      String type = printer[AppDBConst.printerType] ?? 'network';
-      final vendorId = printer[AppDBConst.printerVendorId];
-      final productId = printer[AppDBConst.printerProductId];
-
-      // Self-heal mis-saved network printers
-      if (type == 'network' && address.isEmpty) {
-        debugPrint("⚠️ Detected mis-saved printer type for '$name' — correcting network -> usb");
-        type = 'usb';
-        await printerDb.fixPrinterRecord(
-          address: address,
-          currentDeviceName: name,
-          correctedType: 'usb',
-        );
-      }
-
-      printers.add({
-        'address': address,
-        'name': name,
-        'port': printer['port'] ?? '9100',
-        'type': type,
-        'vendorId': vendorId,
-        'productId': productId,
-      });
-    }
-
-    // Fallback: SharedPreferences
-    if (printers.isEmpty) {
-      final selectedPrintersJson = prefs.getString('selected_printers');
-      if (selectedPrintersJson != null && selectedPrintersJson.isNotEmpty) {
-        try {
-          final List<dynamic> selectedList = jsonDecode(selectedPrintersJson);
-          for (var printer in selectedList) {
-            final address = printer['address'] ?? '';
-            final name = printer['name'] ?? 'Printer';
-            String type = printer['type'] ?? 'network';
-            if (type == 'network' && address.isEmpty) type = 'usb';
-            printers.add({
-              'address': address,
-              'name': name,
-              'port': printer['port'] ?? '9100',
-              'type': type,
-              'vendorId': printer['vendorId'],
-              'productId': printer['productId'],
-            });
-          }
-        } catch (e) {
-          debugPrint("Error parsing selected printers: $e");
-        }
-      }
-    }
-
-    if (printers.isEmpty) {
-      return null;
-    }
-
-    Map<String, dynamic>? chosen;
-
-    // 1️⃣ Try exact/contains name match first
-    for (var printer in printers) {
-      final name = printer['name']?.toLowerCase() ?? '';
-      if (name == 'cash printer' || name.contains('cash')) {
-        chosen = printer;
-        break;
-      }
-    }
-
-    // 2️⃣ No name match → always fall back to the SECOND selected printer
-    //    (matches the "KOT" / "Cash" position convention used in Settings)
-    chosen ??= printers.length > 1 ? printers[1] : printers.first;
-
-    // 🏷️ Persist the "Cash Printer" label onto this record if it doesn't
-    //    already carry a cash-related name
-    final chosenName = (chosen['name'] as String? ?? '').toLowerCase();
-    if (!chosenName.contains('cash')) {
-      debugPrint("🏷️ Labeling printer '${chosen['name']}' as Cash Printer");
-      await printerDb.fixPrinterRecord(
-        address: chosen['address'] ?? '',
-        currentDeviceName: chosen['name'] ?? '',
-        correctedName: 'Cash Printer',
-      );
-      chosen['name'] = 'Cash Printer';
-    }
-
-    return chosen;
-  }
 
   // ============ BILL GENERATION METHOD (copied from TopBar) ============
   Future<List<int>> _generateBillBytes(PaymentSummary summary) async {
@@ -227,7 +132,8 @@ class _PrintReciptState extends State<PrintRecipt> {
     bytes += generator.row([
       PosColumn(
         width: 6,
-        text: "Date: ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}",
+        text:
+            "Date: ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}",
       ),
       PosColumn(
         width: 6,
@@ -239,7 +145,8 @@ class _PrintReciptState extends State<PrintRecipt> {
     bytes += generator.row([
       PosColumn(
         width: 6,
-        text: "Cashier: ${widget.cashierName.isNotEmpty ? widget.cashierName : widget.userPermissions?.displayName ?? 'Admin'}",
+        text:
+            "Cashier: ${widget.cashierName.isNotEmpty ? widget.cashierName : widget.userPermissions?.displayName ?? 'Admin'}",
       ),
       PosColumn(
         width: 6,
@@ -252,11 +159,7 @@ class _PrintReciptState extends State<PrintRecipt> {
 
     // Column Header
     bytes += generator.row([
-      PosColumn(
-        width: 6,
-        text: "Item",
-        styles: const PosStyles(bold: true),
-      ),
+      PosColumn(width: 6, text: "Item", styles: const PosStyles(bold: true)),
       PosColumn(
         width: 2,
         text: "Qty",
@@ -283,10 +186,7 @@ class _PrintReciptState extends State<PrintRecipt> {
       final amount = item.total.toStringAsFixed(2);
 
       bytes += generator.row([
-        PosColumn(
-          width: 6,
-          text: item.name,
-        ),
+        PosColumn(width: 6, text: item.name),
         PosColumn(
           width: 2,
           text: qty,
@@ -308,10 +208,7 @@ class _PrintReciptState extends State<PrintRecipt> {
       if (item.modifiers != null && item.modifiers.isNotEmpty) {
         for (var modifier in item.modifiers) {
           bytes += generator.row([
-            PosColumn(
-              width: 6,
-              text: "  + $modifier",
-            ),
+            PosColumn(width: 6, text: "  + $modifier"),
             PosColumn(width: 2, text: ""),
             PosColumn(width: 2, text: ""),
             PosColumn(width: 2, text: ""),
@@ -338,10 +235,7 @@ class _PrintReciptState extends State<PrintRecipt> {
 
     if (summary.coupons > 0) {
       bytes += generator.row([
-        PosColumn(
-          width: 8,
-          text: "Coupon Discount",
-        ),
+        PosColumn(width: 8, text: "Coupon Discount"),
         PosColumn(
           width: 4,
           text: "-${summary.coupons.toStringAsFixed(2)}",
@@ -352,10 +246,7 @@ class _PrintReciptState extends State<PrintRecipt> {
 
     if (summary.discount > 0) {
       bytes += generator.row([
-        PosColumn(
-          width: 8,
-          text: "Merchant Discount",
-        ),
+        PosColumn(width: 8, text: "Merchant Discount"),
         PosColumn(
           width: 4,
           text: "-${summary.discount.toStringAsFixed(2)}",
@@ -366,10 +257,7 @@ class _PrintReciptState extends State<PrintRecipt> {
 
     if (summary.tipAmount > 0) {
       bytes += generator.row([
-        PosColumn(
-          width: 8,
-          text: "Tip",
-        ),
+        PosColumn(width: 8, text: "Tip"),
         PosColumn(
           width: 4,
           text: summary.tipAmount.toStringAsFixed(2),
@@ -380,10 +268,7 @@ class _PrintReciptState extends State<PrintRecipt> {
 
     if (summary.tax > 0) {
       bytes += generator.row([
-        PosColumn(
-          width: 8,
-          text: "Tax",
-        ),
+        PosColumn(width: 8, text: "Tax"),
         PosColumn(
           width: 4,
           text: summary.tax.toStringAsFixed(2),
@@ -394,10 +279,7 @@ class _PrintReciptState extends State<PrintRecipt> {
 
     if (summary.serviceChargeValue > 0) {
       bytes += generator.row([
-        PosColumn(
-          width: 8,
-          text: "Service Charge",
-        ),
+        PosColumn(width: 8, text: "Service Charge"),
         PosColumn(
           width: 4,
           text: summary.serviceChargeValue.toStringAsFixed(2),
@@ -413,10 +295,7 @@ class _PrintReciptState extends State<PrintRecipt> {
       PosColumn(
         width: 8,
         text: "TOTAL",
-        styles: const PosStyles(
-          bold: true,
-          height: PosTextSize.size2,
-        ),
+        styles: const PosStyles(bold: true, height: PosTextSize.size2),
       ),
       PosColumn(
         width: 4,
@@ -436,6 +315,7 @@ class _PrintReciptState extends State<PrintRecipt> {
   }
 
   // ============ CORE PRINTING LOGIC ============
+  // ============ CORE PRINTING LOGIC ============
   Future<void> _printToPrinter() async {
     if (_isPrinting) return;
     setState(() => _isPrinting = true);
@@ -444,41 +324,23 @@ class _PrintReciptState extends State<PrintRecipt> {
       debugPrint("========== PRINTING BILL FROM PRINT RECEIPT ==========");
       debugPrint("Order ID: ${widget.paymentSummary.orderId}");
       debugPrint("Table Name: ${widget.paymentSummary.tableName}");
-      debugPrint("Cashier: ${widget.cashierName.isNotEmpty ? widget.cashierName : widget.userPermissions?.displayName ?? 'Admin'}");
+      debugPrint(
+        "Cashier: ${widget.cashierName.isNotEmpty ? widget.cashierName : widget.userPermissions?.displayName ?? 'Admin'}",
+      );
       debugPrint("Net Payable: ${widget.paymentSummary.netTotal}");
 
-      // Use the printer selection method
-      final cashPrinter = await _getCashPrinter();
-      debugPrint("🔍 Resolved printer -> $cashPrinter");
+      // Get an ORDERED LIST of printer candidates instead of just one,
+      // so a stale/duplicate DB row can't block printing entirely.
+      final candidates = await _getCashPrinterCandidates();
+      debugPrint("🔍 Printer candidates -> $candidates");
 
-      if (cashPrinter == null) {
+      if (candidates.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text("No printer selected. Please set up a printer in settings."),
-              backgroundColor: Colors.red,
-              duration: Duration(seconds: 2),
-            ),
-          );
-        }
-        setState(() => _isPrinting = false);
-        return;
-      }
-
-      final address = cashPrinter['address'] ?? '';
-      final name = cashPrinter['name'] ?? 'Cash Printer';
-      final port = cashPrinter['port'] ?? '9100';
-      final type = cashPrinter['type'] ?? 'network';
-      final vendorId = cashPrinter['vendorId'];
-      final productId = cashPrinter['productId'];
-
-      // Only network printers truly require a non-empty address
-      if (type == 'network' && address.isEmpty) {
-        debugPrint("❌ Blocked: type=network but address is empty for '$name'");
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Printer address is invalid"),
+              content: Text(
+                "No printer selected. Please set up a printer in settings.",
+              ),
               backgroundColor: Colors.red,
               duration: Duration(seconds: 2),
             ),
@@ -490,110 +352,138 @@ class _PrintReciptState extends State<PrintRecipt> {
 
       List<int> bytes = await _generateBillBytes(widget.paymentSummary);
 
-      try {
-        debugPrint("🖨️ Printing bill to: $name (type=$type, address='$address', port=$port, vendorId=$vendorId, productId=$productId)");
+      bool printedOk = false;
+      String lastTriedName = '';
 
-        bool connected = false;
-        PrinterType sendType;
+      // Try each candidate in order until one actually connects and prints.
+      for (final cashPrinter in candidates) {
+        final address = cashPrinter['address'] ?? '';
+        final name = cashPrinter['name'] ?? 'Cash Printer';
+        final port = cashPrinter['port'] ?? '9100';
+        final type = cashPrinter['type'] ?? 'network';
+        final vendorId = cashPrinter['vendorId'];
+        final productId = cashPrinter['productId'];
+        lastTriedName = name;
 
-        switch (type) {
-          case 'usb':
-            sendType = PrinterType.usb;
-            connected = await PrinterManager.instance.connect(
-              type: PrinterType.usb,
-              model: UsbPrinterInput(
-                name: name,
-                vendorId: vendorId,
-                productId: productId,
-              ),
-            );
-            break;
-
-          case 'bluetooth':
-            sendType = PrinterType.bluetooth;
-            connected = await PrinterManager.instance.connect(
-              type: PrinterType.bluetooth,
-              model: BluetoothPrinterInput(
-                name: name,
-                address: address,
-                isBle: false,
-                autoConnect: false,
-              ),
-            );
-            break;
-
-          case 'network':
-          default:
-            sendType = PrinterType.network;
-            connected = await PrinterManager.instance.connect(
-              type: PrinterType.network,
-              model: TcpPrinterInput(ipAddress: address),
-            );
-            break;
+        // Only network printers truly require a non-empty address
+        if (type == 'network' && address.isEmpty) {
+          debugPrint("⏭️ Skipping '$name': type=network but address is empty");
+          continue;
         }
 
-        debugPrint("🔌 Connect result for $name ($type): $connected");
-
-        if (connected) {
-          final sendResult = await PrinterManager.instance.send(type: sendType, bytes: bytes);
-          debugPrint("📤 Send result: $sendResult");
-
-          await PrinterManager.instance.disconnect(type: sendType);
-          debugPrint("🔌 Disconnected from $name");
-
-          debugPrint("✅ Bill successfully printed to: $name ($type - $address)");
-
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text("Receipt printed successfully"),
-                backgroundColor: Colors.green,
-                duration: Duration(seconds: 2),
-              ),
-            );
-          }
-        } else {
-          debugPrint("❌ Failed to connect to printer: $name ($type - $address)");
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text("Failed to connect to printer: $name"),
-                backgroundColor: Colors.red,
-                duration: Duration(seconds: 2),
-              ),
-            );
-          }
-        }
-      } catch (e, stack) {
-        debugPrint("❌ Error printing bill to $name: $e");
-        debugPrint("Stack trace: $stack");
         try {
-          final fallbackType = type == 'usb'
-              ? PrinterType.usb
-              : type == 'bluetooth'
-              ? PrinterType.bluetooth
-              : PrinterType.network;
-          await PrinterManager.instance.disconnect(type: fallbackType);
-        } catch (_) {}
+          debugPrint(
+            "🖨️ Trying to print bill to: $name (type=$type, address='$address', port=$port, vendorId=$vendorId, productId=$productId)",
+          );
 
-        if (mounted) {
+          bool connected = false;
+          PrinterType sendType;
+
+          switch (type) {
+            case 'usb':
+              sendType = PrinterType.usb;
+              connected = await PrinterManager.instance.connect(
+                type: PrinterType.usb,
+                model: UsbPrinterInput(
+                  name: name,
+                  vendorId: vendorId,
+                  productId: productId,
+                ),
+              );
+              break;
+
+            case 'bluetooth':
+              sendType = PrinterType.bluetooth;
+              connected = await PrinterManager.instance.connect(
+                type: PrinterType.bluetooth,
+                model: BluetoothPrinterInput(
+                  name: name,
+                  address: address,
+                  isBle: false,
+                  autoConnect: false,
+                ),
+              );
+              break;
+
+            case 'network':
+            default:
+              sendType = PrinterType.network;
+              connected = await PrinterManager.instance.connect(
+                type: PrinterType.network,
+                model: TcpPrinterInput(ipAddress: address),
+              );
+              break;
+          }
+
+          debugPrint("🔌 Connect result for $name ($type): $connected");
+
+          if (connected) {
+            final sendResult = await PrinterManager.instance.send(
+              type: sendType,
+              bytes: bytes,
+            );
+            debugPrint("📤 Send result: $sendResult");
+
+            await PrinterManager.instance.disconnect(type: sendType);
+            debugPrint("🔌 Disconnected from $name");
+
+            debugPrint(
+              "✅ Bill successfully printed to: $name ($type - $address)",
+            );
+
+            printedOk = true;
+            break; // stop at the first successful printer
+          } else {
+            debugPrint(
+              "❌ Failed to connect to printer: $name ($type - $address), trying next candidate if any...",
+            );
+          }
+        } catch (e, stack) {
+          debugPrint("❌ Error printing bill to $name: $e");
+          debugPrint("Stack trace: $stack");
+          try {
+            final fallbackType =
+                type == 'usb'
+                    ? PrinterType.usb
+                    : type == 'bluetooth'
+                    ? PrinterType.bluetooth
+                    : PrinterType.network;
+            await PrinterManager.instance.disconnect(type: fallbackType);
+          } catch (_) {}
+          // fall through to try the next candidate
+        }
+      }
+
+      if (mounted) {
+        if (printedOk) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Receipt printed successfully"),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text("Error printing bill: ${e.toString().replaceFirst('Exception: ', '')}"),
+              content: Text(
+                "Failed to connect to any selected printer (last tried: $lastTriedName)",
+              ),
               backgroundColor: Colors.red,
-              duration: Duration(seconds: 2),
+              duration: const Duration(seconds: 2),
             ),
           );
         }
       }
-
     } catch (e, stack) {
       debugPrint("Print Bill Error: $e");
       debugPrint("Stack trace: $stack");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Failed to print: ${e.toString().replaceFirst('Exception: ', '')}"),
+            content: Text(
+              "Failed to print: ${e.toString().replaceFirst('Exception: ', '')}",
+            ),
             backgroundColor: Colors.red,
             duration: Duration(seconds: 1),
           ),
@@ -602,6 +492,151 @@ class _PrintReciptState extends State<PrintRecipt> {
     } finally {
       if (mounted) setState(() => _isPrinting = false);
     }
+  }
+
+  Future<List<Map<String, dynamic>>> _getCashPrinterCandidates() async {
+    final prefs = await SharedPreferences.getInstance();
+    List<Map<String, dynamic>> printers = [];
+
+    final printerDb = PrinterDBHelper();
+    final dbPrinters = await printerDb.getSelectedPrintersFromDB();
+
+    for (var printer in dbPrinters) {
+      final address = printer['printer_address'] ?? '';
+      var name = printer['deviceName'] ?? printer['device_name'] ?? 'Printer';
+      String type = printer[AppDBConst.printerType] ?? 'network';
+
+      final vendorIdRaw = printer[AppDBConst.printerVendorId]?.toString() ?? '';
+      final productIdRaw =
+          printer[AppDBConst.printerProductId]?.toString() ?? '';
+      final vendorIdIsBad = vendorIdRaw.isEmpty || vendorIdRaw == 'network';
+      final productIdIsBad = productIdRaw.isEmpty || productIdRaw == 'network';
+
+      // Self-heal garbage vendorId/productId ("network" literal) left over
+      // from older buggy saves — these broke USB connect() on Windows.
+      if (type == 'usb' &&
+          (vendorIdRaw == 'network' || productIdRaw == 'network')) {
+        debugPrint(
+          "⚠️ Detected garbage vendorId/productId ('network') for '$name' — clearing in DB",
+        );
+        await printerDb.fixPrinterRecord(
+          address: address,
+          currentDeviceName: name,
+          clearVendorId: vendorIdRaw == 'network',
+          clearProductId: productIdRaw == 'network',
+        );
+      }
+
+      // Self-heal mis-saved network printers
+      if (type == 'network' && address.isEmpty) {
+        debugPrint(
+          "⚠️ Detected mis-saved printer type for '$name' — correcting network -> usb",
+        );
+        type = 'usb';
+        await printerDb.fixPrinterRecord(
+          address: address,
+          currentDeviceName: name,
+          correctedType: 'usb',
+        );
+      }
+
+      // 🔧 SELF-HEAL: If USB printer name was corrupted to 'Cash Printer' or 'KOT Printer',
+      // restore the actual OS device name from SharedPreferences
+      if (type == 'usb' && (name == 'Cash Printer' || name == 'KOT Printer')) {
+        final spJson = prefs.getString('selected_printers');
+        if (spJson != null && spJson.isNotEmpty) {
+          try {
+            final List<dynamic> spList = jsonDecode(spJson);
+            for (var p in spList) {
+              final spName = (p['name'] ?? p['deviceName'] ?? '').toString();
+              final spType = (p['type'] ?? 'usb').toString();
+              if (spName.isNotEmpty &&
+                  spName != 'Cash Printer' &&
+                  spName != 'KOT Printer' &&
+                  (spType == 'usb' || (p['address'] ?? '').toString().isEmpty)) {
+                debugPrint(
+                  "🔧 Restored corrupted USB printer device name '$name' -> '$spName'",
+                );
+                await printerDb.fixPrinterRecord(
+                  address: address,
+                  currentDeviceName: name,
+                  correctedName: spName,
+                );
+                name = spName;
+                break;
+              }
+            }
+          } catch (e) {
+            debugPrint("Error restoring printer name: $e");
+          }
+        }
+      }
+
+      printers.add({
+        'address': address,
+        'name': name,
+        'port': printer['port'] ?? '9100',
+        'type': type,
+        'vendorId': vendorIdIsBad ? null : vendorIdRaw,
+        'productId': productIdIsBad ? null : productIdRaw,
+      });
+    }
+
+    // Fallback: SharedPreferences
+    if (printers.isEmpty) {
+      final selectedPrintersJson = prefs.getString('selected_printers');
+      if (selectedPrintersJson != null && selectedPrintersJson.isNotEmpty) {
+        try {
+          final List<dynamic> selectedList = jsonDecode(selectedPrintersJson);
+          for (var printer in selectedList) {
+            final address = printer['address'] ?? '';
+            final name = printer['name'] ?? 'Printer';
+            String type = printer['type'] ?? 'network';
+            if (type == 'network' && address.isEmpty) type = 'usb';
+
+            final vendorIdRaw = printer['vendorId']?.toString() ?? '';
+            final productIdRaw = printer['productId']?.toString() ?? '';
+            final vendorIdIsBad =
+                vendorIdRaw.isEmpty || vendorIdRaw == 'network';
+            final productIdIsBad =
+                productIdRaw.isEmpty || productIdRaw == 'network';
+
+            printers.add({
+              'address': address,
+              'name': name,
+              'port': printer['port'] ?? '9100',
+              'type': type,
+              'vendorId': vendorIdIsBad ? null : vendorIdRaw,
+              'productId': productIdIsBad ? null : productIdRaw,
+            });
+          }
+        } catch (e) {
+          debugPrint("Error parsing selected printers: $e");
+        }
+      }
+    }
+
+    if (printers.isEmpty) return [];
+
+    // Order candidates: cash-named first, then everything else.
+    final List<Map<String, dynamic>> cashNamed = [];
+    final List<Map<String, dynamic>> others = [];
+    for (var p in printers) {
+      final n = (p['name'] as String? ?? '').toLowerCase();
+      if (n == 'cash printer' || n.contains('cash')) {
+        cashNamed.add(p);
+      } else {
+        others.add(p);
+      }
+    }
+
+    // Prefer position convention (2nd selected printer) if no name match
+    if (cashNamed.isEmpty && others.length > 1) {
+      final secondPrinter = others.removeAt(1);
+      others.insert(0, secondPrinter);
+    }
+
+    return [...cashNamed, ...others];
   }
 
   void _onDonePressed({bool isNoReceipt = false}) async {
@@ -660,31 +695,33 @@ class _PrintReciptState extends State<PrintRecipt> {
       // For Takeaway: Navigate to DashboardScreen with takeaway mode
       Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
         MaterialPageRoute(
-          builder: (_) => DashboardScreen(
-            pin: widget.pin,
-            token: widget.token,
-            restaurantId: widget.restaurantId,
-            restaurantName: widget.restaurantName,
-            userPermissions: widget.userPermissions,
-            isTakeAway: true,
-          ),
+          builder:
+              (_) => DashboardScreen(
+                pin: widget.pin,
+                token: widget.token,
+                restaurantId: widget.restaurantId,
+                restaurantName: widget.restaurantName,
+                userPermissions: widget.userPermissions,
+                isTakeAway: true,
+              ),
         ),
-            (route) => false,
+        (route) => false,
       );
     } else {
       // For Dine-in: Navigate to TablesScreen
       Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
         MaterialPageRoute(
-          builder: (_) => TablesScreen(
-            loadedTables: widget.loadedTables,
-            pin: widget.pin,
-            token: widget.token,
-            restaurantId: widget.restaurantId,
-            restaurantName: widget.restaurantName,
-            zoneId: widget.zoneId,
-          ),
+          builder:
+              (_) => TablesScreen(
+                loadedTables: widget.loadedTables,
+                pin: widget.pin,
+                token: widget.token,
+                restaurantId: widget.restaurantId,
+                restaurantName: widget.restaurantName,
+                zoneId: widget.zoneId,
+              ),
         ),
-            (route) => false,
+        (route) => false,
       );
     }
   }
@@ -736,89 +773,95 @@ class _PrintReciptState extends State<PrintRecipt> {
               spacing: 12,
               runSpacing: 10,
               alignment: WrapAlignment.center,
-              children: options.map((option) {
-                final bool isSelected = _selectedOption == option;
+              children:
+                  options.map((option) {
+                    final bool isSelected = _selectedOption == option;
 
-                return GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _selectedOption = option;
-                    });
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? (isDark
-                          ? const Color(0xFF4A1E1E)
-                          : Colors.red.shade50)
-                          : (isDark
-                          ? const Color(0xFF353847)
-                          : Colors.white),
-                      border: Border.all(
-                        color: isSelected
-                            ? Colors.redAccent
-                            : (isDark
-                            ? Colors.white24
-                            : const Color(0xFFE7E2E2)),
-                        width: 1.5,
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedOption = option;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              isSelected
+                                  ? (isDark
+                                      ? const Color(0xFF4A1E1E)
+                                      : Colors.red.shade50)
+                                  : (isDark
+                                      ? const Color(0xFF353847)
+                                      : Colors.white),
+                          border: Border.all(
+                            color:
+                                isSelected
+                                    ? Colors.redAccent
+                                    : (isDark
+                                        ? Colors.white24
+                                        : const Color(0xFFE7E2E2)),
+                            width: 1.5,
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Radio<String>(
+                              value: option,
+                              groupValue: _selectedOption,
+                              onChanged: (value) {
+                                setState(() {
+                                  _selectedOption = value!;
+                                });
+                              },
+                              activeColor: Colors.redAccent,
+                              fillColor: WidgetStateProperty.resolveWith<Color>(
+                                (states) =>
+                                    isDark ? Colors.white : Colors.redAccent,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              option,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color:
+                                    isDark
+                                        ? Colors.white
+                                        : const Color(0xFFAFACAC),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Radio<String>(
-                          value: option,
-                          groupValue: _selectedOption,
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedOption = value!;
-                            });
-                          },
-                          activeColor: Colors.redAccent,
-                          fillColor: WidgetStateProperty.resolveWith<Color>(
-                                (states) => isDark ? Colors.white : Colors.redAccent,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          option,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: isDark
-                                ? Colors.white
-                                : const Color(0xFFAFACAC),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
+                    );
+                  }).toList(),
             ),
             SizedBox(height: 10),
             SizedBox(
               height: 70,
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 300),
-                child: _selectedOption == 'Email'
-                    ? _buildTextField(
-                  hintText: 'Enter Email Address',
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                )
-                    : _selectedOption == 'SMS'
-                    ? _buildTextField(
-                  hintText: 'Enter phone number',
-                  controller: _smsController,
-                  keyboardType: TextInputType.number,
-                )
-                    : const SizedBox.shrink(),
+                child:
+                    _selectedOption == 'Email'
+                        ? _buildTextField(
+                          hintText: 'Enter Email Address',
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                        )
+                        : _selectedOption == 'SMS'
+                        ? _buildTextField(
+                          hintText: 'Enter phone number',
+                          controller: _smsController,
+                          keyboardType: TextInputType.number,
+                        )
+                        : const SizedBox.shrink(),
               ),
             ),
             SizedBox(height: 15),
@@ -827,20 +870,20 @@ class _PrintReciptState extends State<PrintRecipt> {
               children: [
                 _buildDialogButton(
                   label: 'No Receipt',
-                  color: isDark
-                      ? const Color(0xFF4A4C5A)
-                      : const Color(0xFFECEEF2),
-                  textColor: isDark
-                      ? Colors.white
-                      : const Color(0xFF4C5F7D),
+                  color:
+                      isDark
+                          ? const Color(0xFF4A4C5A)
+                          : const Color(0xFFECEEF2),
+                  textColor: isDark ? Colors.white : const Color(0xFF4C5F7D),
                   onTap: () => _onDonePressed(isNoReceipt: true),
                 ),
                 const SizedBox(width: 20),
                 _buildDialogButton(
                   label: 'Done',
-                  color: isDark
-                      ? const Color(0xFF22B07D)
-                      : const Color(0xFF1BA672),
+                  color:
+                      isDark
+                          ? const Color(0xFF22B07D)
+                          : const Color(0xFF1BA672),
                   textColor: Colors.white,
                   onTap: () => _onDonePressed(isNoReceipt: false),
                 ),
@@ -876,21 +919,18 @@ class _PrintReciptState extends State<PrintRecipt> {
     return Container(
       width: MediaQuery.of(context).size.width * 0.48,
       decoration: BoxDecoration(
-        color: isDark
-            ? const Color(0xFF353847)
-            : Colors.white,
+        color: isDark ? const Color(0xFF353847) : Colors.white,
         borderRadius: BorderRadius.circular(5),
         border: Border.all(
-          color: isDark
-              ? Colors.white24
-              : const Color(0xFFE7E2E2),
+          color: isDark ? Colors.white24 : const Color(0xFFE7E2E2),
           width: 1.2,
         ),
         boxShadow: [
           BoxShadow(
-            color: isDark
-                ? Colors.black.withOpacity(0.35)
-                : const Color(0xFFE7E2E2),
+            color:
+                isDark
+                    ? Colors.black.withOpacity(0.35)
+                    : const Color(0xFFE7E2E2),
             blurRadius: 10,
             offset: const Offset(0, 1),
           ),
@@ -908,9 +948,7 @@ class _PrintReciptState extends State<PrintRecipt> {
         ),
         decoration: InputDecoration(
           hintText: hintText,
-          hintStyle: TextStyle(
-            color: isDark ? Colors.white54 : Colors.grey,
-          ),
+          hintStyle: TextStyle(color: isDark ? Colors.white54 : Colors.grey),
           border: InputBorder.none,
         ),
       ),
@@ -938,9 +976,7 @@ class _PrintReciptState extends State<PrintRecipt> {
           ),
           boxShadow: [
             BoxShadow(
-              color: isDark
-                  ? Colors.black.withOpacity(0.45)
-                  : Colors.black12,
+              color: isDark ? Colors.black.withOpacity(0.45) : Colors.black12,
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
