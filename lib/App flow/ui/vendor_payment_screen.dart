@@ -389,7 +389,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            const SizedBox(width: 20),
+                            const Spacer(),
                             Container(
                               width: 300,
                               height: 40,
@@ -426,7 +426,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                   border: InputBorder.none,
                                   contentPadding: EdgeInsets.symmetric(
                                     horizontal: 16,
-                                    vertical: 7,
+                                    vertical: 9,
                                   ),
                                   prefixIcon: Icon(
                                     Icons.search,
@@ -448,7 +448,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                 },
                               ),
                             ),
-                            const Spacer(),
+                            const SizedBox(width: 20),
 
                             /// Date
                             SizedBox(

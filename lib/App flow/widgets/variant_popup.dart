@@ -323,16 +323,17 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
                                 Text(
                                   '$quantity',
                                   style: TextStyle(
+                                    fontSize: 18,
                                     fontWeight: FontWeight.bold,
                                     color: isDark
                                         ? const Color(0xFF3B4259)
-                                        : const Color(0xFF4C5F7D),
+                                        : const Color(0xFFFFFFFF),
                                   ),
                                 ),
                                 _qtyButton(
                                   context: context,
-                                  icon: Icons.remove,
-                                  onTap: () => _decrement(variant),
+                                  icon: Icons.add,
+                                  onTap: () => _increment(variant),
                                 ),
                               ],
                             ),

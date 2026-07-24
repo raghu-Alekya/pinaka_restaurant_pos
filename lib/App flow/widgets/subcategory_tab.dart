@@ -113,11 +113,11 @@ class _SubCategoryTabWidgetState extends State<SubCategoryTabWidget> {
 
       decoration: BoxDecoration(
         color: isDark
-            ? const Color(0xFF25283A)
+            ? const Color(0xFF1B1B22)
             : Colors.white,
         border: Border.all(
           color: isDark
-              ? const Color(0xFF3E445C)
+              ? const Color(0xFF2B2E37)
               : const Color(0xFFE0E0E0),
         ),
         borderRadius: BorderRadius.circular(12),
@@ -154,7 +154,9 @@ class _SubCategoryTabWidgetState extends State<SubCategoryTabWidget> {
                     margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? const Color(0xFFFF6B7A).withOpacity(0.25) // Light red shade
+                          ? (isDark
+                          ? const Color(0x66FF364C)
+                          : const Color(0xFFFAC6CD))
                           : Theme.of(context).cardColor,
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(

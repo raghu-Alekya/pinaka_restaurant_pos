@@ -70,7 +70,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   bool isResetEnabled = false;
   static const String _apiBaseUrl = "https://merchantrestaurant.alektasolutions.com";
   Timer? _timer;
-
+  bool _isDialogOpen = false;
   @override
   void initState() {
     super.initState();
@@ -96,6 +96,17 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     _searchController.dispose();
     _timer?.cancel();
     super.dispose();
+  }
+  Future<void> _showSingleDialog(Future<void> Function() dialogFunction) async {
+    if (_isDialogOpen) return;
+
+    _isDialogOpen = true;
+
+    try {
+      await dialogFunction();
+    } finally {
+      _isDialogOpen = false;
+    }
   }
   Future<void> _refreshSelectedTable() async {
     if (_selectedTable == null) return;
@@ -1921,7 +1932,10 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                       'Void Items',
                       style: TextStyle(fontSize: 11),
                     ),
-                    onPressed: _selectedKot != null ? _openVoidItemsDialog : null,
+                    onPressed: _selectedKot != null
+                        ? () => _showSingleDialog(_openVoidItemsDialog)
+                        : null,
+                    // onPressed: _selectedKot != null ? _openVoidItemsDialog : null,
                   ),
 
                   const SizedBox(width: 6),
@@ -1958,7 +1972,10 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                       'Transfer KOT',
                       style: TextStyle(fontSize: 11),
                     ),
-                    onPressed: _selectedKot != null ? _openTransferKotDialog : null,
+                    onPressed: _selectedKot != null
+                        ? () => _showSingleDialog(_openTransferKotDialog)
+                        : null,
+                    // onPressed: _selectedKot != null ? _openTransferKotDialog : null,
                   ),
                 ],
               ],

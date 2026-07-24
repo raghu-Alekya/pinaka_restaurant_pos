@@ -401,11 +401,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             body: Padding(
                 padding: const EdgeInsets.all(20),
-                child: SizedBox(child: SizedBox(
-                  height: MediaQuery.of(context).size.height,
-                  child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+                child: SizedBox.expand(
+                    child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
 
                         /// LEFT SIDE
                         Expanded(
@@ -574,348 +573,715 @@ class _HomeScreenState extends State<HomeScreen> {
                               //
                               // const SizedBox(height: 5),
                               Expanded(
-                                child: Row(
+                                flex: 8,
+                                child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-
-                                    /// LEFT SIDE
                                     Expanded(
-                                      flex: 3,
-                                      child: Column(
+                                      child: Row(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
+                                          Expanded(
+                                            flex: 8,
+                                            child: Column(
+                                              children: [
 
-                                          _sectionTitle("Restaurant Operations"),
-                                          const SizedBox(height: 8),
-                                          Row(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              SizedBox(
-                                                width: 250,
-                                                child: _moduleCard(
-                                                  title: "Tables",
-                                                  subtitle: "Floor Plan",
-                                                  count: occupiedTables.toString(),
-                                                  countLabel: "Occupied",
-                                                  isCurrent: true,
-                                                  color: const Color(0xffF5A25D),
-                                                  icon: Icons.grid_view_rounded,
-                                                  gradient: const RadialGradient(
-                                                    center: Alignment(0.82, 0.85),
-                                                    radius: 1.18,
-                                                    colors: [
-                                                      Color(0xFFF0AE80),
-                                                      Color(0xFFE8925A),
-                                                    ],
-                                                  ),
-                                                  boxShadows: const [
-                                                    BoxShadow(
-                                                      color: Color(0x141C2333),
-                                                      blurRadius: 6,
-                                                      offset: Offset(0, 2),
-                                                    ),
-                                                    BoxShadow(
-                                                      color: Color(0x99E8925A),
-                                                      blurRadius: 20,
-                                                      offset: Offset(0, 6),
-                                                    ),
-                                                  ],
-                                                  onTap: () {
-                                                    Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(
-                                                        builder: (_) => TablesScreen(
-                                                          pin: widget.pin,
-                                                          token: widget.token,
-                                                          restaurantId: widget.restaurantId,
-                                                          restaurantName: widget.restaurantName,
-                                                          loadedTables: [],
-                                                        ),
-                                                      ),
-                                                    );
-                                                  },
-                                                ),
-                                              ),
+                                                /// ================= RESTAURANT OPERATIONS =================
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
 
-                                              const SizedBox(width: 16),
+                                                      _sectionTitle("Restaurant Operations"),
+                                                      const SizedBox(height: 8),
 
-                                              BlocBuilder<OrderBloc, OrderState>(
-                                                builder: (context, state) {
-                                                  final activeOrderCount = state.orderItems.isNotEmpty ? "1" : "0";
+                                                      Expanded(
+                                                        child: Row(
+                                                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                                                          children: [
 
-                                                  return SizedBox(
-                                                    width: 250,
-                                                    child: _moduleCard(
-                                                      title: "Take Aways",
-                                                      subtitle: "Walk-in Orders",
-                                                      count: activeOrderCount,
-                                                      countLabel: "Active",
-                                                      color: const Color(0xff5FCB89),
-                                                      gradient: const RadialGradient(
-                                                        center: Alignment(0.82, 0.85),
-                                                        radius: 1.18,
-                                                        colors: [
-                                                          Color(0xFF79D89E),
-                                                          Color(0xFF5CB87A),
-                                                        ],
-                                                      ),
-                                                      boxShadows: const [
-                                                        BoxShadow(
-                                                          color: Color(0x141C2333),
-                                                          blurRadius: 6,
-                                                          offset: Offset(0, 2),
-                                                        ),
-                                                        BoxShadow(
-                                                          color: Color(0x995CB87A),
-                                                          blurRadius: 20,
-                                                          offset: Offset(0, 6),
-                                                        ),
-                                                      ],
-                                                      icon: Icons.inventory_2_outlined,
-                                                      onTap: () {
-                                                        final orderBloc = context.read<OrderBloc>();
-                                                        final state = orderBloc.state;
-
-                                                        if (state.orderItems.isEmpty) {
-                                                          debugPrint("🧹 No active order found. Resetting OrderBloc.");
-                                                          orderBloc.add(ResetOrder());
-                                                        } else {
-                                                          debugPrint(
-                                                            "✅ Active takeaway order found. orderId: ${state.orderId}, items: ${state.orderItems.length}",
-                                                          );
-                                                        }
-
-                                                        Navigator.push(
-                                                          context,
-                                                          MaterialPageRoute(
-                                                            builder: (_) => DashboardScreen(
-                                                              pin: widget.pin,
-                                                              token: widget.token,
-                                                              restaurantId: widget.restaurantId,
-                                                              restaurantName: widget.restaurantName,
-                                                              userPermissions: widget.userPermissions,
-                                                              isTakeAway: true,
+                                                            Expanded(
+                                                              child: _moduleCard(
+                                                                title: "Tables",
+                                                                subtitle: "Floor Plan",
+                                                                count: occupiedTables.toString(),
+                                                                countLabel: "Occupied",
+                                                                isCurrent: true,
+                                                                color: const Color(0xffF5A25D),
+                                                                icon: Icons.grid_view_rounded,
+                                                                gradient: const RadialGradient(
+                                                                  center: Alignment(0.82, 0.85),
+                                                                  radius: 1.18,
+                                                                  colors: [
+                                                                    Color(0xFFF0AE80),
+                                                                    Color(0xFFE8925A),
+                                                                  ],
+                                                                ),
+                                                                boxShadows: const [
+                                                                  BoxShadow(
+                                                                    color: Color(0x141C2333),
+                                                                    blurRadius: 6,
+                                                                    offset: Offset(0, 2),
+                                                                  ),
+                                                                  BoxShadow(
+                                                                    color: Color(0x99E8925A),
+                                                                    blurRadius: 20,
+                                                                    offset: Offset(0, 6),
+                                                                  ),
+                                                                ],
+                                                                onTap: () {
+                                                                  Navigator.push(
+                                                                    context,
+                                                                    MaterialPageRoute(
+                                                                      builder: (_) => TablesScreen(
+                                                                        pin: widget.pin,
+                                                                        token: widget.token,
+                                                                        restaurantId: widget.restaurantId,
+                                                                        restaurantName: widget.restaurantName,
+                                                                        loadedTables: [],
+                                                                      ),
+                                                                    ),
+                                                                  );
+                                                                },
+                                                              ),
                                                             ),
-                                                          ),
-                                                        );
-                                                      },
-                                                    ),
-                                                  );
-                                                },
-                                              ),
-                                              const SizedBox(width: 16),
 
-                                              SizedBox(
-                                                width: 250,
-                                                child: _moduleCard(
-                                                  title: "Online Orders",
-                                                  subtitle: "Delivery",
-                                                  count: "0",
-                                                  countLabel: "Pending",
-                                                  color: const Color(0xff9B7AE7),
-                                                  icon: Icons.language,
-                                                  gradient: const RadialGradient(
-                                                    center: Alignment(0.82, 0.85),
-                                                    radius: 1.18,
-                                                    colors: [
-                                                      Color(0xFFA890DC),
-                                                      Color(0xFF9076C8),
+                                                            const SizedBox(width: 16),
+
+                                                            Expanded(
+                                                              child: BlocBuilder<OrderBloc, OrderState>(
+                                                                builder: (context, state) {
+
+                                                                  final activeOrderCount =
+                                                                  state.orderItems.isNotEmpty ? "1" : "0";
+
+                                                                  return _moduleCard(
+                                                                    title: "Take Aways",
+                                                                    subtitle: "Walk-in Orders",
+                                                                    count: activeOrderCount,
+                                                                    countLabel: "Active",
+                                                                    color: const Color(0xff5FCB89),
+                                                                    icon: Icons.inventory_2_outlined,
+                                                                    gradient: const RadialGradient(
+                                                                      center: Alignment(0.82, 0.85),
+                                                                      radius: 1.18,
+                                                                      colors: [
+                                                                        Color(0xFF79D89E),
+                                                                        Color(0xFF5CB87A),
+                                                                      ],
+                                                                    ),
+                                                                    boxShadows: const [
+                                                                      BoxShadow(
+                                                                        color: Color(0x141C2333),
+                                                                        blurRadius: 6,
+                                                                        offset: Offset(0, 2),
+                                                                      ),
+                                                                      BoxShadow(
+                                                                        color: Color(0x995CB87A),
+                                                                        blurRadius: 20,
+                                                                        offset: Offset(0, 6),
+                                                                      ),
+                                                                    ],
+                                                                    onTap: () {
+                                                                      final orderBloc = context.read<OrderBloc>();
+                                                                      final state = orderBloc.state;
+
+                                                                      if (state.orderItems.isEmpty) {
+                                                                        orderBloc.add(ResetOrder());
+                                                                      }
+
+                                                                      Navigator.push(
+                                                                        context,
+                                                                        MaterialPageRoute(
+                                                                          builder: (_) => DashboardScreen(
+                                                                            pin: widget.pin,
+                                                                            token: widget.token,
+                                                                            restaurantId: widget.restaurantId,
+                                                                            restaurantName: widget.restaurantName,
+                                                                            userPermissions: widget.userPermissions,
+                                                                            isTakeAway: true,
+                                                                          ),
+                                                                        ),
+                                                                      );
+                                                                    },
+                                                                  );
+                                                                },
+                                                              ),
+                                                            ),
+
+                                                            const SizedBox(width: 16),
+
+                                                            Expanded(
+                                                              child: _moduleCard(
+                                                                title: "Online Orders",
+                                                                subtitle: "Delivery",
+                                                                count: "0",
+                                                                countLabel: "Pending",
+                                                                color: const Color(0xff9B7AE7),
+                                                                icon: Icons.language,
+                                                                gradient: const RadialGradient(
+                                                                  center: Alignment(0.82, 0.85),
+                                                                  radius: 1.18,
+                                                                  colors: [
+                                                                    Color(0xFFA890DC),
+                                                                    Color(0xFF9076C8),
+                                                                  ],
+                                                                ),
+                                                                boxShadows: const [
+                                                                  BoxShadow(
+                                                                    color: Color(0x141C2333),
+                                                                    blurRadius: 6,
+                                                                    offset: Offset(0, 2),
+                                                                  ),
+                                                                  BoxShadow(
+                                                                    color: Color(0x999076C8),
+                                                                    blurRadius: 20,
+                                                                    offset: Offset(0, 6),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
                                                     ],
                                                   ),
-                                                  boxShadows: const [
-                                                    BoxShadow(
-                                                      color: Color(0x141C2333),
-                                                      blurRadius: 6,
-                                                      offset: Offset(0, 2),
-                                                    ),
-                                                    BoxShadow(
-                                                      color: Color(0x999076C8),
-                                                      blurRadius: 20,
-                                                      offset: Offset(0, 6),
-                                                    ),
-                                                  ],
                                                 ),
-                                              ),
-                                            ],
-                                          ),
-                                          // Your Restaurant Operations Row
 
-                                          const SizedBox(height: 16),
+                                                const SizedBox(height: 25),
 
-                                          _sectionTitle("Kitchen & Orders"),
-                                          const SizedBox(height: 8),
+                                                /// ================= KITCHEN =================
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
 
-                                          // Your Kitchen Row
-                                          Row(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              SizedBox(
-                                                width: 250,
-                                                child: _whiteModuleCard(
-                                                  title: "KOT Status",
-                                                  count: kotStatusCount.toString(),
-                                                  countLabel: "In Kitchen",
-                                                  icon: Icons.restaurant_menu,
-                                                  iconColor: Colors.red,
-                                                  description: "Monitor live kitchen order tickets and prep times",
-                                                  onTap: () {
-                                                    Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(
-                                                        builder: (_) => KitchenStatusScreen(
-                                                          pin: widget.pin,
-                                                          associatedManagerPin: widget.pin,
-                                                          token: widget.token,
-                                                          restaurantId: widget.restaurantId,
-                                                          restaurantName: widget.restaurantName,
+                                                      _sectionTitle("Kitchen & Orders"),
+                                                      const SizedBox(height: 8),
+
+                                                      Expanded(
+                                                        child:    Row(
+                                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                                          children: [
+                                                            Expanded(
+                                                              child: _whiteModuleCard(
+                                                                title: "KOT Status",
+                                                                count: kotStatusCount.toString(),
+                                                                countLabel: "In Kitchen",
+                                                                icon: Icons.restaurant_menu,
+                                                                iconColor: Colors.red,
+                                                                description: "Monitor live kitchen order tickets and prep times",
+                                                                onTap: () {
+                                                                  Navigator.push(
+                                                                    context,
+                                                                    MaterialPageRoute(
+                                                                      builder: (_) => KitchenStatusScreen(
+                                                                        pin: widget.pin,
+                                                                        associatedManagerPin: widget.pin,
+                                                                        token: widget.token,
+                                                                        restaurantId: widget.restaurantId,
+                                                                        restaurantName: widget.restaurantName,
+                                                                      ),
+                                                                    ),
+                                                                  );
+                                                                },
+                                                              ),
+                                                            ),
+                                                            const SizedBox(width: 16),
+                                                            Expanded(
+                                                              child: _whiteModuleCard(
+                                                                title: "Orders",
+                                                                count: activeOrdersCount.toString(),
+                                                                countLabel: "Total",
+                                                                icon: Icons.receipt_long,
+                                                                iconColor: Colors.blue,
+                                                                description: "View, modify and settle all active orders",
+                                                                onTap: () {
+                                                                  Navigator.push(
+                                                                    context,
+                                                                    MaterialPageRoute(
+                                                                      builder: (_) => BlocProvider(
+                                                                        create: (context) =>
+                                                                            OrderstatusBloc(OrderstatusRepository()),
+                                                                        child: OrdersListTable(
+                                                                          token: widget.token,
+                                                                          pin: widget.pin,
+                                                                          restaurantId: widget.restaurantId,
+                                                                          restaurantName: widget.restaurantName,
+                                                                          userPermissions: _userPermissions,
+                                                                          orders: const [],
+                                                                        ),
+                                                                      ),
+                                                                    ),
+                                                                  );
+                                                                },
+                                                              ),
+                                                            ),
+                                                            if (_userPermissions?.canViewTips == true) ...[
+                                                              const SizedBox(width: 16),
+                                                              Expanded(
+                                                                child: _whiteModuleCard(
+                                                                  title: "Tips",
+                                                                  count: "$_currency${totalTipAmount.toStringAsFixed(2)}",
+                                                                  // count: "₹${totalTipAmount.toStringAsFixed(2)}",
+                                                                  // count: totalTipAmount.toStringAsFixed(2),
+                                                                  countLabel: "Tips",
+                                                                  icon: Icons.account_balance_wallet_outlined,
+                                                                  iconColor: Colors.orange,
+                                                                  description: "Manage and view tips",
+                                                                  onTap: () {
+                                                                    Navigator.push(
+                                                                      context,
+                                                                      MaterialPageRoute(
+                                                                        builder: (_) => TipsScreen(
+                                                                          token: widget.token,
+                                                                          pin: widget.pin,
+                                                                          userPermissions: _userPermissions,
+                                                                          restaurantId: widget.restaurantId,
+                                                                          restaurantName: widget.restaurantName,
+                                                                        ),
+                                                                      ),
+                                                                    );
+                                                                  },
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ],
                                                         ),
                                                       ),
-                                                    );
-                                                  },
+                                                    ],
+                                                  ),
                                                 ),
-                                              ),
-                                              const SizedBox(width: 16),
-                                              SizedBox(
-                                                width: 250,
-                                                child: _whiteModuleCard(
-                                                  title: "Orders",
-                                                  count: activeOrdersCount.toString(),
-                                                  countLabel: "Total",
-                                                  icon: Icons.receipt_long,
-                                                  iconColor: Colors.blue,
-                                                  description: "View, modify and settle all active orders",
-                                                  onTap: () {
-                                                    Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(
-                                                        builder: (_) => BlocProvider(
-                                                          create: (context) =>
-                                                              OrderstatusBloc(OrderstatusRepository()),
-                                                          child: OrdersListTable(
-                                                            token: widget.token,
-                                                            pin: widget.pin,
-                                                            restaurantId: widget.restaurantId,
-                                                            restaurantName: widget.restaurantName,
-                                                            userPermissions: _userPermissions,
-                                                            orders: const [],
-                                                          ),
-                                                        ),
+
+                                                const SizedBox(height: 16),
+
+                                                /// ================= CUSTOMER =================
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+
+                                                      _sectionTitle("Customer Management"),
+                                                      const SizedBox(height: 8),
+
+                                                      Expanded(
+                                                          child:    Row(
+                                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                                            children: [
+                                                              Expanded(
+                                                                child: _whiteModuleCard(
+                                                                  title: "Reservation",
+                                                                  count: upcomingReservations.toString(),
+                                                                  countLabel: "Upcoming",
+                                                                  icon: Icons.calendar_today,
+                                                                  iconColor: Colors.blue,
+                                                                  description: "Accept, confirm and seat table reservations",
+                                                                  onTap: () {
+                                                                    Navigator.push(
+                                                                      context,
+                                                                      MaterialPageRoute(
+                                                                        builder: (_) => ReservationListScreen(
+                                                                          pin: widget.pin,
+                                                                          token: widget.token,
+                                                                          restaurantId: widget.restaurantId,
+                                                                          restaurantName: widget.restaurantName,
+                                                                        ),
+                                                                      ),
+                                                                    );
+                                                                  },
+                                                                ),
+                                                              ),
+                                                              const SizedBox(width: 16),
+                                                              Expanded(
+                                                                child: _whiteModuleCard(
+                                                                  title: "Customers",
+                                                                  count: "48",
+                                                                  countLabel: "Profiles",
+                                                                  icon: Icons.people_outline,
+                                                                  iconColor: Colors.purple,
+                                                                  description: "Profiles, loyalty history and preferences",
+                                                                ),
+                                                              ),
+                                                              if (_userPermissions?.canViewVendors == true) ...[
+                                                                const SizedBox(width: 16),
+                                                                Expanded(
+                                                                  child: _whiteModuleCard(
+                                                                    // title: "Vendors",
+                                                                    title: "Today's Vendor Payments",
+                                                                    // count: vendorcount.toInt().toString(),
+                                                                    count: todayVendorPaymentsCount.toString(),
+                                                                    countLabel: "Vendors",
+                                                                    icon: Icons.local_shipping_outlined,
+                                                                    iconColor: Colors.orange,
+                                                                    description: "Manage supplier profiles, orders and deliveries",
+                                                                    onTap: () {
+                                                                      Navigator.push(
+                                                                        context,
+                                                                        MaterialPageRoute(
+                                                                          builder: (_) => Vendorpaymentsscreen(
+                                                                            token: widget.token,
+                                                                            pin: widget.pin,
+                                                                            restaurantId: widget.restaurantId,
+                                                                            restaurantName: widget.restaurantName,
+                                                                          ),
+                                                                        ),
+                                                                      );
+                                                                    },
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ],
+                                                          )
                                                       ),
-                                                    );
-                                                  },
-                                                ),
-                                              ),
-                                              if (_userPermissions?.canViewTips == true) ...[
-                                                const SizedBox(width: 16),
-                                                SizedBox(
-                                                  width: 250,
-                                                  child: _whiteModuleCard(
-                                                    title: "Tips",
-                                                    count: "$_currency${totalTipAmount.toStringAsFixed(2)}",
-                                                    // count: "₹${totalTipAmount.toStringAsFixed(2)}",
-                                                    // count: totalTipAmount.toStringAsFixed(2),
-                                                    countLabel: "Tips",
-                                                    icon: Icons.account_balance_wallet_outlined,
-                                                    iconColor: Colors.orange,
-                                                    description: "Manage and view tips",
-                                                    onTap: () {
-                                                      Navigator.push(
-                                                        context,
-                                                        MaterialPageRoute(
-                                                          builder: (_) => TipsScreen(
-                                                            token: widget.token,
-                                                            pin: widget.pin,
-                                                            userPermissions: _userPermissions,
-                                                            restaurantId: widget.restaurantId,
-                                                            restaurantName: widget.restaurantName,
-                                                          ),
-                                                        ),
-                                                      );
-                                                    },
+                                                    ],
                                                   ),
                                                 ),
                                               ],
-                                            ],
+                                            ),
                                           ),
-                                          const SizedBox(height: 16),
-
-                                          _sectionTitle("Customer Management"),
-                                          const SizedBox(height: 8),
-
-                                          // Your Customer Row
-                                          Row(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              SizedBox(
-                                                width: 250,
-                                                child: _whiteModuleCard(
-                                                  title: "Reservation",
-                                                  count: upcomingReservations.toString(),
-                                                  countLabel: "Upcoming",
-                                                  icon: Icons.calendar_today,
-                                                  iconColor: Colors.blue,
-                                                  description: "Accept, confirm and seat table reservations",
-                                                  onTap: () {
-                                                    Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(
-                                                        builder: (_) => ReservationListScreen(
-                                                          pin: widget.pin,
-                                                          token: widget.token,
-                                                          restaurantId: widget.restaurantId,
-                                                          restaurantName: widget.restaurantName,
-                                                        ),
-                                                      ),
-                                                    );
-                                                  },
-                                                ),
-                                              ),
-                                              const SizedBox(width: 16),
-                                              SizedBox(
-                                                width: 250,
-                                                child: _whiteModuleCard(
-                                                  title: "Customers",
-                                                  count: "48",
-                                                  countLabel: "Profiles",
-                                                  icon: Icons.people_outline,
-                                                  iconColor: Colors.purple,
-                                                  description: "Profiles, loyalty history and preferences",
-                                                ),
-                                              ),
-                                              if (_userPermissions?.canViewVendors == true) ...[
-                                                const SizedBox(width: 16),
-                                                SizedBox(
-                                                  width: 250,
-                                                  child: _whiteModuleCard(
-                                                    // title: "Vendors",
-                                                    title: "Today's Vendor Payments",
-                                                    // count: vendorcount.toInt().toString(),
-                                                    count: todayVendorPaymentsCount.toString(),
-                                                    countLabel: "Vendors",
-                                                    icon: Icons.local_shipping_outlined,
-                                                    iconColor: Colors.orange,
-                                                    description: "Manage supplier profiles, orders and deliveries",
-                                                    onTap: () {
-                                                      Navigator.push(
-                                                        context,
-                                                        MaterialPageRoute(
-                                                          builder: (_) => Vendorpaymentsscreen(
-                                                            token: widget.token,
-                                                            pin: widget.pin,
-                                                            restaurantId: widget.restaurantId,
-                                                            restaurantName: widget.restaurantName,
-                                                          ),
-                                                        ),
-                                                      );
-                                                    },
-                                                  ),
-                                                ),
-                                              ],
-                                            ],
-                                          )
-                                        ],
-                                      ),
-                                    ),
+                              // Expanded(
+                              //   child: Row(
+                              //     crossAxisAlignment: CrossAxisAlignment.start,
+                              //     children: [
+                              //
+                              //       /// LEFT SIDE
+                              //       Expanded(
+                              //         flex: 3,
+                              //         child: Column(
+                              //           crossAxisAlignment: CrossAxisAlignment.start,
+                              //           children: [
+                              //
+                              //             _sectionTitle("Restaurant Operations"),
+                              //             const SizedBox(height: 8),
+                              //             Row(
+                              //               crossAxisAlignment: CrossAxisAlignment.start,
+                              //               children: [
+                              //                 SizedBox(
+                              //                   width: 250,
+                              //                   child: _moduleCard(
+                              //                     title: "Tables",
+                              //                     subtitle: "Floor Plan",
+                              //                     count: occupiedTables.toString(),
+                              //                     countLabel: "Occupied",
+                              //                     isCurrent: true,
+                              //                     color: const Color(0xffF5A25D),
+                              //                     icon: Icons.grid_view_rounded,
+                              //                     gradient: const RadialGradient(
+                              //                       center: Alignment(0.82, 0.85),
+                              //                       radius: 1.18,
+                              //                       colors: [
+                              //                         Color(0xFFF0AE80),
+                              //                         Color(0xFFE8925A),
+                              //                       ],
+                              //                     ),
+                              //                     boxShadows: const [
+                              //                       BoxShadow(
+                              //                         color: Color(0x141C2333),
+                              //                         blurRadius: 6,
+                              //                         offset: Offset(0, 2),
+                              //                       ),
+                              //                       BoxShadow(
+                              //                         color: Color(0x99E8925A),
+                              //                         blurRadius: 20,
+                              //                         offset: Offset(0, 6),
+                              //                       ),
+                              //                     ],
+                              //                     onTap: () {
+                              //                       Navigator.push(
+                              //                         context,
+                              //                         MaterialPageRoute(
+                              //                           builder: (_) => TablesScreen(
+                              //                             pin: widget.pin,
+                              //                             token: widget.token,
+                              //                             restaurantId: widget.restaurantId,
+                              //                             restaurantName: widget.restaurantName,
+                              //                             loadedTables: [],
+                              //                           ),
+                              //                         ),
+                              //                       );
+                              //                     },
+                              //                   ),
+                              //                 ),
+                              //
+                              //                 const SizedBox(width: 16),
+                              //
+                              //                 BlocBuilder<OrderBloc, OrderState>(
+                              //                   builder: (context, state) {
+                              //                     final activeOrderCount = state.orderItems.isNotEmpty ? "1" : "0";
+                              //
+                              //                     return SizedBox(
+                              //                       width: 250,
+                              //                       child: _moduleCard(
+                              //                         title: "Take Aways",
+                              //                         subtitle: "Walk-in Orders",
+                              //                         count: activeOrderCount,
+                              //                         countLabel: "Active",
+                              //                         color: const Color(0xff5FCB89),
+                              //                         gradient: const RadialGradient(
+                              //                           center: Alignment(0.82, 0.85),
+                              //                           radius: 1.18,
+                              //                           colors: [
+                              //                             Color(0xFF79D89E),
+                              //                             Color(0xFF5CB87A),
+                              //                           ],
+                              //                         ),
+                              //                         boxShadows: const [
+                              //                           BoxShadow(
+                              //                             color: Color(0x141C2333),
+                              //                             blurRadius: 6,
+                              //                             offset: Offset(0, 2),
+                              //                           ),
+                              //                           BoxShadow(
+                              //                             color: Color(0x995CB87A),
+                              //                             blurRadius: 20,
+                              //                             offset: Offset(0, 6),
+                              //                           ),
+                              //                         ],
+                              //                         icon: Icons.inventory_2_outlined,
+                              //                         onTap: () {
+                              //                           final orderBloc = context.read<OrderBloc>();
+                              //                           final state = orderBloc.state;
+                              //
+                              //                           if (state.orderItems.isEmpty) {
+                              //                             debugPrint("🧹 No active order found. Resetting OrderBloc.");
+                              //                             orderBloc.add(ResetOrder());
+                              //                           } else {
+                              //                             debugPrint(
+                              //                               "✅ Active takeaway order found. orderId: ${state.orderId}, items: ${state.orderItems.length}",
+                              //                             );
+                              //                           }
+                              //
+                              //                           Navigator.push(
+                              //                             context,
+                              //                             MaterialPageRoute(
+                              //                               builder: (_) => DashboardScreen(
+                              //                                 pin: widget.pin,
+                              //                                 token: widget.token,
+                              //                                 restaurantId: widget.restaurantId,
+                              //                                 restaurantName: widget.restaurantName,
+                              //                                 userPermissions: widget.userPermissions,
+                              //                                 isTakeAway: true,
+                              //                               ),
+                              //                             ),
+                              //                           );
+                              //                         },
+                              //                       ),
+                              //                     );
+                              //                   },
+                              //                 ),
+                              //                 const SizedBox(width: 16),
+                              //
+                              //                 SizedBox(
+                              //                   width: 250,
+                              //                   child: _moduleCard(
+                              //                     title: "Online Orders",
+                              //                     subtitle: "Delivery",
+                              //                     count: "0",
+                              //                     countLabel: "Pending",
+                              //                     color: const Color(0xff9B7AE7),
+                              //                     icon: Icons.language,
+                              //                     gradient: const RadialGradient(
+                              //                       center: Alignment(0.82, 0.85),
+                              //                       radius: 1.18,
+                              //                       colors: [
+                              //                         Color(0xFFA890DC),
+                              //                         Color(0xFF9076C8),
+                              //                       ],
+                              //                     ),
+                              //                     boxShadows: const [
+                              //                       BoxShadow(
+                              //                         color: Color(0x141C2333),
+                              //                         blurRadius: 6,
+                              //                         offset: Offset(0, 2),
+                              //                       ),
+                              //                       BoxShadow(
+                              //                         color: Color(0x999076C8),
+                              //                         blurRadius: 20,
+                              //                         offset: Offset(0, 6),
+                              //                       ),
+                              //                     ],
+                              //                   ),
+                              //                 ),
+                              //               ],
+                              //             ),
+                              //             // Your Restaurant Operations Row
+                              //
+                              //             const SizedBox(height: 16),
+                              //
+                              //             _sectionTitle("Kitchen & Orders"),
+                              //             const SizedBox(height: 8),
+                              //
+                              //             // Your Kitchen Row
+                              //             Row(
+                              //               crossAxisAlignment: CrossAxisAlignment.start,
+                              //               children: [
+                              //                 SizedBox(
+                              //                   width: 250,
+                              //                   child: _whiteModuleCard(
+                              //                     title: "KOT Status",
+                              //                     count: kotStatusCount.toString(),
+                              //                     countLabel: "In Kitchen",
+                              //                     icon: Icons.restaurant_menu,
+                              //                     iconColor: Colors.red,
+                              //                     description: "Monitor live kitchen order tickets and prep times",
+                              //                     onTap: () {
+                              //                       Navigator.push(
+                              //                         context,
+                              //                         MaterialPageRoute(
+                              //                           builder: (_) => KitchenStatusScreen(
+                              //                             pin: widget.pin,
+                              //                             associatedManagerPin: widget.pin,
+                              //                             token: widget.token,
+                              //                             restaurantId: widget.restaurantId,
+                              //                             restaurantName: widget.restaurantName,
+                              //                           ),
+                              //                         ),
+                              //                       );
+                              //                     },
+                              //                   ),
+                              //                 ),
+                              //                 const SizedBox(width: 16),
+                              //                 SizedBox(
+                              //                   width: 250,
+                              //                   child: _whiteModuleCard(
+                              //                     title: "Orders",
+                              //                     count: activeOrdersCount.toString(),
+                              //                     countLabel: "Total",
+                              //                     icon: Icons.receipt_long,
+                              //                     iconColor: Colors.blue,
+                              //                     description: "View, modify and settle all active orders",
+                              //                     onTap: () {
+                              //                       Navigator.push(
+                              //                         context,
+                              //                         MaterialPageRoute(
+                              //                           builder: (_) => BlocProvider(
+                              //                             create: (context) =>
+                              //                                 OrderstatusBloc(OrderstatusRepository()),
+                              //                             child: OrdersListTable(
+                              //                               token: widget.token,
+                              //                               pin: widget.pin,
+                              //                               restaurantId: widget.restaurantId,
+                              //                               restaurantName: widget.restaurantName,
+                              //                               userPermissions: _userPermissions,
+                              //                               orders: const [],
+                              //                             ),
+                              //                           ),
+                              //                         ),
+                              //                       );
+                              //                     },
+                              //                   ),
+                              //                 ),
+                              //                 if (_userPermissions?.canViewTips == true) ...[
+                              //                   const SizedBox(width: 16),
+                              //                   SizedBox(
+                              //                     width: 250,
+                              //                     child: _whiteModuleCard(
+                              //                       title: "Tips",
+                              //                       count: "$_currency${totalTipAmount.toStringAsFixed(2)}",
+                              //                       // count: "₹${totalTipAmount.toStringAsFixed(2)}",
+                              //                       // count: totalTipAmount.toStringAsFixed(2),
+                              //                       countLabel: "Tips",
+                              //                       icon: Icons.account_balance_wallet_outlined,
+                              //                       iconColor: Colors.orange,
+                              //                       description: "Manage and view tips",
+                              //                       onTap: () {
+                              //                         Navigator.push(
+                              //                           context,
+                              //                           MaterialPageRoute(
+                              //                             builder: (_) => TipsScreen(
+                              //                               token: widget.token,
+                              //                               pin: widget.pin,
+                              //                               userPermissions: _userPermissions,
+                              //                               restaurantId: widget.restaurantId,
+                              //                               restaurantName: widget.restaurantName,
+                              //                             ),
+                              //                           ),
+                              //                         );
+                              //                       },
+                              //                     ),
+                              //                   ),
+                              //                 ],
+                              //               ],
+                              //             ),
+                              //             const SizedBox(height: 16),
+                              //
+                              //             _sectionTitle("Customer Management"),
+                              //             const SizedBox(height: 8),
+                              //
+                              //             // Your Customer Row
+                              //             Row(
+                              //               crossAxisAlignment: CrossAxisAlignment.start,
+                              //               children: [
+                              //                 SizedBox(
+                              //                   width: 250,
+                              //                   child: _whiteModuleCard(
+                              //                     title: "Reservation",
+                              //                     count: upcomingReservations.toString(),
+                              //                     countLabel: "Upcoming",
+                              //                     icon: Icons.calendar_today,
+                              //                     iconColor: Colors.blue,
+                              //                     description: "Accept, confirm and seat table reservations",
+                              //                     onTap: () {
+                              //                       Navigator.push(
+                              //                         context,
+                              //                         MaterialPageRoute(
+                              //                           builder: (_) => ReservationListScreen(
+                              //                             pin: widget.pin,
+                              //                             token: widget.token,
+                              //                             restaurantId: widget.restaurantId,
+                              //                             restaurantName: widget.restaurantName,
+                              //                           ),
+                              //                         ),
+                              //                       );
+                              //                     },
+                              //                   ),
+                              //                 ),
+                              //                 const SizedBox(width: 16),
+                              //                 SizedBox(
+                              //                   width: 250,
+                              //                   child: _whiteModuleCard(
+                              //                     title: "Customers",
+                              //                     count: "48",
+                              //                     countLabel: "Profiles",
+                              //                     icon: Icons.people_outline,
+                              //                     iconColor: Colors.purple,
+                              //                     description: "Profiles, loyalty history and preferences",
+                              //                   ),
+                              //                 ),
+                              //                 if (_userPermissions?.canViewVendors == true) ...[
+                              //                   const SizedBox(width: 16),
+                              //                   SizedBox(
+                              //                     width: 250,
+                              //                     child: _whiteModuleCard(
+                              //                       // title: "Vendors",
+                              //                       title: "Today's Vendor Payments",
+                              //                       // count: vendorcount.toInt().toString(),
+                              //                       count: todayVendorPaymentsCount.toString(),
+                              //                       countLabel: "Vendors",
+                              //                       icon: Icons.local_shipping_outlined,
+                              //                       iconColor: Colors.orange,
+                              //                       description: "Manage supplier profiles, orders and deliveries",
+                              //                       onTap: () {
+                              //                         Navigator.push(
+                              //                           context,
+                              //                           MaterialPageRoute(
+                              //                             builder: (_) => Vendorpaymentsscreen(
+                              //                               token: widget.token,
+                              //                               pin: widget.pin,
+                              //                               restaurantId: widget.restaurantId,
+                              //                               restaurantName: widget.restaurantName,
+                              //                             ),
+                              //                           ),
+                              //                         );
+                              //                       },
+                              //                     ),
+                              //                   ),
+                              //                 ],
+                              //               ],
+                              //             )
+                              //           ],
+                              //         ),
+                              //       ),
                                     // const SizedBox(width: 10),
                                     //
                                     // Container(
@@ -927,10 +1293,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                     // const SizedBox(width: 10),
 
                                     /// RIGHT SIDE
-                                    SizedBox(
-                                      width: 435,
-                                      child: _restaurantOverview(),
-                                    ),
+                                          Expanded(
+                                            flex: 4,
+                                            child: _restaurantOverview(),
+                                          ),
                                   ],
                                 ),
                               ),
@@ -1258,35 +1624,20 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ]),
                 ),
-                )))
-    );
+                ])))
+    ));
   }
   Widget _restaurantOverview() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-
-
-        const SizedBox(height: 10),
-
-        _topSellingItems(),
-        //
-        // const SizedBox(height: 10),
-        //
-        // _tableStatusWidget(),
-      ],
+    return SizedBox.expand(
+      child: _topSellingItems(),
     );
   }
   Widget _topSellingItems() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Container(
-      padding: const EdgeInsets.only(
-        left: 16,
-        top: 16,
-        right: 25,
-        bottom: 8,
-      ),
+      width: double.infinity,
+      constraints: const BoxConstraints.expand(),
+      padding: const EdgeInsets.fromLTRB(16, 16, 25, 8),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF202433) : Colors.white,
         borderRadius: BorderRadius.circular(18),
@@ -1295,13 +1646,16 @@ class _HomeScreenState extends State<HomeScreen> {
             blurRadius: 6,
             offset: const Offset(0, 2),
             color: isDark
-                ? Colors.black.withOpacity(0.35)
+                ? Colors.grey.withOpacity(0.35)
                 : Colors.black12,
           ),
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+
+          /// Header
           Row(
             children: [
               Expanded(
@@ -1311,16 +1665,18 @@ class _HomeScreenState extends State<HomeScreen> {
                     Text(
                       "Restaurant Overview",
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : Color(0xFF1A1A1A),
+                        color: isDark
+                            ? Colors.white
+                            : const Color(0xFF1A1A1A),
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       "Live overview of today's operations",
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 12,
                         color: isDark
                             ? Colors.grey.shade400
                             : const Color(0xFF8B97A8),
@@ -1332,86 +1688,112 @@ class _HomeScreenState extends State<HomeScreen> {
 
               Icon(
                 Icons.calendar_today_outlined,
-                size: 18,
-                color: isDark ? Colors.white70 : const Color(0xFF334155),
+                size: 20,
+                color: isDark
+                    ? Colors.white70
+                    : const Color(0xFF334155),
               ),
               const SizedBox(width: 6),
 
               Text(
                 "17 July, 2026",
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 16,
                   fontWeight: FontWeight.w500,
-                  color: isDark ? Colors.white : const Color(0xFF1E293B),
+                  color: isDark
+                      ? Colors.white
+                      : const Color(0xFF1E293B),
                 ),
               ),
             ],
           ),
 
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
 
-          _overviewRow(
-            Icons.room_service_outlined,
-            Colors.grey.shade100,
-            Colors.grey,
-            "Queue",
-            "02",
-            isDark,
-          ),
+          /// Rows occupy remaining height equally
+          Expanded(
+            child: Column(
+              children: [
 
-          _overviewRow(
-            Icons.access_time,
-            const Color(0xFFFFF7D6),
-            Colors.amber.shade700,
-            "Kitchen Preparing",
-            "10",
-            isDark,
-          ),
+                Expanded(
+                  child: _overviewRow(
+                    Icons.room_service_outlined,
+                    Colors.grey.shade100,
+                    Colors.grey,
+                    "Queue",
+                    "02",
+                    isDark,
+                  ),
+                ),
 
-          _overviewRow(
-            Icons.check_circle_outline,
-            const Color(0xFFEAF2FF),
-            Colors.blue,
-            "Ready to Serve",
-            "06",
-            isDark,
-          ),
+                Expanded(
+                  child: _overviewRow(
+                    Icons.access_time,
+                    const Color(0xFFFFF7D6),
+                    Colors.amber.shade700,
+                    "Kitchen Preparing",
+                    "10",
+                    isDark,
+                  ),
+                ),
 
-          _overviewRow(
-            Icons.cancel_outlined,
-            const Color(0xFFFFECEC),
-            Colors.red,
-            "Cancelled",
-            "05",
-            isDark,
-          ),
+                Expanded(
+                  child: _overviewRow(
+                    Icons.check_circle_outline,
+                    const Color(0xFFEAF2FF),
+                    Colors.blue,
+                    "Ready to Serve",
+                    "06",
+                    isDark,
+                  ),
+                ),
 
-          _overviewRow(
-            Icons.restaurant,
-            const Color(0xFFFFF2E8),
-            Colors.deepOrange,
-            "Dine-In",
-            "10",
-            isDark,
-          ),
+                Expanded(
+                  child: _overviewRow(
+                    Icons.cancel_outlined,
+                    const Color(0xFFFFECEC),
+                    Colors.red,
+                    "Cancelled",
+                    "05",
+                    isDark,
+                  ),
+                ),
 
-          _overviewRow(
-            Icons.shopping_bag_outlined,
-            const Color(0xFFE9FAEF),
-            Colors.green,
-            "Takeaways",
-            "14",
-            isDark,
-          ),
+                Expanded(
+                  child: _overviewRow(
+                    Icons.restaurant,
+                    const Color(0xFFFFF2E8),
+                    Colors.deepOrange,
+                    "Dine-In",
+                    "10",
+                    isDark,
+                  ),
+                ),
 
-          _overviewRow(
-            Icons.delivery_dining,
-            const Color(0xFFF2EDFF),
-            Colors.deepPurple,
-            "Online Orders",
-            "12",
-            isDark,
-            showDivider: false,
+                Expanded(
+                  child: _overviewRow(
+                    Icons.shopping_bag_outlined,
+                    const Color(0xFFE9FAEF),
+                    Colors.green,
+                    "Takeaways",
+                    "14",
+                    isDark,
+                  ),
+                ),
+
+                Expanded(
+                  child: _overviewRow(
+                    Icons.delivery_dining,
+                    const Color(0xFFF2EDFF),
+                    Colors.deepPurple,
+                    "Online Orders",
+                    "12",
+                    isDark,
+                    showDivider: false,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1442,14 +1824,14 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(15),
             decoration: BoxDecoration(
               color: bgColor,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
               icon,
-              size: 18,
+              size: 28,
               color: iconColor,
             ),
           ),
@@ -1460,7 +1842,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Text(
               title,
               style: TextStyle(
-                fontSize: 15,
+                fontSize: 18,
                 color: isDark ? Colors.white : const Color(0xFF333333),
                 fontWeight: FontWeight.w500,
               ),
@@ -1470,7 +1852,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Text(
             value,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
               color: isDark ? Colors.white : const Color(0xFF0F172A),
             ),
@@ -1864,19 +2246,28 @@ class _HomeScreenState extends State<HomeScreen> {
     required List<BoxShadow> boxShadows,
     required Gradient gradient,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
       child: Container(
         height: 125,
         width: 170,
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(20),
         decoration: ShapeDecoration(
           gradient: gradient,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          shadows: boxShadows,
+          shadows: isDark
+              ? [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.25),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ]
+              : boxShadows,
         ),
         child: Stack(
           children: [
@@ -1895,16 +2286,16 @@ class _HomeScreenState extends State<HomeScreen> {
                             title,
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 16,
+                              fontSize: 20,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: 4),
                           Text(
                             subtitle,
                             style: const TextStyle(
                               color: Colors.white70,
-                              fontSize: 14,
+                              fontSize: 18,
                             ),
                           ),
                         ],
@@ -1912,8 +2303,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
 
                     Container(
-                      width: 50,
-                      height: 45,
+                      width: 60,
+                      height: 55,
                       decoration: BoxDecoration(
                         color: Colors.white24,
                         borderRadius: BorderRadius.circular(10),
@@ -1933,7 +2324,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             countLabel,
                             style: const TextStyle(
                                 color: Colors.white70,
-                                fontSize: 9,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w600
                             ),
                           ),
@@ -1967,12 +2358,22 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 const Spacer(),
 
-                const Text(
-                  "Open Module →",
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                  ),
+                Row(
+                  children: [
+                    const Text(
+                      "Open Module",
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 18,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.arrow_forward,
+                      size: 24,
+                      color: Colors.white70,
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -1982,8 +2383,8 @@ class _HomeScreenState extends State<HomeScreen> {
               right: 0,
               bottom: 0,
               child: Container(
-                width: 40,
-                height: 40,
+                width: 50,
+                height: 50,
                 decoration: BoxDecoration(
                   color: Colors.white24,
                   shape: BoxShape.circle,
@@ -1991,7 +2392,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Icon(
                   icon,
                   color: Colors.white,
-                  size: 20,
+                  size: 30,
                 ),
               ),
             ),
@@ -2014,8 +2415,8 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),
       child: Container(
-        height: 135,
-        padding: const EdgeInsets.all(14),
+        height: 170,
+        padding: const EdgeInsets.all(20),
         decoration: ShapeDecoration(
           color: Theme.of(context).cardColor,
           shape: RoundedRectangleBorder(
@@ -2054,7 +2455,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Icon(
                     icon,
                     color: iconColor,
-                    size: 24,
+                    size: 26,
                   ),
                 ),
 
@@ -2068,14 +2469,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TextStyle(
                         color: iconColor,
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: 20,
                       ),
                     ),
                     Text(
                       countLabel,
                       style:  TextStyle(
                         color: Theme.of(context).hintColor,
-                        fontSize: 12,
+                        fontSize: 14,
                       ),
                     ),
                   ],
@@ -2088,7 +2489,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(
               title,
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: Theme.of(context).colorScheme.onSurface,
               ),
@@ -2109,13 +2510,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
             // const SizedBox(height: 4),
             const Spacer(),
-            Text(
-              "Open Module →",
-              style: TextStyle(
-                color: Theme.of(context).hintColor,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
+
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "Open Module",
+                  style: TextStyle(
+                    color: Theme.of(context).hintColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.east,
+                  size: 16,
+                  color: Theme.of(context).hintColor,
+                ),
+              ],
             ),
           ],
         ),

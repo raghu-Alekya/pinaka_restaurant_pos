@@ -794,7 +794,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
         },
       ),
       body: Padding(
-        padding: const EdgeInsets.fromLTRB(10, 8, 10, 25),
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
         child: Card(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -815,17 +815,17 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
-                              flex: 3,
+                              flex: 4,
                               child: _buildBookingDetailsCard(isDark),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
-                              flex: 4,
+                              flex: 5,
                               child: _buildSlotAvailabilityCard(isDark),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
-                              flex: 6,
+                              flex: 7,
                               child: _buildTableSelectionCard(isDark),
                             ),
                           ],
@@ -942,60 +942,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          // Back Button
-          // Container(
-          //   height: 40,
-          //   padding: const EdgeInsets.symmetric(horizontal: 10),
-          //   decoration: BoxDecoration(
-          //     color: Colors.white,
-          //     border: Border.all(color: Colors.grey.shade300),
-          //     borderRadius: BorderRadius.circular(10),
-          //   ),
-          //   child: InkWell(
-          //     onTap: () async {
-          //       if (_hasUnsavedChanges) {
-          //         final result = await showDialog<bool>(
-          //           context: context,
-          //           barrierDismissible: false,
-          //           builder: (_) => ConfirmationPopup(
-          //             title: "Discard Reservation?",
-          //             message:
-          //             "You have unsaved reservation details. \nDo you want to leave this page?",
-          //             imagePath: "assets/warning_icon.png",
-          //             isLoading: false,
-          //             cancelButtonText: "Stay",
-          //             confirmButtonText: "Leave",
-          //             onCancel: () => Navigator.pop(context, false),
-          //             onConfirm: () => Navigator.pop(context, true),
-          //           ),
-          //         );
-          //
-          //         if (result == true) {
-          //           Navigator.pop(context);
-          //         }
-          //       } else {
-          //         Navigator.pop(context);
-          //       }
-          //     },
-          //     borderRadius: BorderRadius.circular(10),
-          //     child: Row(
-          //       mainAxisSize: MainAxisSize.min,
-          //       children: const [
-          //         Icon(Icons.arrow_back, size: 18),
-          //         SizedBox(width: 6),
-          //         Text(
-          //           'Back',
-          //           style: TextStyle(
-          //             fontSize: 14,
-          //             fontWeight: FontWeight.w500,
-          //           ),
-          //         ),
-          //       ],
-          //     ),
-          //   ),
-          // ),
-
-          // const SizedBox(width: 15),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: const [
@@ -1007,9 +953,9 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
               Text(
                 "Select a time and choose your table",
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 12,
                   color: Color(0xFF6B7280),
-                  fontWeight: FontWeight.w400,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
@@ -1330,54 +1276,67 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
               Text(
                 "Enter guest information and reservation preferences.",
                 style: TextStyle(
-                  fontSize: 9,
-                  color:
-                  isDark ? Colors.grey.shade400 : const Color(0xFF888888),
-                  fontWeight: FontWeight.w400,
+                  fontSize: 12,
+                  color: isDark
+                      ? Colors.grey.shade400
+                      : const Color(0xFF888888),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
 
-          _buildLabeledField(
-            "No. of People:",
-            _peopleController,
-            hint: "Enter No. of People",
-            isDark: isDark,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            onChanged: (_) => setState(() {}),
+          const SizedBox(height: 12),
+
+          Expanded(
+            child: _buildLabeledField(
+              "No. of People:",
+              _peopleController,
+              hint: "Enter No. of People",
+              isDark: isDark,
+              keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+              ],
+            ),
           ),
+
           const SizedBox(height: 10),
 
-          _buildLabeledField(
-            "Name:",
-            _nameController,
-            hint: "Enter name here",
-            isDark: isDark,
+          Expanded(
+            child: _buildLabeledField(
+              "Name:",
+              _nameController,
+              hint: "Enter name here",
+              isDark: isDark,
+            ),
           ),
+
           const SizedBox(height: 10),
 
-          _buildLabeledField(
-            "Contact Details:",
-            _contactController,
-            hint: "Enter your mobile number",
-            isDark: isDark,
-            keyboardType: TextInputType.number,
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(10),
-            ],
+          Expanded(
+            child: _buildLabeledField(
+              "Contact Details:",
+              _contactController,
+              hint: "Enter your mobile number",
+              isDark: isDark,
+              keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(10),
+              ],
+            ),
           ),
+
           const SizedBox(height: 10),
 
-          _buildLabeledField(
-            "Priority/Category:",
-            _priorityController,
-            hint: "Specify your reservation (VIP, Birthday, Dinner)",
-            isDark: isDark,
-            focusNode: _priorityFocusNode,
+          Expanded(
+            child: _buildLabeledField(
+              "Priority/Category:",
+              _priorityController,
+              hint: "Specify your reservation",
+              isDark: isDark,
+              focusNode: _priorityFocusNode,
+            ),
           ),
         ],
       ),
@@ -1400,65 +1359,67 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
         Text(
           label,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 14,
             fontWeight: FontWeight.w500,
             color: isDark ? Colors.white : Colors.black,
           ),
         ),
-        const SizedBox(height: 4),
-        TextField(
-          controller: controller,
-          focusNode: focusNode,
-          keyboardType: keyboardType,
-          inputFormatters: inputFormatters,
-          onChanged: (_) {
-            setState(() {
-              _hasUnsavedChanges = true;
-            });
-          },
-          style: TextStyle(
-            fontSize: 13,
-            color: isDark ? Colors.white : Colors.black,
+        const SizedBox(height: 6),
+
+        Expanded(
+          child: TextField(
+            controller: controller,
+            focusNode: focusNode,
+            keyboardType: keyboardType,
+            inputFormatters: inputFormatters,
+            onChanged: (_) {
+              setState(() {
+                _hasUnsavedChanges = true;
+              });
+            },
+            style: TextStyle(
+              fontSize: 14,
+              color: isDark ? Colors.white : Colors.black,
+            ),
+            cursorColor: isDark ? Colors.white : Colors.black,
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: hint,
+              hintStyle: TextStyle(
+                fontSize: 12,
+                color: isDark ? Colors.white54 : Colors.grey,
+              ),
+              filled: true,
+              fillColor:
+              isDark ? const Color(0xFF374151) : const Color(0xFFF9FAFB),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 12,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color:
+                  isDark ? const Color(0xFF4B5563) : const Color(0xFFE5E7EB),
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color:
+                  isDark ? const Color(0xFF4B5563) : const Color(0xFFE5E7EB),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color:
+                  isDark ? const Color(0xFF6366F1) : const Color(0xFFE5E7EB),
+                ),
+              ),
+            ),
           ),
-          cursorColor: isDark ? Colors.white : Colors.black,
-          decoration: InputDecoration(
-            isDense: true,
-            hintText: hint,
-            hintStyle: TextStyle(
-              fontSize: 12,
-              color: isDark ? Colors.white54 : Colors.grey,
-            ),
-            filled: true,
-            fillColor:
-            isDark ? const Color(0xFF374151) : const Color(0xFFF9FAFB),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 12,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                color:
-                isDark ? const Color(0xFF4B5563) : const Color(0xFFE5E7EB),
-              ),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                color:
-                isDark ? const Color(0xFF4B5563) : const Color(0xFFE5E7EB),
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                color:
-                isDark ? const Color(0xFF6366F1) : const Color(0xFFE5E7EB),
-              ),
-            ),
-          ),
-        ),
-      ],
+        )],
     );
   }
 
@@ -1479,9 +1440,9 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
               Text(
                 "Choose your preferred dining time.",
                 style: TextStyle(
-                  fontSize: 9,
+                  fontSize: 12,
                   color: Color(0xFF888888),
-                  fontWeight: FontWeight.w400,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
@@ -1714,8 +1675,8 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                       Text(
                         "Choose your preferred table.",
                         style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w400,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                           color: isDark
                               ? Colors.grey.shade400
                               : const Color(0xFF888888),
@@ -2438,83 +2399,171 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          OutlinedButton(
-            onPressed: () async {
-              if (_hasUnsavedChanges) {
-                final result = await showDialog<bool>(
-                  context: context,
-                  barrierDismissible: false,
-                  builder:
-                      (_) => ConfirmationPopup(
-                    title: "Discard Reservation?",
-                    message:
-                    "You have unsaved reservation details.\nDo you want to leave this page?",
-                    imagePath: "assets/warning_icon.png",
-                    isLoading: false,
-                    cancelButtonText: "Stay",
-                    confirmButtonText: "Leave",
-                    onCancel: () => Navigator.pop(context, false),
-                    onConfirm: () => Navigator.pop(context, true),
-                  ),
-                );
+          // OutlinedButton(
+          //   onPressed: () async {
+          //     if (_hasUnsavedChanges) {
+          //       final result = await showDialog<bool>(
+          //         context: context,
+          //         barrierDismissible: false,
+          //         builder:
+          //             (_) => ConfirmationPopup(
+          //           title: "Discard Reservation?",
+          //           message:
+          //           "You have unsaved reservation details.\nDo you want to leave this page?",
+          //           imagePath: "assets/warning_icon.png",
+          //           isLoading: false,
+          //           cancelButtonText: "Stay",
+          //           confirmButtonText: "Leave",
+          //           onCancel: () => Navigator.pop(context, false),
+          //           onConfirm: () => Navigator.pop(context, true),
+          //         ),
+          //       );
+          //
+          //       if (result == true) {
+          //         Navigator.pop(context);
+          //       }
+          //     } else {
+          //       Navigator.pop(context);
+          //     }
+          //   },
+          //   style: OutlinedButton.styleFrom(
+          //     backgroundColor: isDark ? const Color(0xFF374151) : Colors.white,
+          //     side: const BorderSide(color: Color(0xFFFF4D20), width: 1),
+          //     shape: RoundedRectangleBorder(
+          //       borderRadius: BorderRadius.circular(12),
+          //     ),
+          //     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+          //   ),
+          //   child: const Text(
+          //     "Cancel",
+          //     style: TextStyle(
+          //       color: Color(0xFFFF4D20),
+          //       fontSize: 16,
+          //       fontWeight: FontWeight.w500,
+          //     ),
+          //   ),
+          // ),
+          SizedBox(
+            height: 40,
+            child: OutlinedButton(
+              onPressed: () async {
+                if (_hasUnsavedChanges) {
+                  final result = await showDialog<bool>(
+                    context: context,
+                    barrierDismissible: false,
+                    builder:
+                        (_) => ConfirmationPopup(
+                      title: "Discard Reservation?",
+                      message:
+                      "You have unsaved reservation details.\n"
+                          "Do you want to leave this page?",
+                      imagePath: "assets/warning_icon.png",
+                      isLoading: false,
+                      cancelButtonText: "Stay",
+                      confirmButtonText: "Leave",
+                      onCancel: () => Navigator.pop(context, false),
+                      onConfirm: () => Navigator.pop(context, true),
+                    ),
+                  );
 
-                if (result == true) {
+                  if (result == true) {
+                    Navigator.pop(context);
+                  }
+                } else {
                   Navigator.pop(context);
                 }
-              } else {
-                Navigator.pop(context);
-              }
-            },
-            style: OutlinedButton.styleFrom(
-              backgroundColor: isDark ? const Color(0xFF374151) : Colors.white,
-              side: const BorderSide(color: Color(0xFFFF4D20), width: 1),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+              },
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(110, 40),
+                maximumSize: const Size(double.infinity, 40),
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                backgroundColor:
+                isDark ? const Color(0xFF374151) : Colors.white,
+                side: const BorderSide(
+                  color: Color(0xFFFF4D20),
+                  width: 1,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-            ),
-            child: const Text(
-              "Cancel",
-              style: TextStyle(
-                color: Color(0xFFFF4D20),
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
+              child: const Text(
+                "Cancel",
+                style: TextStyle(
+                  color: Color(0xFFFF4D20),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
-
           const SizedBox(width: 12),
-          ElevatedButton(
-            onPressed: _isLoading ? null : _validateAndSubmit,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF4D20),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+          // ElevatedButton(
+          //   onPressed: _isLoading ? null : _validateAndSubmit,
+          //   style: ElevatedButton.styleFrom(
+          //     backgroundColor: const Color(0xFFFF4D20),
+          //     foregroundColor: Colors.white,
+          //     shape: RoundedRectangleBorder(
+          //       borderRadius: BorderRadius.circular(12),
+          //     ),
+          //     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          //   ),
+          //   child: SizedBox(
+          //     height: 20,
+          //     child: Center(
+          //       child:
+          //       _isLoading
+          //           ? const SizedBox(
+          //         height: 18,
+          //         width: 18,
+          //         child: CircularProgressIndicator(
+          //           color: Colors.white,
+          //           strokeWidth: 2.2,
+          //         ),
+          //       )
+          //           : Text(
+          //         widget.isEditMode
+          //             ? "Update Reservation"
+          //             : "Confirm Reservation",
+          //         style: const TextStyle(
+          //           fontSize: 14,
+          //           color: Colors.white,
+          //         ),
+          //       ),
+          //     ),
+          //   ),
+          // ),
+          SizedBox(
+            height: 40,
+            child: ElevatedButton(
+              onPressed: _isLoading ? null : _validateAndSubmit,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(180, 40),
+                maximumSize: const Size(double.infinity, 40),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                backgroundColor: const Color(0xFFFF4D20),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-            child: SizedBox(
-              height: 20,
-              child: Center(
-                child:
-                _isLoading
-                    ? const SizedBox(
-                  height: 18,
-                  width: 18,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2.2,
-                  ),
-                )
-                    : Text(
-                  widget.isEditMode
-                      ? "Update Reservation"
-                      : "Confirm Reservation",
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.white,
-                  ),
+              child: _isLoading
+                  ? const SizedBox(
+                height: 18,
+                width: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+                  : Text(
+                widget.isEditMode
+                    ? "Update Reservation"
+                    : "Confirm Reservation",
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),

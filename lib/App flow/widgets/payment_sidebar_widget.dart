@@ -2567,7 +2567,7 @@ Net Payable      : $netPayableTemp
         child: Scaffold(
             resizeToAvoidBottomInset: false, // <-- ADD THIS
             backgroundColor: isDark
-                ? const Color(0xFF1E2233)
+                ? const Color(0xFF161A26)
                 : const Color(0xFFF5F5F6),
             body: Padding(
               padding: const EdgeInsets.all(12),

@@ -1281,25 +1281,12 @@ class _paymentsummaryState extends State<paymentsummary> {
         color: isDark
             ? const Color(0xFF202433)
             : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: isDark
-            ? [
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.45),
-            offset: const Offset(4, 4),
-            blurRadius: 8,
-          ),
-        ]
-            : const [
-          BoxShadow(
-            color: Colors.white,
-            offset: Offset(-4, -4),
-            blurRadius: 8,
-          ),
-          BoxShadow(
-            color: Color(0xFFD9E6FF),
-            offset: Offset(4, 4),
-            blurRadius: 8,
+            color: Colors.black12,
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -1767,21 +1754,12 @@ class _paymentsummaryState extends State<paymentsummary> {
                 color: isDark
                     ? const Color(0xFF202433)
                     : Colors.white,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
                 boxShadow: [
                   BoxShadow(
-                    color: isDark
-                        ? Colors.black.withOpacity(0.35)
-                        : Colors.white,
-                    offset: const Offset(-4, -4),
-                    blurRadius: 8,
-                  ),
-                  BoxShadow(
-                    color: isDark
-                        ? Colors.black54
-                        : const Color(0xFFD9E6FF),
-                    offset: const Offset(4, 4),
-                    blurRadius: 8,
+                    color: Colors.black12,
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),

@@ -290,45 +290,350 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Row(
+                      //   crossAxisAlignment: CrossAxisAlignment.center,
+                      //   children: [
+                      //
+                      //     /// TITLE
+                      //     Flexible(
+                      //       flex: 2,
+                      //       child: Text(
+                      //         "Reservation List",
+                      //         maxLines: 1,
+                      //         overflow: TextOverflow.ellipsis,
+                      //         style: TextStyle(
+                      //           color: isDark
+                      //               ? Colors.white
+                      //               : const Color(0xFF3D3D3D),
+                      //           fontSize: 24,
+                      //           fontWeight: FontWeight.w600,
+                      //         ),
+                      //       ),
+                      //     ),
+                      //
+                      //     // const SizedBox(width: 20),
+                      //      const Spacer(),
+                      //     /// SEARCH
+                      //     Expanded(
+                      //       flex: 3,
+                      //       child: SizedBox(
+                      //         height: 48,
+                      //         child: Container(
+                      //           decoration: ShapeDecoration(
+                      //             color: isDark
+                      //                 ? const Color(0xFF374151)
+                      //                 : Colors.white,
+                      //             shape: RoundedRectangleBorder(
+                      //               borderRadius: BorderRadius.circular(12),
+                      //             ),
+                      //             shadows: const [
+                      //               BoxShadow(
+                      //                 color: Color(0x4204347F),
+                      //                 blurRadius: 5,
+                      //                 offset: Offset(0, 2),
+                      //               ),
+                      //             ],
+                      //           ),
+                      //           child: TextField(
+                      //             controller: _searchController,
+                      //             cursorColor:
+                      //             isDark ? Colors.white : Colors.black,
+                      //             style: TextStyle(
+                      //               color:
+                      //               isDark ? Colors.white : Colors.black87,
+                      //             ),
+                      //             decoration: InputDecoration(
+                      //               border: InputBorder.none,
+                      //               prefixIcon: Icon(
+                      //                 Icons.search,
+                      //                 color: isDark
+                      //                     ? Colors.white70
+                      //                     : const Color(0xFF7A7A7A),
+                      //               ),
+                      //               hintText:
+                      //               "Search by name, phone or table",
+                      //               hintStyle: TextStyle(
+                      //                 color: isDark
+                      //                     ? Colors.white54
+                      //                     : const Color(0xFFC3C2C2),
+                      //               ),
+                      //             ),
+                      //           ),
+                      //         ),
+                      //       ),
+                      //     ),
+                      //
+                      //     const SizedBox(width: 12),
+                      //
+                      //     /// DATE
+                      //     Expanded(
+                      //       flex: 2,
+                      //       child: SizedBox(
+                      //         height: 48,
+                      //         child: Container(
+                      //           decoration: ShapeDecoration(
+                      //             color: isDark
+                      //                 ? const Color(0xFF374151)
+                      //                 : const Color(0xFFF0F0F0),
+                      //             shape: RoundedRectangleBorder(
+                      //               side: BorderSide(
+                      //                 color: isDark
+                      //                     ? Colors.grey.shade700
+                      //                     : const Color(0xFFA5A5A5),
+                      //               ),
+                      //               borderRadius:
+                      //               BorderRadius.circular(10),
+                      //             ),
+                      //           ),
+                      //           child: TextField(
+                      //             controller: _dateController,
+                      //             readOnly: true,
+                      //             onTap: () async {
+                      //               final picked = await showDatePicker(
+                      //                 context: context,
+                      //                 initialDate: selectedDate ?? DateTime.now(),
+                      //                 firstDate: DateTime(2020),
+                      //                 lastDate: DateTime(2030),
+                      //                 builder: (context, child) {
+                      //                   return Theme(
+                      //                     data: Theme.of(context).copyWith(
+                      //                       colorScheme: isDark
+                      //                           ? const ColorScheme.dark(
+                      //                         primary: Color(0xFF6366F1), // Selected date
+                      //                         onPrimary: Colors.white,
+                      //                         surface: Color(0xFF1F2937), // Dialog background
+                      //                         onSurface: Colors.white, // Calendar text
+                      //                       )
+                      //                           : const ColorScheme.light(
+                      //                         primary: Color(0xFF6366F1),
+                      //                         onPrimary: Colors.white,
+                      //                         surface: Colors.white,
+                      //                         onSurface: Colors.black,
+                      //                       ),
+                      //                       dialogTheme: DialogThemeData(
+                      //                         backgroundColor:
+                      //                         isDark ? const Color(0xFF1F2937) : Colors.white,
+                      //                       ),
+                      //                     ),
+                      //                     child: child!,
+                      //                   );
+                      //                 },
+                      //               );
+                      //               if (picked != null) {
+                      //                 setState(() {
+                      //                   selectedDate = picked;
+                      //                   _dateController.text =
+                      //                   "${picked.day.toString().padLeft(2, '0')}/"
+                      //                       "${picked.month.toString().padLeft(2, '0')}/"
+                      //                       "${picked.year}";
+                      //                 });
+                      //               }
+                      //             },
+                      //             decoration: InputDecoration(
+                      //               border: InputBorder.none,
+                      //               contentPadding:
+                      //               const EdgeInsets.symmetric(
+                      //                 horizontal: 12,
+                      //                 vertical: 14,
+                      //               ),
+                      //               suffixIcon: Icon(
+                      //                 Icons.calendar_month,
+                      //                 color: isDark
+                      //                     ? Colors.white70
+                      //                     : const Color(0xFF6D6D6D),
+                      //               ),
+                      //             ),
+                      //           ),
+                      //         ),
+                      //       ),
+                      //     ),
+                      //
+                      //     const SizedBox(width: 12),
+                      //
+                      //     /// AREA
+                      //     Expanded(
+                      //       flex: 2,
+                      //       child: SizedBox(
+                      //         height: 48,
+                      //         child: Container(
+                      //           padding:
+                      //           const EdgeInsets.symmetric(horizontal: 8),
+                      //           decoration: BoxDecoration(
+                      //             color: isDark
+                      //                 ? const Color(0xFF374151)
+                      //                 : Colors.white,
+                      //             borderRadius:
+                      //             BorderRadius.circular(8),
+                      //             border: Border.all(
+                      //               color: isDark
+                      //                   ? Colors.grey.shade700
+                      //                   : Colors.grey.shade300,
+                      //             ),
+                      //           ),
+                      //           child: DropdownButtonHideUnderline(
+                      //             child: DropdownButton<String>(
+                      //               value: selectedArea,
+                      //               isExpanded: true,
+                      //               icon: Icon(
+                      //                 Icons.arrow_drop_down,
+                      //                 color: isDark
+                      //                     ? Colors.white
+                      //                     : Colors.black,
+                      //               ),
+                      //               dropdownColor: isDark
+                      //                   ? const Color(0xFF374151)
+                      //                   : Colors.white,
+                      //               style: TextStyle(
+                      //                 color: isDark
+                      //                     ? Colors.white
+                      //                     : Colors.black,
+                      //               ),
+                      //               onChanged: (v) {
+                      //                 setState(() => selectedArea = v);
+                      //               },
+                      //               items: _areaNames
+                      //                   .map(
+                      //                     (e) => DropdownMenuItem(
+                      //                   value: e,
+                      //                   child: Text(
+                      //                     e,
+                      //                     overflow:
+                      //                     TextOverflow.ellipsis,
+                      //                   ),
+                      //                 ),
+                      //               )
+                      //                   .toList(),
+                      //             ),
+                      //           ),
+                      //         ),
+                      //       ),
+                      //     ),
+                      //
+                      //     const SizedBox(width: 12),
+                      //
+                      //     /// RESET
+                      //     Expanded(
+                      //       flex: 2,
+                      //       child: SizedBox(
+                      //         height: 48,
+                      //         child: ElevatedButton.icon(
+                      //           style: ElevatedButton.styleFrom(
+                      //             backgroundColor: isResetEnabled
+                      //                 ? (isDark
+                      //                 ? const Color(0xFF374151)
+                      //                 : const Color(0xFFFDF8F8))
+                      //                 : Colors.grey.shade700,
+                      //             foregroundColor:
+                      //             isResetEnabled ? Colors.red : Colors.grey,
+                      //             elevation: 0,
+                      //             shape: RoundedRectangleBorder(
+                      //               borderRadius:
+                      //               BorderRadius.circular(10),
+                      //               side: BorderSide(
+                      //                 color: isResetEnabled
+                      //                     ? Colors.red
+                      //                     : Colors.grey.shade400,
+                      //               ),
+                      //             ),
+                      //           ),
+                      //           onPressed: isResetEnabled
+                      //               ? () {
+                      //             setState(() {
+                      //               searchQuery = '';
+                      //               selectedArea = 'All';
+                      //               selectedDate = null;
+                      //               _searchController.clear();
+                      //               _dateController.clear();
+                      //               currentPage = 1;
+                      //             });
+                      //           }
+                      //               : null,
+                      //           icon: const Icon(Icons.refresh, size: 18),
+                      //           label: const Text("Reset"),
+                      //         ),
+                      //       ),
+                      //     ),
+                      //
+                      //     const SizedBox(width: 12),
+                      //
+                      //     /// CREATE BUTTON
+                      //     Expanded(
+                      //       flex: 3,
+                      //       child: SizedBox(
+                      //         height: 48,
+                      //         child: Container(
+                      //           decoration: BoxDecoration(
+                      //             gradient:
+                      //             _userPermissions?.canCreateReservation ??
+                      //                 false
+                      //                 ? const LinearGradient(
+                      //               colors: [
+                      //                 Color(0xFFFF3849),
+                      //                 Color(0xFFFF5362),
+                      //               ],
+                      //             )
+                      //                 : LinearGradient(
+                      //               colors: [
+                      //                 Colors.grey,
+                      //                 Colors.grey,
+                      //               ],
+                      //             ),
+                      //             borderRadius:
+                      //             BorderRadius.circular(10),
+                      //           ),
+                      //           child: ElevatedButton.icon(
+                      //             style: ElevatedButton.styleFrom(
+                      //               backgroundColor: Colors.transparent,
+                      //               shadowColor: Colors.transparent,
+                      //               elevation: 0,
+                      //             ),
+                      //
+                      //             icon: const Icon(
+                      //                             Icons.add,
+                      //                             size: 18,
+                      //                             color: Colors.white,
+                      //                           ),
+                      //             label: const Text(
+                      //               "Create Reservation",
+                      //               style: TextStyle(
+                      //                                 color: Colors.white,
+                      //                                 fontSize: 14,
+                      //                                 fontWeight: FontWeight.w500,
+                      //                               ),
+                      //               overflow: TextOverflow.ellipsis,
+                      //             ),
+                      //             onPressed: () {
+                      //               if (_userPermissions?.canCreateReservation ?? false) {
+                      //                 Navigator.push(
+                      //                   context,
+                      //                   MaterialPageRoute(
+                      //                     builder: (_) => CreateReservationScreen(
+                      //                       pin: widget.pin,
+                      //                       token: widget.token,
+                      //                       restaurantId: widget.restaurantId,
+                      //                       restaurantName: widget.restaurantName,
+                      //                     ),
+                      //                   ),
+                      //                 );
+                      //               } else {
+                      //                 AreaMovementNotifier.showPopup(
+                      //                   context: context,
+                      //                   fromArea: '',
+                      //                   toArea: '',
+                      //                   tableName: 'Reservation',
+                      //                   customMessage: "No permission to create reservation",
+                      //                 );
+                      //               }
+                      //             },
+                      //           ),
+                      //         ),
+                      //       ),
+                      //     ),
+                      //   ],
+                      // ),
                       // Filters Row
                       Row(
                         children: [
-                          /// 🔙 BACK BUTTON
-                          // InkWell(
-                          //   onTap: () {
-                          //     Navigator.pushAndRemoveUntil(
-                          //       context,
-                          //       MaterialPageRoute(
-                          //         builder: (context) => HomeScreen(
-                          //           token: widget.token,
-                          //           pin: widget.pin,
-                          //           restaurantId: widget.restaurantId,
-                          //           restaurantName: widget.restaurantName,
-                          //         ),
-                          //       ),
-                          //           (route) => false,
-                          //     );
-                          //   },
-                          //   child: Container(
-                          //     width: 40,
-                          //     height: 40,
-                          //     decoration: BoxDecoration(
-                          //       color: Colors.white,
-                          //       borderRadius: BorderRadius.circular(8),
-                          //       boxShadow: const [
-                          //         BoxShadow(
-                          //           color: Colors.black12,
-                          //           blurRadius: 4,
-                          //         ),
-                          //       ],
-                          //     ),
-                          //     child: const Icon(
-                          //       Icons.arrow_back,
-                          //       color: Color(0xFF0A1B4D),
-                          //     ),
-                          //   ),
-                          // ),
-
                           const SizedBox(width: 8),
 
                           Expanded(
@@ -635,291 +940,293 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                       ),
                       const SizedBox(height: 10),
                       // Table Container
-                      Container(
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? const Color(0xFF374151)
-                              : const Color(0xFFEFEFEF),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        clipBehavior: Clip.antiAlias,
-                        child: Column(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
-                              height: 50,
-                              decoration: BoxDecoration(
-                                color: isDark
-                                    ? const Color(0xFF111827)
-                                    : const Color(0xFF2A3558),
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(8),
-                                  topRight: Radius.circular(8),
-                                ),
-                              ),
-                              child: Row(
-                                children: const [
-                                  _TableHeaderCell("Reservation ID"),
-                                  SizedBox(width: 15),
-                                  _TableHeaderCell("Date"),
-                                  SizedBox(width: 10),
-                                  _TableHeaderCell("Time"),
-                                  _TableHeaderCell("Customer Name"),
-                                  SizedBox(width: 35),
-                                  _TableHeaderCell("Customer Phone"),
-                                  SizedBox(width: 18),
-                                  _TableHeaderCell("No. of People"),
-                                  SizedBox(width: 15),
-                                  _TableHeaderCell("Table No"),
-                                  _TableHeaderCell("Area"),
-                                  _TableHeaderCell("Status"),
-                                  SizedBox(width: 26),
-                                  _TableHeaderCell("Action"),
-                                ],
-                              ),
-
-                            ),
-                            SizedBox(
-                              height: 330,
-                              child: filteredReservations.isEmpty
-                                  ? Center(
-                                child: Text(
-                                  "There are no reservations",
-                                  style: TextStyle(
-                                    color: isDark ? Colors.white70 : Colors.grey[800],
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? const Color(0xFF374151)
+                                : const Color(0xFFEFEFEF),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: Column(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? const Color(0xFF111827)
+                                      : const Color(0xFF2A3558),
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(8),
+                                    topRight: Radius.circular(8),
                                   ),
                                 ),
-                              )
-                                  : ListView.builder(
-                                physics: NeverScrollableScrollPhysics(),
-                                itemCount: currentData.length,
-                                itemBuilder: (context, index) {
-                                  final data = currentData[index];
-                                  final canEdit = _isBeforeCutoff(data['reservation_date'], data['cutoff_time']);
-                                  final status = data['reservation_status']?.toLowerCase() ?? '';
-                                  final isRowDisabled = status.toLowerCase() == 'expired' || status.toLowerCase() == 'cancelled' || status.toLowerCase() == 'seated';
-                                  return Container(
-                                    padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 10),
-                                    decoration: BoxDecoration(
-                                      color: isDark
-                                          ? const Color(0xFF1F2937)
-                                          : const Color(0xFFFCFCFF), // Data row background color
-                                      border: const Border(
-                                        bottom: BorderSide(
-                                          color: Color(0xFFE0E0E0),
+                                child: Row(
+                                  children: const [
+                                    _TableHeaderCell("Reservation ID"),
+                                    SizedBox(width: 15),
+                                    _TableHeaderCell("Date"),
+                                    SizedBox(width: 10),
+                                    _TableHeaderCell("Time"),
+                                    _TableHeaderCell("Customer Name"),
+                                    SizedBox(width: 35),
+                                    _TableHeaderCell("Customer Phone"),
+                                    SizedBox(width: 18),
+                                    _TableHeaderCell("No. of People"),
+                                    SizedBox(width: 15),
+                                    _TableHeaderCell("Table No"),
+                                    _TableHeaderCell("Area"),
+                                    _TableHeaderCell("Status"),
+                                    SizedBox(width: 26),
+                                    _TableHeaderCell("Action"),
+                                  ],
+                                ),
+
+                              ),
+                              Expanded(
+                                child: filteredReservations.isEmpty
+                                    ? Center(
+                                  child: Text(
+                                    "There are no reservations",
+                                    style: TextStyle(
+                                      color: isDark ? Colors.white70 : Colors.grey[800],
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                )
+                                    : ListView.builder(
+                                  physics: NeverScrollableScrollPhysics(),
+                                  itemCount: currentData.length,
+                                  itemBuilder: (context, index) {
+                                    final data = currentData[index];
+                                    final canEdit = _isBeforeCutoff(data['reservation_date'], data['cutoff_time']);
+                                    final status = data['reservation_status']?.toLowerCase() ?? '';
+                                    final isRowDisabled = status.toLowerCase() == 'expired' || status.toLowerCase() == 'cancelled' || status.toLowerCase() == 'seated';
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 10),
+                                      decoration: BoxDecoration(
+                                        color: isDark
+                                            ? const Color(0xFF1F2937)
+                                            : const Color(0xFFFCFCFF), // Data row background color
+                                        border: const Border(
+                                          bottom: BorderSide(
+                                            color: Color(0xFFE0E0E0),
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        _TableCell('${data['reservation_id']}', isDark: isDark,),
-                                        _TableCell(
-                                          DateFormat('dd/MM/yy').format(
-                                            DateTime.parse(data['reservation_date']),
+                                      child: Row(
+                                        children: [
+                                          _TableCell('${data['reservation_id']}', isDark: isDark,),
+                                          _TableCell(
+                                            DateFormat('dd/MM/yy').format(
+                                              DateTime.parse(data['reservation_date']),
+                                            ),
+                                            isDark: isDark,
                                           ),
-                                          isDark: isDark,
-                                        ),
-                                        _TableCell(data['reservation_time'] ?? '', isDark: isDark,),
-                                        _TableCell(data['customer_name'] ?? '', isDark: isDark,),
-                                        const SizedBox(width: 20),
-                                        _TableCell(data['customer_phone'] ?? '', isDark: isDark,),
-                                        const SizedBox(width: 10),
-                                        _TableCell('${data['people_count']}', isDark: isDark,),
-                                        _TableCell(data['table_no'] ?? '', isDark: isDark,),
-                                        _TableCell(data['zone_name'] ?? '', isDark: isDark,),
-                                        Container(
-                                          alignment: Alignment.center,
-                                          child: _buildStatusBadge(data['reservation_status'] ?? '',  isDark,),
-                                        ),
-                                        const SizedBox(width: 24),
-                                        _TableCell(
-                                          '',
-                                          isDark: isDark,
-                                          child: Align(
+                                          _TableCell(data['reservation_time'] ?? '', isDark: isDark,),
+                                          _TableCell(data['customer_name'] ?? '', isDark: isDark,),
+                                          const SizedBox(width: 20),
+                                          _TableCell(data['customer_phone'] ?? '', isDark: isDark,),
+                                          const SizedBox(width: 10),
+                                          _TableCell('${data['people_count']}', isDark: isDark,),
+                                          _TableCell(data['table_no'] ?? '', isDark: isDark,),
+                                          _TableCell(data['zone_name'] ?? '', isDark: isDark,),
+                                          Container(
                                             alignment: Alignment.center,
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                if (!isRowDisabled && canEdit)
-                                                  InkWell(
-                                                    onTap: () {
-                                                      Navigator.push(
-                                                        context,
-                                                        MaterialPageRoute(
-                                                          builder: (_) => CreateReservationScreen(
-                                                            pin: widget.pin,
-                                                            token: widget.token,
-                                                            restaurantId: widget.restaurantId,
-                                                            restaurantName: widget.restaurantName,
-                                                            isEditMode: true,
-                                                            reservationData: {
-                                                              'reservation_id': data['reservation_id'],
-                                                              'people': data['people_count']?.toString(),
-                                                              'name': data['customer_name'],
-                                                              'phone': data['customer_phone'],
-                                                              'date': data['reservation_date'],
-                                                              'time': data['reservation_time'],
-                                                              'table': data['table_no'],
-                                                              'priority': data['priority_category'],
-                                                              'area': data['zone_name'],
+                                            child: _buildStatusBadge(data['reservation_status'] ?? '',  isDark,),
+                                          ),
+                                          const SizedBox(width: 24),
+                                          _TableCell(
+                                            '',
+                                            isDark: isDark,
+                                            child: Align(
+                                              alignment: Alignment.center,
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  if (!isRowDisabled && canEdit)
+                                                    InkWell(
+                                                      onTap: () {
+                                                        Navigator.push(
+                                                          context,
+                                                          MaterialPageRoute(
+                                                            builder: (_) => CreateReservationScreen(
+                                                              pin: widget.pin,
+                                                              token: widget.token,
+                                                              restaurantId: widget.restaurantId,
+                                                              restaurantName: widget.restaurantName,
+                                                              isEditMode: true,
+                                                              reservationData: {
+                                                                'reservation_id': data['reservation_id'],
+                                                                'people': data['people_count']?.toString(),
+                                                                'name': data['customer_name'],
+                                                                'phone': data['customer_phone'],
+                                                                'date': data['reservation_date'],
+                                                                'time': data['reservation_time'],
+                                                                'table': data['table_no'],
+                                                                'priority': data['priority_category'],
+                                                                'area': data['zone_name'],
+                                                              },
+                                                            ),
+                                                          ),
+                                                        );
+                                                      },
+                                                      child: const Icon(Icons.edit, size: 18, color: Colors.blue),
+                                                    )
+                                                  else
+                                                    Icon(Icons.edit, size: 18, color: Colors.grey.shade400),
+                                                  const SizedBox(width: 30),
+                                                  if (!isRowDisabled)
+                                                    InkWell(
+                                                      onTap: () {
+                                                        showDialog(
+                                                          context: context,
+                                                          barrierDismissible: false,
+                                                          builder: (_) => DeleteReservationDialog(
+                                                            onDelete: () async {
+                                                              final success = await _reservationRepository.cancelReservation(
+                                                                context: context,
+                                                                token: widget.token,
+                                                                reservationId: data['reservation_id'],
+                                                                restaurantId: int.parse(widget.restaurantId),
+                                                              );
+
+                                                              if (success) {
+                                                                _fetchReservations();
+                                                              } else {
+                                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                                  const SnackBar(content: Text('Failed to cancel reservation.'),
+                                                                    duration: Duration(seconds: 1),
+                                                                    backgroundColor: Colors.red,),
+                                                                );
+                                                              }
                                                             },
                                                           ),
-                                                        ),
-                                                      );
-                                                    },
-                                                    child: const Icon(Icons.edit, size: 18, color: Colors.blue),
-                                                  )
-                                                else
-                                                  Icon(Icons.edit, size: 18, color: Colors.grey.shade400),
-                                                const SizedBox(width: 30),
-                                                if (!isRowDisabled)
-                                                  InkWell(
-                                                    onTap: () {
-                                                      showDialog(
-                                                        context: context,
-                                                        barrierDismissible: false,
-                                                        builder: (_) => DeleteReservationDialog(
-                                                          onDelete: () async {
-                                                            final success = await _reservationRepository.cancelReservation(
-                                                              context: context,
-                                                              token: widget.token,
-                                                              reservationId: data['reservation_id'],
-                                                              restaurantId: int.parse(widget.restaurantId),
-                                                            );
-
-                                                            if (success) {
-                                                              _fetchReservations();
-                                                            } else {
-                                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                                const SnackBar(content: Text('Failed to cancel reservation.'),
-                                                                  duration: Duration(seconds: 1),
-                                                                  backgroundColor: Colors.red,),
-                                                              );
-                                                            }
-                                                          },
-                                                        ),
-                                                      );
-                                                    },
-                                                    child: const Icon(Icons.delete, size: 18, color: Colors.red),
-                                                  )
-                                                else
-                                                  Icon(Icons.delete, size: 18, color: Colors.grey.shade400),
-                                              ],
+                                                        );
+                                                      },
+                                                      child: const Icon(Icons.delete, size: 18, color: Colors.red),
+                                                    )
+                                                  else
+                                                    Icon(Icons.delete, size: 18, color: Colors.grey.shade400),
+                                                ],
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-
-                            const SizedBox(height: 5),
-                            Container(
-                              height: 85,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, ),
-                              decoration: const BoxDecoration(
-                                // color: Color(0xFFF5F5F5),
-                                borderRadius: BorderRadius.only(
-                                  bottomLeft: Radius.circular(8),
-                                  bottomRight: Radius.circular(8),
+                                        ],
+                                      ),
+                                    );
+                                  },
                                 ),
                               ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    filteredReservations.length == _reservations.length
-                                        ? "Total Reservations: ${_reservations.length}"
-                                        : "Showing ${filteredReservations.length} of ${_reservations.length} Reservations",
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: isDark ? Colors.white : Colors.black87,
-                                    ),
-                                  ),
 
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color: isDark ? const Color(0xFF374151) : Colors.white,
-                                      border: Border.all(
-                                        color: isDark
-                                            ? Colors.grey.shade300
-                                            : const Color(0xFFEFEFEF),
+                              const SizedBox(height: 5),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 12,
+                                ),
+                                decoration: const BoxDecoration(
+                                  // color: Color(0xFFF5F5F5),
+                                  borderRadius: BorderRadius.only(
+                                    bottomLeft: Radius.circular(8),
+                                    bottomRight: Radius.circular(8),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      filteredReservations.length == _reservations.length
+                                          ? "Total Reservations: ${_reservations.length}"
+                                          : "Showing ${filteredReservations.length} of ${_reservations.length} Reservations",
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: isDark ? Colors.white : Colors.black87,
                                       ),
-                                      borderRadius: BorderRadius.circular(4),
                                     ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        GestureDetector(
-                                          onTap: currentPage > 1
-                                              ? () => setState(() => currentPage--)
-                                              : null,
-                                          child: _paginationTextButton("Previous",isDark),
+
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: isDark ? const Color(0xFF374151) : Colors.white,
+                                        border: Border.all(
+                                          color: isDark
+                                              ? Colors.grey.shade300
+                                              : const Color(0xFFEFEFEF),
                                         ),
-
-                                        GestureDetector(
-                                          onTap: () => setState(() => currentPage = 1),
-                                          child: _pageButton(
-                                            1,
-                                            selected: currentPage == 1,  isDark: isDark,
-
-                                          ),
-                                        ),
-
-                                        if (totalPages >= 2)
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
                                           GestureDetector(
-                                            onTap: () => setState(() => currentPage = 2),
-                                            child: _pageButton(
-                                              2,
-                                              selected: currentPage == 2,
-                                              isDark: isDark,
-                                            ),
+                                            onTap: currentPage > 1
+                                                ? () => setState(() => currentPage--)
+                                                : null,
+                                            child: _paginationTextButton("Previous",isDark),
                                           ),
 
-                                        if (totalPages >= 3)
                                           GestureDetector(
-                                            onTap: () => setState(() => currentPage = 3),
+                                            onTap: () => setState(() => currentPage = 1),
                                             child: _pageButton(
-                                              3,
-                                              selected: currentPage == 3,  isDark: isDark,
+                                              1,
+                                              selected: currentPage == 1,  isDark: isDark,
 
                                             ),
                                           ),
 
-                                        if (totalPages > 4)
-                                          _paginationTextButton("...",isDark),
-
-                                        if (totalPages > 4)
-                                          GestureDetector(
-                                            onTap: () => setState(() => currentPage = totalPages),
-                                            child: _pageButton(
-                                              totalPages,
-                                              selected: currentPage == totalPages,
-                                              isDark: isDark,
+                                          if (totalPages >= 2)
+                                            GestureDetector(
+                                              onTap: () => setState(() => currentPage = 2),
+                                              child: _pageButton(
+                                                2,
+                                                selected: currentPage == 2,
+                                                isDark: isDark,
+                                              ),
                                             ),
-                                          ),
 
-                                        GestureDetector(
-                                          onTap: currentPage < totalPages
-                                              ? () => setState(() => currentPage++)
-                                              : null,
-                                          child: _paginationTextButton("Next",isDark),
-                                        ),
-                                      ],
+                                          if (totalPages >= 3)
+                                            GestureDetector(
+                                              onTap: () => setState(() => currentPage = 3),
+                                              child: _pageButton(
+                                                3,
+                                                selected: currentPage == 3,  isDark: isDark,
+
+                                              ),
+                                            ),
+
+                                          if (totalPages > 4)
+                                            _paginationTextButton("...",isDark),
+
+                                          if (totalPages > 4)
+                                            GestureDetector(
+                                              onTap: () => setState(() => currentPage = totalPages),
+                                              child: _pageButton(
+                                                totalPages,
+                                                selected: currentPage == totalPages,
+                                                isDark: isDark,
+                                              ),
+                                            ),
+
+                                          GestureDetector(
+                                            onTap: currentPage < totalPages
+                                                ? () => setState(() => currentPage++)
+                                                : null,
+                                            child: _paginationTextButton("Next",isDark),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          ],
+                                  ],
+                                ),
+                              )
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      )],
                   ),
                 ),
               ))],

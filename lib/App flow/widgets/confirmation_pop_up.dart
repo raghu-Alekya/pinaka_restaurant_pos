@@ -63,10 +63,12 @@ class ConfirmationPopup extends StatelessWidget {
                     Colors.white,
                   ],
                 ),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: primaryColor,
-                  width: 1,
+                borderRadius: BorderRadius.circular(16), // smaller curve
+                border: Border(
+                  top: BorderSide(
+                    color: isDark ? primaryColor : primaryColor,
+                    width: 4,
+                  ),
                 ),
                 boxShadow: const [
                   BoxShadow(

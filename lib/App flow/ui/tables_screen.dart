@@ -2557,7 +2557,7 @@ class _TablesScreenState extends State<TablesScreen> {
                         ),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
-                          vertical: 8,
+                          vertical: 12,
                         ),
                         child: InkWell(
                           onTap: () {

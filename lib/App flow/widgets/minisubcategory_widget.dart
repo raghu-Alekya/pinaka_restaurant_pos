@@ -2191,11 +2191,11 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       decoration: BoxDecoration(
         border: Border.all(
           color: Theme.of(context).dividerColor,
-          width: 1,
+          width: 0.5,
         ),
         borderRadius: BorderRadius.circular(12),
         color: isDark
-            ? const Color(0xFF202433)
+            ? const Color(0xFF1B1B22)
             : Colors.white,
         boxShadow: [
           BoxShadow(
@@ -2250,7 +2250,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: const Color(0xFFFF364C),
-                  width: 1,
+                  width: 0.8,
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -2322,7 +2322,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         mainAxisSpacing: 0,
-        crossAxisSpacing: 8,
+        crossAxisSpacing: 12,
         childAspectRatio: 1.59,
       ),
       itemBuilder: (context, index) {
@@ -2347,15 +2347,17 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
                       ? const Color(0xFF2B3045)
                       : Colors.white,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: isDark
-                        ? const Color(0xFF444A63)
-                        : const Color(0x7FC4C7D1),
-                  ),
+                  // border: Border.all(
+                  //   color: isDark
+                  //       ? const Color(0xFF444A63)
+                  //       : const Color(0x7FC4C7D1),
+                  // ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(isDark ? 0.25 : 0.10),
-                      blurRadius: 8,
+                      color: isDark
+                          ? Colors.white.withOpacity(0.08)
+                          : Colors.black.withOpacity(0.10),
+                      blurRadius: 10,
                       offset: const Offset(0, 2),
                     ),
                   ],

@@ -28,6 +28,7 @@ import '../../blocs/Bloc Logic/void_item_bloc.dart';
 import '../../blocs/Bloc State/checkin_state.dart';
 import '../../blocs/Bloc State/kot_state.dart';
 import '../../blocs/Bloc State/order_state.dart';
+import '../../constants/constants.dart';
 import '../../local database/login_dao.dart';
 import '../../local database/table_dao.dart';
 import '../../models/order/order_items.dart';
@@ -653,7 +654,7 @@ class _OrderPanelState extends State<OrderPanel> {
 
     try {
       final orderRepo = OrderRepository(
-        baseUrl: 'https://merchantrestaurant.alektasolutions.com',
+        baseUrl: AppConstants.baseDomain,
       );
 
       final orderState = context.read<OrderBloc>().state;
@@ -1909,14 +1910,20 @@ class _OrderPanelState extends State<OrderPanel> {
           final bool canPay = hasAnyValidKot && !hasCartItems;
           final bool hasOrderItems = state.orderItems.isNotEmpty;
           return Container(
+            margin: const EdgeInsets.only(
+              top: 6,
+            ),
             width: 700,
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF202433) : Colors.white,
+              color: isDark
+                  ? const Color(0xFF1B1B22)
+                  : Colors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color:
-                    isDark ? const Color(0xFF444A63) : const Color(0xFFE0E0E0),
+                color: isDark
+                    ? const Color(0xFF2B2E37)
+                    : const Color(0xFFE0E0E0),
               ),
             ),
             child: Column(
@@ -1928,17 +1935,19 @@ class _OrderPanelState extends State<OrderPanel> {
                     horizontal: 6,
                     vertical: 12,
                   ),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF2A2F45) : Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    // boxShadow: [
-                    //   BoxShadow(
-                    //     color: Colors.black.withOpacity(.05),
-                    //     blurRadius: 8,
-                    //     offset: const Offset(0, 2),
-                    //   ),
-                    // ],
-                  ),
+                  // decoration: BoxDecoration(
+                  //   color: isDark
+                  //       ? const Color(0xFF2A2F45)
+                  //       : Colors.white,
+                  //   borderRadius: BorderRadius.circular(14),
+                  //   // boxShadow: [
+                  //   //   BoxShadow(
+                  //   //     color: Colors.black.withOpacity(.05),
+                  //   //     blurRadius: 8,
+                  //   //     offset: const Offset(0, 2),
+                  //   //   ),
+                  //   // ],
+                  // ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -2857,10 +2866,8 @@ class _OrderPanelState extends State<OrderPanel> {
                                           final kotBloc =
                                               context.read<KotBloc>();
                                           final orderRepo = OrderRepository(
-                                            baseUrl:
-                                                'https://merchantrestaurant.alektasolutions.com',
+                                            baseUrl: AppConstants.baseDomain,
                                           );
-
                                           if (state.orderItems.isEmpty) {
                                             ScaffoldMessenger.of(
                                               context,
@@ -3261,9 +3268,9 @@ class _OrderPanelState extends State<OrderPanel> {
       onTap:
           canCheckout
               ? () async {
-                final orderRepo = OrderRepository(
-                  baseUrl: 'https://merchantrestaurant.alektasolutions.com',
-                );
+            final orderRepo = OrderRepository(
+              baseUrl: AppConstants.baseDomain,
+            );
 
                 showDialog(
                   context: context,
@@ -3404,12 +3411,12 @@ class _OrderPanelState extends State<OrderPanel> {
   }
 
   Widget orderButton(
-    String text,
-    Color color, {
-    VoidCallback? onPressed,
-    bool isLoading = false,
-    Color? textColor,
-  }) => Expanded(
+      String text,
+      Color color, {
+        VoidCallback? onPressed,
+        bool isLoading = false,
+        Color? textColor,
+      }) => Expanded(
     child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2),
       child: SizedBox(
@@ -3424,27 +3431,27 @@ class _OrderPanelState extends State<OrderPanel> {
           ),
           onPressed: onPressed,
           child:
-              isLoading
-                  ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
-                  : Text(
-                    text,
-                    style: TextStyle(
-                      color:
-                          textColor ??
-                          (onPressed == null
-                              ? const Color(0xFF757575) // Disabled text
-                              : Colors.white), // Enabled text
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
+          isLoading
+              ? const SizedBox(
+            height: 20,
+            width: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+          )
+              : Text(
+            text,
+            style: TextStyle(
+              color:
+              textColor ??
+                  (onPressed == null
+                      ? const Color(0xFF757575) // Disabled text
+                      : Colors.white), // Enabled text
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
       ),
     ),

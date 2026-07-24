@@ -975,10 +975,9 @@ class _TopBarState extends State<TopBar> {
                         height: 40,
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         decoration: BoxDecoration(
-                          color:
-                              isDark
-                                  ? const Color(0xFF2B2B2B)
-                                  : const Color(0xFFF9FBFF),
+                          color: isDark
+                              ? Colors.black
+                              : const Color(0xFFF9FBFF),
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
                             color:
