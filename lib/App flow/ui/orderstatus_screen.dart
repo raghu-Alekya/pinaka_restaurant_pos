@@ -1,19 +1,31 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:pinaka_restaurant_pos/App%20flow/ui/payment_screen.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/ui/view_order_details_screen.dart';
 
+import '../../blocs/Bloc Event/order_event.dart';
 import '../../blocs/Bloc Event/order_list_event.dart';
 // import '../../blocs/Bloc Logic/orders_list_bloc.dart';
 // import '../../blocs/Bloc State/orders_list_state.dart';
+import '../../blocs/Bloc Logic/discount_bloc.dart';
+import '../../blocs/Bloc Logic/order_bloc.dart';
 import '../../blocs/Bloc Logic/order_list_bloc.dart';
+import '../../blocs/Bloc Logic/payment_bloc.dart';
 import '../../blocs/Bloc State/order_list_state.dart';
+import '../../constants/constants.dart';
 import '../../models/UserPermissions.dart';
 // import '../../models/orderslist/orders_list_model.dart';
+import '../../models/order/guest_details.dart';
+import '../../models/order/order_model.dart';
 import '../../models/order_list/order_list_model.dart';
+import '../../repositories/order_repository.dart';
+import '../../services/api_exception.dart';
 import '../../utils/SessionManager.dart';
+import '../../utils/logger.dart';
 import '../widgets/NavigationHelper.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/top_bar.dart';
@@ -26,6 +38,7 @@ class OrdersListTable extends StatefulWidget {
   final String restaurantId;
   final String restaurantName;
   final UserPermissions? userPermissions;
+  final List<Map<String, dynamic>> loadedTables;
 
   const OrdersListTable({
     super.key,
@@ -35,6 +48,7 @@ class OrdersListTable extends StatefulWidget {
     required this.restaurantId,
     required this.restaurantName,
     this.userPermissions,
+    required this.loadedTables,
   });
 
   @override
@@ -722,7 +736,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                           ? const Color(0xFF202433)
                                           : const Color(0xFFFCFCFF),
                                     ),
-                                    columnSpacing: 40,
+                                    columnSpacing: 30,
                                     dividerThickness: 0,
                                     columns: const [
                                       DataColumn(label: Text("Order ID")),
@@ -735,8 +749,13 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                       DataColumn(label: Text("Payment")),
                                       DataColumn(label: Text("Total")),
                                       DataColumn(label: Text("Status")),
+                                      DataColumn(label: Text("Actions")), // New column
                                     ],
                                     rows: pageOrders.map((order) {
+                                      // Check if this specific row is a Takeaway or Online order
+                                      final bool isTakeAwayType = ["takeaway", "online", "takeaways"]
+                                          .contains((order.orderType ?? "").toLowerCase()) ||
+                                          (order.tableId == null || order.tableId == 0);
                                       return DataRow(
                                         onSelectChanged: (_) async {
                                           final bool? didUpdate = await Navigator.push<bool>(
@@ -788,18 +807,15 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                           ),
                                           DataCell(
                                             Text(
-                                              order.zoneName ?? '-',
-                                              style: TextStyle(
-                                                color: isDark ? Colors.white : Colors.black,
-                                              ),
+                                              isTakeAwayType ? '-' : (order.zoneName ?? '-'),
+                                              style: TextStyle(color: isDark ? Colors.white : Colors.black),
                                             ),
                                           ),
+                                          // 2. Table Cell (Displays '---' if it is a takeaway order)
                                           DataCell(
                                             Text(
-                                              order.tableName ?? '-',
-                                              style: TextStyle(
-                                                color: isDark ? Colors.white : Colors.black,
-                                              ),
+                                              isTakeAwayType ? '-' : (order.tableName ?? '-'),
+                                              style: TextStyle(color: isDark ? Colors.white : Colors.black),
                                             ),
                                           ),
                                           DataCell(
@@ -859,6 +875,236 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                                   color: _statusColor(order.status ?? ''),
                                                 ),
                                               ),
+                                            ),
+                                          ),
+                                          DataCell(
+                                            Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                if (["pending", "processing"]
+                                                    .contains((order.status ?? "").toLowerCase()))
+                                                  SizedBox(
+                                                    width: 75,
+                                                    height: 30,
+                                                    child: ElevatedButton(
+                                                      onPressed: () async {
+                                                        try {
+                                                          // Show standard loading indicator overlay
+                                                          showDialog(
+                                                            context: context,
+                                                            barrierDismissible: false,
+                                                            builder: (_) => const Center(child: CircularProgressIndicator()),
+                                                          );
+
+                                                          final repository = OrderRepository(
+                                                            baseUrl: AppConstants.baseDomain,
+                                                          );
+
+                                                          // 1. Identify if this is a Takeaway or Online order string match
+                                                          final bool isTakeAwayType = ["takeaway", "online", "takeaways"]
+                                                              .contains((order.orderType ?? "").toLowerCase()) ||
+                                                              (order.tableId == null || order.tableId == 0);
+
+                                                          OrderModel? orderModel;
+
+                                                          if (isTakeAwayType) {
+                                                            // 2. TAKEAWAY API LOGIC: Query via custom direct endpoint payload
+                                                            final url = Uri.parse(
+                                                              '${AppConstants.baseDomain}/wp-json/pinaka-restaurant-pos/v1/orders/${order.orderId}',
+                                                            );
+
+                                                            final body = {
+                                                              "flag_type": "get_order_details",
+                                                              "order_id": order.orderId ?? 0,
+                                                              "restaurant_id": int.parse(widget.restaurantId),
+                                                            };
+
+                                                            final response = await ApiExceptionHandler.post(
+                                                              url,
+                                                              headers: {
+                                                                'Content-Type': 'application/json',
+                                                                'Authorization': widget.token.startsWith("Bearer ") ? widget.token : "Bearer ${widget.token}",
+                                                              },
+                                                              body: jsonEncode(body),
+                                                            );
+
+                                                            if (response.statusCode == 200 || response.statusCode == 201) {
+                                                              final data = jsonDecode(response.body);
+                                                              orderModel = OrderModel.fromJson(data);
+                                                            } else {
+                                                              // BACKUP METHOD FOR TAKEAWAY: Parse data direct from row if API fails
+                                                              orderModel = OrderModel(
+                                                                orderId: order.orderId ?? 0,
+                                                                tableId: 0,
+                                                                tableName: "",
+                                                                zoneId: 0,
+                                                                zoneName: "",
+                                                                status: order.status ?? "",
+                                                                items: const [],
+                                                                kotOrders: const [],
+                                                                orderDateTime: DateTime.tryParse(order.date ?? ""),
+                                                              );
+                                                            }
+                                                          } else {
+                                                            // 3. ORIGINAL WORKING DINE-IN LOGIC: Kept 100% intact
+                                                            orderModel = await repository.getOrderByTable(
+                                                              restaurantId: int.parse(widget.restaurantId),
+                                                              tableId: order.tableId ?? 0,
+                                                              zoneId: order.zoneId ?? 0,
+                                                              token: widget.token,
+                                                            );
+                                                          }
+
+                                                          // Hide loading indicator overlay safely
+                                                          if (Navigator.canPop(context)) Navigator.pop(context);
+
+                                                          if (orderModel == null) {
+                                                            ScaffoldMessenger.of(context).showSnackBar(
+                                                              const SnackBar(
+                                                                content: Text("Unable to load order context."),
+                                                                backgroundColor: Colors.red,
+                                                              ),
+                                                            );
+                                                            return;
+                                                          }
+
+                                                          // 4. Safely hydrate and initialize your central OrderBloc instance state
+                                                          context.read<OrderBloc>().add(
+                                                            LoadExistingOrder(
+                                                              orderId: orderModel.orderId,
+                                                              tableId: orderModel.tableId,
+                                                              zoneId: orderModel.zoneId,
+                                                              tableName: orderModel.tableName,
+                                                              zoneName: orderModel.zoneName,
+                                                              restaurantId: widget.restaurantId,
+                                                              guestDetails: Guestcount(
+                                                                guestCount: orderModel.guestCount,
+                                                              ),
+                                                              kotList: orderModel.kotOrders,
+                                                              orderItems: orderModel.items,
+                                                            ),
+                                                          );
+
+                                                          AppLogger.info("Pay clicked - ${isTakeAwayType ? 'Takeaway/Online' : 'Dine In'}");
+
+                                                          // 5. Navigate directly into PaymentScreen with matching checkout parameter settings
+                                                          Navigator.push(
+                                                            context,
+                                                            MaterialPageRoute(
+                                                              builder: (_) => MultiBlocProvider(
+                                                                providers: [
+                                                                  BlocProvider.value(value: context.read<OrderBloc>()),
+                                                                  BlocProvider.value(value: context.read<PaymentBloc>()),
+                                                                  BlocProvider.value(value: context.read<RemoveDiscountBloc>()),
+                                                                ],
+                                                                child: PaymentScreen(
+                                                                  loadedTables: widget.loadedTables,
+                                                                  pin: widget.pin,
+                                                                  token: widget.token,
+                                                                  restaurantId: widget.restaurantId,
+                                                                  restaurantName: widget.restaurantName,
+                                                                  zoneId: isTakeAwayType ? 0 : orderModel?.zoneId, // Fallback zero for takeaway
+                                                                  isTakeAway: isTakeAwayType, // Matches your successful checkout screen configuration
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          );
+                                                        } catch (e) {
+                                                          if (Navigator.canPop(context)) Navigator.pop(context);
+                                                          debugPrint("Error loading order context layer: $e");
+
+                                                          ScaffoldMessenger.of(context).showSnackBar(
+                                                            SnackBar(
+                                                              content: Text("Failed to load order: $e"),
+                                                              backgroundColor: Colors.red,
+                                                            ),
+                                                          );
+                                                        }
+                                                      },
+                                                      style: ElevatedButton.styleFrom(
+                                                        backgroundColor: const Color(0xFF06A629),
+                                                        foregroundColor: Colors.white,
+                                                        elevation: 0,
+                                                        padding: EdgeInsets.zero,
+                                                        shape: RoundedRectangleBorder(
+                                                          borderRadius: BorderRadius.circular(15),
+                                                        ),
+                                                      ),
+                                                      child: const Text(
+                                                        "Pay",
+                                                        style: TextStyle(
+                                                          fontSize: 13,
+                                                          fontWeight: FontWeight.w600,
+                                                          color: Colors.white,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                if ((order.status ?? "").toLowerCase() == "completed" ||
+                                                    (order.status ?? "").toLowerCase() == "cancelled")
+                                                  InkWell(
+                                                    onTap: () async {
+                                                      await Navigator.push(
+                                                        context,
+                                                        MaterialPageRoute(
+                                                          builder: (_) => OrdersDetailsScreen(
+                                                            token: widget.token,
+                                                            pin: widget.pin,
+                                                            restaurantId: widget.restaurantId,
+                                                            restaurantName: widget.restaurantName,
+                                                            userPermissions: _userPermissions,
+                                                            orderId: order.orderId!,
+                                                          ),
+                                                        ),
+                                                      );
+                                                    },
+                                                    borderRadius: BorderRadius.circular(15),
+                                                    child: Container(
+                                                      width: 75,
+                                                      height: 30,
+                                                      decoration: ShapeDecoration(
+                                                        color: const Color(0xFF4C81F1),
+                                                        shape: RoundedRectangleBorder(
+                                                          borderRadius: BorderRadius.circular(15),
+                                                        ),
+                                                      ),
+                                                      alignment: Alignment.center,
+                                                      child: const Row(
+                                                        mainAxisAlignment: MainAxisAlignment.center,
+                                                        children: [
+                                                          // Icon(
+                                                          //   Icons.remove_red_eye_outlined,
+                                                          //   color: Colors.white,
+                                                          //   size: 16,
+                                                          // ),
+                                                          // SizedBox(width: 4),
+                                                          Text(
+                                                            "View",
+                                                            style: TextStyle(
+                                                              color: Colors.white,
+                                                              fontSize: 13,
+                                                              fontWeight: FontWeight.w600,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ),
+                                                IconButton(
+                                                  icon: Icon(
+                                                    Icons.print_outlined,
+                                                    color: (order.status ?? "").toLowerCase() == "cancelled"
+                                                        ? Colors.grey
+                                                        : const Color(0xFF4C81F1), // Blue
+                                                  ),
+                                                  tooltip: "Print",
+                                                  onPressed: (order.status ?? "").toLowerCase() == "cancelled"
+                                                      ? null // Disabled
+                                                      : () {
+                                                    // Print logic
+                                                  },
+                                                ),
+                                              ],
                                             ),
                                           ),
                                         ],

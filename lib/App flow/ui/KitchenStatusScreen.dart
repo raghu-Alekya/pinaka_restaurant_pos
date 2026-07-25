@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -71,6 +72,8 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   static const String _apiBaseUrl = "https://merchantrestaurant.alektasolutions.com";
   Timer? _timer;
   bool _isDialogOpen = false;
+  final Map<String, List<Map<String, dynamic>>> _ordersCache = {};
+
   @override
   void initState() {
     super.initState();
@@ -111,9 +114,17 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   Future<void> _refreshSelectedTable() async {
     if (_selectedTable == null) return;
 
+    // Snapshot the current KOT data before refreshing so we can tell
+    // whether anything actually changed. Previously this rebuilt the
+    // whole widget tree every 1 second regardless of whether the data
+    // changed, which caused the status badge / KOT list to flicker.
+    final oldKotOrdersJson = jsonEncode(_selectedTable!['kotOrders'] ?? []);
+
     await _fetchParentKotOrders(_selectedTable!);
 
-    if (mounted) {
+    final newKotOrdersJson = jsonEncode(_selectedTable!['kotOrders'] ?? []);
+
+    if (mounted && oldKotOrdersJson != newKotOrdersJson) {
       setState(() {});
     }
   }
@@ -159,23 +170,50 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   }
 
   Future<void> _fetchOrders() async {
+    final cacheKey = "$selectedOrderType|${selectedArea ?? 'All'}";
+    final cached = _ordersCache[cacheKey];
+
+    // 👉 Show cached results immediately (if we have them) so switching
+    // tabs feels instant instead of showing an empty/stale list while the
+    // network call for the newly-selected tab is still in flight.
+    if (cached != null && mounted) {
+      setState(() {
+        _orders = cached;
+        _selectedTable = null;
+        _selectedKot = null;
+        _kotItems.clear();
+      });
+    }
+
     final orders = await kitchenRepo.fetchOrders(
       selectedOrderType: selectedOrderType,
       restaurantId: widget.restaurantId,
-      selectedArea: selectedArea,
+      selectedArea: selectedArea == "All" ? null : selectedArea,
       zones: _zones,
       selectedUser: _selectedUser,
     );
 
     if (!mounted) return;
 
-    _orders = orders;
-    _selectedTable = null;
-    _selectedKot = null;
-    _kotItems.clear();
 
-    // Fetch all parent KOT orders in parallel instead of a serial for-loop
-    await Future.wait(_orders.map((order) => _fetchParentKotOrders(order, updateState: false)));
+    final isUnchanged =
+        cached != null && jsonEncode(cached) == jsonEncode(orders);
+
+    _ordersCache[cacheKey] = orders;
+    _orders = orders;
+
+    if (cached == null) {
+
+      _selectedTable = null;
+      _selectedKot = null;
+      _kotItems.clear();
+    }
+
+    if (!isUnchanged) {
+      await Future.wait(
+        _orders.map((order) => _fetchParentKotOrders(order, updateState: false)),
+      );
+    }
 
     if (mounted) {
       setState(() {});
@@ -187,9 +225,8 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     if (mounted) {
       setState(() {
         _zones = zones;
-        if (zones.isNotEmpty) {
-          selectedArea = zones.first['zone_name'];
-        }
+
+        selectedArea = "All";
       });
     }
   }
@@ -255,14 +292,17 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     final query = searchQuery.toLowerCase();
 
     return _orders.where((order) {
-      final matchesOrderType =
-          normalizeOrderType(order['order_type'] ?? '') ==
-              normalizeOrderType(selectedOrderType);
+      final matchesOrderType = selectedOrderType == "All"
+          ? true
+          : normalizeOrderType(order['order_type'] ?? '') ==
+          normalizeOrderType(selectedOrderType);
 
       final matchesArea =
       selectedOrderType == "Takeaways"
           ? true
-          : (selectedArea == null || order['zone_name'] == selectedArea);
+          : (selectedArea == null ||
+          selectedArea == "All" ||
+          order['zone_name'] == selectedArea);
 
       final tableName = (order['table_name'] ?? '').toString().toLowerCase();
       final orderId = (order['order_id'] ?? '').toString().toLowerCase();
@@ -274,6 +314,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       return matchesOrderType && matchesArea && matchesSearch;
     }).toList();
   }
+
   void _onKotSelected(String kot, int index) {
     setState(() {
       if (_selectedKot == kot && normalizeOrderType(selectedOrderType) != "takeaways") {
@@ -401,7 +442,6 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         ),
       ]);
 
-      // add a row of space between date row and Order id row
       bytes += [27, 74, 16];
 
       // order /captain row
@@ -465,9 +505,9 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         ),
       ]);
 
-      bytes += [27, 32, 0]; // Temporarily reset character spacing to 0 for divider
+      bytes += [27, 32, 0];
       bytes += generator.hr();
-      bytes += [27, 32, 3]; // Set character spacing back to 3 for items
+      bytes += [27, 32, 3];
 
       // items
       int index = 1;
@@ -601,7 +641,6 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       }
       //  footer
 
-      // Restore standard character spacing (0 dots) for footer and hr dividers
       bytes += [27, 32, 0];
 
       bytes += generator.hr();
@@ -652,27 +691,17 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       _searchController.clear();
       searchQuery = '';
 
-      // // 🔄 Order type reset
-      // selectedOrderType =
-      // // _orderTypes.isNotEmpty ? _orderTypes.first : null;
+      selectedArea = "All";
 
-      // 📍 Area / Zone reset
-      selectedArea =
-      _zones.isNotEmpty ? _zones.first['zone_name'] : null;
-
-      // 🪑 Table / KOT reset
       _selectedTableIndex = null;
       _selectedTable = null;
       _selectedKot = null;
 
-      // 📦 Clear KOT items
       _kotItems.clear();
 
-      // 🔒 Disable reset button again
       isResetEnabled = false;
     });
 
-    // 🔁 Reload orders with default filters
     _fetchOrders();
   }
 
@@ -1118,70 +1147,81 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       ),
     );
   }
-
-
-
   Widget _buildAreaDropdown() {
-    if (normalizeOrderType(selectedOrderType) != "dinein") {
-      return const SizedBox.shrink();
-    }
-
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final normalizedType = normalizeOrderType(selectedOrderType);
+    final bool isDisabled =
+        normalizedType == "takeaways" || normalizedType == "onlineorders";
 
-    return Container(
-      height: 45,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: isDark
-            ? const Color(0xFF34384F)
-            : const Color(0xFF0C6FDB),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: isDark
-              ? Colors.white24
-              : Colors.transparent,
+    return Opacity(
+      opacity: isDisabled ? 0.5 : 1.0,
+      child: Container(
+        height: 45,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF2B3042) : Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isDark ? Colors.white24 : const Color(0xFFD4EBFF),
+          ),
         ),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: selectedArea,
-          icon: const Icon(
-            Icons.arrow_drop_down,
-            color: Colors.white,
-            size: 18,
-          ),
-          dropdownColor: isDark
-              ? const Color(0xFF34384F)
-              : const Color(0xFF0C6FDB),
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-          ),
-          onChanged: (newValue) {
-            setState(() {
-              selectedArea = newValue;
-              _selectedTableIndex = null;
-              _selectedTable = null;
-              _selectedKot = null;
-              _kotItems.clear();
-            });
-            _fetchOrders();
-          },
-          items: _zones.map((zone) {
-            return DropdownMenuItem<String>(
-              value: zone['zone_name'],
-              child: Text(
-                zone['zone_name'],
-                style: const TextStyle(
-                  color: Colors.white,
-                ),
+        child: IgnorePointer(
+          ignoring: isDisabled,
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: selectedArea,
+              icon: Icon(
+                Icons.arrow_drop_down,
+                color: isDark ? Colors.white : Colors.black87,
+                size: 18,
               ),
-            );
-          }).toList(),
+              dropdownColor: isDark ? const Color(0xFF2B3042) : Colors.white,
+              style: TextStyle(
+                color: isDark ? Colors.white : Colors.black87,
+                fontSize: 14,
+              ),
+              onChanged: isDisabled
+                  ? null
+                  : (newValue) {
+                setState(() {
+                  selectedArea = newValue;
+                  _selectedTableIndex = null;
+                  _selectedTable = null;
+                  _selectedKot = null;
+                  _kotItems.clear();
+                });
+                _fetchOrders();
+              },
+              items: [
+                DropdownMenuItem<String>(
+                  value: "All",
+                  child: Text(
+                    "All",
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                ),
+                ..._zones.map((zone) {
+                  return DropdownMenuItem<String>(
+                    value: zone['zone_name'],
+                    child: Text(
+                      zone['zone_name'],
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
+
+
 
   Widget _buildOrderTypeButton(String title) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1217,17 +1257,11 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
           );
         }
       },
+
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
         decoration: BoxDecoration(
-          color: isDark
-              ? const Color(0xFF2B3042)
-              : Colors.white,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(12),
-            topRight: Radius.circular(12),
-          ),
           border: Border(
             bottom: BorderSide(
               color: isSelected && isEnabled
@@ -1252,6 +1286,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       ),
     );
   }
+
   Widget _buildHeader() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -1304,7 +1339,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: _orderTypes.map((type) {
+                  children: ["All", ..._orderTypes].map((type) {
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: _buildOrderTypeButton(type),
@@ -1320,33 +1355,33 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
 
               const SizedBox(width: 14),
 
-              /// Selected Table Owner
-              if (_selectedTable != null) ...[
-                Container(
-                  height: 40,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? const Color(0xFF2B3042)
-                        : Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isDark
-                          ? Colors.white24
-                          : Colors.grey.shade300,
-                    ),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    "${_selectedTable!['table_owner'] ?? '-'}",
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: isDark ? Colors.white : Colors.black87,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 14),
-              ],
+              // /// Selected Table Owner
+              // if (_selectedTable != null) ...[
+              //   Container(
+              //     height: 40,
+              //     padding: const EdgeInsets.symmetric(horizontal: 12),
+              //     decoration: BoxDecoration(
+              //       color: isDark
+              //           ? const Color(0xFF2B3042)
+              //           : Colors.white,
+              //       borderRadius: BorderRadius.circular(8),
+              //       border: Border.all(
+              //         color: isDark
+              //             ? Colors.white24
+              //             : Colors.grey.shade300,
+              //       ),
+              //     ),
+              //     alignment: Alignment.center,
+              //     child: Text(
+              //       "${_selectedTable!['table_owner'] ?? '-'}",
+              //       style: TextStyle(
+              //         fontSize: 14,
+              //         color: isDark ? Colors.white : Colors.black87,
+              //       ),
+              //     ),
+              //   ),
+              //   const SizedBox(width: 14),
+              // ],
 
               /// Search
               SizedBox(
@@ -1510,7 +1545,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     return GridView.builder(
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 2.2,
+        mainAxisExtent: 138,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
       ),
@@ -1648,7 +1683,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       constraints: const BoxConstraints(
         minHeight: 100,
       ),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: isSelected
             ? const Color(0xFF0C6FDB)
@@ -1664,20 +1699,27 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                "Table: ${order['table_name'] ?? '-'}",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: isSelected
-                      ? Colors.white
-                      : (isDark ? Colors.white : Colors.black),
+              Expanded(
+                child: Text(
+                  "Table: ${order['table_name'] ?? '-'}",
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: isSelected
+                        ? Colors.white
+                        : (isDark ? Colors.white : Colors.black),
+                  ),
                 ),
               ),
+              const SizedBox(width: 6),
               Text(
                 order["order_time"] ?? '',
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 13,
                   color: isSelected
                       ? Colors.white
                       : (isDark ? Colors.white70 : Colors.black),
@@ -1694,32 +1736,40 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // LEFT SIDE
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Order ID: ${order['order_id']}",
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: isSelected
-                          ? Colors.white
-                          : (isDark ? Colors.white : Colors.black),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Order ID: ${order['order_id']}",
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isSelected
+                            ? Colors.white
+                            : (isDark ? Colors.white : Colors.black),
+                      ),
                     ),
-                  ),
 
-                  const SizedBox(height: 6),
+                    const SizedBox(height: 6),
 
-                  Text(
-                    "Zone: ${order['zone_name'] ?? '-'}",
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: isSelected
-                          ? Colors.white
-                          : (isDark ? Colors.white70 : Colors.black),
+                    Text(
+                      "Zone: ${order['zone_name'] ?? '-'}",
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isSelected
+                            ? Colors.white
+                            : (isDark ? Colors.white70 : Colors.black),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+
+              const SizedBox(width: 6),
 
               // RIGHT SIDE
               Row(
@@ -1793,26 +1843,26 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
           : null,
     );
   }
+
   Widget _buildOrderDetails() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bool hasTable = _selectedTable != null;
     final List<String> kots =
         (_selectedTable?['kots'] as List<dynamic>?)?.cast<String>() ?? [];
-// ✅ Add it here
     final bool hasData = hasTable && kots.isNotEmpty;
 
     return Container(
-      margin: const EdgeInsets.only(left: 0, right: 7,bottom: 0),
+      margin: const EdgeInsets.only(left: 0, right: 7, bottom: 0),
       decoration: BoxDecoration(
-        // color: Colors.white,
         borderRadius: BorderRadius.circular(3),
       ),
       padding: const EdgeInsets.all(3),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ---------------- HEADER BAR ----------------
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               color: isDark
                   ? const Color(0xFF34384F)
@@ -1828,169 +1878,192 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                   color: isDark ? Colors.white24 : const Color(0xFFD8D8D8),
                 ),
               ),
-              borderRadius: BorderRadius.only(topRight: Radius.circular(8),topLeft: Radius.circular(8) ), // borderRadius: BorderRadius.circular(6)
+              borderRadius: const BorderRadius.only(
+                topRight: Radius.circular(8),
+                topLeft: Radius.circular(8),
+              ),
             ),
-            child: Row(
-              children: [
-                if (selectedOrderType != "Takeaways") ...[
-                  Text(
-                    "Table No: ${hasTable ? _selectedTable!['table_name'] : '---'}",
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                      color: isDark ? Colors.white : Colors.black,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // ---- Info text group ----
+                    if (selectedOrderType != "Takeaways") ...[
+                      Text(
+                        "Table No: ${hasTable ? _selectedTable!['table_name'] : '---'}",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
+                      ),
+                      const SizedBox(width: 18),
+                    ],
+                    Text(
+                      "Order ID: ${hasTable ? _selectedTable!['order_id'] : '---'}",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
                     ),
-                  ),
-                ],
-                const SizedBox(width: 8),
-                Text(
-                  "Order ID: ${hasTable ? _selectedTable!['order_id'] : '---'}",
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                    color: isDark ? Colors.white : Colors.black,
-                  ),
+                    const SizedBox(width: 18),
+                    Text(
+                      _selectedKot != null ? "KOT: $_selectedKot" : "KOT: ---",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
+                    ),
+
+                    const SizedBox(width: 40),
+
+                    // ---- Action buttons group ----
+                    // 🟢 PRINT KOT
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        minimumSize: const Size(0, 40),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ).copyWith(
+                        backgroundColor:
+                        WidgetStateProperty.resolveWith<Color>(
+                              (states) => states.contains(WidgetState.disabled)
+                              ? const Color(0xFFBDE5C0)
+                              : const Color(0xFF2E9E44),
+                        ),
+                        foregroundColor:
+                        WidgetStateProperty.resolveWith<Color>(
+                              (states) => states.contains(WidgetState.disabled)
+                              ? Colors.white70
+                              : Colors.white,
+                        ),
+                      ),
+                      icon: const Icon(Icons.print, size: 18, color: Colors.white),
+                      label: const Text(
+                        'Print KOT',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      onPressed: _selectedKot != null ? _printSelectedKot : null,
+                    ),
+
+                    if (normalizeOrderType(selectedOrderType) == "dinein") ...[
+                      const SizedBox(width: 12),
+
+                      // 🔵 VOID ITEMS
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          minimumSize: const Size(0, 40),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ).copyWith(
+                          backgroundColor:
+                          WidgetStateProperty.resolveWith<Color>(
+                                (states) => states.contains(WidgetState.disabled)
+                                ? const Color(0xFFCBD9F0)
+                                : const Color(0xFF1D63D8),
+                          ),
+                          foregroundColor:
+                          WidgetStateProperty.resolveWith<Color>(
+                                (states) => states.contains(WidgetState.disabled)
+                                ? Colors.white70
+                                : Colors.white,
+                          ),
+                        ),
+                        icon: const Icon(
+                          Icons.cancel,
+                          size: 18,
+                          color: Color(0xFFE53935), // red circle-X like the image
+                        ),
+                        label: const Text(
+                          'Void Items',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        onPressed: _selectedKot != null
+                            ? () => _showSingleDialog(_openVoidItemsDialog)
+                            : null,
+                      ),
+
+                      const SizedBox(width: 12),
+
+                      // 🟡 TRANSFER KOT
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          minimumSize: const Size(0, 40),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ).copyWith(
+                          backgroundColor:
+                          WidgetStateProperty.resolveWith<Color>(
+                                (states) => states.contains(WidgetState.disabled)
+                                ? const Color(0xFFFCECCB)
+                                : const Color(0xFFF5B93D),
+                          ),
+                          foregroundColor:
+                          WidgetStateProperty.resolveWith<Color>(
+                                (states) => states.contains(WidgetState.disabled)
+                                ? Colors.black45
+                                : Colors.black87,
+                          ),
+                        ),
+                        icon: const Icon(Icons.edit, size: 18),
+                        label: const Text(
+                          'Transfer KOT',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        onPressed: _selectedKot != null
+                            ? () => _showSingleDialog(_openTransferKotDialog)
+                            : null,
+                      ),
+                    ],
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  "${_selectedKot ?? '---'}",
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                    color: isDark ? Colors.white : Colors.black,
-                  ),
-                ),
-                const Spacer(),
-
-                // 🟢 PRINT KOT
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 6, // ⬇ reduced
-                    ),
-                    minimumSize: const Size(32, 32), // ⬇ reduced
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ).copyWith(
-                    backgroundColor: WidgetStateProperty.resolveWith<Color>(
-                          (states) =>
-                      states.contains(WidgetState.disabled)
-                          ? const Color(0xFFBDE5C0)
-                          : Colors.green,
-                    ),
-                    foregroundColor: WidgetStateProperty.resolveWith<Color>(
-                          (states) =>
-                      states.contains(WidgetState.disabled)
-                          ? Colors.white70
-                          : Colors.white,
-                    ),
-                  ),
-                  icon: const Icon(Icons.print, size: 14), // ⬇ reduced
-                  label: const Text(
-                    'Print KOT',
-                    style: TextStyle(fontSize: 11), // ⬇ reduced
-                  ),
-                  onPressed: _selectedKot != null ? _printSelectedKot : null,
-                ),
-
-                if (normalizeOrderType(selectedOrderType) == "dinein") ...[
-                  const SizedBox(width: 6),
-
-                  // 🔵 VOID ITEMS
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 6,
-                      ),
-                      minimumSize: const Size(32, 32),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ).copyWith(
-                      backgroundColor: WidgetStateProperty.resolveWith<Color>(
-                            (states) =>
-                        states.contains(WidgetState.disabled)
-                            ? const Color(0xFFCBD9F0)
-                            : Colors.blue,
-                      ),
-                      foregroundColor: WidgetStateProperty.resolveWith<Color>(
-                            (states) =>
-                        states.contains(WidgetState.disabled)
-                            ? Colors.white70
-                            : Colors.white,
-                      ),
-                    ),
-                    icon: const Icon(Icons.edit, size: 14),
-                    label: const Text(
-                      'Void Items',
-                      style: TextStyle(fontSize: 11),
-                    ),
-                    onPressed: _selectedKot != null
-                        ? () => _showSingleDialog(_openVoidItemsDialog)
-                        : null,
-                    // onPressed: _selectedKot != null ? _openVoidItemsDialog : null,
-                  ),
-
-                  const SizedBox(width: 6),
-
-                  // 🟡 TRANSFER KOT
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 6,
-                      ),
-                      minimumSize: const Size(32, 32),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ).copyWith(
-                      backgroundColor: WidgetStateProperty.resolveWith<Color>(
-                            (states) =>
-                        states.contains(WidgetState.disabled)
-                            ? const Color(0xFFFCECCB)
-                            : Colors.amber,
-                      ),
-                      foregroundColor: WidgetStateProperty.resolveWith<Color>(
-                            (states) =>
-                        states.contains(WidgetState.disabled)
-                            ? Colors.black45
-                            : Colors.black87,
-                      ),
-                    ),
-                    icon: const Icon(Icons.edit, size: 14),
-                    label: const Text(
-                      'Transfer KOT',
-                      style: TextStyle(fontSize: 11),
-                    ),
-                    onPressed: _selectedKot != null
-                        ? () => _showSingleDialog(_openTransferKotDialog)
-                        : null,
-                    // onPressed: _selectedKot != null ? _openTransferKotDialog : null,
-                  ),
-                ],
-              ],
+              ),
             ),
-
           ),
-          // const SizedBox(height: 10),
+
+          // ---------------- BODY ----------------
           Expanded(
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: hasData
-                    ? (isDark
-                    ? const Color(0xFF202433)
-                    : Colors.white)
+                    ? (isDark ? const Color(0xFF202433) : Colors.white)
                     : (isDark
                     ? const Color(0xFF161A26)
                     : const Color(0xFFF3F3F3)),
@@ -2047,21 +2120,23 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                           child: Container(
                             margin: const EdgeInsets.only(bottom: 4),
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 10,
+                              horizontal: 14,
+                              vertical: 12,
                             ),
                             decoration: BoxDecoration(
+                              // 👇 slightly more saturated lavender-blue,
+                              // matching the reference image
                               color: isSelectedKot
                                   ? (isDark
                                   ? const Color(0xFF0C6FDB)
-                                  : const Color(0xFFEAF1FF))
+                                  : const Color(0xFFDCE6FA))
                                   : (isDark
                                   ? const Color(0xFF2B3042)
                                   : const Color(0xFFF5F6FA)),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
                                 color: isSelectedKot
-                                    ? const Color(0xFF0C6FDB)
+                                    ? const Color(0xFFB9CBF2)
                                     : (isDark
                                     ? Colors.white24
                                     : const Color(0XFFECEEFB)),
@@ -2070,22 +2145,24 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                             ),
                             child: Row(
                               children: [
-                                // Kot Number
+                                // KOT Number badge
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
+                                    horizontal: 10,
+                                    vertical: 6,
                                   ),
                                   decoration: BoxDecoration(
                                     color: isDark
                                         ? const Color(0xFF34384F)
                                         : Colors.white,
-                                    borderRadius: BorderRadius.circular(4),
+                                    borderRadius:
+                                    BorderRadius.circular(4),
                                   ),
                                   child: Text(
-                                    kot,
+                                    "$kot",
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
+                                      fontSize: 14,
                                       color: isDark
                                           ? Colors.white
                                           : Colors.black,
@@ -2093,23 +2170,25 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                                   ),
                                 ),
 
-                                const SizedBox(width: 10),
+                                const SizedBox(width: 14),
 
                                 if (displayTime.isNotEmpty)
                                   Container(
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
+                                      horizontal: 10,
+                                      vertical: 6,
                                     ),
                                     decoration: BoxDecoration(
                                       color: isDark
                                           ? const Color(0xFF34384F)
                                           : Colors.white,
-                                      borderRadius: BorderRadius.circular(4),
+                                      borderRadius:
+                                      BorderRadius.circular(4),
                                     ),
                                     child: Text(
                                       displayTime,
                                       style: TextStyle(
+                                        fontSize: 14,
                                         color: isDark
                                             ? Colors.white
                                             : Colors.black,
@@ -2117,24 +2196,26 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                                     ),
                                   ),
 
-                                const SizedBox(width: 10),
+                                const SizedBox(width: 14),
 
                                 if (kotOrderBy.isNotEmpty)
                                   Container(
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
+                                      horizontal: 10,
+                                      vertical: 6,
                                     ),
                                     decoration: BoxDecoration(
                                       color: isDark
                                           ? const Color(0xFF5A4B1A)
                                           : const Color(0xFFFFF3CD),
-                                      borderRadius: BorderRadius.circular(4),
+                                      borderRadius:
+                                      BorderRadius.circular(4),
                                     ),
                                     child: Text(
                                       kotOrderBy,
                                       style: TextStyle(
-                                        fontWeight: FontWeight.w500,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14,
                                         color: isDark
                                             ? Colors.white
                                             : Colors.black,
@@ -2144,35 +2225,83 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
 
                                 const Spacer(),
 
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: _getStatusColor(status),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    status.toUpperCase(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
+                                if (isSelectedKot) ...[
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: isDark
+                                          ? const Color(0xFF202433)
+                                          : Colors.white,
+                                      borderRadius:
+                                      BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: _getStatusColor(status)
+                                            .withOpacity(0.6),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Container(
+                                          width: 8,
+                                          height: 8,
+                                          decoration: BoxDecoration(
+                                            color:
+                                            _getStatusColor(status),
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          status.isNotEmpty
+                                              ? status[0]
+                                              .toUpperCase() +
+                                              status
+                                                  .substring(1)
+                                                  .toLowerCase()
+                                              : status,
+                                          style: TextStyle(
+                                            color:
+                                            _getStatusColor(status),
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                ),
-
-                                const SizedBox(width: 8),
+                                  const SizedBox(width: 12),
+                                ],
 
                                 if (selectedOrderType != "Takeaways")
-                                  Icon(
-                                    isSelectedKot
-                                        ? Icons.keyboard_arrow_up
-                                        : Icons.keyboard_arrow_down,
-                                    color: isDark
-                                        ? Colors.white
-                                        : Colors.black,
+                                  Container(
+                                    width: 30,
+                                    height: 30,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: isDark
+                                          ? const Color(0xFF2B3042)
+                                          : Colors.white,
+                                      border: Border.all(
+                                        color: isDark
+                                            ? Colors.white24
+                                            : Colors.grey.shade300,
+                                      ),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Icon(
+                                      isSelectedKot
+                                          ? Icons.keyboard_arrow_up
+                                          : Icons.keyboard_arrow_down,
+                                      size: 20,
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black,
+                                    ),
                                   ),
                               ],
                             ),
@@ -2189,9 +2318,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                 child: Text(
                   'Order details will appear here',
                   style: TextStyle(
-                    color: isDark
-                        ? Colors.white54
-                        : Colors.grey,
+                    color: isDark ? Colors.white54 : Colors.grey,
                     fontSize: 16,
                   ),
                 ),
@@ -2202,32 +2329,17 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       ),
     );
   }
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'preparing':
-        return const Color(0xFFFF9800);
-
-      case 'ready':
-        return const Color(0xFF4CAF50);
-
-      case 'served':
-        return const Color(0xFFF44336);
-
-      default:
-        return const Color(0xFF9E9E9E);
-    }
-  }
 
   Widget _buildKotItemsOverlay() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      width: 630,
+      width: double.infinity,
       decoration: BoxDecoration(
         color: isDark
             ? const Color(0xFF202433)
             : Colors.white,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: isDark
               ? Colors.white24
@@ -2236,7 +2348,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         ),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
         child: ConstrainedBox(
           constraints: const BoxConstraints(
             maxHeight: 290,
@@ -2245,12 +2357,12 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
             data: Theme.of(context).copyWith(
               dividerColor: isDark
                   ? Colors.white24
-                  : Colors.grey.shade300,
+                  : const Color(0xFFEFEFEF),
               dataTableTheme: DataTableThemeData(
                 headingRowColor: WidgetStateProperty.all(
                   isDark
                       ? const Color(0xFF34384F)
-                      : const Color(0xFFE0E0E0),
+                      : const Color(0xFFE3E3E3),
                 ),
                 dataRowColor: WidgetStateProperty.all(
                   isDark
@@ -2264,10 +2376,13 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                 headingRowColor: WidgetStateProperty.all(
                   isDark
                       ? const Color(0xFF34384F)
-                      : const Color(0xFFE0E0E0),
+                      : const Color(0xFFE3E3E3),
                 ),
-                columnSpacing: 16,
-                horizontalMargin: 20,
+                headingRowHeight: 52,
+                dataRowMinHeight: 56,
+                dataRowMaxHeight: 60,
+                columnSpacing: 40,
+                horizontalMargin: 24,
                 columns: [
                   DataColumn(
                     label: Text(
@@ -2275,6 +2390,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                       style: TextStyle(
                         color: isDark ? Colors.white : Colors.black,
                         fontWeight: FontWeight.bold,
+                        fontSize: 15,
                       ),
                     ),
                   ),
@@ -2284,6 +2400,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                       style: TextStyle(
                         color: isDark ? Colors.white : Colors.black,
                         fontWeight: FontWeight.bold,
+                        fontSize: 15,
                       ),
                     ),
                   ),
@@ -2293,6 +2410,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                       style: TextStyle(
                         color: isDark ? Colors.white : Colors.black,
                         fontWeight: FontWeight.bold,
+                        fontSize: 15,
                       ),
                     ),
                   ),
@@ -2302,6 +2420,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                       style: TextStyle(
                         color: isDark ? Colors.white : Colors.black,
                         fontWeight: FontWeight.bold,
+                        fontSize: 15,
                       ),
                     ),
                   ),
@@ -2311,6 +2430,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                       style: TextStyle(
                         color: isDark ? Colors.white : Colors.black,
                         fontWeight: FontWeight.bold,
+                        fontSize: 14,
                       ),
                     ),
                   ),
@@ -2334,6 +2454,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                             color: isDark
                                 ? Colors.white
                                 : Colors.black,
+                            fontSize: 15,
                           ),
                         ),
                       ),
@@ -2344,6 +2465,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                             color: isDark
                                 ? Colors.white
                                 : Colors.black,
+                            fontSize: 15,
                           ),
                         ),
                       ),
@@ -2354,6 +2476,8 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                             color: isDark
                                 ? Colors.white
                                 : Colors.black,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
                           ),
                         ),
                       ),
@@ -2364,6 +2488,8 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                             color: isDark
                                 ? Colors.white
                                 : Colors.black,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
                           ),
                         ),
                       ),
@@ -2374,6 +2500,8 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                             color: isDark
                                 ? Colors.white
                                 : Colors.black,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
                           ),
                         ),
                       ),
@@ -2387,4 +2515,21 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       ),
     );
   }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'preparing':
+        return const Color(0xFFFF9800);
+
+      case 'ready':
+        return const Color(0xFF4CAF50);
+
+      case 'served':
+        return const Color(0xFFF44336);
+
+      default:
+        return const Color(0xFF9E9E9E);
+    }
+  }
+
 }

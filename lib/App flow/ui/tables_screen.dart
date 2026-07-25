@@ -1801,7 +1801,7 @@ class _TablesScreenState extends State<TablesScreen> {
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 370),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
         decoration: BoxDecoration(
           color: AppColors.card(context),
           border: Border.all(color: AppColors.border(context)),

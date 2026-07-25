@@ -46,6 +46,7 @@ class DashboardStats {
   final String runningTables;
   final double revenueChange;
   final double ordersChange;
+  final List<Map<String, dynamic>> loadedTables;
 
   DashboardStats({
     required this.revenue,
@@ -54,6 +55,7 @@ class DashboardStats {
     required this.runningTables,
     this.revenueChange = 0,
     this.ordersChange = 0,
+    required this.loadedTables,
   });
 }
 
@@ -1244,6 +1246,9 @@ class _DashboardScreenState extends State<MercantDashboardScreen> {
                       restaurantName: widget.restaurantName,
                       userPermissions: widget.userPermissions,
                       orders: [],
+                      // loadedTables: widget.loadedTables,
+                      loadedTables: [],
+
                     ),
                   ),
                 ),

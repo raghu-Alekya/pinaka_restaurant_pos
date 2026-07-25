@@ -810,6 +810,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                                                           restaurantName: widget.restaurantName,
                                                                           userPermissions: _userPermissions,
                                                                           orders: const [],
+                                                                          loadedTables: [],
+
                                                                         ),
                                                                       ),
                                                                     ),

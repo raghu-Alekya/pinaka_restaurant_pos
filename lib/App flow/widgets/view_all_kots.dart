@@ -1086,8 +1086,9 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
 
                                                   Text(
                                                     "Total Items: ${kot.items.length}",
-                                                    style: const TextStyle(
-                                                      color: Color(0xff0D47A1),
+                                                    style: TextStyle(
+                                                      color: isDark ? const Color(0xFFE2ECFA) : const Color(0xff5a81bd),
+                                                      // color: Color(0xff5a81bd),
                                                       fontWeight: FontWeight.w600,
                                                       fontSize: 16,
                                                     ),
@@ -1099,8 +1100,10 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                         0,
                                                             (sum,e)=>sum+(e.totalWithAddons??0))
                                                         .toStringAsFixed(2),
-                                                    style: const TextStyle(
-                                                      color: Color(0xff0D47A1),
+                                                    style: TextStyle(
+                                                      color: isDark ? const Color(0xFFE2ECFA) : const Color(0xff5a81bd),
+
+                                                      // color: Color(0xff0D47A1),
                                                       fontWeight: FontWeight.w600,
                                                       fontSize:18,
                                                     ),

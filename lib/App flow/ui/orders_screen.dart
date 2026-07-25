@@ -2101,7 +2101,10 @@ class _OrderPanelState extends State<OrderPanel> {
                           ),
                           const SizedBox(height: 12),
                           InkWell(
-                            onTap: () {
+                            // 1. Disable tap function completely if a valid KOT has been generated
+                            onTap: hasAnyValidKot
+                                ? null
+                                : () {
                               final currentOrderId =
                                   context.read<OrderBloc>().state.orderId;
 
@@ -2126,17 +2129,17 @@ class _OrderPanelState extends State<OrderPanel> {
                                       return ConfirmationPopup(
                                         title: "Are you sure?",
                                         message:
-                                            widget.isTakeAway
-                                                ? "Do you want to really cancel this order?\nThis action cannot be undone."
-                                                : "Do you want to really delete the ",
+                                        widget.isTakeAway
+                                            ? "Do you want to really cancel this order?\nThis action cannot be undone."
+                                            : "Do you want to really delete the ",
                                         highlightedText:
-                                            widget.isTakeAway
-                                                ? null
-                                                : state.tableName,
+                                        widget.isTakeAway
+                                            ? null
+                                            : state.tableName,
                                         trailingMessage:
-                                            widget.isTakeAway
-                                                ? null
-                                                : "?\nThis will remove it from ${state.zoneName}.",
+                                        widget.isTakeAway
+                                            ? null
+                                            : "?\nThis will remove it from ${state.zoneName}.",
                                         imagePath: "assets/warning_icon.png",
                                         confirmButtonText: "Yes, Cancel!",
                                         cancelButtonText: "No, Keep It",
@@ -2161,64 +2164,71 @@ class _OrderPanelState extends State<OrderPanel> {
                               );
                             },
                             borderRadius: BorderRadius.circular(8),
-                            child: Container(
-                              height: 36,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color:
-                                    isDark
-                                        ? const Color(0xFF34384F)
-                                        : const Color(0xFFF6F6F6),
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                  width: 1,
-                                  color:
-                                      hasOrder
-                                          ? const Color(0xFFFE2222)
-                                          : const Color(0x7FC0C0C0),
+                            child: Opacity(
+                              // 2. Wrap layout structure with opacity filter to give dynamic visual feedback
+                              opacity: hasAnyValidKot ? 0.45 : 1.0,
+                              child: Container(
+                                height: 36,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
                                 ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.08),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Image.asset(
-                                    "assets/icon/delete.png",
-                                    width: 18,
-                                    height: 18,
+                                decoration: BoxDecoration(
+                                  color:
+                                  isDark
+                                      ? const Color(0xFF34384F)
+                                      : const Color(0xFFF6F6F6),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    width: 1,
+                                    // 3. Fallback color maps if active state block triggers lock limits
                                     color:
-                                        hasOrder
+                                    (hasOrder && !hasAnyValidKot)
+                                        ? const Color(0xFFFE2222)
+                                        : const Color(0x7FC0C0C0),
+                                  ),
+                                  boxShadow: hasAnyValidKot
+                                      ? []
+                                      : [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.08),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Image.asset(
+                                      "assets/icon/delete.png",
+                                      width: 18,
+                                      height: 18,
+                                      color:
+                                      (hasOrder && !hasAnyValidKot)
+                                          ? const Color(0xFFFE2222)
+                                          : (isDark
+                                          ? Colors.white
+                                          : Colors.grey.shade700),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      "Cancel",
+                                      style: TextStyle(
+                                        color:
+                                        (hasOrder && !hasAnyValidKot)
                                             ? const Color(0xFFFE2222)
                                             : (isDark
-                                                ? Colors.white
-                                                : Colors.grey.shade700),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    "Cancel",
-                                    style: TextStyle(
-                                      color:
-                                          hasOrder
-                                              ? const Color(0xFFFE2222)
-                                              : (isDark
-                                                  ? Colors.white
-                                                  : Colors.grey.shade700),
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
+                                            ? Colors.white
+                                            : Colors.grey.shade700),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
+                          )
                         ],
                       ),
                     ],
