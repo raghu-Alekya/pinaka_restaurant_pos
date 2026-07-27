@@ -461,10 +461,10 @@ class _paymentsummaryState extends State<paymentsummary> {
       await _submitPayment();
       return;
     }
-    setState(() {
-      _isPaymentLoading = true;
-      _loadingPaymentMode = selectedPaymentMode.isNotEmpty ? selectedPaymentMode : "Cash";
-    });
+    // setState(() {
+    //   _isPaymentLoading = true;
+    //   _loadingPaymentMode = selectedPaymentMode.isNotEmpty ? selectedPaymentMode : "Cash";
+    // });
     if (key == "C") {
       setState(() {
         amount = '';
