@@ -198,16 +198,55 @@ class OrderPanelList extends StatelessWidget {
                     ),
 
                     // Modifier Button
-                    IconButton(
-                      padding: EdgeInsets.zero,
-                      icon: Icon(
-                        Icons.add,
-                        color: item.hasOptions ? Colors.red : Colors.grey,
-                        size: 20,
-                      ),
-                      onPressed: item.hasOptions
+                    GestureDetector(
+                      onTap: item.hasOptions
                           ? () => _showModifierPopup(context, index)
                           : null,
+                      child: Container(
+                        width: 61,
+                        height: 24,
+                        alignment: Alignment.center,
+                        decoration: ShapeDecoration(
+                          color: isDark
+                              ? const Color(0xFF2B3042)
+                              : Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            side: BorderSide(
+                              width: 1,
+                              color: item.hasOptions
+                                  ? const Color(0xFFFFB820)
+                                  : (isDark
+                                  ? Colors.white38
+                                  : Colors.grey.shade400),
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          shadows: [
+                            BoxShadow(
+                              color: isDark
+                                  ? Colors.black26
+                                  : (item.hasOptions
+                                  ? const Color(0xFFFFFFFF)
+                                  : Colors.black12),
+                              blurRadius: 2,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          "Modifier",
+                          style: TextStyle(
+                            color: item.hasOptions
+                                ? const Color(0xFFFFB820)
+                                : (isDark
+                                ? Colors.white54
+                                : Colors.grey),
+                            fontSize: 10,
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
                     ),
 
                     // Unit Price (fixed)

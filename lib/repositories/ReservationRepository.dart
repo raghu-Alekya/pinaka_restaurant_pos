@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import '../App flow/widgets/area_movement_notifier.dart';
+import '../App flow/widgets/reservation_SnackBar.dart';
 import '../constants/constants.dart';
 import '../utils/logger.dart';
 
@@ -90,26 +90,20 @@ class ReservationRepository {
 
       final String message = result['message'] ?? 'Unknown response';
 
-      AreaMovementNotifier.showPopup(
-        context: context,
-        fromArea: '',
-        toArea: '',
-        tableName: '',
-        customMessage: message,
+      AppSnackBar.show(
+        context,
+        message: message,
+        success: response.statusCode == 200 && result['success'] == true,
       );
-
       if (response.statusCode == 200 && result['success'] == true) {
         return result;
       }
     } catch (e, stack) {
       AppLogger.error("Exception in createReservation: $e\n$stack");
-
-      AreaMovementNotifier.showPopup(
-        context: context,
-        fromArea: '',
-        toArea: '',
-        tableName: '',
-        customMessage: 'Reservation failed. Please try again.',
+      AppSnackBar.show(
+        context,
+        message: 'Reservation failed. Please try again.',
+        success: false,
       );
     }
 
@@ -185,27 +179,25 @@ class ReservationRepository {
       final result = jsonDecode(response.body);
 
       final String message = result['message'] ?? 'Unknown response';
+      final bool isSuccess =
+          response.statusCode == 200 && result['success'] == true;
 
-      AreaMovementNotifier.showPopup(
-        context: context,
-        fromArea: '',
-        toArea: '',
-        tableName: '',
-        customMessage: message,
+      AppSnackBar.show(
+        context,
+        message: message,
+        success: isSuccess,
       );
 
-      if (response.statusCode == 200 && result['success'] == true) {
+      if (isSuccess) {
         return result;
       }
     } catch (e, stack) {
       AppLogger.error("Exception in updateReservation: $e\n$stack");
 
-      AreaMovementNotifier.showPopup(
-        context: context,
-        fromArea: '',
-        toArea: '',
-        tableName: '',
-        customMessage: 'Reservation update failed. Please try again.',
+      AppSnackBar.show(
+        context,
+        message: 'Reservation update failed. Please try again.',
+        success: false,
       );
     }
 
@@ -237,13 +229,21 @@ class ReservationRepository {
       final result = jsonDecode(response.body);
       final String message = result['message'] ?? 'Unknown response';
 
-      AreaMovementNotifier.showPopup(
-        context: context,
-        fromArea: '',
-        toArea: '',
-        tableName: '',
-        customMessage: message,
+      final bool isSuccess =
+          response.statusCode == 200 && result['success'] == true;
+
+      AppSnackBar.show(
+        context,
+        message: message,
+        success: isSuccess,
       );
+
+      if (isSuccess) {
+        AppLogger.info("Reservation cancelled: $message");
+        return true;
+      } else {
+        AppLogger.warning("Cancellation failed: $message");
+      }
 
       if (response.statusCode == 200 && result['success'] == true) {
         AppLogger.info("Reservation cancelled: $message");
@@ -253,13 +253,10 @@ class ReservationRepository {
       }
     } catch (e, stack) {
       AppLogger.error("Exception in cancelReservation: $e\n$stack");
-
-      AreaMovementNotifier.showPopup(
-        context: context,
-        fromArea: '',
-        toArea: '',
-        tableName: '',
-        customMessage: 'Reservation cancellation failed. Please try again.',
+      AppSnackBar.show(
+        context,
+        message: 'Reservation cancellation failed. Please try again.',
+        success: false,
       );
     }
 

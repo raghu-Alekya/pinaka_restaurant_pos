@@ -146,16 +146,27 @@ class _PaymentScreenState extends State<PaymentScreen> {
             state is PaymentSummaryLoaded && state.summary.orderId == orderId;
         final rawSummary = isStateValid ? state.summary : null;
         final merchantDiscount = isStateValid ? state.merchantDiscount : 0.0;
+        final bool isNc =
+        isStateValid ? state.isNoCharge : false;
+
         final PaymentSummary? paymentSummary =
-            rawSummary != null
-                ? rawSummary.copyWith(
-                  discount: merchantDiscount.abs(),
-                  coupons:
-                      _couponAmount > 0 ? _couponAmount : rawSummary.coupons,
-                  netTotal: _grandTotal ?? rawSummary.netTotal,
-                  tipAmount: _tipAmount > 0 ? _tipAmount : rawSummary.tipAmount,
-                )
-                : null;
+        rawSummary != null
+            ? rawSummary.copyWith(
+          discount: merchantDiscount.abs(),
+          coupons: _couponAmount > 0
+              ? _couponAmount
+              : rawSummary.coupons,
+
+          // ✅ Don't override backend value for NC
+          netTotal: isNc
+              ? rawSummary.netTotal
+              : (_grandTotal ?? rawSummary.netTotal),
+
+          tipAmount: _tipAmount > 0
+              ? _tipAmount
+              : rawSummary.tipAmount,
+        )
+            : null;
 
         final hasCouponApplied =
             _couponAmount > 0 || ((paymentSummary?.coupons ?? 0) > 0);
@@ -189,16 +200,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
                 final bool isNoCharge =
                     paymentState is PaymentSummaryLoaded &&
-                    paymentState.isNoCharge;
+                        paymentState.isNoCharge;
 
                 final bool hasDiscountApplied =
                     paymentState is PaymentSummaryLoaded &&
-                    paymentState.merchantDiscount.abs() > 0;
+                        paymentState.merchantDiscount.abs() > 0;
 
                 final double remainingAmount =
-                    paymentState is PaymentSummaryLoaded
-                        ? paymentState.summary.netTotal
-                        : 0.0;
+                paymentState is PaymentSummaryLoaded
+                    ? paymentState.summary.netTotal
+                    : 0.0;
 
                 if (_couponAmount > 0) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -215,9 +226,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
                 if (hasDiscountApplied) {
                   final String msg =
-                      isNoCharge
-                          ? "Please remove the applied No Charge discount before going back."
-                          : "Please remove the applied discount to go back.";
+                  isNoCharge
+                      ? "Please remove the applied No Charge discount before going back."
+                      : "Please remove the applied discount to go back.";
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(msg),
@@ -252,22 +263,22 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 child: BlocProvider(
                   create:
                       (context) =>
-                          TaxBloc(TaxRepository())..add(LoadTaxesEvent()),
+                  TaxBloc(TaxRepository())..add(LoadTaxesEvent()),
                   child: Sidebarwidgets(
                     userPermissions: _userPermissions,
                     selectedUser: _selectedUser,
                     merchantDiscount: merchantDiscount,
                     tipAmount:
-                        _tipAmount > 0
-                            ? _tipAmount
-                            : (paymentSummary?.tipAmount ?? 0),
+                    _tipAmount > 0
+                        ? _tipAmount
+                        : (paymentSummary?.tipAmount ?? 0),
                     paymentSummary: paymentSummary,
                     hasCouponApplied: hasCouponApplied,
                     hasDiscountApplied: hasDiscountApplied,
                     appliedCouponAmount:
-                        _couponAmount > 0
-                            ? _couponAmount
-                            : (paymentSummary?.coupons ?? 0.0),
+                    _couponAmount > 0
+                        ? _couponAmount
+                        : (paymentSummary?.coupons ?? 0.0),
                     token: widget.token,
                     onNetPayableChanged: (double value) {
                       debugPrint(
@@ -291,7 +302,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   orderId: orderId,
                   grandTotal: _grandTotal,
                   isTakeAway:
-                      widget.isTakeAway, // ✅ Pass isTakeAway to paymentsummary
+                  widget.isTakeAway, // ✅ Pass isTakeAway to paymentsummary
                   onMerchantDiscountChanged: (double value) {
                     debugPrint(
                       "💳 Merchant discount changed: $value (isTakeAway: ${widget.isTakeAway})",

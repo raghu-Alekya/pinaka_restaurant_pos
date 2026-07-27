@@ -437,8 +437,8 @@ class _AttendancePopupState extends State<AttendancePopup> {
         Center(
           child: Text(
             "Daily Attendance",
-            style: theme.textTheme.headlineSmall?.copyWith(
-              color: theme.colorScheme.onSurface,
+            style: const TextStyle(
+              color: Colors.white,
               fontSize: 22,
               fontWeight: FontWeight.bold,
             ),
@@ -450,8 +450,8 @@ class _AttendancePopupState extends State<AttendancePopup> {
           children: [
             Text(
               "Search:",
-              style: TextStyle(
-                color: theme.textTheme.bodyLarge?.color,
+              style: const TextStyle(
+                color: Colors.white,
                 fontSize: 16,
               ),
             ),
@@ -499,9 +499,9 @@ class _AttendancePopupState extends State<AttendancePopup> {
 
             Text(
               "Running Shift:",
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 16,
-                color: theme.textTheme.bodyLarge?.color,
+                color: Colors.white,
               ),
             ),
 
@@ -557,15 +557,18 @@ class _AttendancePopupState extends State<AttendancePopup> {
               children: [
                 Text(
                   currentTime,
-                  style: theme.textTheme.titleMedium?.copyWith(
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
+
                 Text(
                   currentDate,
-                  style: theme.textTheme.bodyMedium?.copyWith(
+                  style: const TextStyle(
                     fontSize: 14,
+                    color: Colors.white,
                   ),
                 ),
               ],

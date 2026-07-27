@@ -1949,7 +1949,9 @@ class _SidebarwidgetsState extends State<Sidebarwidgets>
     }
 
     if (isNc) {
-      netPayableTemp = 0;
+      // Backend already calculates the final payable for NC orders.
+      // It already includes tip and excludes the merchant discount.
+      netPayableTemp = widget.paymentSummary!.netTotal;
     } else {
       netPayableTemp = netPayableTemp.clamp(0.0, double.infinity);
     }

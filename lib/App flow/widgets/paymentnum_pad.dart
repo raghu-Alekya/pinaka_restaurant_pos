@@ -218,25 +218,32 @@ class _paymentsummaryState extends State<paymentsummary> {
       return _roundMoney(widget.grandTotal!.abs());
     }
 
-    final bool isStateValid = state is PaymentSummaryLoaded && state.summary.orderId == widget.orderId;
-    final bool isSummaryValid = _paymentSummary != null && _paymentSummary!.orderId == widget.orderId;
+    final bool isStateValid =
+        state is PaymentSummaryLoaded &&
+            state.summary.orderId == widget.orderId;
+
     final PaymentSummary? summary =
-    isStateValid ? state.summary : (isSummaryValid ? _paymentSummary : null);
+    isStateValid ? state.summary : _paymentSummary;
+
     if (summary == null) return 0.0;
+
+    // ✅ NC: use backend value directly
+    if (state is PaymentSummaryLoaded && state.isNoCharge) {
+      return _roundMoney(summary.netTotal);
+    }
 
     final merchantDiscountAbs = merchantDiscount.abs();
     final serviceCharge = summary.serviceChargeValue;
 
-    double basePayable = summary.netTotal - summary.serviceChargeValue;
+    double basePayable = summary.netTotal - serviceCharge;
+
     if (summary.coupons <= 0) {
       basePayable -= _couponAmount;
     }
 
     double calculatedPayable =
         basePayable - merchantDiscountAbs + _tipAmount + serviceCharge;
-    // ── FIX: was `.roundToDouble()`, replaced with the explicit
-    // "round .50+ up" helper so the displayed Net Amount always matches
-    // what the backend will settle as the order total.
+
     return _roundMoney(calculatedPayable.abs());
   }
 
@@ -1148,6 +1155,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                   backgroundColor: Colors.green,
                 ),
               );
+
               setState(() {
                 _isDiscountApplied = false;
                 _isNcDiscount = false;
@@ -1157,14 +1165,19 @@ class _paymentsummaryState extends State<paymentsummary> {
                 _lastAppliedDiscountStr = null;
                 _lastAppliedDiscountReason = null;
               });
-              // context.read<PaymentBloc>().add(
-              //   UpdateMerchantDiscount(
-              //     value: applied,
-              //     isNoCharge: isNc,
-              //   ),
-              // );
+
               widget.onMerchantDiscountChanged(0.0);
-              _updateAmountField();
+
+              // Reset PaymentBloc merchant discount
+              context.read<PaymentBloc>().add(
+                UpdateMerchantDiscount(
+                  value: 0,
+                  isNoCharge: false,
+                ),
+              );
+
+              // Reload latest summary from backend
+              _reloadSummary();
             }
             if (state is RemoveDiscountFailure) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -1869,7 +1882,7 @@ class _paymentsummaryState extends State<paymentsummary> {
               letterSpacing: 0.2,
             ),
           ),
-            const SizedBox(height: 7),
+          const SizedBox(height: 7),
           if (!isReady)
             Container(
               width: double.infinity,
@@ -2278,348 +2291,355 @@ class _paymentsummaryState extends State<paymentsummary> {
     return Column(
       children: [
         // Discounts
-    Expanded(
-    child:
-        _actionTile(
-          label: "Discounts",
-          borderColor: const Color(0xFF6BACC3),
-          iconBg: const Color(0xFF6BACC3),
-          // icon: Icons.discount_rounded,
-          iconWidget: Image.asset(
-            // ← Now correctly passed
-            "assets/Discount Icon.png",
-            width: 38,
-            height: 38,
-            color: Colors.white,
-          ),
-          isApplied: _isDiscountApplied,
-          appliedText:
-          discountController.text.isNotEmpty
-              ? "$_currencySymbol${discountController.text}"
-              : null,
-          onTap:
-          _isDiscountApplied
-              ? null
-              : () async {
-            final result = await showDialog<Map<String, dynamic>>(
-              context: context,
-              barrierDismissible: false,
-              builder:
-                  (_) => MultiBlocProvider(
-                providers: [
-                  BlocProvider(
-                    create:
-                        (_) => DiscountReasonBloc(
-                      DiscountReasonRepository(),
+        Expanded(
+          child:
+          _actionTile(
+            label: "Discounts",
+            borderColor: const Color(0xFF6BACC3),
+            iconBg: const Color(0xFF6BACC3),
+            // icon: Icons.discount_rounded,
+            iconWidget: Image.asset(
+              // ← Now correctly passed
+              "assets/Discount Icon.png",
+              width: 38,
+              height: 38,
+              color: Colors.white,
+            ),
+            isApplied: _isDiscountApplied,
+            appliedText:
+            discountController.text.isNotEmpty
+                ? "$_currencySymbol${discountController.text}"
+                : null,
+            onTap:
+            _isDiscountApplied
+                ? null
+                : () async {
+              final result = await showDialog<Map<String, dynamic>>(
+                context: context,
+                barrierDismissible: false,
+                builder:
+                    (_) => MultiBlocProvider(
+                  providers: [
+                    BlocProvider(
+                      create:
+                          (_) => DiscountReasonBloc(
+                        DiscountReasonRepository(),
+                      ),
                     ),
+                    BlocProvider.value(
+                      value: context.read<DiscountBloc>(),
+                    ),
+                  ],
+                  child: DiscountPopup(
+                    netPayable: netPayable + merchantDiscount.abs(),
+                    netTotal: getNetTotal(),
+                    orderId: widget.orderId,
+                    initialDiscount: merchantDiscount.abs(),
+                    isPercent: _lastAppliedDiscountStr != null && _lastAppliedDiscountStr!.contains('%'),
                   ),
-                  BlocProvider.value(
-                    value: context.read<DiscountBloc>(),
-                  ),
-                ],
-                child: DiscountPopup(
-                  netPayable: netPayable + merchantDiscount.abs(),
-                  netTotal: getNetTotal(),
-                  orderId: widget.orderId,
-                  initialDiscount: merchantDiscount.abs(),
-                  isPercent: _lastAppliedDiscountStr != null && _lastAppliedDiscountStr!.contains('%'),
-                ),
-              ),
-            );
-            if (result != null) {
-              debugPrint("Discount Result: $result");
-
-              final double applied = (result["amount"] as double).abs();
-              final bool isNc = result["isNc"] == true;
-
-              debugPrint("isNc = $isNc");
-
-              setState(() {
-                _isDiscountApplied = true;
-                _isNcDiscount = isNc;
-                discountController.text = applied.toStringAsFixed(2);
-                _lastAppliedDiscountStr = result["discountStr"];
-                _lastAppliedDiscountReason = result["reason"];
-              });
-
-              // ✅ Update PaymentBloc with both discount and NC flag
-              context.read<PaymentBloc>().add(
-                UpdateMerchantDiscount(
-                  value: applied,
-                  isNoCharge: isNc,
                 ),
               );
+              if (result != null) {
+                debugPrint("Discount Result: $result");
 
-              debugPrint("_isNcDiscount = $_isNcDiscount");
+                final double applied = (result["amount"] as double).abs();
+                final bool isNc = result["isNc"] == true;
+
+                debugPrint("isNc = $isNc");
+
+                setState(() {
+                  _isDiscountApplied = true;
+                  _isNcDiscount = isNc;
+                  discountController.text = applied.toStringAsFixed(2);
+                  _lastAppliedDiscountStr = result["discountStr"];
+                  _lastAppliedDiscountReason = result["reason"];
+                });
+
+                // ✅ Update PaymentBloc with both discount and NC flag
+                context.read<PaymentBloc>().add(
+                  UpdateMerchantDiscount(
+                    value: applied,
+                    isNoCharge: isNc,
+                  ),
+                );
+
+                debugPrint("_isNcDiscount = $_isNcDiscount");
+              }
+            },
+            onDelete:
+            _isDiscountApplied
+                ? () {
+              final paymentState = context.read<PaymentBloc>().state;
+              String isNcFlag = "no";
+              if (paymentState is PaymentSummaryLoaded) {
+                isNcFlag = paymentState.isNoCharge ? "yes" : "no";
+              }
+              context.read<RemoveDiscountBloc>().add(
+                RemoveDiscountRequested(
+                  orderId: widget.orderId,
+                  isNc: isNcFlag,
+                  token: widget.token,
+                ),
+              );
             }
-          },
-          onDelete:
-          _isDiscountApplied
-              ? () {
-            final paymentState = context.read<PaymentBloc>().state;
-            String isNcFlag = "no";
-            if (paymentState is PaymentSummaryLoaded) {
-              isNcFlag = paymentState.isNoCharge ? "yes" : "no";
-            }
-            context.read<RemoveDiscountBloc>().add(
-              RemoveDiscountRequested(
-                orderId: widget.orderId,
-                isNc: isNcFlag,
-                token: widget.token,
-              ),
-            );
-          }
-              : null,
+                : null,
+          ),
         ),
-    ),
 
         SizedBox(height: gap),
 
         // Coupons
-    Expanded(
-    child: IgnorePointer(
-          ignoring: _isNcDiscount,
-          child: Opacity(
-            opacity: _isNcDiscount ? 0.4 : 1.0,
-            child: _actionTile(
-              label: "Coupons",
-              borderColor: const Color(0xFFF7B05F),
-              iconBg: const Color(0xFFF7B05F),
-              iconWidget: Image.asset(
-                "assets/Coupon Icon.png",
-                width: 32,
-                height: 32,
-                color: Colors.white,
-              ),
-              isApplied: _isCouponApplied,
-              appliedText: _appliedCoupon.isNotEmpty ? _appliedCoupon : null,
-              onTap:
-              _isCouponApplied
-                  ? null
-                  : () {
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder:
-                      (_) => Couponscreen(
-                    orderId: widget.orderId,
-                    token: widget.token,
-                    onCouponApplied: (coupon, amt) async {
-                      setState(() {
-                        _isCouponApplied = true;
-                        _appliedCoupon = coupon;
-                        _couponAmount = amt;
-                        couponController.text = coupon;
-                      });
+        Expanded(
+          child: IgnorePointer(
+            ignoring: _isNcDiscount,
+            child: Opacity(
+              opacity: _isNcDiscount ? 0.4 : 1.0,
+              child: _actionTile(
+                label: "Coupons",
+                borderColor: const Color(0xFFF7B05F),
+                iconBg: const Color(0xFFF7B05F),
+                iconWidget: Image.asset(
+                  "assets/Coupon Icon.png",
+                  width: 32,
+                  height: 32,
+                  color: Colors.white,
+                ),
+                isApplied: _isCouponApplied,
+                appliedText: _appliedCoupon.isNotEmpty ? _appliedCoupon : null,
+                onTap:
+                _isCouponApplied
+                    ? null
+                    : () {
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder:
+                        (_) => Couponscreen(
+                      orderId: widget.orderId,
+                      token: widget.token,
+                      onCouponApplied: (coupon, amt) async {
+                        setState(() {
+                          _isCouponApplied = true;
+                          _appliedCoupon = coupon;
+                          _couponAmount = amt;
+                          couponController.text = coupon;
+                        });
 
-                      widget.onCouponAmountChanged?.call(amt);
+                        widget.onCouponAmountChanged?.call(amt);
 
-                      await Future.delayed(const Duration(milliseconds: 500));
+                        await Future.delayed(const Duration(milliseconds: 500));
 
-                      if (_lastAppliedDiscountStr != null && _lastAppliedDiscountStr!.contains('%')) {
-                        final percentVal = double.tryParse(_lastAppliedDiscountStr!.replaceAll('%', '').trim()) ?? 0.0;
-                        final state = context.read<PaymentBloc>().state;
-                        final bool isStateValid = state is PaymentSummaryLoaded && state.summary.orderId == widget.orderId;
-                        final bool isSummaryValid = _paymentSummary != null && _paymentSummary!.orderId == widget.orderId;
-                        final PaymentSummary? summary =
-                        isStateValid ? state.summary : (isSummaryValid ? _paymentSummary : null);
-                        if (summary != null) {
-                          final netTotalBeforeDiscountAndCoupon = summary.netTotal - summary.serviceChargeValue - summary.tipAmount + summary.discount.abs() + summary.coupons.abs();
-                          final newNetTotal = netTotalBeforeDiscountAndCoupon - amt;
-                          final calculatedDiscount = (newNetTotal * percentVal) / 100;
-                          context.read<DiscountBloc>().add(
-                            ApplyDiscountEvent(
-                              request: AddDiscountRequest(
-                                orderId: widget.orderId,
-                                amount: calculatedDiscount.toStringAsFixed(2),
-                                isNc: _isNcDiscount ? "yes" : "no",
-                                reason: _lastAppliedDiscountReason ?? "",
+                        if (_lastAppliedDiscountStr != null && _lastAppliedDiscountStr!.contains('%')) {
+                          final percentVal = double.tryParse(_lastAppliedDiscountStr!.replaceAll('%', '').trim()) ?? 0.0;
+                          final state = context.read<PaymentBloc>().state;
+                          final bool isStateValid = state is PaymentSummaryLoaded && state.summary.orderId == widget.orderId;
+                          final bool isSummaryValid = _paymentSummary != null && _paymentSummary!.orderId == widget.orderId;
+                          final PaymentSummary? summary =
+                          isStateValid ? state.summary : (isSummaryValid ? _paymentSummary : null);
+                          if (summary != null) {
+                            final netTotalBeforeDiscountAndCoupon = summary.netTotal - summary.serviceChargeValue - summary.tipAmount + summary.discount.abs() + summary.coupons.abs();
+                            final newNetTotal = netTotalBeforeDiscountAndCoupon - amt;
+                            final calculatedDiscount = (newNetTotal * percentVal) / 100;
+                            context.read<DiscountBloc>().add(
+                              ApplyDiscountEvent(
+                                request: AddDiscountRequest(
+                                  orderId: widget.orderId,
+                                  amount: calculatedDiscount.toStringAsFixed(2),
+                                  isNc: _isNcDiscount ? "yes" : "no",
+                                  reason: _lastAppliedDiscountReason ?? "",
+                                ),
                               ),
-                            ),
-                          );
+                            );
+                          }
+                        } else {
+                          _reloadSummary();
                         }
-                      } else {
-                        _reloadSummary();
-                      }
 
-                      // Success message
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            "Coupon added successfully",
+                        // Success message
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              "Coupon added successfully",
+                            ),
+                            duration: Duration(seconds: 1),
+                            backgroundColor: Colors.green,
+                            behavior: SnackBarBehavior.floating,
                           ),
-                          duration: Duration(seconds: 1),
-                          backgroundColor: Colors.green,
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    },
-                  ),
-                );
-              },
-              onDelete:
-              _isCouponApplied
-                  ? () async {
-                if (_isDiscountApplied) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Please delete the merchant discount first"),
-                      duration: Duration(seconds: 2),
-                      backgroundColor: Colors.red,
-                      behavior: SnackBarBehavior.floating,
+                        );
+                      },
                     ),
                   );
-                  return;
-                }
-                final success = await _couponRepository.removeCoupon(
-                  token: widget.token,
-                  orderId: widget.orderId,
-                  couponCode: _appliedCoupon,
-                );
-
-                if (success) {
-                  setState(() {
-                    _isCouponApplied = false;
-                    _appliedCoupon = '';
-                    _couponAmount = 0.0;
-                    couponController.clear();
-                  });
-
-                  widget.onCouponAmountChanged?.call(0.0);
-
-                  await Future.delayed(const Duration(milliseconds: 500));
-
-                  if (_lastAppliedDiscountStr != null && _lastAppliedDiscountStr!.contains('%')) {
-                    final percentVal = double.tryParse(_lastAppliedDiscountStr!.replaceAll('%', '').trim()) ?? 0.0;
-                    final state = context.read<PaymentBloc>().state;
-                    final bool isStateValid = state is PaymentSummaryLoaded && state.summary.orderId == widget.orderId;
-                    final bool isSummaryValid = _paymentSummary != null && _paymentSummary!.orderId == widget.orderId;
-                    final PaymentSummary? summary =
-                    isStateValid ? state.summary : (isSummaryValid ? _paymentSummary : null);
-                    if (summary != null) {
-                      final netTotalBeforeDiscountAndCoupon = summary.netTotal - summary.serviceChargeValue - summary.tipAmount + summary.discount.abs() + summary.coupons.abs();
-                      final newNetTotal = netTotalBeforeDiscountAndCoupon;
-                      final calculatedDiscount = (newNetTotal * percentVal) / 100;
-                      context.read<DiscountBloc>().add(
-                        ApplyDiscountEvent(
-                          request: AddDiscountRequest(
-                            orderId: widget.orderId,
-                            amount: calculatedDiscount.toStringAsFixed(2),
-                            isNc: _isNcDiscount ? "yes" : "no",
-                            reason: _lastAppliedDiscountReason ?? "",
-                          ),
-                        ),
-                      );
-                    }
-                  } else {
-                    _reloadSummary();
+                },
+                onDelete:
+                _isCouponApplied
+                    ? () async {
+                  if (_isDiscountApplied) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Please delete the merchant discount first"),
+                        duration: Duration(seconds: 2),
+                        backgroundColor: Colors.red,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                    return;
                   }
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Coupon removed successfully"),
-                      duration: Duration(seconds: 1),
-                      backgroundColor: Colors.green,
-                    ),
+                  final success = await _couponRepository.removeCoupon(
+                    token: widget.token,
+                    orderId: widget.orderId,
+                    couponCode: _appliedCoupon,
                   );
+
+                  if (success) {
+                    setState(() {
+                      _isCouponApplied = false;
+                      _appliedCoupon = '';
+                      _couponAmount = 0.0;
+                      couponController.clear();
+                    });
+
+                    widget.onCouponAmountChanged?.call(0.0);
+
+                    await Future.delayed(const Duration(milliseconds: 500));
+
+                    if (_lastAppliedDiscountStr != null && _lastAppliedDiscountStr!.contains('%')) {
+                      final percentVal = double.tryParse(_lastAppliedDiscountStr!.replaceAll('%', '').trim()) ?? 0.0;
+                      final state = context.read<PaymentBloc>().state;
+                      final bool isStateValid = state is PaymentSummaryLoaded && state.summary.orderId == widget.orderId;
+                      final bool isSummaryValid = _paymentSummary != null && _paymentSummary!.orderId == widget.orderId;
+                      final PaymentSummary? summary =
+                      isStateValid ? state.summary : (isSummaryValid ? _paymentSummary : null);
+                      if (summary != null) {
+                        final netTotalBeforeDiscountAndCoupon = summary.netTotal - summary.serviceChargeValue - summary.tipAmount + summary.discount.abs() + summary.coupons.abs();
+                        final newNetTotal = netTotalBeforeDiscountAndCoupon;
+                        final calculatedDiscount = (newNetTotal * percentVal) / 100;
+                        context.read<DiscountBloc>().add(
+                          ApplyDiscountEvent(
+                            request: AddDiscountRequest(
+                              orderId: widget.orderId,
+                              amount: calculatedDiscount.toStringAsFixed(2),
+                              isNc: _isNcDiscount ? "yes" : "no",
+                              reason: _lastAppliedDiscountReason ?? "",
+                            ),
+                          ),
+                        );
+                      }
+                    } else {
+                      _reloadSummary();
+                    }
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Coupon removed successfully"),
+                        duration: Duration(seconds: 1),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
                 }
-              }
-                  : null,
+                    : null,
+              ),
             ),
           ),
         ),
-    ),
         SizedBox(height: gap),
 
         // Tips
-    Expanded(
-    child:_actionTile(
-          label: "Tips",
-          borderColor: const Color(0xFF50AC9A),
-          iconBg: const Color(0xFF50AC9A),
-          // icon: Icons.volunteer_activism_rounded,
-          iconWidget: Image.asset(
-            // ← Now correctly passed
-            "assets/Tips Icon.png",
-            width: 32,
-            height: 32,
-            color: Colors.white,
-          ),
-          isApplied: _isTipApplied,
-          appliedText:
-          _isTipApplied
-              ? "$_currencySymbol${_tipAmount.toStringAsFixed(2)}"
-              : null,
-          onTap:
-          _isTipApplied
-              ? null
-              : () async {
-            final double? result = await showDialog<double>(
-              context: context,
-              barrierDismissible: false,
-              builder:
-                  (_) => TipPopup(
-                orderId: widget.orderId,
+        Expanded(
+          child:_actionTile(
+            label: "Tips",
+            borderColor: const Color(0xFF50AC9A),
+            iconBg: const Color(0xFF50AC9A),
+            // icon: Icons.volunteer_activism_rounded,
+            iconWidget: Image.asset(
+              // ← Now correctly passed
+              "assets/Tips Icon.png",
+              width: 32,
+              height: 32,
+              color: Colors.white,
+            ),
+            isApplied: _isTipApplied,
+            appliedText:
+            _isTipApplied
+                ? "$_currencySymbol${_tipAmount.toStringAsFixed(2)}"
+                : null,
+            onTap:
+            _isTipApplied
+                ? null
+                : () async {
+              final double? result = await showDialog<double>(
+                context: context,
+                barrierDismissible: false,
+                builder:
+                    (_) => TipPopup(
+                  orderId: widget.orderId,
+                  token: widget.token,
+                  onTipApplied: (amt) {
+                    setState(() {
+                      _isTipApplied = true;
+                      _tipAmount = amt;
+                      tipController.text = amt.toStringAsFixed(2);
+                    });
+                    widget.onTipChanged(amt);
+
+                    context.read<PaymentBloc>().add(UpdateTip(amt));
+                    // ✅ Reload summary so backend recalculates net_total for NC
+                    _reloadSummary();
+                  },
+                ),
+              );
+              if (result != null && result > 0) {
+                setState(() {
+                  _isTipApplied = true;
+                  _tipAmount = result;
+                  tipController.text = result.toStringAsFixed(2);
+                });
+                widget.onTipChanged(result);
+                context.read<PaymentBloc>().add(UpdateTip(result));
+                // ✅ Reload payment summary
+                _reloadSummary();
+              }
+            },
+            onDelete:
+            _isTipApplied
+                ? () async {
+              final success = await _tipRepository.removeTip(
                 token: widget.token,
-                onTipApplied: (amt) {
-                  setState(() {
-                    _isTipApplied = true;
-                    _tipAmount = amt;
-                    tipController.text = amt.toStringAsFixed(2);
-                  });
-                  widget.onTipChanged(amt);
-
-                  context.read<PaymentBloc>().add(UpdateTip(amt));
-                },
-              ),
-            );
-            if (result != null && result > 0) {
-              setState(() {
-                _isTipApplied = true;
-                _tipAmount = result;
-                tipController.text = result.toStringAsFixed(2);
-              });
-              widget.onTipChanged(result);
-              context.read<PaymentBloc>().add(UpdateTip(result));
-            }
-          },
-          onDelete:
-          _isTipApplied
-              ? () async {
-            final success = await _tipRepository.removeTip(
-              token: widget.token,
-              orderId: widget.orderId,
-            );
-            if (success) {
-              setState(() {
-                _isTipApplied = false;
-                _tipAmount = 0;
-                tipController.clear();
-              });
-              widget.onTipChanged(0);
-
-              context.read<PaymentBloc>().add(UpdateTip(0));
-              _updateAmountField();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Tip removed successfully'),
-                  duration: Duration(seconds: 1),
-                  backgroundColor: Colors.green,
-                ),
+                orderId: widget.orderId,
               );
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Failed to remove tip'),
-                  duration: Duration(seconds: 1),
-                  backgroundColor: Colors.red,
-                ),
-              );
+              if (success) {
+                setState(() {
+                  _isTipApplied = false;
+                  _tipAmount = 0;
+                  tipController.clear();
+                });
+                widget.onTipChanged(0);
+
+                context.read<PaymentBloc>().add(UpdateTip(0));
+                _updateAmountField();
+                // ✅ Reload payment summary from backend
+                _reloadSummary();
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Tip removed successfully'),
+                    duration: Duration(seconds: 1),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Failed to remove tip'),
+                    duration: Duration(seconds: 1),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
             }
-          }
-              : null,
+                : null,
+          ),
         ),
-    ),
         SizedBox(height: gap),
 
         // Svc Charges

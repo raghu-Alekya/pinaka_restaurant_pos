@@ -17,13 +17,13 @@ class VoidItemsDialog extends StatefulWidget {
   final List<KotItem> items;
   final String tableNo;
   final String kotNo;
-  final int restaurantId;   // ✅ add
+  final int restaurantId;
   final int zoneId;
   final String token;
-  final int parentOrderId; // ✅ add
+  final int parentOrderId;
 
 
-  final int kotId; // ✅ add this field
+  final int kotId;
 
   final void Function(String value) onRemark;
   final dynamic item;
@@ -62,6 +62,8 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
   final ScrollController _leftScrollController = ScrollController();
 
   String? selectedReason;
+  bool _showReasonError = false;
+
 
   final List<String> voidReasons = [
     "Wrong Item",
@@ -465,70 +467,92 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                                   : const Color(0xFFF3F6FF),
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child:
-                            Row(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  "Enter Reason :",
-                                  style: TextStyle(
-                                    color: Theme.of(context).textTheme.bodyLarge?.color,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Container(
-                                    height: 38,
-                                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                                    decoration: BoxDecoration(
-                                      // color: Colors.white,
-                                      color: isDark
-                                          ? const Color(0xFF202433)
-                                          : Colors.white,
-                                      border: Border.all(
-                                        color: Theme.of(context).dividerColor,
+                                Row(
+                                  children: [
+                                    Text(
+                                      "Enter Reason :",
+                                      style: TextStyle(
+                                        color: Theme.of(context).textTheme.bodyLarge?.color,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
-                                    child: DropdownButtonHideUnderline(
-                                      child: DropdownButton<String>(
-                                        value: selectedReason,
-                                        hint: Text(
-                                          "Select Reason",
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Theme.of(context)
-                                                .textTheme
-                                                .bodyMedium
-                                                ?.color
-                                                ?.withOpacity(0.7),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Container(
+                                        height: 38,
+                                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                                        decoration: BoxDecoration(
+                                          color: isDark
+                                              ? const Color(0xFF202433)
+                                              : Colors.white,
+                                          border: Border.all(
+                                            color: _showReasonError
+                                                ? Colors.red
+                                                : Theme.of(context).dividerColor,
+                                          ),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: DropdownButtonHideUnderline(
+                                          child: DropdownButton<String>(
+                                            value: selectedReason,
+                                            hint: Text(
+                                              "Select Reason",
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Theme.of(context)
+                                                    .textTheme
+                                                    .bodyMedium
+                                                    ?.color
+                                                    ?.withOpacity(0.7),
+                                              ),
+                                            ),
+                                            isExpanded: true,
+                                            icon: Icon(
+                                              Icons.keyboard_arrow_down,
+                                              color: _showReasonError ? Colors.red : null,
+                                            ),
+                                            items: voidReasons.map((reason) {
+                                              return DropdownMenuItem(
+                                                value: reason,
+                                                child: Text(
+                                                  reason,
+                                                  style: const TextStyle(fontSize: 12),
+                                                ),
+                                              );
+                                            }).toList(),
+                                            onChanged: (value) {
+                                              setState(() {
+                                                selectedReason = value;
+                                                _showReasonError = false; // Clear error when selected
+                                              });
+                                              widget.onRemark(value ?? "");
+                                            },
                                           ),
                                         ),
-                                        isExpanded: true,
-                                        icon: const Icon(Icons.keyboard_arrow_down),
-                                        items: voidReasons.map((reason) {
-                                          return DropdownMenuItem(
-                                            value: reason,
-                                            child: Text(
-                                              reason,
-                                              style: const TextStyle(fontSize: 12),
-                                            ),
-                                          );
-                                        }).toList(),
-                                        onChanged: (value) {
-                                          setState(() {
-                                            selectedReason = value;
-                                          });
-                                          widget.onRemark(value ?? "");
-                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                // Error message
+                                if (_showReasonError)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 4, left: 4),
+                                    child: Text(
+                                      "⚠ Please select a void reason",
+                                      style: TextStyle(
+                                        color: Colors.red,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
                                       ),
                                     ),
                                   ),
-                                ),
                               ],
                             ),
-                          ),
-                        ],
+                          ),                        ],
                       ),
                     ),
                   )]))
@@ -850,30 +874,35 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                               height: 40,
                               child: ElevatedButton(
                                 onPressed: () {
-                                  // ✅ Validate void reason
+                                  //  Validate void reason
                                   if (selectedReason == null || selectedReason!.trim().isEmpty) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text("Please select a void reason"),
-                                        backgroundColor: Colors.red,
-                                        duration: Duration(seconds: 1),
-                                      ),
-                                    );
-                                    return;
+                                    setState(() {
+                                      _showReasonError = true;
+                                    });
+                                    return; // Don't show SnackBar, just highlight the error
                                   }
 
-                                  debugPrint("✅ Save clicked");
+                                  // Clear error state if valid
+                                  setState(() {
+                                    _showReasonError = false;
+                                  });
+
+                                  debugPrint(" Save clicked");
                                   debugPrint("kotId = ${widget.kotId}");
                                   debugPrint("token = ${widget.token}");
                                   debugPrint("selectedReason = $selectedReason");
 
-                                  final selectedItems = itemsNotifier.value; // ✅ include 0 qty also
+                                  final selectedItems = itemsNotifier.value;
 
                                   debugPrint("selectedItems count = ${selectedItems.length}");
 
                                   final request = UpdatekotRequest(
                                     lineItems: selectedItems
-                                        .map((e) => LineItemUpdate(id: e.id, productId: e.productId,  quantity: e.quantity))
+                                        .map((e) => LineItemUpdate(
+                                        id: e.id,
+                                        productId: e.productId,
+                                        quantity: e.quantity
+                                    ))
                                         .toList(),
                                     metaData: [
                                       MetaDataItem(key: "kot_remarks", value: selectedReason ?? ""),
@@ -888,7 +917,6 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                                     ),
                                   );
                                 },
-
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFFFF6B6B),
                                   foregroundColor: Colors.white,

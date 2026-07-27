@@ -1292,7 +1292,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     //   color: Colors.grey.shade300,
                                     // ),
 
-                                    // const SizedBox(width: 10),
+                                    const SizedBox(width: 15),
 
                                     /// RIGHT SIDE
                                           Expanded(

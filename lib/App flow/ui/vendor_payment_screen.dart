@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'dart:async';
 
 import '../../models/UserPermissions.dart';
-
 import '../../models/vendor_payment_model.dart';
 import '../../models/view_mode.dart';
 import '../../repositories/vendor_payment_repository.dart';
@@ -10,6 +10,45 @@ import '../../utils/SessionManager.dart';
 import '../widgets/top_bar.dart';
 import '../widgets/widget_add_vendor_payouts.dart';
 import 'home_screen.dart';
+
+class _VendorPaymentsCache {
+  static List<VendorPaymentModel>? _cache;
+  static DateTime? _lastFetchTime;
+  static const Duration _cacheDuration = Duration(minutes: 5);
+
+  static List<VendorPaymentModel>? get() {
+    if (_cache != null && _lastFetchTime != null) {
+      final age = DateTime.now().difference(_lastFetchTime!);
+      if (age < _cacheDuration) return _cache;
+    }
+    return null;
+  }
+
+  static void set(List<VendorPaymentModel> data) {
+    _cache = data;
+    _lastFetchTime = DateTime.now();
+  }
+
+  static void clear() {
+    _cache = null;
+    _lastFetchTime = null;
+  }
+}
+
+class _VendorPaymentIdTracker {
+  static Set<int> _ids = {};
+
+  static Set<int> get() => _ids;
+
+  static void set(List<VendorPaymentModel> list) {
+    _ids = list.map((e) => e.vendorPaymentId).toSet();
+  }
+
+  static Set<int> findNew(List<VendorPaymentModel> incoming) {
+    final newIds = incoming.map((e) => e.vendorPaymentId).toSet();
+    return newIds.difference(_ids);
+  }
+}
 
 class Vendorpaymentsscreen extends StatefulWidget {
   final String token;
@@ -34,27 +73,32 @@ class Vendorpaymentsscreen extends StatefulWidget {
 class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
   dynamic _userPermissions;
   dynamic _selectedUser;
-  bool hasData = false; // change to true when API returns data
-  final VendorPaymentRepository _repository =
-  VendorPaymentRepository();
+  bool hasData = false;
+  final VendorPaymentRepository _repository = VendorPaymentRepository();
   ViewMode _currentViewMode = ViewMode.normal;
 
   List<VendorPaymentModel> vendorPayments = [];
   bool isLoading = false;
-  final TextEditingController searchController =
-  TextEditingController();
+  final TextEditingController searchController = TextEditingController();
   final TextEditingController _datevendorController = TextEditingController();
   DateTime? selectedDate;
   int currentPage = 1;
   int totalPages = 1;
   static const int rowsPerPage = 8;
   String _currency = "₹";
+
+  // Auto-refresh only when new items appear
+  Timer? _autoRefreshTimer;
+  static const Duration _autoRefreshInterval = Duration(seconds:3);
+  bool _isDateFiltered = false;
+  bool _isSearchActive = false;
+
   @override
   void initState() {
     super.initState();
     _loadVendorPayments();
     _loadPermissions();
-    _loadCurrency();   // <-- Add this
+    _loadCurrency();
     selectedDate = DateTime.now();
 
     _datevendorController.text =
@@ -62,10 +106,86 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
         "${selectedDate!.month.toString().padLeft(2, '0')}/"
         "${selectedDate!.year}";
 
+    _startAutoRefresh();
   }
+
+  void _startAutoRefresh() {
+    _stopAutoRefresh();
+    _autoRefreshTimer = Timer.periodic(_autoRefreshInterval, (_) {
+      if (mounted && !_isSearchActive) {
+        _checkForNewPayments();
+      }
+    });
+  }
+
+  void _stopAutoRefresh() {
+    _autoRefreshTimer?.cancel();
+    _autoRefreshTimer = null;
+  }
+
+  // ✅ Only updates UI when brand-new payments appear (no unnecessary rebuilds)
+  Future<void> _checkForNewPayments() async {
+    if (isLoading || vendorPayments.isEmpty) return;
+
+    try {
+      List<VendorPaymentModel> response;
+
+      if (_isDateFiltered && selectedDate != null) {
+        final apiDate = DateFormat("d MMMM, yyyy").format(selectedDate!);
+        response = await _repository.getVendorPaymentsByDate(
+          token: widget.token,
+          date: apiDate,
+        );
+      } else {
+        response = await _repository.getVendorPayments(
+          token: widget.token,
+        );
+      }
+
+      if (!mounted || response.isEmpty) return;
+
+      final newIds = _VendorPaymentIdTracker.findNew(response);
+      if (newIds.isEmpty) return; // ← nothing new → do nothing
+
+      debugPrint("🆕 Found ${newIds.length} new vendor payment(s)");
+
+      final existingIds = vendorPayments.map((e) => e.vendorPaymentId).toSet();
+      final newItems = response
+          .where((p) => !existingIds.contains(p.vendorPaymentId))
+          .toList();
+
+      if (newItems.isEmpty) return;
+
+      // Newest first
+      final updatedList = [...newItems, ...vendorPayments];
+
+      _VendorPaymentsCache.set(updatedList);
+      _VendorPaymentIdTracker.set(updatedList);
+
+      setState(() {
+        vendorPayments = updatedList;
+        currentPage = 1;
+        totalPages = (vendorPayments.length / rowsPerPage).ceil();
+        if (totalPages == 0) totalPages = 1;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${newItems.length} new vendor payment${newItems.length > 1 ? 's' : ''} received!',
+          ),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      debugPrint("❌ Auto-refresh error: $e");
+    }
+  }
+
   Future<void> _loadCurrency() async {
     final currency = await SessionManager.getCurrencySymbol();
-
     if (mounted) {
       setState(() {
         _currency = currency ?? "₹";
@@ -110,9 +230,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                     size: 35,
                   ),
                 ),
-
                 const SizedBox(height: 16),
-
                 const Text(
                   "Delete Vendor Payment",
                   style: TextStyle(
@@ -120,9 +238,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-
                 const SizedBox(height: 10),
-
                 const Text(
                   "Are you sure you want to delete this vendor payment?\nThis action cannot be undone.",
                   textAlign: TextAlign.center,
@@ -131,9 +247,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                     fontSize: 14,
                   ),
                 ),
-
                 const SizedBox(height: 24),
-
                 Row(
                   children: [
                     Expanded(
@@ -150,9 +264,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                         child: const Text("Cancel"),
                       ),
                     ),
-
                     const SizedBox(width: 12),
-
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () {
@@ -180,12 +292,10 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
       },
     );
   }
-  Future<void> _deleteVendorPayment(
-      int vendorPaymentId,
-      ) async {
+
+  Future<void> _deleteVendorPayment(int vendorPaymentId) async {
     try {
-      final response =
-      await _repository.deleteVendorPayment(
+      final response = await _repository.deleteVendorPayment(
         token: widget.token,
         vendorPaymentId: vendorPaymentId,
       );
@@ -195,10 +305,9 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            response["message"] ??
-                "Vendor payment deleted successfully",
+            response["message"] ?? "Vendor payment deleted successfully",
           ),
-          duration: Duration(seconds: 1),
+          duration: const Duration(seconds: 1),
           backgroundColor: Colors.green,
         ),
       );
@@ -209,35 +318,32 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
         SnackBar(
           content: Text(e.toString()),
           backgroundColor: Colors.red,
-          duration: Duration(seconds: 1),
+          duration: const Duration(seconds: 1),
         ),
-
       );
     }
   }
-  Future<void> _filterVendorPaymentsByDate(
-      String date,
-      ) async {
+
+  Future<void> _filterVendorPaymentsByDate(String date) async {
     try {
       setState(() {
         isLoading = true;
+        _isDateFiltered = true;
+        _isSearchActive = false;
       });
 
-      final data =
-      await _repository.getVendorPaymentsByDate(
+      final data = await _repository.getVendorPaymentsByDate(
         token: widget.token,
         date: date,
       );
 
+      _VendorPaymentsCache.set(data);
+      _VendorPaymentIdTracker.set(data);
+
       setState(() {
         vendorPayments = data;
-
         totalPages = (vendorPayments.length / rowsPerPage).ceil();
-
-        if (totalPages == 0) {
-          totalPages = 1;
-        }
-
+        if (totalPages == 0) totalPages = 1;
         currentPage = 1;
       });
     } catch (e) {
@@ -248,26 +354,41 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
       });
     }
   }
+
   Future<void> _loadVendorPayments() async {
     try {
       setState(() {
         isLoading = true;
+        _isDateFiltered = false;
+        _isSearchActive = false;
       });
 
-      final data =
-      await _repository.getVendorPayments(
+      // Try cache first (optional, same spirit as Tips)
+      final cached = _VendorPaymentsCache.get();
+      if (cached != null && cached.isNotEmpty) {
+        setState(() {
+          vendorPayments = cached;
+          totalPages = (vendorPayments.length / rowsPerPage).ceil();
+          if (totalPages == 0) totalPages = 1;
+          currentPage = 1;
+          isLoading = false;
+        });
+        _VendorPaymentIdTracker.set(cached);
+        // Still refresh in background later via timer
+        return;
+      }
+
+      final data = await _repository.getVendorPayments(
         token: widget.token,
       );
 
+      _VendorPaymentsCache.set(data);
+      _VendorPaymentIdTracker.set(data);
+
       setState(() {
         vendorPayments = data;
-
         totalPages = (vendorPayments.length / rowsPerPage).ceil();
-
-        if (totalPages == 0) {
-          totalPages = 1;
-        }
-
+        if (totalPages == 0) totalPages = 1;
         currentPage = 1;
       });
     } catch (e) {
@@ -278,29 +399,24 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
       });
     }
   }
-  Future<void> _searchVendorPayments(
-      String keyword,
-      ) async {
+
+  Future<void> _searchVendorPayments(String keyword) async {
     try {
       setState(() {
         isLoading = true;
+        _isSearchActive = true;
+        _isDateFiltered = false;
       });
 
-      final data =
-      await _repository.searchVendorPayments(
+      final data = await _repository.searchVendorPayments(
         token: widget.token,
         search: keyword,
       );
 
       setState(() {
         vendorPayments = data;
-
         totalPages = (vendorPayments.length / rowsPerPage).ceil();
-
-        if (totalPages == 0) {
-          totalPages = 1;
-        }
-
+        if (totalPages == 0) totalPages = 1;
         currentPage = 1;
       });
     } catch (e) {
@@ -311,15 +427,24 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
       });
     }
   }
+
+  @override
+  void dispose() {
+    _stopAutoRefresh();
+    searchController.dispose();
+    _datevendorController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: TopBar(
         token: widget.token,
-        pin: widget.pin,restaurantId: widget.restaurantId,
+        pin: widget.pin,
+        restaurantId: widget.restaurantId,
         restaurantName: widget.restaurantName,
-
         userPermissions: _userPermissions,
         isHomeScreen: false,
         onPermissionsReceived: (permissions) {
@@ -340,16 +465,6 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // TopBar(
-            //   userPermissions: _userPermissions,
-            //   isHomeScreen: false,
-            //   restaurantId: widget.restaurantId,
-            //   restaurantName: widget.restaurantName,
-            //   // selectedUser: _selectedUser,
-            //   token: widget.token,
-            //   pin: widget.pin,
-            // ),
-
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(12),
@@ -378,13 +493,12 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 3),
                         child: Row(
                           children: [
-
-                            // const SizedBox(width: 20),
-
                             Text(
                               'Vendor Management',
                               style: TextStyle(
-                                color: isDark ? Colors.white : const Color(0xFF3D3D3D),
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF3D3D3D),
                                 fontSize: 24,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -422,13 +536,15 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                 style: TextStyle(
                                   color: isDark ? Colors.white : Colors.black,
                                 ),
-                                decoration:  InputDecoration(
+                                decoration: InputDecoration(
                                   border: InputBorder.none,
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 9,
+                                  contentPadding: const EdgeInsets.only(
+                                    left: 16,
+                                    right: 16,
+                                    top: 4,
+                                    bottom: 6, // moves hint/text slightly upward
                                   ),
-                                  prefixIcon: Icon(
+                                  prefixIcon: const Icon(
                                     Icons.search,
                                     color: Colors.black,
                                   ),
@@ -437,17 +553,19 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                     color: isDark
                                         ? Colors.white54
                                         : const Color(0xFFC3C2C2),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500, // hint weight
                                   ),
-                                ),
-                                onChanged: (value) {
-                                  if (value.trim().isEmpty) {
-                                    _loadVendorPayments();
-                                  } else {
-                                    _searchVendorPayments(value.trim());
-                                  }
-                                },
+                                ),                                onChanged: (value) {
+                                if (value.trim().isEmpty) {
+                                  _loadVendorPayments();
+                                } else {
+                                  _searchVendorPayments(value.trim());
+                                }
+                              },
                               ),
                             ),
+
                             const SizedBox(width: 20),
 
                             /// Date
@@ -468,7 +586,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                     ),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
-                                  shadows: [
+                                  shadows: const [
                                     BoxShadow(
                                       color: Color(0x19000000),
                                       blurRadius: 4,
@@ -478,10 +596,10 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                   ],
                                 ),
                                 child: TextField(
-                                  controller:_datevendorController,
+                                  controller: _datevendorController,
                                   readOnly: true,
                                   textAlignVertical: TextAlignVertical.center,
-                                  style:  TextStyle(
+                                  style: TextStyle(
                                     color: isDark
                                         ? Colors.white
                                         : const Color(0xFF7E7E7E),
@@ -491,7 +609,8 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                   onTap: () async {
                                     final pickedDate = await showDatePicker(
                                       context: context,
-                                      initialDate: selectedDate ?? DateTime.now(),
+                                      initialDate:
+                                      selectedDate ?? DateTime.now(),
                                       firstDate: DateTime(2020),
                                       lastDate: DateTime(2100),
                                     );
@@ -499,28 +618,26 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                     if (pickedDate != null) {
                                       setState(() {
                                         selectedDate = pickedDate;
-
                                         _datevendorController.text =
                                         "${pickedDate.day.toString().padLeft(2, '0')}/"
                                             "${pickedDate.month.toString().padLeft(2, '0')}/"
                                             "${pickedDate.year}";
                                       });
 
-                                      // final apiDate =
-                                      //     "${pickedDate.year}-"
-                                      //     "${pickedDate.month.toString().padLeft(2, '0')}-"
-                                      //     "${pickedDate.day.toString().padLeft(2, '0')}";
-
-                                      final apiDate = DateFormat("d MMMM, yyyy").format(pickedDate);
-                                      await _filterVendorPaymentsByDate(apiDate);
+                                      final apiDate =
+                                      DateFormat("d MMMM, yyyy")
+                                          .format(pickedDate);
+                                      await _filterVendorPaymentsByDate(
+                                          apiDate);
                                     }
                                   },
-                                  decoration:  InputDecoration(
+                                  decoration: InputDecoration(
                                     border: InputBorder.none,
                                     enabledBorder: InputBorder.none,
                                     focusedBorder: InputBorder.none,
                                     isDense: true,
-                                    contentPadding: EdgeInsets.symmetric(
+                                    contentPadding:
+                                    const EdgeInsets.symmetric(
                                       horizontal: 12,
                                       vertical: 12,
                                     ),
@@ -593,10 +710,12 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                           ],
                         ),
                       ),
-                      //  Table header
+
+                      // Table
                       Expanded(
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
                           child: Container(
                             decoration: BoxDecoration(
                               color: isDark
@@ -730,110 +849,156 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                   ),
                                 ),
 
-                                // Empty State / Table Data
+                                // Data / Empty / Loading
                                 Expanded(
-                                    child: isLoading
-                                        ? const Center(
-                                      child: CircularProgressIndicator(),
-                                    )
-                                        : vendorPayments.isEmpty
-                                        ?  Center(
-                                      child:Text(
-                                        "No Vendor Payments Found",
-                                        style: TextStyle(
-                                          color: isDark
-                                              ? Colors.white70
-                                              : Colors.black87,
-                                        ),
+                                  child: isLoading
+                                      ? const Center(
+                                    child: CircularProgressIndicator(),
+                                  )
+                                      : vendorPayments.isEmpty
+                                      ? Center(
+                                    child: Text(
+                                      "No Vendor Payments Found",
+                                      style: TextStyle(
+                                        color: isDark
+                                            ? Colors.white70
+                                            : Colors.black87,
                                       ),
-                                    )
-                                        : Builder(
-                                      builder: (context) {
-                                        final startIndex = (currentPage - 1) * rowsPerPage;
+                                    ),
+                                  )
+                                      : Builder(
+                                    builder: (context) {
+                                      final startIndex =
+                                          (currentPage - 1) *
+                                              rowsPerPage;
+                                      final endIndex =
+                                      (startIndex +
+                                          rowsPerPage) >
+                                          vendorPayments
+                                              .length
+                                          ? vendorPayments
+                                          .length
+                                          : (startIndex +
+                                          rowsPerPage);
 
-                                        final endIndex =
-                                        (startIndex + rowsPerPage) > vendorPayments.length
-                                            ? vendorPayments.length
-                                            : (startIndex + rowsPerPage);
+                                      final currentPagePayments =
+                                      vendorPayments.sublist(
+                                          startIndex, endIndex);
 
-                                        final currentPagePayments =
-                                        vendorPayments.sublist(startIndex, endIndex);
+                                      return ListView.builder(
+                                        itemCount:
+                                        currentPagePayments
+                                            .length,
+                                        itemBuilder:
+                                            (context, index) {
+                                          final payment =
+                                          currentPagePayments[
+                                          index];
 
-                                        return ListView.builder(
-                                          itemCount: currentPagePayments.length,
-                                          itemBuilder: (context, index) {
-                                            final payment = currentPagePayments[index];
+                                          return _dataRow(
+                                            invoiceNo: payment
+                                                .invoiceNo
+                                                .isEmpty
+                                                ? "-"
+                                                : payment.invoiceNo,
+                                            vendorName: payment
+                                                .vendorName
+                                                .isEmpty
+                                                ? "-"
+                                                : payment
+                                                .vendorName,
+                                            date: payment
+                                                .paymentDate,
+                                            contact: payment
+                                                .phoneNumber,
+                                            amount:
+                                            "$_currency${(double.tryParse(payment.amount) ?? 0.0).toStringAsFixed(2)}",
+                                            mode: payment
+                                                .paymentMethod,
+                                            purpose: payment
+                                                .purpose
+                                                .isEmpty
+                                                ? "-"
+                                                : payment.purpose,
+                                            note: payment
+                                                .notes.isEmpty
+                                                ? "-"
+                                                : payment.notes,
+                                            onEdit: () async {
+                                              try {
+                                                final data =
+                                                await _repository
+                                                    .getVendorPaymentById(
+                                                  token:
+                                                  widget.token,
+                                                  vendorPaymentId:
+                                                  payment
+                                                      .vendorPaymentId,
+                                                );
 
-                                            return _dataRow(
-                                                invoiceNo: payment.invoiceNo.isEmpty
-                                                    ? "-"
-                                                    : payment.invoiceNo,
-                                                vendorName: payment.vendorName.isEmpty
-                                                    ? "-"
-                                                    : payment.vendorName,
-                                                date: payment.paymentDate,
-                                                contact: payment.phoneNumber,
-                                                amount: "$_currency${(double.tryParse(payment.amount) ?? 0.0).toStringAsFixed(2)}",
-                                                mode: payment.paymentMethod,
-                                                purpose: payment.purpose.isEmpty
-                                                    ? "-"
-                                                    : payment.purpose,
-                                                note: payment.notes.isEmpty
-                                                    ? "-"
-                                                    : payment.notes,
-                                                onEdit: () async {
-                                                  try {
-                                                    final data =
-                                                    await _repository.getVendorPaymentById(
-                                                      token: widget.token,
-                                                      vendorPaymentId: payment.vendorPaymentId,
-                                                    );
+                                                if (!mounted)
+                                                  return;
 
-                                                    if (!mounted) return;
-
-                                                    final result = await showDialog(
-                                                      context: context,
-                                                      barrierDismissible: false,
-                                                      builder: (_) => AddVendorPayoutDialog(
-                                                        token: widget.token,
+                                                final result =
+                                                await showDialog(
+                                                  context: context,
+                                                  barrierDismissible:
+                                                  false,
+                                                  builder: (_) =>
+                                                      AddVendorPayoutDialog(
+                                                        token:
+                                                        widget.token,
                                                         editData: data,
                                                       ),
-                                                    );
+                                                );
 
-                                                    if (result == true) {
-                                                      _loadVendorPayments();
-                                                    }
-                                                  } catch (e) {
-                                                    ScaffoldMessenger.of(context).showSnackBar(
-                                                      SnackBar(
-                                                        content: Text(e.toString()
-                                                        ),
-                                                        duration: Duration(seconds: 1),
-                                                        backgroundColor: Colors.red,
-                                                      ),
+                                                if (result ==
+                                                    true) {
+                                                  _loadVendorPayments();
+                                                }
+                                              } catch (e) {
+                                                ScaffoldMessenger
+                                                    .of(context)
+                                                    .showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(e
+                                                        .toString()),
+                                                    duration:
+                                                    const Duration(
+                                                        seconds:
+                                                        1),
+                                                    backgroundColor:
+                                                    Colors.red,
+                                                  ),
+                                                );
+                                              }
+                                            },
+                                            onDelete: () async {
+                                              final confirm =
+                                              await _showDeleteDialog();
 
-                                                    );
-                                                  }
-                                                },
-
-                                                onDelete: () async {
-                                                  final confirm = await _showDeleteDialog();
-
-                                                  if (confirm == true) {
-                                                    await _deleteVendorPayment(
-                                                      payment.vendorPaymentId,
-                                                    );
-                                                  }
-                                                });
-                                          },
-                                        );
-                                      },
-                                    )
+                                              if (confirm ==
+                                                  true) {
+                                                await _deleteVendorPayment(
+                                                  payment
+                                                      .vendorPaymentId,
+                                                );
+                                              }
+                                            },
+                                          );
+                                        },
+                                      );
+                                    },
+                                  ),
                                 ),
+
+                                // Pagination
                                 Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 8),
                                   child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
                                         "Total Vendor Payments: ${vendorPayments.length}",
@@ -845,7 +1010,6 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                               : Colors.black87,
                                         ),
                                       ),
-
                                       Container(
                                         margin: const EdgeInsets.only(right: 5),
                                         decoration: BoxDecoration(
@@ -857,7 +1021,8 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                                 ? Colors.white24
                                                 : const Color(0xFFEFEFEF),
                                           ),
-                                          borderRadius: BorderRadius.circular(4),
+                                          borderRadius:
+                                          BorderRadius.circular(4),
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
@@ -870,9 +1035,9 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                                 });
                                               }
                                                   : null,
-                                              child: _paginationTextButton("Previous"),
+                                              child: _paginationTextButton(
+                                                  "Previous"),
                                             ),
-
                                             GestureDetector(
                                               onTap: () {
                                                 setState(() {
@@ -884,7 +1049,6 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                                 selected: currentPage == 1,
                                               ),
                                             ),
-
                                             if (totalPages >= 2)
                                               GestureDetector(
                                                 onTap: () {
@@ -897,7 +1061,6 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                                   selected: currentPage == 2,
                                                 ),
                                               ),
-
                                             if (totalPages >= 3)
                                               GestureDetector(
                                                 onTap: () {
@@ -910,10 +1073,8 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                                   selected: currentPage == 3,
                                                 ),
                                               ),
-
                                             if (totalPages > 4)
                                               _paginationTextButton("..."),
-
                                             if (totalPages > 4)
                                               GestureDetector(
                                                 onTap: () {
@@ -923,10 +1084,10 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                                 },
                                                 child: _pageButton(
                                                   totalPages,
-                                                  selected: currentPage == totalPages,
+                                                  selected: currentPage ==
+                                                      totalPages,
                                                 ),
                                               ),
-
                                             GestureDetector(
                                               onTap: currentPage < totalPages
                                                   ? () {
@@ -935,7 +1096,8 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                                 });
                                               }
                                                   : null,
-                                              child: _paginationTextButton("Next"),
+                                              child: _paginationTextButton(
+                                                  "Next"),
                                             ),
                                           ],
                                         ),
@@ -958,6 +1120,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
       ),
     );
   }
+
   Widget _paginationTextButton(String text) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -965,14 +1128,10 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
       height: 32,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: isDark
-            ? const Color(0xFF2B3042)
-            : Colors.white,
+        color: isDark ? const Color(0xFF2B3042) : Colors.white,
         border: Border(
           right: BorderSide(
-            color: isDark
-                ? Colors.white24
-                : const Color(0xFFEFEFEF),
+            color: isDark ? Colors.white24 : const Color(0xFFEFEFEF),
           ),
         ),
       ),
@@ -980,9 +1139,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
       child: Text(
         text,
         style: TextStyle(
-          color: isDark
-              ? Colors.white70
-              : const Color(0xFF727272),
+          color: isDark ? Colors.white70 : const Color(0xFF727272),
           fontSize: 11,
           fontWeight: FontWeight.w500,
         ),
@@ -990,10 +1147,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
     );
   }
 
-  Widget _pageButton(
-      int page, {
-        bool selected = false,
-      }) {
+  Widget _pageButton(int page, {bool selected = false}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
@@ -1002,14 +1156,10 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
       decoration: BoxDecoration(
         color: selected
             ? const Color(0xFFFF4D20)
-            : (isDark
-            ? const Color(0xFF2B3042)
-            : Colors.white),
+            : (isDark ? const Color(0xFF2B3042) : Colors.white),
         border: Border(
           right: BorderSide(
-            color: isDark
-                ? Colors.white24
-                : const Color(0xFFEFEFEF),
+            color: isDark ? Colors.white24 : const Color(0xFFEFEFEF),
           ),
         ),
       ),
@@ -1019,17 +1169,14 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
         style: TextStyle(
           color: selected
               ? Colors.white
-              : (isDark
-              ? Colors.white70
-              : const Color(0xFF727272)),
+              : (isDark ? Colors.white70 : const Color(0xFF727272)),
           fontSize: 11,
-          fontWeight: selected
-              ? FontWeight.w600
-              : FontWeight.w400,
+          fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
         ),
       ),
     );
   }
+
   Widget _dataRow({
     required String invoiceNo,
     required String vendorName,
@@ -1052,9 +1199,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
-                color: isDark
-                    ? Colors.white12
-                    : const Color(0xFFE0E0E0),
+                color: isDark ? Colors.white12 : const Color(0xFFE0E0E0),
               ),
             ),
           ),
@@ -1063,9 +1208,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
-              color: isDark
-                  ? Colors.white
-                  : const Color(0xFF1D1D1D),
+              color: isDark ? Colors.white : const Color(0xFF1D1D1D),
               fontWeight: FontWeight.w400,
             ),
           ),
@@ -1074,9 +1217,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
     }
 
     return Container(
-      color: isDark
-          ? const Color(0xFF2B3042)
-          : const Color(0xFFFCFCFF),
+      color: isDark ? const Color(0xFF2B3042) : const Color(0xFFFCFCFF),
       child: Row(
         children: [
           cell(invoiceNo),
@@ -1087,16 +1228,13 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
           cell(mode),
           cell(purpose),
           cell(note),
-
           Expanded(
             child: Container(
               height: 50,
               decoration: BoxDecoration(
                 border: Border(
                   bottom: BorderSide(
-                    color: isDark
-                        ? Colors.white12
-                        : const Color(0xFFE0E0E0),
+                    color: isDark ? Colors.white12 : const Color(0xFFE0E0E0),
                   ),
                 ),
               ),
@@ -1107,9 +1245,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                     onPressed: onEdit,
                     icon: Icon(
                       Icons.edit_outlined,
-                      color: isDark
-                          ? const Color(0xFF4C81F1)
-                          : Colors.blue,
+                      color: isDark ? const Color(0xFF4C81F1) : Colors.blue,
                       size: 20,
                     ),
                   ),
@@ -1129,6 +1265,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
       ),
     );
   }
+
   Widget _headerCell(String title, double flex) {
     return Expanded(
       flex: (flex * 10).toInt(),

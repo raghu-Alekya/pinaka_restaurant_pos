@@ -358,42 +358,75 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
                             vertical: 4,
                           ),
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Theme(
                                     data: Theme.of(context).copyWith(
-                                      unselectedWidgetColor: const Color(0xFF3C51DA),
+                                      checkboxTheme: CheckboxThemeData(
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(5), // curve radius
+                                        ),
+                                        side: const BorderSide(
+                                          color: Color(0xFF3C51DA),
+                                          width: 1.5,
+                                        ),
+                                        fillColor: MaterialStateProperty.resolveWith(
+                                              (states) {
+                                            if (states.contains(MaterialState.selected)) {
+                                              return const Color(0xFF3C51DA);
+                                            }
+                                            return Colors.transparent;
+                                          },
+                                        ),
+                                        checkColor: MaterialStateProperty.all(Colors.white),
+                                      ),
                                     ),
                                     child: Checkbox(
                                       value: selected,
                                       onChanged: (_) =>
                                           toggleAddOn(addon.name, addon.price),
-                                      side: const BorderSide(
-                                        color: Color(0xFF3C51DA),
-                                        width: 1.5,
-                                      ),
-                                      activeColor: const Color(0xFF3C51DA),
-                                      checkColor: Colors.white,
+                                      visualDensity: VisualDensity.compact,
                                     ),
                                   ),
-                                  Expanded(
-                                    child: Text(
-                                      '${addon.name} +$_currency${addon.price.toStringAsFixed(2)}',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: isDark
-                                            ? Colors.white
-                                            : Colors.black,
+
+                                  const Spacer(),
+
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        addon.name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                          color: isDark
+                                              ? Colors.white
+                                              : Colors.black,
+                                        ),
                                       ),
-                                    ),
+
+                                      const SizedBox(height: 2),
+
+                                      Text(
+                                        '+ $_currency${addon.price.toStringAsFixed(2)}',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: isDark
+                                              ? Colors.white70
+                                              : Colors.grey.shade600,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
-                              ),
-                              if (selected)
+                              ),                              if (selected)
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisAlignment: MainAxisAlignment.end,
                                   children: [
                                     InkWell(
                                       onTap: () =>

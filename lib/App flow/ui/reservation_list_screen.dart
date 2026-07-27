@@ -16,7 +16,19 @@ import '../widgets/bottom_nav_bar.dart';
 import '../widgets/top_bar.dart';
 import 'create_reservation_screen.dart';
 import 'home_screen.dart';
+class _ReservationListCache {
+  static List<Map<String, dynamic>>? _reservations;
 
+  static bool get hasData => _reservations != null;
+
+  static void update(List<Map<String, dynamic>> reservations) {
+    _reservations = List<Map<String, dynamic>>.from(reservations);
+  }
+
+  static List<Map<String, dynamic>> get() {
+    return List<Map<String, dynamic>>.from(_reservations ?? []);
+  }
+}
 class ReservationListScreen extends StatefulWidget {
   final String pin;
   final String token;
@@ -65,13 +77,24 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
     _dateController.text = DateFormat('dd/MM/yyyy').format(selectedDate!);
     _loadPermissions();
     _loadZones();
+
+
+    if (_ReservationListCache.hasData) {
+      _reservations = _ReservationListCache.get();
+      _isLoading = false;
+    }
+
+
     _fetchReservations();
+
     _reservationListener = () {
       if (!mounted) return;
+      final updated = GlobalReservationMonitor().reservationsNotifier.value;
       setState(() {
-        _reservations = GlobalReservationMonitor().reservationsNotifier.value;
+        _reservations = updated;
         _isLoading = false;
       });
+      _ReservationListCache.update(updated);
     };
     GlobalReservationMonitor().reservationsNotifier.addListener(_reservationListener);
   }
@@ -113,12 +136,17 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
       print(reservation);
     }
 
+    if (!mounted) return;
+
     setState(() {
       _reservations = data;
       _isLoading = false;
     });
-  }
-  bool _isBeforeCutoff(String reservationDate, String cutoffTime) {
+
+    // Keep the cache fresh so the next time this screen opens, it paints
+    // instantly with this latest data.
+    _ReservationListCache.update(data);
+  }  bool _isBeforeCutoff(String reservationDate, String cutoffTime) {
     try {
       final fullCutoffDateTimeString = '$reservationDate $cutoffTime';
       final cutoff = DateFormat('yyyy-MM-dd hh:mm a').parse(fullCutoffDateTimeString);
@@ -683,7 +711,11 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                                 ),
                                 hintText: "Search by name, phone or table",
                                 hintStyle: TextStyle(
-                                  color: isDark ? Colors.white54 : const Color(0xFFC3C2C2),
+                                  color: isDark
+                                      ? Colors.white54
+                                      : const Color(0xFFC3C2C2),
+                                  fontWeight: FontWeight.w400, // change weight here
+                                  fontSize: 14,
                                 ),
                               ),
                             ),
@@ -1388,8 +1420,13 @@ class _TableCell extends StatelessWidget {
             Text(
               content,
               style: TextStyle(
-                fontSize: 13,
-                color: isDark ? Colors.white : Colors.black87,
+                fontSize: 14,
+                color: isDark
+                    ? Colors.white
+                    : const Color(
+                    0xFF3D3D3D),
+                fontWeight:
+                FontWeight.w500,
               ),
               textAlign: TextAlign.center,
               overflow: TextOverflow.ellipsis,

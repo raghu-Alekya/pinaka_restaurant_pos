@@ -1095,20 +1095,20 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                   ),
 
                                                   Text(
-                                                    kot.items
+                                                    "$_currency${kot.items
                                                         .fold<double>(
-                                                        0,
-                                                            (sum,e)=>sum+(e.totalWithAddons??0))
-                                                        .toStringAsFixed(2),
+                                                      0,
+                                                          (sum, e) => sum + (e.totalWithAddons ?? 0),
+                                                    )
+                                                        .toStringAsFixed(2)}",
                                                     style: TextStyle(
-                                                      color: isDark ? const Color(0xFFE2ECFA) : const Color(0xff5a81bd),
-
-                                                      // color: Color(0xff0D47A1),
+                                                      color: isDark
+                                                          ? const Color(0xFFE2ECFA)
+                                                          : const Color(0xff5a81bd),
                                                       fontWeight: FontWeight.w600,
-                                                      fontSize:18,
+                                                      fontSize: 18,
                                                     ),
-                                                  ),
-                                                ],
+                                                  ),                                                ],
                                               ),
                                             ),
                                             // const SizedBox(height: 10),

@@ -386,29 +386,6 @@ class _OrdersListTableState extends State<OrdersListTable> {
                         /// HEADER + SEARCH
                         Row(
                           children: [
-                            // InkWell(
-                            //   onTap: () {
-                            //     Navigator.pop(context);
-                            //   },
-                            //   child: Container(
-                            //     width: 40,
-                            //     height: 40,
-                            //     decoration: BoxDecoration(
-                            //       color: Colors.white,
-                            //       borderRadius: BorderRadius.circular(8),
-                            //       boxShadow: const [
-                            //         BoxShadow(
-                            //           color: Colors.black12,
-                            //           blurRadius: 4,
-                            //         ),
-                            //       ],
-                            //     ),
-                            //     child: const Icon(
-                            //       Icons.arrow_back,
-                            //       color: Color(0xFF0A1B4D),
-                            //     ),
-                            //   ),
-                            // ),
                             const SizedBox(width: 8),
 
                             Text(
@@ -458,18 +435,21 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                   Expanded(
                                     child: TextField(
                                       controller: _searchController,
+                                      textAlignVertical: TextAlignVertical.center,
                                       decoration: const InputDecoration(
                                         hintText:
                                         'Search order ID, Order Type, Zone, Table, or Cust name, phone....',
                                         border: InputBorder.none,
                                         isDense: true,
+                                        contentPadding: EdgeInsets.only(
+                                          bottom: 6, // moves text slightly upward
+                                        ),
                                         hintStyle: TextStyle(
                                           color: Color(0xFFB0B0B0),
                                           fontSize: 10,
                                           fontWeight: FontWeight.w400,
                                         ),
                                       ),
-                                      // onChanged: (_) => setState(() {}),
                                     ),
                                   ),
                                 ],

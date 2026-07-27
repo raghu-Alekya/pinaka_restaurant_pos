@@ -256,7 +256,7 @@ class _SideBarWidgetsState extends State<SideBarWidgets> {
               height: MediaQuery.of(context).size.height * 0.9,
               decoration: BoxDecoration(
                 color: isDark
-                    ? const Color(0xFF110E20)
+                    ? const Color(0xFF1B1B22)
                     : const Color(0xFF0B2967),
                 borderRadius: BorderRadius.circular(8),
               ),

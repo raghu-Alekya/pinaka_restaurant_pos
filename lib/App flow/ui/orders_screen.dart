@@ -3160,6 +3160,44 @@ class _OrderPanelState extends State<OrderPanel> {
       ),
     );
   }
+  Widget modifierBadge({required bool hasModifier}) {
+    final Color color = hasModifier
+        ? const Color(0xFFFFB820)
+        : const Color(0xFFB8B8B8);
+
+    return Container(
+      width: 61,
+      height: 24,
+      alignment: Alignment.center,
+      clipBehavior: Clip.antiAlias,
+      decoration: ShapeDecoration(
+        shape: RoundedRectangleBorder(
+          side: BorderSide(
+            width: 1,
+            color: color,
+          ),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        shadows: [
+          BoxShadow(
+            color: color.withOpacity(0.25),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Text(
+        'Modifier',
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w500,
+          height: 1,
+        ),
+      ),
+    );
+  }
 
   Widget headerBadgeRow(OrderState state) {
     return BlocBuilder<OrderBloc, OrderState>(
