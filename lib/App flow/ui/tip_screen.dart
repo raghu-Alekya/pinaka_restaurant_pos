@@ -94,13 +94,13 @@ class _TipsScreenState extends State<TipsScreen>
   String _currentDate = '';
   bool _isInitialLoad = true;
   bool _isRefreshing = false;
-
+  bool _hasNewTips = false;
   // Prevent stale responses
   int _fetchSequence = 0;
 
   // Auto-refresh – now more frequent for near-instant feel
   Timer? _autoRefreshTimer;
-  static const Duration _autoRefreshInterval = Duration(seconds:3);
+  static const Duration _autoRefreshInterval = Duration(seconds: 3);
 
   final ScrollController _scrollController = ScrollController();
 
@@ -179,8 +179,10 @@ class _TipsScreenState extends State<TipsScreen>
   }
 
   // ✅ Cache + sequence + _currentDate always in sync
-  Future<void> _loadTipsWithCache(String date,
-      {bool forceRefresh = false}) async {
+  Future<void> _loadTipsWithCache(
+    String date, {
+    bool forceRefresh = false,
+  }) async {
     final int mySequence = ++_fetchSequence;
     _currentDate = date;
 
@@ -195,11 +197,14 @@ class _TipsScreenState extends State<TipsScreen>
             _isRefreshing = false;
             isLoading = false;
             _OrderIdTracker.set(
-                date, cachedData.orders.map((o) => o.orderId).toSet());
+              date,
+              cachedData.orders.map((o) => o.orderId).toSet(),
+            );
           });
         }
         debugPrint(
-            "✅ Loaded from cache for $date. Orders: ${cachedData.orders.length}");
+          "✅ Loaded from cache for $date. Orders: ${cachedData.orders.length}",
+        );
         return;
       }
     }
@@ -222,7 +227,9 @@ class _TipsScreenState extends State<TipsScreen>
       if (response != null && mounted) {
         _TipsCache.set(date, response);
         _OrderIdTracker.set(
-            date, response.orders.map((o) => o.orderId).toSet());
+          date,
+          response.orders.map((o) => o.orderId).toSet(),
+        );
 
         setState(() {
           tipsData = response;
@@ -232,7 +239,8 @@ class _TipsScreenState extends State<TipsScreen>
           isLoading = false;
         });
         debugPrint(
-            "🔄 Fetched from API for $date. Orders: ${response.orders.length}");
+          "🔄 Fetched from API for $date. Orders: ${response.orders.length}",
+        );
       }
     } catch (e) {
       debugPrint("❌ Error fetching tips: $e");
@@ -267,8 +275,7 @@ class _TipsScreenState extends State<TipsScreen>
 
       if (response == null || !mounted) return;
 
-      final newOrderIds =
-      _OrderIdTracker.findNewOrders(date, response.orders);
+      final newOrderIds = _OrderIdTracker.findNewOrders(date, response.orders);
 
       if (newOrderIds.isEmpty) return;
 
@@ -277,12 +284,12 @@ class _TipsScreenState extends State<TipsScreen>
       final existingData = _TipsCache.get(date) ?? tipsData;
       if (existingData == null) return;
 
-      final existingIds =
-      existingData.orders.map((o) => o.orderId).toSet();
+      final existingIds = existingData.orders.map((o) => o.orderId).toSet();
 
-      final newOrders = response.orders
-          .where((o) => !existingIds.contains(o.orderId))
-          .toList();
+      final newOrders =
+          response.orders
+              .where((o) => !existingIds.contains(o.orderId))
+              .toList();
 
       if (newOrders.isEmpty) return;
 
@@ -290,7 +297,9 @@ class _TipsScreenState extends State<TipsScreen>
       final updatedOrders = [...newOrders, ...existingData.orders];
 
       final newTotalTip = updatedOrders.fold<double>(
-          0.0, (sum, order) => sum + order.orderTipAmt);
+        0.0,
+        (sum, order) => sum + order.orderTipAmt,
+      );
 
       final updatedData = TipsScreenModel(
         orders: updatedOrders,
@@ -300,8 +309,7 @@ class _TipsScreenState extends State<TipsScreen>
 
       // Update cache + tracker
       _TipsCache.set(date, updatedData);
-      _OrderIdTracker.set(
-          date, updatedOrders.map((o) => o.orderId).toSet());
+      _OrderIdTracker.set(date, updatedOrders.map((o) => o.orderId).toSet());
 
       // Only update UI when this is the currently viewed date
       if (date == _currentDate && mounted) {
@@ -343,9 +351,7 @@ class _TipsScreenState extends State<TipsScreen>
         backgroundColor: Colors.green,
         duration: const Duration(seconds: 3),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
@@ -357,23 +363,23 @@ class _TipsScreenState extends State<TipsScreen>
     }
   }
 
-  // External push of new tips (instant)
   void addNewOrders(String date, List<TipOrder> newOrders) {
     if (!mounted || date != _currentDate) return;
 
     final existingData = _TipsCache.get(date) ?? tipsData;
     if (existingData == null) return;
 
-    final existingIds =
-    existingData.orders.map((o) => o.orderId).toSet();
+    final existingIds = existingData.orders.map((o) => o.orderId).toSet();
     final filteredNew =
-    newOrders.where((o) => !existingIds.contains(o.orderId)).toList();
+        newOrders.where((o) => !existingIds.contains(o.orderId)).toList();
 
     if (filteredNew.isEmpty) return;
 
     final updatedOrders = [...filteredNew, ...existingData.orders];
     final newTotalTip = updatedOrders.fold<double>(
-        0.0, (sum, order) => sum + order.orderTipAmt);
+      0.0,
+      (sum, order) => sum + order.orderTipAmt,
+    );
 
     final updatedData = TipsScreenModel(
       orders: updatedOrders,
@@ -382,8 +388,7 @@ class _TipsScreenState extends State<TipsScreen>
     );
 
     _TipsCache.set(date, updatedData);
-    _OrderIdTracker.set(
-        date, updatedOrders.map((o) => o.orderId).toSet());
+    _OrderIdTracker.set(date, updatedOrders.map((o) => o.orderId).toSet());
 
     setState(() {
       tipsData = updatedData;
@@ -396,6 +401,9 @@ class _TipsScreenState extends State<TipsScreen>
     }
 
     _showNewOrderNotification(filteredNew.length);
+    setState(() {
+      _hasNewTips = true;
+    });
   }
 
   @override
@@ -415,9 +423,8 @@ class _TipsScreenState extends State<TipsScreen>
     final int totalOrders = tipsData?.orders.length ?? 0;
 
     return Scaffold(
-      backgroundColor: isDark
-          ? const Color(0xFF161A26)
-          : const Color(0xFFF6F6F6),
+      backgroundColor:
+          isDark ? const Color(0xFF161A26) : const Color(0xFFF6F6F6),
       appBar: TopBar(
         token: widget.token,
         pin: widget.pin,
@@ -448,9 +455,10 @@ class _TipsScreenState extends State<TipsScreen>
             ),
             shadows: [
               BoxShadow(
-                color: isDark
-                    ? Colors.black.withOpacity(0.35)
-                    : const Color(0x3F474747),
+                color:
+                    isDark
+                        ? Colors.black.withOpacity(0.35)
+                        : const Color(0x3F474747),
                 blurRadius: 10,
                 offset: const Offset(0, 1),
               ),
@@ -467,77 +475,84 @@ class _TipsScreenState extends State<TipsScreen>
                     Text(
                       'Tips',
                       style: TextStyle(
-                        color: isDark
-                            ? Colors.white
-                            : const Color(0xFF1D1D1D),
+                        color: isDark ? Colors.white : const Color(0xFF1D1D1D),
                         fontSize: 24,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     const Spacer(),
 
-                    /// Refresh Button
-                    IconButton(
-                      icon: _isRefreshing
-                          ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                        ),
-                      )
-                          : Icon(
-                        Icons.refresh,
-                        color: isDark
-                            ? Colors.white70
-                            : Colors.grey[700],
-                      ),
-                      onPressed: _isRefreshing ? null : refreshTips,
-                      tooltip: 'Refresh tips',
-                    ),
-
                     /// Date picker
                     SizedBox(
                       width: 180,
                       height: 40,
                       child: Container(
-                        decoration: ShapeDecoration(
-                          color: isDark
-                              ? const Color(0xFF2B3042)
-                              : const Color(0xFFF0F0F0),
-                          shape: RoundedRectangleBorder(
-                            side: const BorderSide(
-                              width: 1,
-                              color: Color(0xFFA5A5A5),
-                            ),
-                            borderRadius: BorderRadius.circular(10),
+                        decoration: BoxDecoration(
+                          color:
+                              isDark ? const Color(0xFF12171E) : Colors.white,
+                          border: Border.all(
+                            color:
+                                isDark
+                                    ? const Color(0xFF374151)
+                                    : Colors.grey.shade300,
+                            width: 1,
                           ),
-                          shadows: const [
-                            BoxShadow(
-                              color: Color(0x19000000),
-                              blurRadius: 4,
-                              offset: Offset(0, 1),
-                            ),
-                          ],
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow:
+                              isDark
+                                  ? [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.35),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                  : const [
+                                    BoxShadow(
+                                      color: Colors.black12,
+                                      blurRadius: 4,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
                         ),
                         child: TextField(
                           controller: _datetipController,
                           readOnly: true,
                           textAlignVertical: TextAlignVertical.center,
                           style: TextStyle(
-                            color: isDark
-                                ? Colors.white70
-                                : const Color(0xFF7E7E7E),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color:
+                                isDark ? Colors.white : const Color(0xFF111827),
                           ),
                           onTap: () async {
                             final picked = await showDatePicker(
                               context: context,
-                              initialDate:
-                              selectedDate ?? DateTime.now(),
+                              initialDate: selectedDate ?? DateTime.now(),
                               firstDate: DateTime(2020),
                               lastDate: DateTime(2030),
+                              builder: (context, child) {
+                                return Theme(
+                                  data: Theme.of(context).copyWith(
+                                    colorScheme:
+                                        isDark
+                                            ? const ColorScheme.dark(
+                                              primary: Color(0xFFFFFFFF),
+                                              onPrimary: Colors.black,
+                                              surface: Color(0xFF1F2937),
+                                              onSurface: Colors.white,
+                                            )
+                                            : Theme.of(context).colorScheme,
+                                    dialogTheme: DialogThemeData(
+                                      backgroundColor:
+                                          isDark
+                                              ? const Color(0xFF1F2937)
+                                              : Colors.white,
+                                    ),
+                                  ),
+                                  child: child!,
+                                );
+                              },
                             );
 
                             if (picked != null) {
@@ -545,8 +560,9 @@ class _TipsScreenState extends State<TipsScreen>
 
                               setState(() {
                                 selectedDate = picked;
-                                _datetipController.text =
-                                    _formatDateForDisplay(picked);
+                                _datetipController.text = _formatDateForDisplay(
+                                  picked,
+                                );
                                 currentPage = 1;
                                 _currentDate = newDate;
                               });
@@ -559,19 +575,89 @@ class _TipsScreenState extends State<TipsScreen>
                             enabledBorder: InputBorder.none,
                             focusedBorder: InputBorder.none,
                             isDense: true,
-                            contentPadding:
-                            const EdgeInsets.symmetric(
+                            contentPadding: const EdgeInsets.symmetric(
                               horizontal: 12,
-                              vertical: 12,
+                              vertical: 10,
                             ),
                             suffixIcon: Icon(
-                              Icons.calendar_month,
-                              size: 20,
-                              color: isDark
-                                  ? Colors.white70
-                                  : const Color(0xFF6D6D6D),
+                              Icons.calendar_today,
+                              size: 18,
+                              color:
+                                  isDark
+                                      ? Colors.white70
+                                      : const Color(0xFF6B7280),
                             ),
                           ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+
+                    /// Refresh Button
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            _hasNewTips
+                                ? Colors.red
+                                : (isDark
+                                    ? const Color(0xFF374151)
+                                    : const Color(0xFFFDF8F8)),
+                        foregroundColor:
+                            isDark ? Colors.white70 : Colors.grey[700],
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          side: BorderSide(
+                            color:
+                                isDark
+                                    ? Colors.grey.shade600
+                                    : Colors.grey.shade300,
+                          ),
+                        ),
+                      ),
+                      onPressed:
+                          _isRefreshing
+                              ? null
+                              : () {
+                                setState(() {
+                                  _hasNewTips = false;
+                                });
+                                refreshTips();
+                              },
+                      icon:
+                          _isRefreshing
+                              ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                              : Icon(
+                                Icons.refresh,
+                                size: 16,
+                                color:
+                                    _hasNewTips
+                                        ? Colors.white
+                                        : (isDark
+                                            ? Colors.white70
+                                            : Colors.grey[700]),
+                              ),
+                      label: Text(
+                        "Reset",
+                        style: TextStyle(
+                          fontSize: 14,
+                          color:
+                              _hasNewTips
+                                  ? Colors.white
+                                  : (isDark
+                                      ? Colors.white70
+                                      : Colors.grey[700]),
                         ),
                       ),
                     ),
@@ -580,12 +666,12 @@ class _TipsScreenState extends State<TipsScreen>
                     /// Total Tip
                     Container(
                       height: 40,
-                      padding:
-                      const EdgeInsets.symmetric(horizontal: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: ShapeDecoration(
-                        color: isDark
-                            ? const Color(0xFF2B3042)
-                            : const Color(0xFFF6F8FF),
+                        color:
+                            isDark
+                                ? const Color(0xFF2B3042)
+                                : const Color(0xFFF6F8FF),
                         shape: RoundedRectangleBorder(
                           side: const BorderSide(
                             width: 1,
@@ -598,7 +684,7 @@ class _TipsScreenState extends State<TipsScreen>
                             color: Color(0x19000000),
                             blurRadius: 4,
                             offset: Offset(0, 1),
-                          )
+                          ),
                         ],
                       ),
                       child: Row(
@@ -607,9 +693,10 @@ class _TipsScreenState extends State<TipsScreen>
                             "Total tip:",
                             style: TextStyle(
                               fontSize: 12,
-                              color: isDark
-                                  ? Colors.white70
-                                  : const Color(0xFF383838),
+                              color:
+                                  isDark
+                                      ? Colors.white70
+                                      : const Color(0xFF383838),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -618,9 +705,10 @@ class _TipsScreenState extends State<TipsScreen>
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w600,
-                              color: isDark
-                                  ? const Color(0xFF498FFF)
-                                  : const Color(0xFF022A7E),
+                              color:
+                                  isDark
+                                      ? const Color(0xFF498FFF)
+                                      : const Color(0xFF022A7E),
                             ),
                           ),
                         ],
@@ -634,13 +722,16 @@ class _TipsScreenState extends State<TipsScreen>
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 24, vertical: 0),
+                    horizontal: 24,
+                    vertical: 0,
+                  ),
                   child: Container(
                     margin: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0xFF202433)
-                          : const Color(0xFFF2F2F2),
+                      color:
+                          isDark
+                              ? const Color(0xFF202433)
+                              : const Color(0xFFF2F2F2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Column(
@@ -649,9 +740,10 @@ class _TipsScreenState extends State<TipsScreen>
                         Container(
                           height: 45,
                           decoration: BoxDecoration(
-                            color: isDark
-                                ? const Color(0xFF2B4267)
-                                : const Color(0xFF2A3558),
+                            color:
+                                isDark
+                                    ? const Color(0xFF2B4267)
+                                    : const Color(0xFF2A3558),
                             borderRadius: const BorderRadius.only(
                               topLeft: Radius.circular(8),
                               topRight: Radius.circular(8),
@@ -712,109 +804,114 @@ class _TipsScreenState extends State<TipsScreen>
                         ),
 
                         /// Content
-                        Expanded(
-                          child: _buildContent(isDark),
-                        ),
+                        Expanded(child: _buildContent(isDark)),
 
                         /// Pagination
                         Padding(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 8),
+                            horizontal: 8,
+                            vertical: 8,
+                          ),
                           child: Row(
-                            mainAxisAlignment:
-                            MainAxisAlignment.spaceBetween,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
                                 "Total Orders: $totalOrders",
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
-                                  color: isDark
-                                      ? Colors.white
-                                      : Colors.black87,
+                                  color: isDark ? Colors.white : Colors.black87,
                                 ),
                               ),
                               Row(
                                 children: [
                                   IconButton(
-                                    icon: const Icon(Icons.first_page,
-                                        size: 20),
-                                    color: isDark
-                                        ? Colors.white70
-                                        : Colors.grey[700],
-                                    onPressed: currentPage > 1
-                                        ? () {
-                                      setState(() {
-                                        currentPage = 1;
-                                        _scrollController
-                                            .jumpTo(0);
-                                      });
-                                    }
-                                        : null,
+                                    icon: const Icon(
+                                      Icons.first_page,
+                                      size: 20,
+                                    ),
+                                    color:
+                                        isDark
+                                            ? Colors.white70
+                                            : Colors.grey[700],
+                                    onPressed:
+                                        currentPage > 1
+                                            ? () {
+                                              setState(() {
+                                                currentPage = 1;
+                                                _scrollController.jumpTo(0);
+                                              });
+                                            }
+                                            : null,
                                   ),
                                   IconButton(
-                                    icon: const Icon(Icons.chevron_left,
-                                        size: 24),
-                                    color: isDark
-                                        ? Colors.white70
-                                        : Colors.grey[700],
-                                    onPressed: currentPage > 1
-                                        ? () {
-                                      setState(() {
-                                        currentPage--;
-                                        _scrollController
-                                            .jumpTo(0);
-                                      });
-                                    }
-                                        : null,
+                                    icon: const Icon(
+                                      Icons.chevron_left,
+                                      size: 24,
+                                    ),
+                                    color:
+                                        isDark
+                                            ? Colors.white70
+                                            : Colors.grey[700],
+                                    onPressed:
+                                        currentPage > 1
+                                            ? () {
+                                              setState(() {
+                                                currentPage--;
+                                                _scrollController.jumpTo(0);
+                                              });
+                                            }
+                                            : null,
                                   ),
                                   Container(
-                                    padding:
-                                    const EdgeInsets.symmetric(
-                                        horizontal: 12),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                    ),
                                     child: Text(
                                       '$currentPage of $totalPages',
                                       style: TextStyle(
-                                        color: isDark
-                                            ? Colors.white70
-                                            : Colors.grey[700],
+                                        color:
+                                            isDark
+                                                ? Colors.white70
+                                                : Colors.grey[700],
                                         fontWeight: FontWeight.w500,
                                       ),
                                     ),
                                   ),
                                   IconButton(
                                     icon: const Icon(
-                                        Icons.chevron_right,
-                                        size: 24),
-                                    color: isDark
-                                        ? Colors.white70
-                                        : Colors.grey[700],
-                                    onPressed: currentPage < totalPages
-                                        ? () {
-                                      setState(() {
-                                        currentPage++;
-                                        _scrollController
-                                            .jumpTo(0);
-                                      });
-                                    }
-                                        : null,
+                                      Icons.chevron_right,
+                                      size: 24,
+                                    ),
+                                    color:
+                                        isDark
+                                            ? Colors.white70
+                                            : Colors.grey[700],
+                                    onPressed:
+                                        currentPage < totalPages
+                                            ? () {
+                                              setState(() {
+                                                currentPage++;
+                                                _scrollController.jumpTo(0);
+                                              });
+                                            }
+                                            : null,
                                   ),
                                   IconButton(
-                                    icon: const Icon(Icons.last_page,
-                                        size: 20),
-                                    color: isDark
-                                        ? Colors.white70
-                                        : Colors.grey[700],
-                                    onPressed: currentPage < totalPages
-                                        ? () {
-                                      setState(() {
-                                        currentPage =
-                                            totalPages;
-                                        _scrollController
-                                            .jumpTo(0);
-                                      });
-                                    }
-                                        : null,
+                                    icon: const Icon(Icons.last_page, size: 20),
+                                    color:
+                                        isDark
+                                            ? Colors.white70
+                                            : Colors.grey[700],
+                                    onPressed:
+                                        currentPage < totalPages
+                                            ? () {
+                                              setState(() {
+                                                currentPage = totalPages;
+                                                _scrollController.jumpTo(0);
+                                              });
+                                            }
+                                            : null,
                                   ),
                                 ],
                               ),
@@ -837,9 +934,7 @@ class _TipsScreenState extends State<TipsScreen>
     // Same clean loading style as OrdersListTable
     if ((_isInitialLoad || isLoading) && tipsData == null) {
       return const Center(
-        child: CircularProgressIndicator(
-          color: Color(0xFFFF4D20),
-        ),
+        child: CircularProgressIndicator(color: Color(0xFFFF4D20)),
       );
     }
 
@@ -863,21 +958,19 @@ class _TipsScreenState extends State<TipsScreen>
 
     final startIndex = (currentPage - 1) * rowsPerPage;
     final endIndex =
-    (startIndex + rowsPerPage) > tipsData!.orders.length
-        ? tipsData!.orders.length
-        : (startIndex + rowsPerPage);
+        (startIndex + rowsPerPage) > tipsData!.orders.length
+            ? tipsData!.orders.length
+            : (startIndex + rowsPerPage);
 
     if (startIndex >= tipsData!.orders.length) {
       return const SizedBox.shrink();
     }
 
-    final currentPageOrders =
-    tipsData!.orders.sublist(startIndex, endIndex);
+    final currentPageOrders = tipsData!.orders.sublist(startIndex, endIndex);
 
     return ListView.builder(
       controller: _scrollController,
-      key: PageStorageKey<String>(
-          'tips_list_${_currentDate}_$currentPage'),
+      key: PageStorageKey<String>('tips_list_${_currentDate}_$currentPage'),
       padding: const EdgeInsets.only(bottom: 8),
       itemCount: currentPageOrders.length,
       itemBuilder: (context, index) {
@@ -889,22 +982,19 @@ class _TipsScreenState extends State<TipsScreen>
           child: Container(
             height: 40,
             decoration: BoxDecoration(
-              color: isDark
-                  ? const Color(0xFF2B3042)
-                  : const Color(0xFFFCFCFF),
+              color: isDark ? const Color(0xFF2B3042) : const Color(0xFFFCFCFF),
               border: Border(
                 bottom: BorderSide(
-                  color: isDark
-                      ? Colors.white12
-                      : const Color(0xFFE0E0E0),
+                  color: isDark ? Colors.white12 : const Color(0xFFE0E0E0),
                 ),
               ),
-              borderRadius: index == currentPageOrders.length - 1
-                  ? const BorderRadius.only(
-                bottomLeft: Radius.circular(8),
-                bottomRight: Radius.circular(8),
-              )
-                  : BorderRadius.zero,
+              borderRadius:
+                  index == currentPageOrders.length - 1
+                      ? const BorderRadius.only(
+                        bottomLeft: Radius.circular(8),
+                        bottomRight: Radius.circular(8),
+                      )
+                      : BorderRadius.zero,
             ),
             child: Row(
               children: [
@@ -914,9 +1004,7 @@ class _TipsScreenState extends State<TipsScreen>
                       tip.orderDate,
                       style: TextStyle(
                         fontSize: 14,
-                        color: isDark
-                            ? Colors.white
-                            : const Color(0xFF3D3D3D),
+                        color: isDark ? Colors.white : const Color(0xFF3D3D3D),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -928,9 +1016,7 @@ class _TipsScreenState extends State<TipsScreen>
                       '${tip.orderId}',
                       style: TextStyle(
                         fontSize: 14,
-                        color: isDark
-                            ? Colors.white
-                            : const Color(0xFF3D3D3D),
+                        color: isDark ? Colors.white : const Color(0xFF3D3D3D),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -942,9 +1028,7 @@ class _TipsScreenState extends State<TipsScreen>
                       "$_currency${tip.orderAmt.toStringAsFixed(2)}",
                       style: TextStyle(
                         fontSize: 14,
-                        color: isDark
-                            ? Colors.white
-                            : const Color(0xFF3D3D3D),
+                        color: isDark ? Colors.white : const Color(0xFF3D3D3D),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -956,9 +1040,7 @@ class _TipsScreenState extends State<TipsScreen>
                       "$_currency${tip.orderTipAmt.toStringAsFixed(2)}",
                       style: TextStyle(
                         fontSize: 14,
-                        color: isDark
-                            ? Colors.white
-                            : const Color(0xFF3D3D3D),
+                        color: isDark ? Colors.white : const Color(0xFF3D3D3D),
                         fontWeight: FontWeight.w500,
                       ),
                     ),

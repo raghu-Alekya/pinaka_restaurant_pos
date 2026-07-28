@@ -471,29 +471,35 @@ class _OrdersListTableState extends State<OrdersListTable> {
                               width: 180,
                               height: 40,
                               child: Container(
-                                decoration: ShapeDecoration(
+                                decoration: BoxDecoration(
                                   color:
                                       isDark
-                                          ? const Color(0xFF2B3042)
-                                          : const Color(0xFFF0F0F0),
-                                  shape: RoundedRectangleBorder(
-                                    side: BorderSide(
-                                      width: 1,
-                                      color:
-                                          isDark
-                                              ? Colors.white24
-                                              : const Color(0xFFA5A5A5),
-                                    ),
-                                    borderRadius: BorderRadius.circular(10),
+                                          ? const Color(0xFF12171E)
+                                          : Colors.white,
+                                  border: Border.all(
+                                    color:
+                                        isDark
+                                            ? const Color(0xFF374151)
+                                            : Colors.grey.shade300,
+                                    width: 1,
                                   ),
-                                  shadows:
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow:
                                       isDark
-                                          ? []
+                                          ? [
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(
+                                                0.35,
+                                              ),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ]
                                           : const [
                                             BoxShadow(
-                                              color: Color(0x19000000),
+                                              color: Colors.black12,
                                               blurRadius: 4,
-                                              offset: Offset(0, 1),
+                                              offset: Offset(0, 2),
                                             ),
                                           ],
                                 ),
@@ -502,23 +508,49 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                   readOnly: true,
                                   textAlignVertical: TextAlignVertical.center,
                                   style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
                                     color:
                                         isDark
                                             ? Colors.white
-                                            : const Color(0xFF7E7E7E),
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
+                                            : const Color(0xFF111827),
                                   ),
                                   onTap: () async {
                                     final picked = await showDatePicker(
                                       context: context,
-                                      barrierDismissible: false,
                                       initialDate:
                                           selectedDate ?? DateTime.now(),
                                       firstDate: DateTime(2020),
                                       lastDate: DateTime(2030),
+                                      builder: (context, child) {
+                                        return Theme(
+                                          data: Theme.of(context).copyWith(
+                                            colorScheme:
+                                                isDark
+                                                    ? const ColorScheme.dark(
+                                                      primary: Color(
+                                                        0xFFFFFFFF,
+                                                      ),
+                                                      onPrimary: Colors.black,
+                                                      surface: Color(
+                                                        0xFF1F2937,
+                                                      ),
+                                                      onSurface: Colors.white,
+                                                    )
+                                                    : Theme.of(
+                                                      context,
+                                                    ).colorScheme,
+                                            dialogTheme: DialogThemeData(
+                                              backgroundColor:
+                                                  isDark
+                                                      ? const Color(0xFF1F2937)
+                                                      : Colors.white,
+                                            ),
+                                          ),
+                                          child: child!,
+                                        );
+                                      },
                                     );
-
                                     if (picked != null) {
                                       setState(() {
                                         selectedDate = picked;
@@ -549,15 +581,15 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                     isDense: true,
                                     contentPadding: const EdgeInsets.symmetric(
                                       horizontal: 12,
-                                      vertical: 12,
+                                      vertical: 10,
                                     ),
                                     suffixIcon: Icon(
-                                      Icons.calendar_month,
-                                      size: 20,
+                                      Icons.calendar_today,
+                                      size: 18,
                                       color:
                                           isDark
                                               ? Colors.white70
-                                              : const Color(0xFF6D6D6D),
+                                              : const Color(0xFF6B7280),
                                     ),
                                   ),
                                 ),
@@ -740,7 +772,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                       height: 1.10,
                                     ),
                                     headingRowHeight: 45,
-                                    dataRowHeight: 40,
+                                    dataRowHeight: 45,
                                     headingRowColor: MaterialStateProperty.all(
                                       isDark
                                           ? const Color(0xFF34384F)
@@ -783,41 +815,6 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                               (order.tableId == null ||
                                                   order.tableId == 0);
                                           return DataRow(
-                                            onSelectChanged: (_) async {
-                                              final bool?
-                                              didUpdate = await Navigator.push<
-                                                bool
-                                              >(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder:
-                                                      (
-                                                        _,
-                                                      ) => OrdersDetailsScreen(
-                                                        token: widget.token,
-                                                        pin: widget.pin,
-                                                        restaurantId:
-                                                            widget.restaurantId,
-                                                        restaurantName:
-                                                            widget
-                                                                .restaurantName,
-                                                        userPermissions:
-                                                            _userPermissions,
-                                                        orderId: order.orderId!,
-                                                      ),
-                                                ),
-                                              );
-
-                                              if (didUpdate == true) {
-                                                context
-                                                    .read<OrderstatusBloc>()
-                                                    .add(
-                                                      FetchOrders(
-                                                        token: widget.token,
-                                                      ),
-                                                    );
-                                              }
-                                            },
                                             cells: [
                                               DataCell(
                                                 Text(
@@ -856,7 +853,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                               DataCell(
                                                 Text(
                                                   isTakeAwayType
-                                                      ? '-'
+                                                      ? 'NIL'
                                                       : (order.zoneName ?? '-'),
                                                   style: TextStyle(
                                                     color:
@@ -870,7 +867,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                               DataCell(
                                                 Text(
                                                   isTakeAwayType
-                                                      ? '-'
+                                                      ? 'NIL'
                                                       : (order.tableName ??
                                                           '-'),
                                                   style: TextStyle(
@@ -904,7 +901,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                                               ?.trim()
                                                               .isEmpty ==
                                                           true
-                                                      ? '-'
+                                                      ? 'Not Captured'
                                                       : order.customerPhone ??
                                                           '-',
                                                   style: TextStyle(

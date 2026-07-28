@@ -15,7 +15,7 @@ class MiniSubCategoryBloc
     extends Bloc<MiniSubCategoryEvent, MiniSubCategoryState> {
   final MiniSubCategoryRepository repository;
   Set<int> expandedFolderIds = {};
-  final Map<int, List<MiniSubCategory>> _cache = {};   // MiniSubCategoryBloc
+  final Map<int, List<MiniSubCategory>> _cache = {}; // MiniSubCategoryBloc
 
   // The last successfully loaded data, kept around so the bloc never has
   // to fall back to a blank Loading/Error state once we have SOMETHING
@@ -31,7 +31,7 @@ class MiniSubCategoryBloc
   final Set<int> _inFlightRefresh = {};
 
   MiniSubCategoryBloc({required this.repository})
-      : super(MiniSubCategoryInitial()) {
+    : super(MiniSubCategoryInitial()) {
     on<FetchMiniSubCategories>(_onFetchMiniSubCategories);
     on<ToggleFolder>(_onToggleFolder);
     on<SelectProduct>(_onSelectProduct);
@@ -64,11 +64,14 @@ class MiniSubCategoryBloc
     stream.listen((state) {
       print("BLoC State Changed: $state");
       if (state is MiniSubCategoryLoaded) {
-        print("Loaded MiniSubCategories (isRefreshing=${state.isRefreshing}, "
-            "isOffline=${state.isOffline}):");
+        print(
+          "Loaded MiniSubCategories (isRefreshing=${state.isRefreshing}, "
+          "isOffline=${state.isOffline}):",
+        );
         for (var mini in state.miniSubCategories) {
           print(
-              "- ${mini.name} (Folder: ${mini.isFolder}, Products: ${mini.products.length})");
+            "- ${mini.name} (Folder: ${mini.isFolder}, Products: ${mini.products.length})",
+          );
         }
         print("Expanded Folder IDs: ${state.expandedFolderIds}");
       }
@@ -76,13 +79,15 @@ class MiniSubCategoryBloc
   }
 
   bool hasCacheFor(int subCategoryId) => _cache.containsKey(subCategoryId);
-  List<MiniSubCategory>? getCacheFor(int subCategoryId) => _cache[subCategoryId];
-  void saveToCache(int subCategoryId, List<MiniSubCategory> data) => _cache[subCategoryId] = data;
+  List<MiniSubCategory>? getCacheFor(int subCategoryId) =>
+      _cache[subCategoryId];
+  void saveToCache(int subCategoryId, List<MiniSubCategory> data) =>
+      _cache[subCategoryId] = data;
 
   Future<void> _onFetchMiniSubCategories(
-      FetchMiniSubCategories event,
-      Emitter<MiniSubCategoryState> emit,
-      ) async {
+    FetchMiniSubCategories event,
+    Emitter<MiniSubCategoryState> emit,
+  ) async {
     final id = event.subCategoryId;
     _activeSubCategoryId = id;
 
@@ -103,19 +108,11 @@ class MiniSubCategoryBloc
       return;
     }
 
-    // 2) No cache for this id yet.
-    if (_lastLoaded != null) {
-      // Keep whatever is already on screen visible — just flag that a
-      // newer subcategory is being fetched. No spinner, no blank screen.
-      emit(_lastLoaded!.copyWith(isRefreshing: true, isOffline: false));
-    } else {
-      // Genuinely nothing to show yet (first fetch of the whole session).
-      emit(MiniSubCategoryLoading());
-    }
+    // No cache for this subcategory
+    emit(MiniSubCategoryLoading());
 
     try {
-      final miniSubCategories =
-      await repository.fetchMiniSubCategories(id);
+      final miniSubCategories = await repository.fetchMiniSubCategories(id);
 
       if (isClosed || _activeSubCategoryId != id) {
         // User already moved to a different subcategory — still cache the
@@ -157,26 +154,27 @@ class MiniSubCategoryBloc
     if (_inFlightRefresh.contains(id)) return;
     _inFlightRefresh.add(id);
 
-    repository.fetchMiniSubCategories(id).then((data) {
-      _inFlightRefresh.remove(id);
-      if (isClosed) return;
-      add(MiniSubCategoryBackgroundFetchSucceeded(id, data));
-    }).catchError((_) {
-      _inFlightRefresh.remove(id);
-      if (isClosed) return;
-      add(MiniSubCategoryBackgroundFetchFailed(id));
-    });
+    repository
+        .fetchMiniSubCategories(id)
+        .then((data) {
+          _inFlightRefresh.remove(id);
+          if (isClosed) return;
+          add(MiniSubCategoryBackgroundFetchSucceeded(id, data));
+        })
+        .catchError((_) {
+          _inFlightRefresh.remove(id);
+          if (isClosed) return;
+          add(MiniSubCategoryBackgroundFetchFailed(id));
+        });
   }
 
   void _onBackgroundFetchSucceeded(
-      MiniSubCategoryBackgroundFetchSucceeded event,
-      Emitter<MiniSubCategoryState> emit,
-      ) {
+    MiniSubCategoryBackgroundFetchSucceeded event,
+    Emitter<MiniSubCategoryState> emit,
+  ) {
     final previouslyCached = _cache[event.subCategoryId];
-    final changed = !_sameMiniSubCategoryIds(
-      previouslyCached,
-      event.miniSubCategories,
-    );
+    final changed =
+        !_sameMiniSubCategoryIds(previouslyCached, event.miniSubCategories);
 
     _cache[event.subCategoryId] = event.miniSubCategories;
 
@@ -191,19 +189,22 @@ class MiniSubCategoryBloc
   }
 
   void _onBackgroundFetchFailed(
-      MiniSubCategoryBackgroundFetchFailed event,
-      Emitter<MiniSubCategoryState> emit,
-      ) {
+    MiniSubCategoryBackgroundFetchFailed event,
+    Emitter<MiniSubCategoryState> emit,
+  ) {
     // Cached data is already on screen and stays exactly as it is —
     // nothing to do here besides logging (e.g. transient offline blip
     // while silently refreshing an already-visited subcategory).
     print(
-        "Background refresh failed for subcategory ${event.subCategoryId} "
-            "(offline?) — keeping cached data as-is.");
+      "Background refresh failed for subcategory ${event.subCategoryId} "
+      "(offline?) — keeping cached data as-is.",
+    );
   }
 
   bool _sameMiniSubCategoryIds(
-      List<MiniSubCategory>? a, List<MiniSubCategory> b) {
+    List<MiniSubCategory>? a,
+    List<MiniSubCategory> b,
+  ) {
     if (a == null) return false;
     if (a.length != b.length) return false;
     final idsA = a.map((e) => e.id).toSet();
@@ -236,15 +237,21 @@ class MiniSubCategoryBloc
         print("Folder Expanded: ${event.miniSubCategoryId}");
       }
 
-      final updated =
-      currentState.copyWith(expandedFolderIds: Set.from(expandedFolderIds));
+      final updated = currentState.copyWith(
+        expandedFolderIds: Set.from(expandedFolderIds),
+      );
       _lastLoaded = updated;
       emit(updated);
     }
   }
 
-  void _onSelectProduct(SelectProduct event, Emitter<MiniSubCategoryState> emit) {
-    print("Event: SelectProduct -> ${event.product.name} (ID: ${event.product.id})");
+  void _onSelectProduct(
+    SelectProduct event,
+    Emitter<MiniSubCategoryState> emit,
+  ) {
+    print(
+      "Event: SelectProduct -> ${event.product.name} (ID: ${event.product.id})",
+    );
     // You can handle product selection logic here
   }
 }

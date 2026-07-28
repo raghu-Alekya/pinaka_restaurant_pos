@@ -650,16 +650,20 @@ class _paymentsummaryState extends State<paymentsummary> {
     required double paidAmount,
     required double remainingAmount,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return showDialog<String>(
       context: context,
       barrierDismissible: false,
       barrierColor: Colors.black.withOpacity(0.4),
       builder: (dialogContext) {
+        final theme = Theme.of(dialogContext);
+
         return Center(
           child: Container(
             width: MediaQuery.of(dialogContext).size.width * 0.45,
             decoration: ShapeDecoration(
-              color: Colors.white,
+              color: theme.cardColor,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -674,10 +678,16 @@ class _paymentsummaryState extends State<paymentsummary> {
                     width: 100,
                     height: 100,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
+                      gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomLeft,
-                        colors: [Color(0xFFFFE0B2), Color(0xFFFFFFFF)],
+                        colors:
+                            isDark
+                                ? [
+                                  Colors.orange.shade900.withOpacity(0.5),
+                                  theme.cardColor,
+                                ]
+                                : const [Color(0xFFFFE0B2), Color(0xFFFFFFFF)],
                       ),
                       borderRadius: BorderRadius.circular(63),
                     ),
@@ -690,15 +700,13 @@ class _paymentsummaryState extends State<paymentsummary> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  const Text(
+                  Text(
                     'Partial Payment Received!',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Color(0xFF4C5F7D),
+                    style: theme.textTheme.titleLarge?.copyWith(
                       fontSize: 22,
-                      fontFamily: 'Inter',
                       fontWeight: FontWeight.w500,
-                      height: 1.5,
+                      color: theme.textTheme.titleLarge?.color,
                     ),
                   ),
                   const SizedBox(height: 15),
@@ -740,24 +748,29 @@ class _paymentsummaryState extends State<paymentsummary> {
     );
   }
 
-  // ➕ NEW — styled the same as Paymentsucess._buildInfoRow.
   Widget _buildPartialInfoRow(
     BuildContext context,
     String label,
     String amountText,
   ) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       height: MediaQuery.of(context).size.height * 0.07,
       width: MediaQuery.of(context).size.width * 0.38,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
         borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: const Color(0x10000000), width: 0.8),
-        boxShadow: const [
+        // border: Border.all(
+        //   color: isDark ? Colors.grey.shade700 : const Color(0x10000000),
+        //   width: 0.8,
+        // ),
+        boxShadow: [
           BoxShadow(
-            color: Colors.black12,
+            color: isDark ? Colors.black54 : Colors.black12,
             blurRadius: 10,
-            offset: Offset(0, 1),
+            offset: const Offset(0, 1),
           ),
         ],
       ),
@@ -767,18 +780,18 @@ class _paymentsummaryState extends State<paymentsummary> {
         children: [
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 20,
-              color: Color(0xFF4C5F7D),
+              color: theme.textTheme.bodyLarge?.color,
             ),
           ),
           Text(
             "$_currencySymbol$amountText",
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 20,
-              color: Color(0xFF4C5F7D),
+              color: theme.textTheme.bodyLarge?.color,
             ),
           ),
         ],
@@ -786,7 +799,6 @@ class _paymentsummaryState extends State<paymentsummary> {
     );
   }
 
-  // ➕ NEW — styled the same as Paymentsucess._buildChangeRow, but tinted
   // orange/red since this is money still owed, not change to give back.
   Widget _buildPartialBalanceRow(BuildContext context, String balanceText) {
     return Container(
@@ -1985,107 +1997,6 @@ class _paymentsummaryState extends State<paymentsummary> {
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _balanceAmountCard(double value) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bool isReady =
-        _paymentSummary != null && _paymentSummary!.orderId == widget.orderId;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(7),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF202433) : Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: isDark ? Colors.black.withOpacity(0.35) : Colors.white,
-            offset: const Offset(-4, -4),
-            blurRadius: 8,
-          ),
-          BoxShadow(
-            color: isDark ? Colors.black54 : const Color(0xFFD9E6FF),
-            offset: const Offset(4, 4),
-            blurRadius: 8,
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "Balance Amount",
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white70 : const Color(0xFF913177),
-              letterSpacing: 0.2,
-            ),
-          ),
-          const SizedBox(height: 7),
-          if (!isReady)
-            Container(
-              width: double.infinity,
-              height: 74,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF7EAF7),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF913177)),
-                ),
-              ),
-            )
-          else
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF7EAF7),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          "$_currencySymbol${value.toStringAsFixed(2)}",
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF262525),
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                      ),
-                      // Custom Image instead of _coinsWidget()
-                      SizedBox(
-                        width: 54,
-                        height: 50,
-                        child: Image.asset(
-                          "assets/balance_amount.png",
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
         ],
       ),
     );

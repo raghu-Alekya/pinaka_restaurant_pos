@@ -89,7 +89,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
 
   // Auto-refresh only when new items appear
   Timer? _autoRefreshTimer;
-  static const Duration _autoRefreshInterval = Duration(seconds:3);
+  static const Duration _autoRefreshInterval = Duration(seconds: 3);
   bool _isDateFiltered = false;
   bool _isSearchActive = false;
 
@@ -102,7 +102,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
     selectedDate = DateTime.now();
 
     _datevendorController.text =
-    "${selectedDate!.day.toString().padLeft(2, '0')}/"
+        "${selectedDate!.day.toString().padLeft(2, '0')}/"
         "${selectedDate!.month.toString().padLeft(2, '0')}/"
         "${selectedDate!.year}";
 
@@ -137,9 +137,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
           date: apiDate,
         );
       } else {
-        response = await _repository.getVendorPayments(
-          token: widget.token,
-        );
+        response = await _repository.getVendorPayments(token: widget.token);
       }
 
       if (!mounted || response.isEmpty) return;
@@ -150,9 +148,10 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
       debugPrint("🆕 Found ${newIds.length} new vendor payment(s)");
 
       final existingIds = vendorPayments.map((e) => e.vendorPaymentId).toSet();
-      final newItems = response
-          .where((p) => !existingIds.contains(p.vendorPaymentId))
-          .toList();
+      final newItems =
+          response
+              .where((p) => !existingIds.contains(p.vendorPaymentId))
+              .toList();
 
       if (newItems.isEmpty) return;
 
@@ -233,19 +232,13 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                 const SizedBox(height: 16),
                 const Text(
                   "Delete Vendor Payment",
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 10),
                 const Text(
                   "Are you sure you want to delete this vendor payment?\nThis action cannot be undone.",
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.grey, fontSize: 14),
                 ),
                 const SizedBox(height: 24),
                 Row(
@@ -378,9 +371,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
         return;
       }
 
-      final data = await _repository.getVendorPayments(
-        token: widget.token,
-      );
+      final data = await _repository.getVendorPayments(token: widget.token);
 
       _VendorPaymentsCache.set(data);
       _VendorPaymentIdTracker.set(data);
@@ -459,9 +450,8 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
           });
         },
       ),
-      backgroundColor: isDark
-          ? const Color(0xFF161A26)
-          : const Color(0xFFF6F6F6),
+      backgroundColor:
+          isDark ? const Color(0xFF161A26) : const Color(0xFFF6F6F6),
       body: SafeArea(
         child: Column(
           children: [
@@ -471,15 +461,14 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                 child: Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: isDark
-                        ? const Color(0xFF202433)
-                        : Colors.white,
+                    color: isDark ? const Color(0xFF202433) : Colors.white,
                     borderRadius: BorderRadius.circular(10),
                     boxShadow: [
                       BoxShadow(
-                        color: isDark
-                            ? Colors.black.withOpacity(.45)
-                            : const Color(0x3F474747),
+                        color:
+                            isDark
+                                ? Colors.black.withOpacity(.45)
+                                : const Color(0x3F474747),
                         blurRadius: 10,
                         offset: const Offset(0, 1),
                       ),
@@ -496,9 +485,10 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                             Text(
                               'Vendor Management',
                               style: TextStyle(
-                                color: isDark
-                                    ? Colors.white
-                                    : const Color(0xFF3D3D3D),
+                                color:
+                                    isDark
+                                        ? Colors.white
+                                        : const Color(0xFF3D3D3D),
                                 fontSize: 24,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -508,22 +498,25 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                               width: 300,
                               height: 40,
                               decoration: ShapeDecoration(
-                                color: isDark
-                                    ? const Color(0xFF2B3042)
-                                    : Colors.white,
+                                color:
+                                    isDark
+                                        ? const Color(0xFF2B3042)
+                                        : Colors.white,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                   side: BorderSide(
-                                    color: isDark
-                                        ? Colors.white24
-                                        : Colors.transparent,
+                                    color:
+                                        isDark
+                                            ? Colors.white24
+                                            : Colors.transparent,
                                   ),
                                 ),
                                 shadows: [
                                   BoxShadow(
-                                    color: isDark
-                                        ? Colors.black.withOpacity(.35)
-                                        : const Color(0x4204347F),
+                                    color:
+                                        isDark
+                                            ? Colors.black.withOpacity(.35)
+                                            : const Color(0x4204347F),
                                     blurRadius: 10,
                                     offset: const Offset(0, 2),
                                   ),
@@ -531,7 +524,8 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                               ),
                               child: TextField(
                                 controller: searchController,
-                                cursorColor: isDark ? Colors.white : Colors.black,
+                                cursorColor:
+                                    isDark ? Colors.white : Colors.black,
 
                                 style: TextStyle(
                                   color: isDark ? Colors.white : Colors.black,
@@ -542,7 +536,8 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                     left: 16,
                                     right: 16,
                                     top: 4,
-                                    bottom: 6, // moves hint/text slightly upward
+                                    bottom:
+                                        6, // moves hint/text slightly upward
                                   ),
                                   prefixIcon: const Icon(
                                     Icons.search,
@@ -550,19 +545,21 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                   ),
                                   hintText: "Search by name or phone number",
                                   hintStyle: TextStyle(
-                                    color: isDark
-                                        ? Colors.white54
-                                        : const Color(0xFFC3C2C2),
+                                    color:
+                                        isDark
+                                            ? Colors.white54
+                                            : const Color(0xFFC3C2C2),
                                     fontSize: 14,
                                     fontWeight: FontWeight.w500, // hint weight
                                   ),
-                                ),                                onChanged: (value) {
-                                if (value.trim().isEmpty) {
-                                  _loadVendorPayments();
-                                } else {
-                                  _searchVendorPayments(value.trim());
-                                }
-                              },
+                                ),
+                                onChanged: (value) {
+                                  if (value.trim().isEmpty) {
+                                    _loadVendorPayments();
+                                  } else {
+                                    _searchVendorPayments(value.trim());
+                                  }
+                                },
                               ),
                             ),
 
@@ -573,62 +570,101 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                               width: 180,
                               height: 40,
                               child: Container(
-                                decoration: ShapeDecoration(
-                                  color: isDark
-                                      ? const Color(0xFF2B3042)
-                                      : const Color(0xFFF0F0F0),
-                                  shape: RoundedRectangleBorder(
-                                    side: BorderSide(
-                                      width: 1,
-                                      color: isDark
-                                          ? const Color(0xFF2B3042)
-                                          : const Color(0xFFF0F0F0),
-                                    ),
-                                    borderRadius: BorderRadius.circular(10),
+                                decoration: BoxDecoration(
+                                  color:
+                                      isDark
+                                          ? const Color(0xFF12171E)
+                                          : Colors.white,
+                                  border: Border.all(
+                                    color:
+                                        isDark
+                                            ? const Color(0xFF374151)
+                                            : Colors.grey.shade300,
+                                    width: 1,
                                   ),
-                                  shadows: const [
-                                    BoxShadow(
-                                      color: Color(0x19000000),
-                                      blurRadius: 4,
-                                      offset: Offset(0, 1),
-                                      spreadRadius: 0,
-                                    )
-                                  ],
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow:
+                                      isDark
+                                          ? [
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(
+                                                0.35,
+                                              ),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ]
+                                          : const [
+                                            BoxShadow(
+                                              color: Colors.black12,
+                                              blurRadius: 4,
+                                              offset: Offset(0, 2),
+                                            ),
+                                          ],
                                 ),
                                 child: TextField(
                                   controller: _datevendorController,
                                   readOnly: true,
                                   textAlignVertical: TextAlignVertical.center,
                                   style: TextStyle(
-                                    color: isDark
-                                        ? Colors.white
-                                        : const Color(0xFF7E7E7E),
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color:
+                                        isDark
+                                            ? Colors.white
+                                            : const Color(0xFF111827),
                                   ),
                                   onTap: () async {
                                     final pickedDate = await showDatePicker(
                                       context: context,
                                       initialDate:
-                                      selectedDate ?? DateTime.now(),
+                                          selectedDate ?? DateTime.now(),
                                       firstDate: DateTime(2020),
-                                      lastDate: DateTime(2100),
+                                      lastDate: DateTime(2030),
+                                      builder: (context, child) {
+                                        return Theme(
+                                          data: Theme.of(context).copyWith(
+                                            colorScheme:
+                                                isDark
+                                                    ? const ColorScheme.dark(
+                                                      primary: Color(
+                                                        0xFFFFFFFF,
+                                                      ),
+                                                      onPrimary: Colors.black,
+                                                      surface: Color(
+                                                        0xFF1F2937,
+                                                      ),
+                                                      onSurface: Colors.white,
+                                                    )
+                                                    : Theme.of(
+                                                      context,
+                                                    ).colorScheme,
+                                            dialogTheme: DialogThemeData(
+                                              backgroundColor:
+                                                  isDark
+                                                      ? const Color(0xFF1F2937)
+                                                      : Colors.white,
+                                            ),
+                                          ),
+                                          child: child!,
+                                        );
+                                      },
                                     );
-
                                     if (pickedDate != null) {
                                       setState(() {
                                         selectedDate = pickedDate;
                                         _datevendorController.text =
-                                        "${pickedDate.day.toString().padLeft(2, '0')}/"
+                                            "${pickedDate.day.toString().padLeft(2, '0')}/"
                                             "${pickedDate.month.toString().padLeft(2, '0')}/"
                                             "${pickedDate.year}";
                                       });
 
-                                      final apiDate =
-                                      DateFormat("d MMMM, yyyy")
-                                          .format(pickedDate);
+                                      final apiDate = DateFormat(
+                                        "d MMMM, yyyy",
+                                      ).format(pickedDate);
                                       await _filterVendorPaymentsByDate(
-                                          apiDate);
+                                        apiDate,
+                                      );
                                     }
                                   },
                                   decoration: InputDecoration(
@@ -636,17 +672,17 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                     enabledBorder: InputBorder.none,
                                     focusedBorder: InputBorder.none,
                                     isDense: true,
-                                    contentPadding:
-                                    const EdgeInsets.symmetric(
+                                    contentPadding: const EdgeInsets.symmetric(
                                       horizontal: 12,
-                                      vertical: 12,
+                                      vertical: 10,
                                     ),
                                     suffixIcon: Icon(
-                                      Icons.calendar_month,
-                                      size: 20,
-                                      color: isDark
-                                          ? Colors.white70
-                                          : const Color(0xFF6D6D6D),
+                                      Icons.calendar_today,
+                                      size: 18,
+                                      color:
+                                          isDark
+                                              ? Colors.white70
+                                              : const Color(0xFF6B7280),
                                     ),
                                   ),
                                 ),
@@ -661,9 +697,10 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                 final result = await showDialog(
                                   context: context,
                                   barrierDismissible: false,
-                                  builder: (_) => AddVendorPayoutDialog(
-                                    token: widget.token,
-                                  ),
+                                  builder:
+                                      (_) => AddVendorPayoutDialog(
+                                        token: widget.token,
+                                      ),
                                 );
 
                                 if (result == true) {
@@ -706,7 +743,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                   ],
                                 ),
                               ),
-                            )
+                            ),
                           ],
                         ),
                       ),
@@ -715,12 +752,15 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                       Expanded(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 14),
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
                           child: Container(
                             decoration: BoxDecoration(
-                              color: isDark
-                                  ? const Color(0xFF202433)
-                                  : const Color(0xFFF2F2F2),
+                              color:
+                                  isDark
+                                      ? const Color(0xFF202433)
+                                      : const Color(0xFFF2F2F2),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Column(
@@ -851,192 +891,196 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
 
                                 // Data / Empty / Loading
                                 Expanded(
-                                  child: isLoading
-                                      ? const Center(
-                                    child: CircularProgressIndicator(),
-                                  )
-                                      : vendorPayments.isEmpty
-                                      ? Center(
-                                    child: Text(
-                                      "No Vendor Payments Found",
-                                      style: TextStyle(
-                                        color: isDark
-                                            ? Colors.white70
-                                            : Colors.black87,
-                                      ),
-                                    ),
-                                  )
-                                      : Builder(
-                                    builder: (context) {
-                                      final startIndex =
-                                          (currentPage - 1) *
-                                              rowsPerPage;
-                                      final endIndex =
-                                      (startIndex +
-                                          rowsPerPage) >
-                                          vendorPayments
-                                              .length
-                                          ? vendorPayments
-                                          .length
-                                          : (startIndex +
-                                          rowsPerPage);
+                                  child:
+                                      isLoading
+                                          ? const Center(
+                                            child: CircularProgressIndicator(),
+                                          )
+                                          : vendorPayments.isEmpty
+                                          ? Center(
+                                            child: Text(
+                                              "No Vendor Payments Found",
+                                              style: TextStyle(
+                                                color:
+                                                    isDark
+                                                        ? Colors.white70
+                                                        : Colors.black87,
+                                              ),
+                                            ),
+                                          )
+                                          : Builder(
+                                            builder: (context) {
+                                              final startIndex =
+                                                  (currentPage - 1) *
+                                                  rowsPerPage;
+                                              final endIndex =
+                                                  (startIndex + rowsPerPage) >
+                                                          vendorPayments.length
+                                                      ? vendorPayments.length
+                                                      : (startIndex +
+                                                          rowsPerPage);
 
-                                      final currentPagePayments =
-                                      vendorPayments.sublist(
-                                          startIndex, endIndex);
+                                              final currentPagePayments =
+                                                  vendorPayments.sublist(
+                                                    startIndex,
+                                                    endIndex,
+                                                  );
 
-                                      return ListView.builder(
-                                        itemCount:
-                                        currentPagePayments
-                                            .length,
-                                        itemBuilder:
-                                            (context, index) {
-                                          final payment =
-                                          currentPagePayments[
-                                          index];
+                                              return ListView.builder(
+                                                itemCount:
+                                                    currentPagePayments.length,
+                                                itemBuilder: (context, index) {
+                                                  final payment =
+                                                      currentPagePayments[index];
 
-                                          return _dataRow(
-                                            invoiceNo: payment
-                                                .invoiceNo
-                                                .isEmpty
-                                                ? "-"
-                                                : payment.invoiceNo,
-                                            vendorName: payment
-                                                .vendorName
-                                                .isEmpty
-                                                ? "-"
-                                                : payment
-                                                .vendorName,
-                                            date: payment
-                                                .paymentDate,
-                                            contact: payment
-                                                .phoneNumber,
-                                            amount:
-                                            "$_currency${(double.tryParse(payment.amount) ?? 0.0).toStringAsFixed(2)}",
-                                            mode: payment
-                                                .paymentMethod,
-                                            purpose: payment
-                                                .purpose
-                                                .isEmpty
-                                                ? "-"
-                                                : payment.purpose,
-                                            note: payment
-                                                .notes.isEmpty
-                                                ? "-"
-                                                : payment.notes,
-                                            onEdit: () async {
-                                              try {
-                                                final data =
-                                                await _repository
-                                                    .getVendorPaymentById(
-                                                  token:
-                                                  widget.token,
-                                                  vendorPaymentId:
-                                                  payment
-                                                      .vendorPaymentId,
-                                                );
+                                                  return _dataRow(
+                                                    invoiceNo:
+                                                        payment
+                                                                .invoiceNo
+                                                                .isEmpty
+                                                            ? "-"
+                                                            : payment.invoiceNo,
+                                                    vendorName:
+                                                        payment
+                                                                .vendorName
+                                                                .isEmpty
+                                                            ? "-"
+                                                            : payment
+                                                                .vendorName,
+                                                    date: payment.paymentDate,
+                                                    contact:
+                                                        payment.phoneNumber,
+                                                    amount:
+                                                        "$_currency${(double.tryParse(payment.amount) ?? 0.0).toStringAsFixed(2)}",
+                                                    mode: payment.paymentMethod,
+                                                    purpose:
+                                                        payment.purpose.isEmpty
+                                                            ? "-"
+                                                            : payment.purpose,
+                                                    note:
+                                                        payment.notes.isEmpty
+                                                            ? "-"
+                                                            : payment.notes,
+                                                    onEdit: () async {
+                                                      try {
+                                                        final data = await _repository
+                                                            .getVendorPaymentById(
+                                                              token:
+                                                                  widget.token,
+                                                              vendorPaymentId:
+                                                                  payment
+                                                                      .vendorPaymentId,
+                                                            );
 
-                                                if (!mounted)
-                                                  return;
+                                                        if (!mounted) return;
 
-                                                final result =
-                                                await showDialog(
-                                                  context: context,
-                                                  barrierDismissible:
-                                                  false,
-                                                  builder: (_) =>
-                                                      AddVendorPayoutDialog(
-                                                        token:
-                                                        widget.token,
-                                                        editData: data,
-                                                      ),
-                                                );
+                                                        final result = await showDialog(
+                                                          context: context,
+                                                          barrierDismissible:
+                                                              false,
+                                                          builder:
+                                                              (
+                                                                _,
+                                                              ) => AddVendorPayoutDialog(
+                                                                token:
+                                                                    widget
+                                                                        .token,
+                                                                editData: data,
+                                                              ),
+                                                        );
 
-                                                if (result ==
-                                                    true) {
-                                                  _loadVendorPayments();
-                                                }
-                                              } catch (e) {
-                                                ScaffoldMessenger
-                                                    .of(context)
-                                                    .showSnackBar(
-                                                  SnackBar(
-                                                    content: Text(e
-                                                        .toString()),
-                                                    duration:
-                                                    const Duration(
-                                                        seconds:
-                                                        1),
-                                                    backgroundColor:
-                                                    Colors.red,
-                                                  ),
-                                                );
-                                              }
+                                                        if (result == true) {
+                                                          _loadVendorPayments();
+                                                        }
+                                                      } catch (e) {
+                                                        ScaffoldMessenger.of(
+                                                          context,
+                                                        ).showSnackBar(
+                                                          SnackBar(
+                                                            content: Text(
+                                                              e.toString(),
+                                                            ),
+                                                            duration:
+                                                                const Duration(
+                                                                  seconds: 1,
+                                                                ),
+                                                            backgroundColor:
+                                                                Colors.red,
+                                                          ),
+                                                        );
+                                                      }
+                                                    },
+                                                    onDelete: () async {
+                                                      final confirm =
+                                                          await _showDeleteDialog();
+
+                                                      if (confirm == true) {
+                                                        await _deleteVendorPayment(
+                                                          payment
+                                                              .vendorPaymentId,
+                                                        );
+                                                      }
+                                                    },
+                                                  );
+                                                },
+                                              );
                                             },
-                                            onDelete: () async {
-                                              final confirm =
-                                              await _showDeleteDialog();
-
-                                              if (confirm ==
-                                                  true) {
-                                                await _deleteVendorPayment(
-                                                  payment
-                                                      .vendorPaymentId,
-                                                );
-                                              }
-                                            },
-                                          );
-                                        },
-                                      );
-                                    },
-                                  ),
+                                          ),
                                 ),
 
                                 // Pagination
                                 Padding(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 8),
+                                    horizontal: 8,
+                                    vertical: 8,
+                                  ),
                                   child: Row(
                                     mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
                                         "Total Vendor Payments: ${vendorPayments.length}",
                                         style: TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w600,
-                                          color: isDark
-                                              ? Colors.white
-                                              : Colors.black87,
+                                          color:
+                                              isDark
+                                                  ? Colors.white
+                                                  : Colors.black87,
                                         ),
                                       ),
                                       Container(
                                         margin: const EdgeInsets.only(right: 5),
                                         decoration: BoxDecoration(
-                                          color: isDark
-                                              ? const Color(0xFF2B3042)
-                                              : Colors.white,
+                                          color:
+                                              isDark
+                                                  ? const Color(0xFF2B3042)
+                                                  : Colors.white,
                                           border: Border.all(
-                                            color: isDark
-                                                ? Colors.white24
-                                                : const Color(0xFFEFEFEF),
+                                            color:
+                                                isDark
+                                                    ? Colors.white24
+                                                    : const Color(0xFFEFEFEF),
                                           ),
-                                          borderRadius:
-                                          BorderRadius.circular(4),
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             GestureDetector(
-                                              onTap: currentPage > 1
-                                                  ? () {
-                                                setState(() {
-                                                  currentPage--;
-                                                });
-                                              }
-                                                  : null,
+                                              onTap:
+                                                  currentPage > 1
+                                                      ? () {
+                                                        setState(() {
+                                                          currentPage--;
+                                                        });
+                                                      }
+                                                      : null,
                                               child: _paginationTextButton(
-                                                  "Previous"),
+                                                "Previous",
+                                              ),
                                             ),
                                             GestureDetector(
                                               onTap: () {
@@ -1084,20 +1128,22 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                                 },
                                                 child: _pageButton(
                                                   totalPages,
-                                                  selected: currentPage ==
-                                                      totalPages,
+                                                  selected:
+                                                      currentPage == totalPages,
                                                 ),
                                               ),
                                             GestureDetector(
-                                              onTap: currentPage < totalPages
-                                                  ? () {
-                                                setState(() {
-                                                  currentPage++;
-                                                });
-                                              }
-                                                  : null,
+                                              onTap:
+                                                  currentPage < totalPages
+                                                      ? () {
+                                                        setState(() {
+                                                          currentPage++;
+                                                        });
+                                                      }
+                                                      : null,
                                               child: _paginationTextButton(
-                                                  "Next"),
+                                                "Next",
+                                              ),
                                             ),
                                           ],
                                         ),
@@ -1109,12 +1155,12 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                             ),
                           ),
                         ),
-                      )
+                      ),
                     ],
                   ),
                 ),
               ),
-            )
+            ),
           ],
         ),
       ),
@@ -1154,9 +1200,10 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
       width: 28,
       height: 32,
       decoration: BoxDecoration(
-        color: selected
-            ? const Color(0xFFFF4D20)
-            : (isDark ? const Color(0xFF2B3042) : Colors.white),
+        color:
+            selected
+                ? const Color(0xFFFF4D20)
+                : (isDark ? const Color(0xFF2B3042) : Colors.white),
         border: Border(
           right: BorderSide(
             color: isDark ? Colors.white24 : const Color(0xFFEFEFEF),
@@ -1167,9 +1214,10 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
       child: Text(
         '$page',
         style: TextStyle(
-          color: selected
-              ? Colors.white
-              : (isDark ? Colors.white70 : const Color(0xFF727272)),
+          color:
+              selected
+                  ? Colors.white
+                  : (isDark ? Colors.white70 : const Color(0xFF727272)),
           fontSize: 11,
           fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
         ),
@@ -1272,9 +1320,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
       child: Container(
         height: 60,
         alignment: Alignment.center,
-        decoration: const BoxDecoration(
-          color: Color(0xFF2A3558),
-        ),
+        decoration: const BoxDecoration(color: Color(0xFF2A3558)),
         child: Text(
           title,
           textAlign: TextAlign.center,

@@ -1082,8 +1082,6 @@
 //   }
 // }
 
-
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -1134,10 +1132,8 @@ class _ImageLoadingDotsState extends State<ImageLoadingDots>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: widget.duration,
-    )..repeat();
+    _controller = AnimationController(vsync: this, duration: widget.duration)
+      ..repeat();
   }
 
   @override
@@ -1157,14 +1153,10 @@ class _ImageLoadingDotsState extends State<ImageLoadingDots>
             final phase = (i * 0.22) % 1.0;
             final t = (_controller.value + phase) % 1.0;
 
-            final scale = 0.45 +
-                0.55 *
-                    (0.5 + 0.5 * math.sin(t * math.pi * 2));
+            final scale = 0.45 + 0.55 * (0.5 + 0.5 * math.sin(t * math.pi * 2));
 
             return Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: widget.spacing / 2,
-              ),
+              padding: EdgeInsets.symmetric(horizontal: widget.spacing / 2),
               child: Transform.scale(
                 scale: scale,
                 child: Container(
@@ -1190,7 +1182,6 @@ class _ImageLoadingDotsState extends State<ImageLoadingDots>
   }
 }
 
-
 class PromoImageLoading extends StatelessWidget {
   const PromoImageLoading({super.key});
 
@@ -1209,7 +1200,6 @@ class PromoImageLoading extends StatelessWidget {
   }
 }
 
-
 class ProductImageLoading extends StatelessWidget {
   const ProductImageLoading({super.key});
 
@@ -1227,12 +1217,8 @@ class ProductImageLoading extends StatelessWidget {
   }
 }
 
-
 class BlockImageLoading extends StatelessWidget {
-  const BlockImageLoading({
-    super.key,
-    this.message,
-  });
+  const BlockImageLoading({super.key, this.message});
 
   final String? message;
 
@@ -1242,18 +1228,12 @@ class BlockImageLoading extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const ImageLoadingDots(
-            dotSize: 9,
-            spacing: 5,
-          ),
+          const ImageLoadingDots(dotSize: 9, spacing: 5),
           if (message != null) ...[
             const SizedBox(height: 14),
             Text(
               message!,
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey.shade600,
-              ),
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
             ),
           ],
         ],
@@ -1261,7 +1241,6 @@ class BlockImageLoading extends StatelessWidget {
     );
   }
 }
-
 
 class MiniSubCategoryWidget extends StatefulWidget {
   final List<MiniSubCategory> subCategories;
@@ -1330,9 +1309,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
   void initState() {
     super.initState();
     currentSubCategories = widget.subCategories;
-    orderRepository = OrderRepository(
-      baseUrl: AppConstants.baseDomain,
-    );
+    orderRepository = OrderRepository(baseUrl: AppConstants.baseDomain);
     _loadCurrency();
     _prefetchAllSubCategoryProducts(widget.subCategories);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1357,8 +1334,10 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
   void didUpdateWidget(covariant MiniSubCategoryWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    final bool subCategoryChanged = oldWidget.tappedSubCategoryId != widget.tappedSubCategoryId;
-    final bool subCategoriesListChanged = oldWidget.subCategories != widget.subCategories;
+    final bool subCategoryChanged =
+        oldWidget.tappedSubCategoryId != widget.tappedSubCategoryId;
+    final bool subCategoriesListChanged =
+        oldWidget.subCategories != widget.subCategories;
 
     if (subCategoryChanged || subCategoriesListChanged) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1373,7 +1352,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
     }
   }
 
-// Replace the _initializeTakeAwayOrder method with this:
+  // Replace the _initializeTakeAwayOrder method with this:
 
   Future<bool> _initializeTakeAwayOrder() async {
     debugPrint("========== TAKEAWAY ORDER ==========");
@@ -1405,7 +1384,9 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
 
     // Check if order already exists
     if ((orderBloc.state.orderId ?? 0) != 0) {
-      debugPrint("✅ Takeaway order already exists. Order ID: ${orderBloc.state.orderId}");
+      debugPrint(
+        "✅ Takeaway order already exists. Order ID: ${orderBloc.state.orderId}",
+      );
       return true;
     }
 
@@ -1443,7 +1424,6 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
 
       debugPrint("✅ Takeaway order created and set: ${response.orderId}");
       return true;
-
     } catch (e, stackTrace) {
       debugPrint("❌ TakeAway Order Creation Failed");
       debugPrint("Error: $e");
@@ -1463,14 +1443,12 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       _isCreatingTakeAwayOrder = false;
     }
   }
+
   bool isComboItem(Product item) {
     return item.isCombo;
   }
 
-  Future<void> _openComboDetails(
-      BuildContext context,
-      Product product,
-      ) async {
+  Future<void> _openComboDetails(BuildContext context, Product product) async {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -1488,57 +1466,58 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (_) => Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: SizedBox(
-            height: 170,
-            width: 100,
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        builder:
+            (_) => Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: SizedBox(
+                height: 170,
+                width: 100,
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text(
-                          comboProduct.name,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              comboProduct.name,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                           ),
-                        ),
+                          InkWell(
+                            onTap: () => Navigator.pop(context),
+                            borderRadius: BorderRadius.circular(20),
+                            child: Container(
+                              width: 28,
+                              height: 28,
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.close,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      InkWell(
-                        onTap: () => Navigator.pop(context),
-                        borderRadius: BorderRadius.circular(20),
-                        child: Container(
-                          width: 28,
-                          height: 28,
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.close,
-                            color: Colors.white,
-                            size: 16,
-                          ),
-                        ),
-                      ),
+                      const SizedBox(height: 10),
+                      comboItemsList(comboProduct),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                  comboItemsList(comboProduct),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
       );
     } catch (e) {
       if (context.mounted) Navigator.pop(context);
@@ -1564,19 +1543,20 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: comboProduct.subItems.map((item) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 3),
-            child: Text(
-              "${item.quantity} × ${item.name}",
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          );
-        }).toList(),
+        children:
+            comboProduct.subItems.map((item) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Text(
+                  "${item.quantity} × ${item.name}",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              );
+            }).toList(),
       ),
     );
   }
@@ -1633,24 +1613,34 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       }
     }
   }
+
   void _prefetchAllSubCategoryProducts(List<MiniSubCategory> subCategories) {
     for (final category in subCategories) {
-      if (_productCache.containsKey(category.id) || _inFlightPrefetch.contains(category.id)) {
+      if (_productCache.containsKey(category.id) ||
+          _inFlightPrefetch.contains(category.id)) {
         continue;
       }
       _inFlightPrefetch.add(category.id);
-      widget.fetchProducts(category.id).then((products) {
-        _inFlightPrefetch.remove(category.id);
-        if (mounted) {
-          final updated = category.isFolder ? _applyVegTagging(category.name, products) : products;
-          _productCache[category.id] = updated;
-          _precacheProductImages(updated);
-          _prefetchModifiersAndVariants(updated);
-        }
-      }).catchError((e) {
-        _inFlightPrefetch.remove(category.id);
-        debugPrint("[MiniSubCategoryWidget] Background prefetch failed for id ${category.id}: $e");
-      });
+      widget
+          .fetchProducts(category.id)
+          .then((products) {
+            _inFlightPrefetch.remove(category.id);
+            if (mounted) {
+              final updated =
+                  category.isFolder
+                      ? _applyVegTagging(category.name, products)
+                      : products;
+              _productCache[category.id] = updated;
+              _precacheProductImages(updated);
+              _prefetchModifiersAndVariants(updated);
+            }
+          })
+          .catchError((e) {
+            _inFlightPrefetch.remove(category.id);
+            debugPrint(
+              "[MiniSubCategoryWidget] Background prefetch failed for id ${category.id}: $e",
+            );
+          });
     }
   }
 
@@ -1667,36 +1657,52 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
           final folders = await widget.repository.fetchMiniSubCategories(subId);
           miniSubBloc.saveToCache(subId, folders);
           for (final folder in folders) {
-            if (!_productCache.containsKey(folder.id) && !_inFlightPrefetch.contains(folder.id)) {
+            if (!_productCache.containsKey(folder.id) &&
+                !_inFlightPrefetch.contains(folder.id)) {
               _inFlightPrefetch.add(folder.id);
-              widget.fetchProducts(folder.id).then((products) {
-                _inFlightPrefetch.remove(folder.id);
-                final updated = folder.isFolder ? _applyVegTagging(folder.name, products) : products;
-                _productCache[folder.id] = updated;
-                _precacheProductImages(updated);
-                _prefetchModifiersAndVariants(updated);
-              }).catchError((_) {
-                _inFlightPrefetch.remove(folder.id);
-              });
+              widget
+                  .fetchProducts(folder.id)
+                  .then((products) {
+                    _inFlightPrefetch.remove(folder.id);
+                    final updated =
+                        folder.isFolder
+                            ? _applyVegTagging(folder.name, products)
+                            : products;
+                    _productCache[folder.id] = updated;
+                    _precacheProductImages(updated);
+                    _prefetchModifiersAndVariants(updated);
+                  })
+                  .catchError((_) {
+                    _inFlightPrefetch.remove(folder.id);
+                  });
             }
           }
         } catch (e) {
-          debugPrint("[MiniSubCategoryWidget] Background prefetch failed for subcategory tab $subId: $e");
+          debugPrint(
+            "[MiniSubCategoryWidget] Background prefetch failed for subcategory tab $subId: $e",
+          );
         }
       } else {
         final folders = miniSubBloc.getCacheFor(subId) ?? [];
         for (final folder in folders) {
-          if (!_productCache.containsKey(folder.id) && !_inFlightPrefetch.contains(folder.id)) {
+          if (!_productCache.containsKey(folder.id) &&
+              !_inFlightPrefetch.contains(folder.id)) {
             _inFlightPrefetch.add(folder.id);
-            widget.fetchProducts(folder.id).then((products) {
-              _inFlightPrefetch.remove(folder.id);
-              final updated = folder.isFolder ? _applyVegTagging(folder.name, products) : products;
-              _productCache[folder.id] = updated;
-              _precacheProductImages(updated);
-              _prefetchModifiersAndVariants(updated);
-            }).catchError((_) {
-              _inFlightPrefetch.remove(folder.id);
-            });
+            widget
+                .fetchProducts(folder.id)
+                .then((products) {
+                  _inFlightPrefetch.remove(folder.id);
+                  final updated =
+                      folder.isFolder
+                          ? _applyVegTagging(folder.name, products)
+                          : products;
+                  _productCache[folder.id] = updated;
+                  _precacheProductImages(updated);
+                  _prefetchModifiersAndVariants(updated);
+                })
+                .catchError((_) {
+                  _inFlightPrefetch.remove(folder.id);
+                });
           }
         }
       }
@@ -1713,7 +1719,9 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
   /// - If not -> leave the current screen exactly as-is and fetch quietly;
   ///   the screen updates itself the moment data arrives.
   void _switchSubCategory(
-      List<MiniSubCategory> newSubCategories, int subCategoryId) {
+    List<MiniSubCategory> newSubCategories,
+    int subCategoryId,
+  ) {
     final myReqId = ++_subCategoryReqId;
 
     final folders = newSubCategories.where((e) => e.isFolder).toList();
@@ -1721,18 +1729,21 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
     if (folders.isNotEmpty) {
       final first = folders.first;
       final resolved =
-      first.products.isNotEmpty ? first.products : _productCache[first.id];
+          first.products.isNotEmpty ? first.products : _productCache[first.id];
 
       if (resolved != null) {
         // Instant — nothing to wait for.
         _productCache[first.id] = resolved;
-        final resolvedFolder =
-        first.copyWith(products: resolved, count: resolved.length);
+        final resolvedFolder = first.copyWith(
+          products: resolved,
+          count: resolved.length,
+        );
 
         setState(() {
-          currentSubCategories = newSubCategories
-              .map((e) => e.id == resolvedFolder.id ? resolvedFolder : e)
-              .toList();
+          currentSubCategories =
+              newSubCategories
+                  .map((e) => e.id == resolvedFolder.id ? resolvedFolder : e)
+                  .toList();
           selectedFolder = resolvedFolder;
         });
 
@@ -1746,7 +1757,14 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
         }
       } else {
         // Nothing to show yet — keep current screen, swap in when ready.
-        unawaited(_loadFolderForNewSubCategory(first, newSubCategories, myReqId));
+        setState(() {
+          currentSubCategories = [];
+          selectedFolder = null;
+        });
+
+        unawaited(
+          _loadFolderForNewSubCategory(first, newSubCategories, myReqId),
+        );
       }
       return;
     }
@@ -1776,7 +1794,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
             isFolder: false,
             products: cached,
             count: cached.length,
-          )
+          ),
         ];
         selectedFolder = null;
       });
@@ -1787,27 +1805,36 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
     }
 
     // Nothing cached — keep current screen, fetch quietly, swap when ready.
+    setState(() {
+      currentSubCategories = [];
+      selectedFolder = null;
+    });
+
     unawaited(_loadDirectProductsForNewSubCategory(subCategoryId, myReqId));
   }
 
   Future<void> _loadFolderForNewSubCategory(
-      MiniSubCategory folder,
-      List<MiniSubCategory> parentSubCategories,
-      int reqId,
-      ) async {
+    MiniSubCategory folder,
+    List<MiniSubCategory> parentSubCategories,
+    int reqId,
+  ) async {
     try {
       final products = await widget.fetchProducts(folder.id);
-      if (!mounted || reqId != _subCategoryReqId) return; // stale — user moved on
+      if (!mounted || reqId != _subCategoryReqId)
+        return; // stale — user moved on
 
       final updated = _applyVegTagging(folder.name, products);
       _productCache[folder.id] = updated;
-      final newFolder =
-      folder.copyWith(products: updated, count: updated.length);
+      final newFolder = folder.copyWith(
+        products: updated,
+        count: updated.length,
+      );
 
       setState(() {
-        currentSubCategories = parentSubCategories
-            .map((e) => e.id == newFolder.id ? newFolder : e)
-            .toList();
+        currentSubCategories =
+            parentSubCategories
+                .map((e) => e.id == newFolder.id ? newFolder : e)
+                .toList();
         selectedFolder = newFolder;
       });
 
@@ -1827,7 +1854,8 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
 
       final updated = _applyVegTagging(folder.name, products);
       final cached = _productCache[folder.id];
-      final changed = cached == null ||
+      final changed =
+          cached == null ||
           cached.length != updated.length ||
           !_sameProductIds(cached, updated);
 
@@ -1836,23 +1864,29 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       _prefetchModifiersAndVariants(updated);
 
       if (changed && selectedFolder?.id == folder.id) {
-        final newFolder =
-        folder.copyWith(products: updated, count: updated.length);
+        final newFolder = folder.copyWith(
+          products: updated,
+          count: updated.length,
+        );
         setState(() {
           selectedFolder = newFolder;
-          currentSubCategories = currentSubCategories
-              .map((e) => e.id == newFolder.id ? newFolder : e)
-              .toList();
+          currentSubCategories =
+              currentSubCategories
+                  .map((e) => e.id == newFolder.id ? newFolder : e)
+                  .toList();
         });
       }
     } catch (e) {
       debugPrint(
-          "[MiniSubCategoryWidget] Silent folder refresh failed, keeping cache: $e");
+        "[MiniSubCategoryWidget] Silent folder refresh failed, keeping cache: $e",
+      );
     }
   }
 
   Future<void> _loadDirectProductsForNewSubCategory(
-      int subCategoryId, int reqId) async {
+    int subCategoryId,
+    int reqId,
+  ) async {
     try {
       final products = await widget.fetchProducts(subCategoryId);
       if (!mounted || reqId != _subCategoryReqId) return;
@@ -1866,7 +1900,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
             isFolder: false,
             products: products,
             count: products.length,
-          )
+          ),
         ];
         selectedFolder = null;
       });
@@ -1878,13 +1912,16 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
   }
 
   Future<void> _refreshDirectProductsSilently(
-      int subCategoryId, int reqId) async {
+    int subCategoryId,
+    int reqId,
+  ) async {
     try {
       final products = await widget.fetchProducts(subCategoryId);
       if (!mounted || reqId != _subCategoryReqId) return;
 
       final cached = _productCache[subCategoryId];
-      final changed = cached == null ||
+      final changed =
+          cached == null ||
           cached.length != products.length ||
           !_sameProductIds(cached, products);
 
@@ -1901,13 +1938,14 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
               isFolder: false,
               products: products,
               count: products.length,
-            )
+            ),
           ];
         });
       }
     } catch (e) {
       debugPrint(
-          "[MiniSubCategoryWidget] Silent direct refresh failed, keeping cache: $e");
+        "[MiniSubCategoryWidget] Silent direct refresh failed, keeping cache: $e",
+      );
     }
   }
 
@@ -1922,19 +1960,22 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
 
     final myReqId = ++_folderReqId;
     final resolved =
-    folder.products.isNotEmpty ? folder.products : _productCache[folder.id];
+        folder.products.isNotEmpty ? folder.products : _productCache[folder.id];
 
     if (resolved != null) {
       // Instant swap — no spinner, no flicker.
       _productCache[folder.id] = resolved;
-      final resolvedFolder =
-      folder.copyWith(products: resolved, count: resolved.length);
+      final resolvedFolder = folder.copyWith(
+        products: resolved,
+        count: resolved.length,
+      );
 
       setState(() {
         selectedFolder = resolvedFolder;
-        currentSubCategories = currentSubCategories
-            .map((e) => e.id == resolvedFolder.id ? resolvedFolder : e)
-            .toList();
+        currentSubCategories =
+            currentSubCategories
+                .map((e) => e.id == resolvedFolder.id ? resolvedFolder : e)
+                .toList();
       });
 
       widget.onFolderSelected?.call(resolvedFolder);
@@ -1960,14 +2001,17 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
 
       final updated = _applyVegTagging(folder.name, products);
       _productCache[folder.id] = updated;
-      final newFolder =
-      folder.copyWith(products: updated, count: updated.length);
+      final newFolder = folder.copyWith(
+        products: updated,
+        count: updated.length,
+      );
 
       setState(() {
         selectedFolder = newFolder;
-        currentSubCategories = currentSubCategories
-            .map((e) => e.id == newFolder.id ? newFolder : e)
-            .toList();
+        currentSubCategories =
+            currentSubCategories
+                .map((e) => e.id == newFolder.id ? newFolder : e)
+                .toList();
       });
       _precacheProductImages(updated);
       _prefetchModifiersAndVariants(updated);
@@ -1977,14 +2021,17 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
   }
 
   Future<void> _refreshFolderTapSilently(
-      MiniSubCategory folder, int reqId) async {
+    MiniSubCategory folder,
+    int reqId,
+  ) async {
     try {
       final products = await widget.fetchProducts(folder.id);
       if (!mounted || reqId != _folderReqId) return;
 
       final updated = _applyVegTagging(folder.name, products);
       final cached = _productCache[folder.id];
-      final changed = cached == null ||
+      final changed =
+          cached == null ||
           cached.length != updated.length ||
           !_sameProductIds(cached, updated);
 
@@ -1993,18 +2040,22 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       _prefetchModifiersAndVariants(updated);
 
       if (changed && selectedFolder?.id == folder.id) {
-        final newFolder =
-        folder.copyWith(products: updated, count: updated.length);
+        final newFolder = folder.copyWith(
+          products: updated,
+          count: updated.length,
+        );
         setState(() {
           selectedFolder = newFolder;
-          currentSubCategories = currentSubCategories
-              .map((e) => e.id == newFolder.id ? newFolder : e)
-              .toList();
+          currentSubCategories =
+              currentSubCategories
+                  .map((e) => e.id == newFolder.id ? newFolder : e)
+                  .toList();
         });
       }
     } catch (e) {
       debugPrint(
-          "[MiniSubCategoryWidget] Folder tap refresh failed, keeping cache: $e");
+        "[MiniSubCategoryWidget] Folder tap refresh failed, keeping cache: $e",
+      );
     }
   }
 
@@ -2018,8 +2069,9 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
     }
     if (widget.modifierRepository == null) return [];
     try {
-      final mods =
-      await widget.modifierRepository!.fetchModifiersByProductId(productId);
+      final mods = await widget.modifierRepository!.fetchModifiersByProductId(
+        productId,
+      );
       _modifierCache[productId] = mods;
       return mods;
     } catch (_) {
@@ -2032,8 +2084,9 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       return _variantCache[productId]!;
     }
     try {
-      final vars =
-      await widget.variantRepository.fetchVariantsByProduct(productId);
+      final vars = await widget.variantRepository.fetchVariantsByProduct(
+        productId,
+      );
       _variantCache[productId] = vars;
       return vars;
     } catch (_) {
@@ -2089,8 +2142,10 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
 
     final hasOptions = modifiers.isNotEmpty;
 
-    debugPrint("Product: ${item.name}, Has Options: $hasOptions, "
-        "Variants: ${variants.length}");
+    debugPrint(
+      "Product: ${item.name}, Has Options: $hasOptions, "
+      "Variants: ${variants.length}",
+    );
 
     final orderItem = OrderItems(
       productId: item.id,
@@ -2121,44 +2176,46 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
   }
 
   void _showVariantPopup(
-      BuildContext context,
-      Product product,
-      OrderBloc orderBloc,
-      Category section,
-      bool hasOptions,
-      ) {
+    BuildContext context,
+    Product product,
+    OrderBloc orderBloc,
+    Category section,
+    bool hasOptions,
+  ) {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => VariantPopupContent(
-        product: product,
-        itemName: product.name,
-        variants: product.variants,
-        onVariantSelected: (variant) {
-          debugPrint("[VariantPopup] Variant selected: ${variant.name}");
-        },
-        onSelected: (variant) {
-          final orderItem = OrderItems(
-            productId: product.id,
-            variationId: variant.id,
-            name: '${product.name} - ${variant.name}',
-            price: variant.price,
-            quantity: 1,
-            modifiers: const [],
-            addOns: const {},
+      builder:
+          (context) => VariantPopupContent(
+            product: product,
+            itemName: product.name,
+            variants: product.variants,
+            onVariantSelected: (variant) {
+              debugPrint("[VariantPopup] Variant selected: ${variant.name}");
+            },
+            onSelected: (variant) {
+              final orderItem = OrderItems(
+                productId: product.id,
+                variationId: variant.id,
+                name: '${product.name} - ${variant.name}',
+                price: variant.price,
+                quantity: 1,
+                modifiers: const [],
+                addOns: const {},
+                section: section,
+                amount: variant.price,
+                hasOptions: hasOptions,
+              );
+
+              orderBloc.add(AddOrderItem(orderItem));
+
+              debugPrint(
+                "[VariantPopup] Added to order: ${orderItem.name} x${orderItem.quantity}",
+              );
+            },
             section: section,
-            amount: variant.price,
-            hasOptions: hasOptions,
-          );
-
-          orderBloc.add(AddOrderItem(orderItem));
-
-          debugPrint(
-              "[VariantPopup] Added to order: ${orderItem.name} x${orderItem.quantity}");
-        },
-        section: section,
-        orderBloc: orderBloc,
-      ),
+            orderBloc: orderBloc,
+          ),
     );
   }
 
@@ -2168,12 +2225,13 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
 
   @override
   Widget build(BuildContext context) {
+    if (currentSubCategories.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
     final folders = currentSubCategories.where((e) => e.isFolder).toList();
-    final directItems =
-    currentSubCategories.where((e) => !e.isFolder).toList();
+    final directItems = currentSubCategories.where((e) => !e.isFolder).toList();
     final folderItems = selectedFolder?.products ?? [];
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
 
     // NOTE: intentionally no loading/spinner branch here. Whatever is in
     // `currentSubCategories` / `selectedFolder` right now is exactly what
@@ -2182,26 +2240,17 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
 
     return Container(
       padding: const EdgeInsets.all(5),
-      margin: const EdgeInsets.only(
-        left: 3,
-        top: 3,
-        right: 3,
-        bottom: 4.5,
-      ),
+      margin: const EdgeInsets.only(left: 3, top: 3, right: 3, bottom: 4.5),
       decoration: BoxDecoration(
-        border: Border.all(
-          color: Theme.of(context).dividerColor,
-          width: 0.5,
-        ),
+        border: Border.all(color: Theme.of(context).dividerColor, width: 0.5),
         borderRadius: BorderRadius.circular(12),
-        color: isDark
-            ? const Color(0xFF1B1B22)
-            : Colors.white,
+        color: isDark ? const Color(0xFF1B1B22) : Colors.white,
         boxShadow: [
           BoxShadow(
-            color: isDark
-                ? Colors.black.withOpacity(0.25)
-                : Colors.grey.withOpacity(0.15),
+            color:
+                isDark
+                    ? Colors.black.withOpacity(0.25)
+                    : Colors.grey.withOpacity(0.15),
             blurRadius: 3,
             offset: const Offset(0, 0),
           ),
@@ -2218,7 +2267,8 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
           ],
           if (folders.isEmpty && directItems.isNotEmpty)
             _buildItemsGrid(
-                directItems.expand<Product>((e) => e.products).toList()),
+              directItems.expand<Product>((e) => e.products).toList(),
+            ),
         ],
       ),
     );
@@ -2240,45 +2290,51 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
           return GestureDetector(
             onTap: () => _onFolderTap(folder),
             child: Container(
-              padding:
-              const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
-              decoration: isSelected
-                  ? BoxDecoration(
-                color: isDark
-                    ? const Color(0x66FF364C) // Light red in dark mode
-                    : const Color(0xFFFF364C),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: const Color(0xFFFF364C),
-                  width: 0.8,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Theme.of(context).shadowColor.withOpacity(0.2),
-                    blurRadius: 8,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
-              )
-                  : BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF2B3045)
-                    : Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: isDark
-                      ? const Color(0xFF444A63)
-                      : const Color(0xFFC4C7D1),
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Theme.of(context).shadowColor.withOpacity(0.15),
-                    blurRadius: 8,
-                    offset: const Offset(1, 1),
-                  ),
-                ],
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
+              decoration:
+                  isSelected
+                      ? BoxDecoration(
+                        color:
+                            isDark
+                                ? const Color(
+                                  0x66FF364C,
+                                ) // Light red in dark mode
+                                : const Color(0xFFFF364C),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: const Color(0xFFFF364C),
+                          width: 0.8,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Theme.of(
+                              context,
+                            ).shadowColor.withOpacity(0.2),
+                            blurRadius: 8,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      )
+                      : BoxDecoration(
+                        color: isDark ? const Color(0xFF2B3045) : Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color:
+                              isDark
+                                  ? const Color(0xFF444A63)
+                                  : const Color(0xFFC4C7D1),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Theme.of(
+                              context,
+                            ).shadowColor.withOpacity(0.15),
+                            blurRadius: 8,
+                            offset: const Offset(1, 1),
+                          ),
+                        ],
+                      ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -2291,9 +2347,12 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
                         fontSize: 12,
                         fontFamily: 'Montserrat',
                         fontWeight: FontWeight.w500,
-                        color: isSelected
-                            ? Colors.white
-                            : (isDark ? Colors.white : const Color(0xFF4C5F7D)),
+                        color:
+                            isSelected
+                                ? Colors.white
+                                : (isDark
+                                    ? Colors.white
+                                    : const Color(0xFF4C5F7D)),
                         height: 1.5,
                         letterSpacing: 0.6,
                       ),
@@ -2312,7 +2371,6 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
     const double stripWidth = 0;
     const double stripGap = 1;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
 
     return GridView.builder(
       shrinkWrap: true,
@@ -2343,9 +2401,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
                   0,
                 ),
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? const Color(0xFF2B3045)
-                      : Colors.white,
+                  color: isDark ? const Color(0xFF2B3045) : Colors.white,
                   borderRadius: BorderRadius.circular(10),
                   // border: Border.all(
                   //   color: isDark
@@ -2354,9 +2410,10 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
                   // ),
                   boxShadow: [
                     BoxShadow(
-                      color: isDark
-                          ? Colors.white.withOpacity(0.08)
-                          : Colors.black.withOpacity(0.10),
+                      color:
+                          isDark
+                              ? Colors.white.withOpacity(0.08)
+                              : Colors.black.withOpacity(0.10),
                       blurRadius: 10,
                       offset: const Offset(0, 2),
                     ),
@@ -2386,13 +2443,15 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
                               //   height: 80,
                               //   color: const Color(0xFFF2F2F2),
                               // ),
-                              placeholder: (_, __) => const SizedBox(
-                                width: 80,
-                                height: 80,
-                                child: ProductImageLoading(),
-                              ),
-                              errorWidget: (_, __, ___) =>
-                              const Icon(Icons.fastfood, size: 40),
+                              placeholder:
+                                  (_, __) => const SizedBox(
+                                    width: 80,
+                                    height: 80,
+                                    child: ProductImageLoading(),
+                                  ),
+                              errorWidget:
+                                  (_, __, ___) =>
+                                      const Icon(Icons.fastfood, size: 40),
                             ),
                           )
                         else
@@ -2435,49 +2494,53 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
                     Positioned(
                       top: 6,
                       right: 8,
-                      child: item.isVeg == null
-                          ? const SizedBox.shrink()
-                          : Container(
-                        width: 16,
-                        height: 16,
-                        decoration: const BoxDecoration(
-                          boxShadow: [
-                            BoxShadow(
-                              color: Color(0x3F000000),
-                              blurRadius: 5,
-                              offset: Offset(0, 1),
-                            ),
-                          ],
-                        ),
-                        child: Stack(
-                          children: [
-                            Container(
-                              width: 20,
-                              height: 20,
-                              decoration: ShapeDecoration(
-                                color: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(2),
+                      child:
+                          item.isVeg == null
+                              ? const SizedBox.shrink()
+                              : Container(
+                                width: 16,
+                                height: 16,
+                                decoration: const BoxDecoration(
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Color(0x3F000000),
+                                      blurRadius: 5,
+                                      offset: Offset(0, 1),
+                                    ),
+                                  ],
+                                ),
+                                child: Stack(
+                                  children: [
+                                    Container(
+                                      width: 20,
+                                      height: 20,
+                                      decoration: ShapeDecoration(
+                                        color: Colors.white,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            2,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    Positioned(
+                                      left: 4,
+                                      top: 4,
+                                      child: Container(
+                                        width: 8,
+                                        height: 8,
+                                        decoration: BoxDecoration(
+                                          color:
+                                              item.isVeg!
+                                                  ? const Color(0xFF34C759)
+                                                  : const Color(0xFFFF0404),
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ),
-                            Positioned(
-                              left: 4,
-                              top: 4,
-                              child: Container(
-                                width: 8,
-                                height: 8,
-                                decoration: BoxDecoration(
-                                  color: item.isVeg!
-                                      ? const Color(0xFF34C759)
-                                      : const Color(0xFFFF0404),
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                     ),
                     // 🔹 VARIANT ICON
                     if (item.isVariantProduct)

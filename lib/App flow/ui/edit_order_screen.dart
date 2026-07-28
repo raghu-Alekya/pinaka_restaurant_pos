@@ -539,11 +539,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
     return Scaffold(
       // backgroundColor: const Color(0xFFF1F1F3),
       backgroundColor:
-          isDark
-              ? const Color(
-                0xFF161A26,
-              ) // CHANGED: dark background instead of hardcoded light
-              : const Color(0xFFF6F6F6),
+          isDark ? const Color(0xFF161A26) : const Color(0xFFF6F6F6),
 
       appBar: TopBar(
         token: widget.token,
@@ -790,7 +786,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                                 decoration: BoxDecoration(
                                   color:
                                       isDark
-                                          ? const Color(0xFF202433)
+                                          ? const Color(0xFF2A2F3D)
                                           : const Color(0xFFF6F6F6),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -865,7 +861,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                                 decoration: BoxDecoration(
                                   color:
                                       isDark
-                                          ? const Color(0xFF202433)
+                                          ? const Color(0xFF2A2F3D)
                                           : const Color(0xFFF6F6F6),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -971,19 +967,18 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                             const SizedBox(width: 10),
                             Container(
                               padding: const EdgeInsets.fromLTRB(24, 8, 8, 8),
-
                               decoration: BoxDecoration(
                                 color:
                                     isDark
                                         ? const Color(0xFF2A2F3D)
                                         : const Color(0xFFE5EFFF),
+                                borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
                                   color:
                                       isDark
                                           ? theme.dividerColor
                                           : const Color(0xFFE5EFFF),
                                 ),
-                                // border: Border.all(color: const Color(0xFFE5EFFF)),
                               ),
                               child: Row(
                                 children: [
@@ -1136,9 +1131,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                           ElevatedButton(
                             onPressed: _isUpdatingKot ? null : _updateKot,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(
-                                0xFF4C5F7D,
-                              ), // ✅ SAME color
+                              backgroundColor: const Color(0xFF4C5F7D),
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 26,
                                 vertical: 18,
@@ -1230,7 +1223,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       margin: const EdgeInsets.all(8),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF202433) : const Color(0xFFF6F6F6),
+        color: isDark ? const Color(0xFF2A2F3D) : const Color(0xFFF6F6F6),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Container(
@@ -1277,7 +1270,8 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
             // Table Header
             Container(
               decoration: BoxDecoration(
-                color: const Color(0xFF999393),
+                color:
+                    isDark ? const Color(0xFF3A3F4B) : const Color(0xFF999393),
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(8),
                   topRight: Radius.circular(8),
@@ -1961,7 +1955,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       child: Container(
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF4A2A2A) : const Color(0xFFFFE5E5),
+          color: isDark ? const Color(0xFFFFE5E5) : const Color(0xFFFFE5E5),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Icon(
