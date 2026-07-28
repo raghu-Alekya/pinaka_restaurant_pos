@@ -57,6 +57,7 @@ dependencies:
   image: ^4.5.4
   cached_network_image: ^3.4.1
   provider: ^6.1.2
+  enum_to_string: ^2.0.1
 
 
 dev_dependencies:

@@ -8,7 +8,7 @@ class PrinterDBHelper {
 
   factory PrinterDBHelper() => _instance;
 
-  PrinterDBHelper._internal() {}
+  PrinterDBHelper._internal();
 
   Future<void> _ensureAddressColumn(db) async {
     try {
@@ -221,13 +221,18 @@ class PrinterDBHelper {
     final match = _matchClause(address, currentDeviceName);
 
     final Map<String, dynamic> updates = {};
-    if (correctedType != null) updates[AppDBConst.printerType] = correctedType;
-    if (correctedName != null)
+    if (correctedType != null) {
+      updates[AppDBConst.printerType] = correctedType;
+    }
+    if (correctedName != null) {
       updates[AppDBConst.printerDeviceName] = correctedName;
-    if (correctedVendorId != null)
+    }
+    if (correctedVendorId != null) {
       updates[AppDBConst.printerVendorId] = correctedVendorId;
-    if (correctedProductId != null)
+    }
+    if (correctedProductId != null) {
       updates[AppDBConst.printerProductId] = correctedProductId;
+    }
     if (clearVendorId) updates[AppDBConst.printerVendorId] = '';
     if (clearProductId) updates[AppDBConst.printerProductId] = '';
 

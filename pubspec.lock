@@ -154,7 +154,7 @@ packages:
     source: hosted
     version: "3.2.3"
   enum_to_string:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: enum_to_string
       sha256: "93b75963d3b0c9f6a90c095b3af153e1feccb79f6f08282d3274ff8d9eea52bc"
