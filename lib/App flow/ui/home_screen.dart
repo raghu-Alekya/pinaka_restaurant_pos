@@ -85,19 +85,16 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _statusRepository = StatusCountRepository(baseUrl: AppConstants.baseDomain);
-
-    loadStatusCount();
+    _preFetchOrders(); // MOVED: now fires FIRST so it has the earliest possible head start on the network
     _loadSavedPermissions();
     loadKotOrderCount();
     _startClock();
-    _loadCurrency(); // <-- Add this
+    _loadCurrency();
     loadKotStatusCount();
     loadTableStatusCounts();
     loadReservationCounts();
     loadActiveOrdersCount();
     loadTotalTipAmount();
-    _preFetchOrders();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkShiftStatus();
     });
@@ -129,7 +126,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _preFetchOrders() async {
     try {
       final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
-      OrderstatusRepository().fetchOrders(
+
+      await OrderstatusRepository().fetchOrders(
         widget.token,
         date: todayStr,
         restaurantId: widget.restaurantId,
@@ -862,7 +860,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                                           userPermissions:
                                                               _userPermissions,
                                                           orders: const [],
-                                                          loadedTables: const [],
+                                                          loadedTables:
+                                                              const [],
                                                         ),
                                                       ),
                                                 ),

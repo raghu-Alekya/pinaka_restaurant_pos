@@ -146,7 +146,7 @@ class _paymentsummaryState extends State<paymentsummary> {
     final discount = state.merchantDiscount;
 
     discountController.text =
-    discount != 0 ? discount.abs().toStringAsFixed(2) : "";
+        discount != 0 ? discount.abs().toStringAsFixed(2) : "";
 
     if (summary.couponDetails.isNotEmpty) {
       _appliedCoupon = summary.couponDetails.first.code;
@@ -220,10 +220,10 @@ class _paymentsummaryState extends State<paymentsummary> {
 
     final bool isStateValid =
         state is PaymentSummaryLoaded &&
-            state.summary.orderId == widget.orderId;
+        state.summary.orderId == widget.orderId;
 
     final PaymentSummary? summary =
-    isStateValid ? state.summary : _paymentSummary;
+        isStateValid ? state.summary : _paymentSummary;
 
     if (summary == null) return 0.0;
 
@@ -249,12 +249,18 @@ class _paymentsummaryState extends State<paymentsummary> {
 
   double getNetTotal() {
     final state = context.read<PaymentBloc>().state;
-    final bool isStateValid = state is PaymentSummaryLoaded && state.summary.orderId == widget.orderId;
-    final bool isSummaryValid = _paymentSummary != null && _paymentSummary!.orderId == widget.orderId;
+    final bool isStateValid =
+        state is PaymentSummaryLoaded &&
+        state.summary.orderId == widget.orderId;
+    final bool isSummaryValid =
+        _paymentSummary != null && _paymentSummary!.orderId == widget.orderId;
     final PaymentSummary? summary =
-    isStateValid ? state.summary : (isSummaryValid ? _paymentSummary : null);
+        isStateValid
+            ? state.summary
+            : (isSummaryValid ? _paymentSummary : null);
     if (summary == null) return 0.0;
-    final double couponsVal = summary.coupons > 0 ? summary.coupons : _couponAmount;
+    final double couponsVal =
+        summary.coupons > 0 ? summary.coupons : _couponAmount;
     return summary.grossTotal - couponsVal + summary.tax;
   }
 
@@ -331,6 +337,7 @@ class _paymentsummaryState extends State<paymentsummary> {
         });
       }
     }
+
     // Validate amount only for normal payments
     if (!_isNcDiscount) {
       if (amount.isEmpty) {
@@ -435,7 +442,7 @@ class _paymentsummaryState extends State<paymentsummary> {
 
     final bool isSummaryReady =
         _paymentSummary != null ||
-            context.read<PaymentBloc>().state is PaymentSummaryLoaded;
+        context.read<PaymentBloc>().state is PaymentSummaryLoaded;
     if (isSummaryReady && netPayable <= 0 && key != "Pay") return;
 
     if (key == "Pay") {
@@ -444,9 +451,9 @@ class _paymentsummaryState extends State<paymentsummary> {
       // Now uses the same _isValidTenderAmount check as everything else.
       if (!_isValidTenderAmount) {
         final String msg =
-        amount.isEmpty
-            ? "Please enter the amount"
-            : "Amount must be greater than 0";
+            amount.isEmpty
+                ? "Please enter the amount"
+                : "Amount must be greater than 0";
         setState(() => tenderAmountError = msg);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -535,7 +542,7 @@ class _paymentsummaryState extends State<paymentsummary> {
             selectedPaymentMode = mode;
             isCashSelected = false;
             tenderAmountError =
-            "Card payment cannot exceed the Net Payable amount.";
+                "Card payment cannot exceed the Net Payable amount.";
           });
 
           ScaffoldMessenger.of(context).showSnackBar(
@@ -570,12 +577,12 @@ class _paymentsummaryState extends State<paymentsummary> {
       _loadingPaymentMode = mode;
       _balanceRevealed = true;
       _confirmedTenderForBalance =
-      _isNcDiscount ? 0.0 : (double.tryParse(amount) ?? 0.0);
+          _isNcDiscount ? 0.0 : (double.tryParse(amount) ?? 0.0);
     });
 
     final double remainingBeforeThisTxn = _getCurrentNetPayable();
     final double enteredAmountForLog =
-    _isNcDiscount ? 0.0 : (double.tryParse(amount) ?? 0.0);
+        _isNcDiscount ? 0.0 : (double.tryParse(amount) ?? 0.0);
     final bool isPartialAttempt =
         enteredAmountForLog < remainingBeforeThisTxn - 0.01;
     debugPrint(
@@ -735,10 +742,10 @@ class _paymentsummaryState extends State<paymentsummary> {
 
   // ➕ NEW — styled the same as Paymentsucess._buildInfoRow.
   Widget _buildPartialInfoRow(
-      BuildContext context,
-      String label,
-      String amountText,
-      ) {
+    BuildContext context,
+    String label,
+    String amountText,
+  ) {
     return Container(
       height: MediaQuery.of(context).size.height * 0.07,
       width: MediaQuery.of(context).size.width * 0.38,
@@ -824,11 +831,11 @@ class _paymentsummaryState extends State<paymentsummary> {
 
   // ➕ NEW — same 180x50 pill button style as Paymentsucess._buildActionButton.
   Widget _buildPartialActionButton(
-      BuildContext context, {
-        required String label,
-        required Color color,
-        required VoidCallback onTap,
-      }) {
+    BuildContext context, {
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -1036,29 +1043,29 @@ class _paymentsummaryState extends State<paymentsummary> {
                 barrierColor: Colors.black.withOpacity(0.4),
                 builder:
                     (_) => Dialog(
-                  backgroundColor: Colors.transparent,
-                  insetPadding: EdgeInsets.zero,
-                  child: Center(
-                    child: Paymentsucess(
-                      amount: state.response.paidAmount.toString(),
-                      paymentMode: selectedPaymentMode,
-                      changeAmount: state.response.change.toStringAsFixed(
-                        2,
+                      backgroundColor: Colors.transparent,
+                      insetPadding: EdgeInsets.zero,
+                      child: Center(
+                        child: Paymentsucess(
+                          amount: state.response.paidAmount.toString(),
+                          paymentMode: selectedPaymentMode,
+                          changeAmount: state.response.change.toStringAsFixed(
+                            2,
+                          ),
+                          paymentId: state.response.paymentId,
+                          orderId: state.response.orderId,
+                          loadedTables: widget.loadedTables,
+                          pin: widget.pin,
+                          token: widget.token,
+                          restaurantId: widget.restaurantId,
+                          zoneId: widget.zoneId,
+                          restaurantName: widget.restaurantName,
+                          paymentSummary: summary,
+                          cashierName: _cashierName,
+                          isTakeAway: widget.isTakeAway,
+                        ),
                       ),
-                      paymentId: state.response.paymentId,
-                      orderId: state.response.orderId,
-                      loadedTables: widget.loadedTables,
-                      pin: widget.pin,
-                      token: widget.token,
-                      restaurantId: widget.restaurantId,
-                      zoneId: widget.zoneId,
-                      restaurantName: widget.restaurantName,
-                      paymentSummary: summary,
-                      cashierName: _cashierName,
-                      isTakeAway: widget.isTakeAway,
                     ),
-                  ),
-                ),
               );
 
               if (!mounted) return;
@@ -1170,10 +1177,7 @@ class _paymentsummaryState extends State<paymentsummary> {
 
               // Reset PaymentBloc merchant discount
               context.read<PaymentBloc>().add(
-                UpdateMerchantDiscount(
-                  value: 0,
-                  isNoCharge: false,
-                ),
+                UpdateMerchantDiscount(value: 0, isNoCharge: false),
               );
 
               // Reload latest summary from backend
@@ -1193,10 +1197,8 @@ class _paymentsummaryState extends State<paymentsummary> {
       ],
 
       child: Scaffold(
-
-        backgroundColor: isDark
-            ? const Color(0xFF161A26)
-            : const Color(0xFFF5F5F6),
+        backgroundColor:
+            isDark ? const Color(0xFF161A26) : const Color(0xFFF5F5F6),
         // UI is always visible - no loading state
         body: BlocBuilder<PaymentBloc, PaymentState>(
           buildWhen: (prev, curr) {
@@ -1213,42 +1215,33 @@ class _paymentsummaryState extends State<paymentsummary> {
             return true;
           },
           builder: (context, payState) {
-            // ➕ CHANGED (additive): fullNetPayableVal is the full order
-            // total exactly as before; netPayableVal now represents the
-            // *remaining* balance still owed (full total minus whatever
-            // has already been collected through partial payments). Every
-            // downstream usage below (payDisabled, presets, numpad,
-            // Net Payable card, Balance Amount card) is unchanged code —
-            // it just now automatically reflects partial payments because
-            // this single value does. When no partial payment has ever
-            // been made, _totalPaidAmount is 0 and netPayableVal is
-            // identical to the old value, so nothing else changes.
             final double netPayableVal = getGrandTotal(
               payState,
             ); // Always fixed
 
             final double remainingBalance =
-            (netPayableVal - _totalPaidAmount) < 0
-                ? 0.0
-                : (netPayableVal - _totalPaidAmount);
+                (netPayableVal - _totalPaidAmount) < 0
+                    ? 0.0
+                    : (netPayableVal - _totalPaidAmount);
 
             final bool isSummaryReady =
-                payState is PaymentSummaryLoaded || _paymentSummary != null;
+                (payState is PaymentSummaryLoaded &&
+                    payState.summary.orderId == widget.orderId) ||
+                (_paymentSummary != null &&
+                    _paymentSummary!.orderId == widget.orderId);
             final bool isNoCharge =
                 payState is PaymentSummaryLoaded && payState.isNoCharge;
 
             final bool payDisabled =
                 isSummaryReady && netPayableVal <= 0 && !isNoCharge;
-            // ── CHANGED: Balance Amount stays at 0 until a payment mode is
-            // tapped and confirmed (see _onPaymentModeTap) — it no longer
-            // reacts to every keystroke on the tender amount.
+
             final double tenderAmt =
-            _balanceRevealed ? _confirmedTenderForBalance : 0.0;
+                _balanceRevealed ? _confirmedTenderForBalance : 0.0;
 
             final double balAmt =
-            tenderAmt < remainingBalance
-                ? (remainingBalance - tenderAmt)
-                : 0.0;
+                tenderAmt < remainingBalance
+                    ? (remainingBalance - tenderAmt)
+                    : 0.0;
 
             final List<double> presets = buildPresetAmounts(remainingBalance);
 
@@ -1282,18 +1275,16 @@ class _paymentsummaryState extends State<paymentsummary> {
   }
 
   Widget _buildNumpadColumn(
-      BuildContext context, {
-        required double netPayableVal,
-        required bool payDisabled,
-        required List<double> presets,
-      }) {
+    BuildContext context, {
+    required double netPayableVal,
+    required bool payDisabled,
+    required List<double> presets,
+  }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(top: 12, bottom: 12),
       decoration: BoxDecoration(
-        color: isDark
-            ? const Color(0xFF202433)
-            : Colors.white,
+        color: isDark ? const Color(0xFF202433) : Colors.white,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
@@ -1311,9 +1302,8 @@ class _paymentsummaryState extends State<paymentsummary> {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF2A2F45)
-                    : const Color(0xFFE8EEFC),
+                color:
+                    isDark ? const Color(0xFF2A2F45) : const Color(0xFFE8EEFC),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Column(
@@ -1326,9 +1316,8 @@ class _paymentsummaryState extends State<paymentsummary> {
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
-                          color: isDark
-                              ? Colors.white70
-                              : const Color(0xFF3D5A9A),
+                          color:
+                              isDark ? Colors.white70 : const Color(0xFF3D5A9A),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -1338,19 +1327,19 @@ class _paymentsummaryState extends State<paymentsummary> {
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           decoration: BoxDecoration(
                             border: Border.all(
-                              color: tenderAmountError != null
-                                  ? const Color(0xFFE53935)
-                                  : (isDark
-                                  ? const Color(0xFF5A5A5A)
-                                  : const Color(0xFFB3C7FF)),
+                              color:
+                                  tenderAmountError != null
+                                      ? const Color(0xFFE53935)
+                                      : (isDark
+                                          ? const Color(0xFF5A5A5A)
+                                          : const Color(0xFFB3C7FF)),
                               width: tenderAmountError != null ? 1.4 : 1,
                             ),
                             borderRadius: BorderRadius.circular(6),
-                            color: tenderAmountError != null
-                                ? const Color(0xFFFFF3F3)
-                                : (isDark
-                                ? Colors.black
-                                : Colors.white),
+                            color:
+                                tenderAmountError != null
+                                    ? const Color(0xFFFFF3F3)
+                                    : (isDark ? Colors.black : Colors.white),
                           ),
                           child: Align(
                             alignment: Alignment.centerRight,
@@ -1361,11 +1350,12 @@ class _paymentsummaryState extends State<paymentsummary> {
                               style: TextStyle(
                                 fontSize: 26,
                                 fontWeight: FontWeight.bold,
-                                color: payDisabled
-                                    ? Colors.grey
-                                    : (isDark
-                                    ? Colors.white
-                                    : const Color(0xFF212121)),
+                                color:
+                                    payDisabled
+                                        ? Colors.grey
+                                        : (isDark
+                                            ? Colors.white
+                                            : const Color(0xFF212121)),
                               ),
                             ),
                           ),
@@ -1429,35 +1419,45 @@ class _paymentsummaryState extends State<paymentsummary> {
                           child: Padding(
                             padding: const EdgeInsets.all(10),
                             child: GestureDetector(
-                              onTap: payDisabled ? null : () => handleKeyPress("C"),
+                              onTap:
+                                  payDisabled
+                                      ? null
+                                      : () => handleKeyPress("C"),
                               child: Container(
                                 decoration: ShapeDecoration(
-                                  color: payDisabled
-                                      ? (isDark ? const Color(0xFF3A3A3A) : Colors.grey.shade200)
-                                      : (isDark
-                                      ? const Color(0xFF8B2C2C)
-                                      : const Color(0xFFFFDADA)),
+                                  color:
+                                      payDisabled
+                                          ? (isDark
+                                              ? const Color(0xFF3A3A3A)
+                                              : Colors.grey.shade200)
+                                          : (isDark
+                                              ? const Color(0xFF8B2C2C)
+                                              : const Color(0xFFFFDADA)),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
-                                  shadows: payDisabled
-                                      ? []
-                                      : [
-                                    BoxShadow(
-                                      color: isDark
-                                          ? Colors.black.withOpacity(0.35)
-                                          : Colors.white,
-                                      offset: const Offset(-4, -4),
-                                      blurRadius: 6,
-                                    ),
-                                    BoxShadow(
-                                      color: isDark
-                                          ? Colors.black54
-                                          : const Color(0xFFFFCCCC),
-                                      offset: const Offset(4, 4),
-                                      blurRadius: 6,
-                                    ),
-                                  ],
+                                  shadows:
+                                      payDisabled
+                                          ? []
+                                          : [
+                                            BoxShadow(
+                                              color:
+                                                  isDark
+                                                      ? Colors.black
+                                                          .withOpacity(0.35)
+                                                      : Colors.white,
+                                              offset: const Offset(-4, -4),
+                                              blurRadius: 6,
+                                            ),
+                                            BoxShadow(
+                                              color:
+                                                  isDark
+                                                      ? Colors.black54
+                                                      : const Color(0xFFFFCCCC),
+                                              offset: const Offset(4, 4),
+                                              blurRadius: 6,
+                                            ),
+                                          ],
                                 ),
                                 alignment: Alignment.center,
                                 child: Text(
@@ -1465,9 +1465,10 @@ class _paymentsummaryState extends State<paymentsummary> {
                                   style: TextStyle(
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
-                                    color: payDisabled
-                                        ? Colors.grey
-                                        : const Color(0xFFFF4D20),
+                                    color:
+                                        payDisabled
+                                            ? Colors.grey
+                                            : const Color(0xFFFF4D20),
                                   ),
                                 ),
                               ),
@@ -1488,9 +1489,8 @@ class _paymentsummaryState extends State<paymentsummary> {
               width: double.infinity,
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF2A2F45)
-                    : const Color(0xFFE8EEFC),
+                color:
+                    isDark ? const Color(0xFF2A2F45) : const Color(0xFFE8EEFC),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Row(
@@ -1526,67 +1526,79 @@ class _paymentsummaryState extends State<paymentsummary> {
     return Expanded(
       child: Row(
         children:
-        keys.map((k) {
-          final bool isBackspace = k == "⌫";
-          return Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(10),
-              child: GestureDetector(
-                onTap: disabled ? null : () => handleKeyPress(k),
-                child: Container(
-                  decoration: ShapeDecoration(
-                    color: disabled
-                        ? (isDark ? const Color(0xFF3A3A3A) : Colors.grey.shade100)
-                        : (isDark
-                        ? const Color(0xFF34384F)
-                        : const Color(0xFFEDF1F9)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    shadows: disabled
-                        ? []
-                        : [
-                      BoxShadow(
-                        color: isDark
-                            ? Colors.black.withOpacity(0.35)
-                            : Colors.white,
-                        offset: const Offset(-4, -4),
-                        blurRadius: 6,
+            keys.map((k) {
+              final bool isBackspace = k == "⌫";
+              return Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: GestureDetector(
+                    onTap: disabled ? null : () => handleKeyPress(k),
+                    child: Container(
+                      decoration: ShapeDecoration(
+                        color:
+                            disabled
+                                ? (isDark
+                                    ? const Color(0xFF3A3A3A)
+                                    : Colors.grey.shade100)
+                                : (isDark
+                                    ? const Color(0xFF34384F)
+                                    : const Color(0xFFEDF1F9)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        shadows:
+                            disabled
+                                ? []
+                                : [
+                                  BoxShadow(
+                                    color:
+                                        isDark
+                                            ? Colors.black.withOpacity(0.35)
+                                            : Colors.white,
+                                    offset: const Offset(-4, -4),
+                                    blurRadius: 6,
+                                  ),
+                                  BoxShadow(
+                                    color:
+                                        isDark
+                                            ? Colors.black54
+                                            : const Color(0xFFD9E6FF),
+                                    offset: const Offset(4, 4),
+                                    blurRadius: 6,
+                                  ),
+                                ],
                       ),
-                      BoxShadow(
-                        color: isDark
-                            ? Colors.black54
-                            : const Color(0xFFD9E6FF),
-                        offset: const Offset(4, 4),
-                        blurRadius: 6,
-                      ),
-                    ],
-                  ),
-                  alignment: Alignment.center,
-                  child:
-                  isBackspace
-                      ? Icon(
-                    Icons.backspace_outlined,
-                    color: disabled
-                        ? Colors.grey
-                        : (isDark ? Colors.white : const Color(0xFF0C3952)),
-                    size: 22,
-                  )
-                      : Text(
-                    k,
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: disabled
-                          ? Colors.grey
-                          : (isDark ? Colors.white : const Color(0xFF4C5F7D)),
+                      alignment: Alignment.center,
+                      child:
+                          isBackspace
+                              ? Icon(
+                                Icons.backspace_outlined,
+                                color:
+                                    disabled
+                                        ? Colors.grey
+                                        : (isDark
+                                            ? Colors.white
+                                            : const Color(0xFF0C3952)),
+                                size: 22,
+                              )
+                              : Text(
+                                k,
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color:
+                                      disabled
+                                          ? Colors.grey
+                                          : (isDark
+                                              ? Colors.white
+                                              : const Color(0xFF4C5F7D)),
+                                ),
+                              ),
                     ),
                   ),
                 ),
-              ),
-            ),
-          );
-        }).toList(),
+              );
+            }).toList(),
       ),
     );
   }
@@ -1601,39 +1613,41 @@ class _paymentsummaryState extends State<paymentsummary> {
         padding: const EdgeInsets.all(10),
         child: GestureDetector(
           onTap:
-          disabled
-              ? null
-              : () => _onPresetAmountTap(value.toStringAsFixed(2)),
+              disabled
+                  ? null
+                  : () => _onPresetAmountTap(value.toStringAsFixed(2)),
           child: Container(
             decoration: ShapeDecoration(
-              color: disabled
-                  ? (isDark
-                  ? const Color(0xFF3A3A3A)
-                  : Colors.grey.shade200)
-                  : (isDark
-                  ? const Color(0xFF3E5635)
-                  : const Color(0xFFE5FFDD)),
+              color:
+                  disabled
+                      ? (isDark
+                          ? const Color(0xFF3A3A3A)
+                          : Colors.grey.shade200)
+                      : (isDark
+                          ? const Color(0xFF3E5635)
+                          : const Color(0xFFE5FFDD)),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
-              shadows: disabled
-                  ? []
-                  : [
-                BoxShadow(
-                  color: isDark
-                      ? Colors.black.withOpacity(0.35)
-                      : Colors.white,
-                  offset: const Offset(-4, -4),
-                  blurRadius: 6,
-                ),
-                BoxShadow(
-                  color: isDark
-                      ? Colors.black54
-                      : const Color(0xFFCBE8C4),
-                  offset: const Offset(4, 4),
-                  blurRadius: 6,
-                ),
-              ],
+              shadows:
+                  disabled
+                      ? []
+                      : [
+                        BoxShadow(
+                          color:
+                              isDark
+                                  ? Colors.black.withOpacity(0.35)
+                                  : Colors.white,
+                          offset: const Offset(-4, -4),
+                          blurRadius: 6,
+                        ),
+                        BoxShadow(
+                          color:
+                              isDark ? Colors.black54 : const Color(0xFFCBE8C4),
+                          offset: const Offset(4, 4),
+                          blurRadius: 6,
+                        ),
+                      ],
             ),
             alignment: Alignment.center,
             child: Text(
@@ -1641,11 +1655,10 @@ class _paymentsummaryState extends State<paymentsummary> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: disabled
-                    ? Colors.grey
-                    : (isDark
-                    ? Colors.white
-                    : const Color(0xFF318616)),
+                color:
+                    disabled
+                        ? Colors.grey
+                        : (isDark ? Colors.white : const Color(0xFF318616)),
               ),
               textAlign: TextAlign.center,
             ),
@@ -1669,70 +1682,70 @@ class _paymentsummaryState extends State<paymentsummary> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
               side: BorderSide(
-                color: isSelected
-                    ? Colors.white
-                    : (isDark
-                    ? const Color(0xFF5A5A5A)
-                    : Colors.transparent),
+                color:
+                    isSelected
+                        ? Colors.white
+                        : (isDark
+                            ? const Color(0xFF5A5A5A)
+                            : Colors.transparent),
                 width: isSelected ? 2 : 1,
               ),
             ),
             shadows: [
               BoxShadow(
-                color: isDark
-                    ? Colors.black.withOpacity(0.35)
-                    : Colors.white.withOpacity(0.15),
+                color:
+                    isDark
+                        ? Colors.black.withOpacity(0.35)
+                        : Colors.white.withOpacity(0.15),
                 offset: const Offset(-4, -4),
                 blurRadius: 6,
               ),
               BoxShadow(
-                color: isDark
-                    ? Colors.black54
-                    : color.withOpacity(0.45),
+                color: isDark ? Colors.black54 : color.withOpacity(0.45),
                 offset: const Offset(4, 4),
                 blurRadius: 6,
               ),
             ],
           ),
           child:
-          _isPaymentLoading && _loadingPaymentMode == mode
-              ? const Center(
-            child: SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.5,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
-            ),
-          )
-              : Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                mode,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(width: 10),
-              CircleAvatar(
-                radius: 16,
-                backgroundColor: Colors.white,
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: Image.asset(
-                    asset,
-                    width: 18,
-                    height: 18,
-                    color: color,
+              _isPaymentLoading && _loadingPaymentMode == mode
+                  ? const Center(
+                    child: SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    ),
+                  )
+                  : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        mode,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      CircleAvatar(
+                        radius: 16,
+                        backgroundColor: Colors.white,
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: Image.asset(
+                            asset,
+                            width: 18,
+                            height: 18,
+                            color: color,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -1742,10 +1755,10 @@ class _paymentsummaryState extends State<paymentsummary> {
   // RIGHT COLUMN
   // ═══════════════════════════════════════════════════════════════════════
   Widget _buildRightColumn(
-      BuildContext context, {
-        required double netPayableVal,
-        required double balAmt,
-      }) {
+    BuildContext context, {
+    required double netPayableVal,
+    required double balAmt,
+  }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final double screenW = MediaQuery.of(context).size.width;
 
@@ -1764,9 +1777,7 @@ class _paymentsummaryState extends State<paymentsummary> {
               width: double.infinity,
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF202433)
-                    : Colors.white,
+                color: isDark ? const Color(0xFF202433) : Colors.white,
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: [
                   BoxShadow(
@@ -1798,22 +1809,22 @@ class _paymentsummaryState extends State<paymentsummary> {
                       margin: const EdgeInsets.only(bottom: 5),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFF2A2F45)
-                            : Colors.white,
+                        color: isDark ? const Color(0xFF2A2F45) : Colors.white,
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: isDark
-                                ? Colors.black.withOpacity(0.35)
-                                : Colors.white,
+                            color:
+                                isDark
+                                    ? Colors.black.withOpacity(0.35)
+                                    : Colors.white,
                             offset: const Offset(-4, -4),
                             blurRadius: 8,
                           ),
                           BoxShadow(
-                            color: isDark
-                                ? Colors.black54
-                                : const Color(0xFFD9E6FF),
+                            color:
+                                isDark
+                                    ? Colors.black54
+                                    : const Color(0xFFD9E6FF),
                             offset: const Offset(4, 4),
                             blurRadius: 8,
                           ),
@@ -1841,28 +1852,20 @@ class _paymentsummaryState extends State<paymentsummary> {
 
   Widget _netAmountCard(double value) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bool isReady = _paymentSummary != null && _paymentSummary!.orderId == widget.orderId;
-
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(7),
       decoration: BoxDecoration(
-        color: isDark
-            ? const Color(0xFF202433)
-            : Colors.white,
+        color: isDark ? const Color(0xFF202433) : Colors.white,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: isDark
-                ? Colors.black.withOpacity(0.35)
-                : Colors.white,
+            color: isDark ? Colors.black.withOpacity(0.35) : Colors.white,
             offset: const Offset(-4, -4),
             blurRadius: 8,
           ),
           BoxShadow(
-            color: isDark
-                ? Colors.black54
-                : const Color(0xFFD9E6FF),
+            color: isDark ? Colors.black54 : const Color(0xFFD9E6FF),
             offset: const Offset(4, 4),
             blurRadius: 8,
           ),
@@ -1876,74 +1879,42 @@ class _paymentsummaryState extends State<paymentsummary> {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: isDark
-                  ? Colors.white70
-                  : const Color(0xFF6B7628),
+              color: isDark ? Colors.white70 : const Color(0xFF6B7628),
               letterSpacing: 0.2,
             ),
           ),
           const SizedBox(height: 7),
-          if (!isReady)
-            Container(
-              width: double.infinity,
-              height: 74,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF3E5635)
-                    : const Color(0xFFEEF5D6),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6B7628)),
-                ),
-              ),
-            )
-          else
-            Stack(
-              clipBehavior: Clip.none,
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEEF5D6),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
               children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
+                Expanded(
+                  child: Text(
+                    "$_currencySymbol${value.toStringAsFixed(2)}",
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF262525),
+                      letterSpacing: -0.5,
+                    ),
                   ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEEF5D6),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          "$_currencySymbol${value.toStringAsFixed(2)}",
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF262525),
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                      ),
-                      // Custom Image for Net Amount
-                      SizedBox(
-                        width: 54,
-                        height: 50,
-                        child: Image.asset(
-                          "assets/net_amount.png", // ← Your custom icon
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                    ],
+                ),
+                SizedBox(
+                  width: 54,
+                  height: 50,
+                  child: Image.asset(
+                    "assets/net_amount.png",
+                    fit: BoxFit.contain,
                   ),
                 ),
               ],
             ),
+          ),
         ],
       ),
     );
@@ -1951,28 +1922,20 @@ class _paymentsummaryState extends State<paymentsummary> {
 
   Widget _balanceAmountCard(double value) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bool isReady = _paymentSummary != null && _paymentSummary!.orderId == widget.orderId;
-
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(7),
       decoration: BoxDecoration(
-        color: isDark
-            ? const Color(0xFF202433)
-            : Colors.white,
+        color: isDark ? const Color(0xFF202433) : Colors.white,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: isDark
-                ? Colors.black.withOpacity(0.35)
-                : Colors.white,
+            color: isDark ? Colors.black.withOpacity(0.35) : Colors.white,
             offset: const Offset(-4, -4),
             blurRadius: 8,
           ),
           BoxShadow(
-            color: isDark
-                ? Colors.black54
-                : const Color(0xFFD9E6FF),
+            color: isDark ? Colors.black54 : const Color(0xFFD9E6FF),
             offset: const Offset(4, 4),
             blurRadius: 8,
           ),
@@ -1986,9 +1949,80 @@ class _paymentsummaryState extends State<paymentsummary> {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: isDark
-                  ? Colors.white70
-                  : const Color(0xFF913177),
+              color: isDark ? Colors.white70 : const Color(0xFF913177),
+              letterSpacing: 0.2,
+            ),
+          ),
+          const SizedBox(height: 7),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF7EAF7),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    "$_currencySymbol${value.toStringAsFixed(2)}",
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF262525),
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 54,
+                  height: 50,
+                  child: Image.asset(
+                    "assets/balance_amount.png",
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _balanceAmountCard(double value) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bool isReady =
+        _paymentSummary != null && _paymentSummary!.orderId == widget.orderId;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(7),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF202433) : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: isDark ? Colors.black.withOpacity(0.35) : Colors.white,
+            offset: const Offset(-4, -4),
+            blurRadius: 8,
+          ),
+          BoxShadow(
+            color: isDark ? Colors.black54 : const Color(0xFFD9E6FF),
+            offset: const Offset(4, 4),
+            blurRadius: 8,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Balance Amount",
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white70 : const Color(0xFF913177),
               letterSpacing: 0.2,
             ),
           ),
@@ -2279,21 +2313,21 @@ class _paymentsummaryState extends State<paymentsummary> {
 
   // Action buttons section
   Widget _buildActionButtons(
-      BuildContext context,
-      double netPayable, {
-        double? availableHeight,
-      }) {
+    BuildContext context,
+    double netPayable, {
+    double? availableHeight,
+  }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final double gap = availableHeight != null
-        ? ((availableHeight - 280) / 5).clamp(8.0, 24.0)
-        : 8.0;
+    final double gap =
+        availableHeight != null
+            ? ((availableHeight - 280) / 5).clamp(8.0, 24.0)
+            : 8.0;
     debugPrint("_buildActionButtons -> _isNcDiscount = $_isNcDiscount");
     return Column(
       children: [
         // Discounts
         Expanded(
-          child:
-          _actionTile(
+          child: _actionTile(
             label: "Discounts",
             borderColor: const Color(0xFF6BACC3),
             iconBg: const Color(0xFF6BACC3),
@@ -2307,82 +2341,85 @@ class _paymentsummaryState extends State<paymentsummary> {
             ),
             isApplied: _isDiscountApplied,
             appliedText:
-            discountController.text.isNotEmpty
-                ? "$_currencySymbol${discountController.text}"
-                : null,
+                discountController.text.isNotEmpty
+                    ? "$_currencySymbol${discountController.text}"
+                    : null,
             onTap:
-            _isDiscountApplied
-                ? null
-                : () async {
-              final result = await showDialog<Map<String, dynamic>>(
-                context: context,
-                barrierDismissible: false,
-                builder:
-                    (_) => MultiBlocProvider(
-                  providers: [
-                    BlocProvider(
-                      create:
-                          (_) => DiscountReasonBloc(
-                        DiscountReasonRepository(),
-                      ),
-                    ),
-                    BlocProvider.value(
-                      value: context.read<DiscountBloc>(),
-                    ),
-                  ],
-                  child: DiscountPopup(
-                    netPayable: netPayable + merchantDiscount.abs(),
-                    netTotal: getNetTotal(),
-                    orderId: widget.orderId,
-                    initialDiscount: merchantDiscount.abs(),
-                    isPercent: _lastAppliedDiscountStr != null && _lastAppliedDiscountStr!.contains('%'),
-                  ),
-                ),
-              );
-              if (result != null) {
-                debugPrint("Discount Result: $result");
+                _isDiscountApplied
+                    ? null
+                    : () async {
+                      final result = await showDialog<Map<String, dynamic>>(
+                        context: context,
+                        barrierDismissible: false,
+                        builder:
+                            (_) => MultiBlocProvider(
+                              providers: [
+                                BlocProvider(
+                                  create:
+                                      (_) => DiscountReasonBloc(
+                                        DiscountReasonRepository(),
+                                      ),
+                                ),
+                                BlocProvider.value(
+                                  value: context.read<DiscountBloc>(),
+                                ),
+                              ],
+                              child: DiscountPopup(
+                                netPayable: netPayable + merchantDiscount.abs(),
+                                netTotal: getNetTotal(),
+                                orderId: widget.orderId,
+                                initialDiscount: merchantDiscount.abs(),
+                                isPercent:
+                                    _lastAppliedDiscountStr != null &&
+                                    _lastAppliedDiscountStr!.contains('%'),
+                              ),
+                            ),
+                      );
+                      if (result != null) {
+                        debugPrint("Discount Result: $result");
 
-                final double applied = (result["amount"] as double).abs();
-                final bool isNc = result["isNc"] == true;
+                        final double applied =
+                            (result["amount"] as double).abs();
+                        final bool isNc = result["isNc"] == true;
 
-                debugPrint("isNc = $isNc");
+                        debugPrint("isNc = $isNc");
 
-                setState(() {
-                  _isDiscountApplied = true;
-                  _isNcDiscount = isNc;
-                  discountController.text = applied.toStringAsFixed(2);
-                  _lastAppliedDiscountStr = result["discountStr"];
-                  _lastAppliedDiscountReason = result["reason"];
-                });
+                        setState(() {
+                          _isDiscountApplied = true;
+                          _isNcDiscount = isNc;
+                          discountController.text = applied.toStringAsFixed(2);
+                          _lastAppliedDiscountStr = result["discountStr"];
+                          _lastAppliedDiscountReason = result["reason"];
+                        });
 
-                // ✅ Update PaymentBloc with both discount and NC flag
-                context.read<PaymentBloc>().add(
-                  UpdateMerchantDiscount(
-                    value: applied,
-                    isNoCharge: isNc,
-                  ),
-                );
+                        // ✅ Update PaymentBloc with both discount and NC flag
+                        context.read<PaymentBloc>().add(
+                          UpdateMerchantDiscount(
+                            value: applied,
+                            isNoCharge: isNc,
+                          ),
+                        );
 
-                debugPrint("_isNcDiscount = $_isNcDiscount");
-              }
-            },
+                        debugPrint("_isNcDiscount = $_isNcDiscount");
+                      }
+                    },
             onDelete:
-            _isDiscountApplied
-                ? () {
-              final paymentState = context.read<PaymentBloc>().state;
-              String isNcFlag = "no";
-              if (paymentState is PaymentSummaryLoaded) {
-                isNcFlag = paymentState.isNoCharge ? "yes" : "no";
-              }
-              context.read<RemoveDiscountBloc>().add(
-                RemoveDiscountRequested(
-                  orderId: widget.orderId,
-                  isNc: isNcFlag,
-                  token: widget.token,
-                ),
-              );
-            }
-                : null,
+                _isDiscountApplied
+                    ? () {
+                      final paymentState = context.read<PaymentBloc>().state;
+                      String isNcFlag = "no";
+                      if (paymentState is PaymentSummaryLoaded) {
+                        isNcFlag = paymentState.isNoCharge ? "yes" : "no";
+                      }
+                      context.read<RemoveDiscountBloc>().add(
+                        RemoveDiscountRequested(
+                          orderId: widget.orderId,
+                          isNc: isNcFlag,
+                          token: widget.token,
+                        ),
+                      );
+                    }
+                    : null,
           ),
         ),
 
@@ -2407,137 +2444,198 @@ class _paymentsummaryState extends State<paymentsummary> {
                 isApplied: _isCouponApplied,
                 appliedText: _appliedCoupon.isNotEmpty ? _appliedCoupon : null,
                 onTap:
-                _isCouponApplied
-                    ? null
-                    : () {
-                  showDialog(
-                    context: context,
-                    barrierDismissible: false,
-                    builder:
-                        (_) => Couponscreen(
-                      orderId: widget.orderId,
-                      token: widget.token,
-                      onCouponApplied: (coupon, amt) async {
-                        setState(() {
-                          _isCouponApplied = true;
-                          _appliedCoupon = coupon;
-                          _couponAmount = amt;
-                          couponController.text = coupon;
-                        });
-
-                        widget.onCouponAmountChanged?.call(amt);
-
-                        await Future.delayed(const Duration(milliseconds: 500));
-
-                        if (_lastAppliedDiscountStr != null && _lastAppliedDiscountStr!.contains('%')) {
-                          final percentVal = double.tryParse(_lastAppliedDiscountStr!.replaceAll('%', '').trim()) ?? 0.0;
-                          final state = context.read<PaymentBloc>().state;
-                          final bool isStateValid = state is PaymentSummaryLoaded && state.summary.orderId == widget.orderId;
-                          final bool isSummaryValid = _paymentSummary != null && _paymentSummary!.orderId == widget.orderId;
-                          final PaymentSummary? summary =
-                          isStateValid ? state.summary : (isSummaryValid ? _paymentSummary : null);
-                          if (summary != null) {
-                            final netTotalBeforeDiscountAndCoupon = summary.netTotal - summary.serviceChargeValue - summary.tipAmount + summary.discount.abs() + summary.coupons.abs();
-                            final newNetTotal = netTotalBeforeDiscountAndCoupon - amt;
-                            final calculatedDiscount = (newNetTotal * percentVal) / 100;
-                            context.read<DiscountBloc>().add(
-                              ApplyDiscountEvent(
-                                request: AddDiscountRequest(
+                    _isCouponApplied
+                        ? null
+                        : () {
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder:
+                                (_) => Couponscreen(
                                   orderId: widget.orderId,
-                                  amount: calculatedDiscount.toStringAsFixed(2),
-                                  isNc: _isNcDiscount ? "yes" : "no",
-                                  reason: _lastAppliedDiscountReason ?? "",
+                                  token: widget.token,
+                                  onCouponApplied: (coupon, amt) async {
+                                    setState(() {
+                                      _isCouponApplied = true;
+                                      _appliedCoupon = coupon;
+                                      _couponAmount = amt;
+                                      couponController.text = coupon;
+                                    });
+
+                                    widget.onCouponAmountChanged?.call(amt);
+
+                                    await Future.delayed(
+                                      const Duration(milliseconds: 500),
+                                    );
+
+                                    if (_lastAppliedDiscountStr != null &&
+                                        _lastAppliedDiscountStr!.contains(
+                                          '%',
+                                        )) {
+                                      final percentVal =
+                                          double.tryParse(
+                                            _lastAppliedDiscountStr!
+                                                .replaceAll('%', '')
+                                                .trim(),
+                                          ) ??
+                                          0.0;
+                                      final state =
+                                          context.read<PaymentBloc>().state;
+                                      final bool isStateValid =
+                                          state is PaymentSummaryLoaded &&
+                                          state.summary.orderId ==
+                                              widget.orderId;
+                                      final bool isSummaryValid =
+                                          _paymentSummary != null &&
+                                          _paymentSummary!.orderId ==
+                                              widget.orderId;
+                                      final PaymentSummary? summary =
+                                          isStateValid
+                                              ? state.summary
+                                              : (isSummaryValid
+                                                  ? _paymentSummary
+                                                  : null);
+                                      if (summary != null) {
+                                        final netTotalBeforeDiscountAndCoupon =
+                                            summary.netTotal -
+                                            summary.serviceChargeValue -
+                                            summary.tipAmount +
+                                            summary.discount.abs() +
+                                            summary.coupons.abs();
+                                        final newNetTotal =
+                                            netTotalBeforeDiscountAndCoupon -
+                                            amt;
+                                        final calculatedDiscount =
+                                            (newNetTotal * percentVal) / 100;
+                                        context.read<DiscountBloc>().add(
+                                          ApplyDiscountEvent(
+                                            request: AddDiscountRequest(
+                                              orderId: widget.orderId,
+                                              amount: calculatedDiscount
+                                                  .toStringAsFixed(2),
+                                              isNc:
+                                                  _isNcDiscount ? "yes" : "no",
+                                              reason:
+                                                  _lastAppliedDiscountReason ??
+                                                  "",
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    } else {
+                                      _reloadSummary();
+                                    }
+
+                                    // Success message
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          "Coupon added successfully",
+                                        ),
+                                        duration: Duration(seconds: 1),
+                                        backgroundColor: Colors.green,
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  },
                                 ),
+                          );
+                        },
+                onDelete:
+                    _isCouponApplied
+                        ? () async {
+                          if (_isDiscountApplied) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  "Please delete the merchant discount first",
+                                ),
+                                duration: Duration(seconds: 2),
+                                backgroundColor: Colors.red,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                            return;
+                          }
+                          final success = await _couponRepository.removeCoupon(
+                            token: widget.token,
+                            orderId: widget.orderId,
+                            couponCode: _appliedCoupon,
+                          );
+
+                          if (success) {
+                            setState(() {
+                              _isCouponApplied = false;
+                              _appliedCoupon = '';
+                              _couponAmount = 0.0;
+                              couponController.clear();
+                            });
+
+                            widget.onCouponAmountChanged?.call(0.0);
+
+                            await Future.delayed(
+                              const Duration(milliseconds: 500),
+                            );
+
+                            if (_lastAppliedDiscountStr != null &&
+                                _lastAppliedDiscountStr!.contains('%')) {
+                              final percentVal =
+                                  double.tryParse(
+                                    _lastAppliedDiscountStr!
+                                        .replaceAll('%', '')
+                                        .trim(),
+                                  ) ??
+                                  0.0;
+                              final state = context.read<PaymentBloc>().state;
+                              final bool isStateValid =
+                                  state is PaymentSummaryLoaded &&
+                                  state.summary.orderId == widget.orderId;
+                              final bool isSummaryValid =
+                                  _paymentSummary != null &&
+                                  _paymentSummary!.orderId == widget.orderId;
+                              final PaymentSummary? summary =
+                                  isStateValid
+                                      ? state.summary
+                                      : (isSummaryValid
+                                          ? _paymentSummary
+                                          : null);
+                              if (summary != null) {
+                                final netTotalBeforeDiscountAndCoupon =
+                                    summary.netTotal -
+                                    summary.serviceChargeValue -
+                                    summary.tipAmount +
+                                    summary.discount.abs() +
+                                    summary.coupons.abs();
+                                final newNetTotal =
+                                    netTotalBeforeDiscountAndCoupon;
+                                final calculatedDiscount =
+                                    (newNetTotal * percentVal) / 100;
+                                context.read<DiscountBloc>().add(
+                                  ApplyDiscountEvent(
+                                    request: AddDiscountRequest(
+                                      orderId: widget.orderId,
+                                      amount: calculatedDiscount
+                                          .toStringAsFixed(2),
+                                      isNc: _isNcDiscount ? "yes" : "no",
+                                      reason: _lastAppliedDiscountReason ?? "",
+                                    ),
+                                  ),
+                                );
+                              }
+                            } else {
+                              _reloadSummary();
+                            }
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Coupon removed successfully"),
+                                duration: Duration(seconds: 1),
+                                backgroundColor: Colors.green,
                               ),
                             );
                           }
-                        } else {
-                          _reloadSummary();
                         }
-
-                        // Success message
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              "Coupon added successfully",
-                            ),
-                            duration: Duration(seconds: 1),
-                            backgroundColor: Colors.green,
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      },
-                    ),
-                  );
-                },
-                onDelete:
-                _isCouponApplied
-                    ? () async {
-                  if (_isDiscountApplied) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Please delete the merchant discount first"),
-                        duration: Duration(seconds: 2),
-                        backgroundColor: Colors.red,
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                    return;
-                  }
-                  final success = await _couponRepository.removeCoupon(
-                    token: widget.token,
-                    orderId: widget.orderId,
-                    couponCode: _appliedCoupon,
-                  );
-
-                  if (success) {
-                    setState(() {
-                      _isCouponApplied = false;
-                      _appliedCoupon = '';
-                      _couponAmount = 0.0;
-                      couponController.clear();
-                    });
-
-                    widget.onCouponAmountChanged?.call(0.0);
-
-                    await Future.delayed(const Duration(milliseconds: 500));
-
-                    if (_lastAppliedDiscountStr != null && _lastAppliedDiscountStr!.contains('%')) {
-                      final percentVal = double.tryParse(_lastAppliedDiscountStr!.replaceAll('%', '').trim()) ?? 0.0;
-                      final state = context.read<PaymentBloc>().state;
-                      final bool isStateValid = state is PaymentSummaryLoaded && state.summary.orderId == widget.orderId;
-                      final bool isSummaryValid = _paymentSummary != null && _paymentSummary!.orderId == widget.orderId;
-                      final PaymentSummary? summary =
-                      isStateValid ? state.summary : (isSummaryValid ? _paymentSummary : null);
-                      if (summary != null) {
-                        final netTotalBeforeDiscountAndCoupon = summary.netTotal - summary.serviceChargeValue - summary.tipAmount + summary.discount.abs() + summary.coupons.abs();
-                        final newNetTotal = netTotalBeforeDiscountAndCoupon;
-                        final calculatedDiscount = (newNetTotal * percentVal) / 100;
-                        context.read<DiscountBloc>().add(
-                          ApplyDiscountEvent(
-                            request: AddDiscountRequest(
-                              orderId: widget.orderId,
-                              amount: calculatedDiscount.toStringAsFixed(2),
-                              isNc: _isNcDiscount ? "yes" : "no",
-                              reason: _lastAppliedDiscountReason ?? "",
-                            ),
-                          ),
-                        );
-                      }
-                    } else {
-                      _reloadSummary();
-                    }
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Coupon removed successfully"),
-                        duration: Duration(seconds: 1),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
-                  }
-                }
-                    : null,
+                        : null,
               ),
             ),
           ),
@@ -2546,7 +2644,7 @@ class _paymentsummaryState extends State<paymentsummary> {
 
         // Tips
         Expanded(
-          child:_actionTile(
+          child: _actionTile(
             label: "Tips",
             borderColor: const Color(0xFF50AC9A),
             iconBg: const Color(0xFF50AC9A),
@@ -2560,92 +2658,90 @@ class _paymentsummaryState extends State<paymentsummary> {
             ),
             isApplied: _isTipApplied,
             appliedText:
-            _isTipApplied
-                ? "$_currencySymbol${_tipAmount.toStringAsFixed(2)}"
-                : null,
+                _isTipApplied
+                    ? "$_currencySymbol${_tipAmount.toStringAsFixed(2)}"
+                    : null,
             onTap:
-            _isTipApplied
-                ? null
-                : () async {
-              final double? result = await showDialog<double>(
-                context: context,
-                barrierDismissible: false,
-                builder:
-                    (_) => TipPopup(
-                  orderId: widget.orderId,
-                  token: widget.token,
-                  onTipApplied: (amt) {
-                    setState(() {
-                      _isTipApplied = true;
-                      _tipAmount = amt;
-                      tipController.text = amt.toStringAsFixed(2);
-                    });
-                    widget.onTipChanged(amt);
+                _isTipApplied
+                    ? null
+                    : () async {
+                      final double? result = await showDialog<double>(
+                        context: context,
+                        barrierDismissible: false,
+                        builder:
+                            (_) => TipPopup(
+                              orderId: widget.orderId,
+                              token: widget.token,
+                              onTipApplied: (amt) {
+                                setState(() {
+                                  _isTipApplied = true;
+                                  _tipAmount = amt;
+                                  tipController.text = amt.toStringAsFixed(2);
+                                });
+                                widget.onTipChanged(amt);
 
-                    context.read<PaymentBloc>().add(UpdateTip(amt));
-                    // ✅ Reload summary so backend recalculates net_total for NC
-                    _reloadSummary();
-                  },
-                ),
-              );
-              if (result != null && result > 0) {
-                setState(() {
-                  _isTipApplied = true;
-                  _tipAmount = result;
-                  tipController.text = result.toStringAsFixed(2);
-                });
-                widget.onTipChanged(result);
-                context.read<PaymentBloc>().add(UpdateTip(result));
-                // ✅ Reload payment summary
-                _reloadSummary();
-              }
-            },
+                                context.read<PaymentBloc>().add(UpdateTip(amt));
+                                // ✅ Reload summary so backend recalculates net_total for NC
+                                _reloadSummary();
+                              },
+                            ),
+                      );
+                      if (result != null && result > 0) {
+                        setState(() {
+                          _isTipApplied = true;
+                          _tipAmount = result;
+                          tipController.text = result.toStringAsFixed(2);
+                        });
+                        widget.onTipChanged(result);
+                        context.read<PaymentBloc>().add(UpdateTip(result));
+                        // ✅ Reload payment summary
+                        _reloadSummary();
+                      }
+                    },
             onDelete:
-            _isTipApplied
-                ? () async {
-              final success = await _tipRepository.removeTip(
-                token: widget.token,
-                orderId: widget.orderId,
-              );
-              if (success) {
-                setState(() {
-                  _isTipApplied = false;
-                  _tipAmount = 0;
-                  tipController.clear();
-                });
-                widget.onTipChanged(0);
+                _isTipApplied
+                    ? () async {
+                      final success = await _tipRepository.removeTip(
+                        token: widget.token,
+                        orderId: widget.orderId,
+                      );
+                      if (success) {
+                        setState(() {
+                          _isTipApplied = false;
+                          _tipAmount = 0;
+                          tipController.clear();
+                        });
+                        widget.onTipChanged(0);
 
-                context.read<PaymentBloc>().add(UpdateTip(0));
-                _updateAmountField();
-                // ✅ Reload payment summary from backend
-                _reloadSummary();
+                        context.read<PaymentBloc>().add(UpdateTip(0));
+                        _updateAmountField();
+                        // ✅ Reload payment summary from backend
+                        _reloadSummary();
 
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Tip removed successfully'),
-                    duration: Duration(seconds: 1),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Failed to remove tip'),
-                    duration: Duration(seconds: 1),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            }
-                : null,
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Tip removed successfully'),
+                            duration: Duration(seconds: 1),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Failed to remove tip'),
+                            duration: Duration(seconds: 1),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
+                    : null,
           ),
         ),
         SizedBox(height: gap),
 
         // Svc Charges
-        Expanded(
-          child: _svcChargeTile(context),
-        ),
+        Expanded(child: _svcChargeTile(context)),
       ],
     );
   }
@@ -2687,16 +2783,16 @@ class _paymentsummaryState extends State<paymentsummary> {
       return LinearGradient(colors: [base, base]);
     }
 
-    final Color labelColor = isDark
-        ? Colors.white
-        : (isApplied ? Colors.white : borderColor);
-    final Color subColor = isDark
-        ? Colors.white70
-        : (isApplied
-        ? Colors.white.withOpacity(0.9)
-        : borderColor.withOpacity(0.8));
+    final Color labelColor =
+        isDark ? Colors.white : (isApplied ? Colors.white : borderColor);
+    final Color subColor =
+        isDark
+            ? Colors.white70
+            : (isApplied
+                ? Colors.white.withOpacity(0.9)
+                : borderColor.withOpacity(0.8));
     final Color activeBorder =
-    isApplied ? iconBg : borderColor.withOpacity(0.4);
+        isApplied ? iconBg : borderColor.withOpacity(0.4);
 
     return GestureDetector(
       onTap: (!enabled || isApplied) ? null : onTap,
@@ -2705,27 +2801,24 @@ class _paymentsummaryState extends State<paymentsummary> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           decoration: BoxDecoration(
-            gradient: isDark
-                ? LinearGradient(
-              colors: [
-                borderColor.withOpacity(0.95),
-                borderColor.withOpacity(0.55),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            )
-                : (isApplied ? _tileGradient(iconBg) : null),
+            gradient:
+                isDark
+                    ? LinearGradient(
+                      colors: [
+                        borderColor.withOpacity(0.95),
+                        borderColor.withOpacity(0.55),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                    : (isApplied ? _tileGradient(iconBg) : null),
 
-            color: isDark
-                ? null
-                : (isApplied ? null : Colors.white),
+            color: isDark ? null : (isApplied ? null : Colors.white),
 
             borderRadius: BorderRadius.circular(10),
 
             border: Border.all(
-              color: isDark
-                  ? borderColor.withOpacity(0.35)
-                  : activeBorder,
+              color: isDark ? borderColor.withOpacity(0.35) : activeBorder,
               width: 1,
             ),
           ),
@@ -2733,9 +2826,10 @@ class _paymentsummaryState extends State<paymentsummary> {
             children: [
               Expanded(
                 child: Column(
-                  mainAxisAlignment: appliedText == null
-                      ? MainAxisAlignment.center
-                      : MainAxisAlignment.spaceEvenly,
+                  mainAxisAlignment:
+                      appliedText == null
+                          ? MainAxisAlignment.center
+                          : MainAxisAlignment.spaceEvenly,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
@@ -2767,18 +2861,17 @@ class _paymentsummaryState extends State<paymentsummary> {
                     width: 38,
                     height: 38,
                     decoration: BoxDecoration(
-                      color: isDark
-                          ? Colors.black.withOpacity(0.25)
-                          : Colors.white,
+                      color:
+                          isDark
+                              ? Colors.black.withOpacity(0.25)
+                              : Colors.white,
                       shape: BoxShape.circle,
                     ),
                     // ── Only change: trash icon instead of close ──
                     child: Icon(
                       Icons.delete_outline_rounded,
                       size: 28,
-                      color: isDark
-                          ? Colors.white
-                          : Colors.red,
+                      color: isDark ? Colors.white : Colors.red,
                     ),
                   ),
                 )
@@ -2787,9 +2880,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                   width: 34,
                   height: 34,
                   decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.black.withOpacity(0.18)
-                        : iconBg,
+                    color: isDark ? Colors.black.withOpacity(0.18) : iconBg,
                     shape: BoxShape.circle,
                   ),
                   // ── Only change: iconWidget wrapped in CircleAvatar ──
@@ -2797,14 +2888,14 @@ class _paymentsummaryState extends State<paymentsummary> {
                     radius: 17,
                     backgroundColor: Colors.transparent,
                     child:
-                    iconWidget ??
+                        iconWidget ??
                         (icon != null
                             ? Icon(icon, color: Colors.white, size: 18)
                             : const Icon(
-                          Icons.help_outline,
-                          color: Colors.white,
-                          size: 18,
-                        )),
+                              Icons.help_outline,
+                              color: Colors.white,
+                              size: 18,
+                            )),
                   ),
                 ),
             ],
@@ -2819,48 +2910,41 @@ class _paymentsummaryState extends State<paymentsummary> {
     final bool applied =
         isServiceChargeApplied && selectedServiceCharge != null;
     final Color base = const Color(0xFFE57F69);
-    final Color labelColor = isDark
-        ? Colors.white
-        : (applied ? Colors.white : const Color(0xFFC62828));
+    final Color labelColor =
+        isDark
+            ? Colors.white
+            : (applied ? Colors.white : const Color(0xFFC62828));
 
     final Color subColor =
-    isDark ? Colors.white70 : Colors.white.withOpacity(0.9);
+        isDark ? Colors.white70 : Colors.white.withOpacity(0.9);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        gradient: isDark
-            ? const LinearGradient(
-          colors: [
-            Color(0xFFCC5A35),
-            Color(0xFF8F3D21),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        )
-            : (applied
-            ? const LinearGradient(
-          colors: [
-            Color(0xFFF8AD9D),
-            Color(0xFFE57F69),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        )
-            : null),
+        gradient:
+            isDark
+                ? const LinearGradient(
+                  colors: [Color(0xFFCC5A35), Color(0xFF8F3D21)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+                : (applied
+                    ? const LinearGradient(
+                      colors: [Color(0xFFF8AD9D), Color(0xFFE57F69)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                    : null),
 
-        color: isDark
-            ? null
-            : (applied ? null : Colors.white),
+        color: isDark ? null : (applied ? null : Colors.white),
 
         borderRadius: BorderRadius.circular(10),
 
         border: Border.all(
-          color: isDark
-              ? Colors.white24
-              : (applied
-              ? Colors.transparent
-              : base.withOpacity(0.4)),
+          color:
+              isDark
+                  ? Colors.white24
+                  : (applied ? Colors.transparent : base.withOpacity(0.4)),
           width: 1,
         ),
       ),
@@ -2900,20 +2984,23 @@ class _paymentsummaryState extends State<paymentsummary> {
                           "Select %",
                           style: TextStyle(
                             fontSize: 15,
-                            color: isDark ? Colors.white70 : const Color(0xFF777777),
+                            color:
+                                isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF777777),
                           ),
                         ),
 
                         style: TextStyle(
                           fontSize: 16,
-                          color: isDark ? Colors.white : const Color(0xFF212121),
+                          color:
+                              isDark ? Colors.white : const Color(0xFF212121),
                         ),
 
                         dropdownColor:
-                        isDark ? const Color(0xFF2B2B2B) : Colors.white,
+                            isDark ? const Color(0xFF2B2B2B) : Colors.white,
 
-                        iconEnabledColor:
-                        isDark ? Colors.white : Colors.black,
+                        iconEnabledColor: isDark ? Colors.white : Colors.black,
                         items: const [
                           DropdownMenuItem(value: 1, child: Text("1%")),
                           DropdownMenuItem(value: 2, child: Text("2%")),
@@ -2938,18 +3025,14 @@ class _paymentsummaryState extends State<paymentsummary> {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? Colors.black.withOpacity(0.25)
-                      : Colors.white,
+                  color: isDark ? Colors.black.withOpacity(0.25) : Colors.white,
                   shape: BoxShape.circle,
                 ),
 
                 child: Icon(
                   Icons.delete_outline_rounded,
                   size: 28,
-                  color: isDark
-                      ? Colors.white
-                      : Colors.red,
+                  color: isDark ? Colors.white : Colors.red,
                 ),
               ),
             )
@@ -2957,10 +3040,11 @@ class _paymentsummaryState extends State<paymentsummary> {
             Container(
               width: 34,
               height: 34,
-              decoration:  BoxDecoration(
-                color: isDark
-                    ? Colors.black.withOpacity(0.20)
-                    : const Color(0xFFC62828),
+              decoration: BoxDecoration(
+                color:
+                    isDark
+                        ? Colors.black.withOpacity(0.20)
+                        : const Color(0xFFC62828),
                 shape: BoxShape.circle,
               ),
               // ── Only change: icon wrapped in CircleAvatar ──
@@ -2980,12 +3064,12 @@ class _paymentsummaryState extends State<paymentsummary> {
   }
 
   Widget _summaryRow(
-      String label,
-      String value, {
-        bool bold = false,
-        Color? labelColor,
-        Color? valueColor,
-      }) {
+    String label,
+    String value, {
+    bool bold = false,
+    Color? labelColor,
+    Color? valueColor,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
@@ -3057,9 +3141,9 @@ class NumberPad extends StatelessWidget {
                     child: Container(
                       decoration: BoxDecoration(
                         color:
-                        selectedPaymentMode.isNotEmpty
-                            ? const Color(0xFFFE6464)
-                            : Colors.white,
+                            selectedPaymentMode.isNotEmpty
+                                ? const Color(0xFFFE6464)
+                                : Colors.white,
                         borderRadius: BorderRadius.circular(10),
                         boxShadow: const [
                           BoxShadow(
@@ -3076,9 +3160,9 @@ class NumberPad extends StatelessWidget {
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color:
-                          selectedPaymentMode.isNotEmpty
-                              ? Colors.white
-                              : const Color(0xFF4C5F7D),
+                              selectedPaymentMode.isNotEmpty
+                                  ? Colors.white
+                                  : const Color(0xFF4C5F7D),
                         ),
                       ),
                     ),
@@ -3099,13 +3183,13 @@ class NumberPad extends StatelessWidget {
   }
 
   Widget _buildButton(
-      String label, {
-        int flex = 1,
-        Color? backgroundColor,
-        Color? textColor,
-        BoxBorder? border,
-        bool isPayButton = false,
-      }) {
+    String label, {
+    int flex = 1,
+    Color? backgroundColor,
+    Color? textColor,
+    BoxBorder? border,
+    bool isPayButton = false,
+  }) {
     final bool isNumber = RegExp(r'^(\d+|00|\.)\$').hasMatch(label);
     return Expanded(
       flex: flex,
@@ -3151,24 +3235,21 @@ class NumberPad extends StatelessWidget {
           onTap: () => onKeyPressed(label),
           child: Container(
             decoration: BoxDecoration(
-              color: isDark
-                  ? const Color(0xFF34384F)
-                  : Colors.white,
+              color: isDark ? const Color(0xFF34384F) : Colors.white,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: isDark
-                    ? const Color(0xFF4A527A)
-                    : Colors.grey.shade300,
+                color: isDark ? const Color(0xFF4A527A) : Colors.grey.shade300,
               ),
-              boxShadow: isDark
-                  ? []
-                  : const [
-                BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 4,
-                  offset: Offset(0, 2),
-                ),
-              ],
+              boxShadow:
+                  isDark
+                      ? []
+                      : const [
+                        BoxShadow(
+                          color: Colors.black12,
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
             ),
             alignment: Alignment.center,
             child: Text(
@@ -3176,9 +3257,7 @@ class NumberPad extends StatelessWidget {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: isDark
-                    ? Colors.white
-                    : const Color(0xFF4C5F7D),
+                color: isDark ? Colors.white : const Color(0xFF4C5F7D),
               ),
             ),
           ),

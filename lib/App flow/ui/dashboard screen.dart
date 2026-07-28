@@ -1003,8 +1003,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                             debugPrint("✅ Updated stored takeaway order ID: $_takeawayOrderId");
                           }
                         } else {
-                          // Dine-in: use widget.orderId or state.orderId
-                          orderId = widget.orderId ?? state.orderId;
+                          // Dine-in: use widget.orderId if > 0, otherwise state.orderId
+                          orderId = (widget.orderId != null && widget.orderId! > 0)
+                              ? widget.orderId!
+                              : state.orderId;
                           debugPrint("🍽️ Dine-in order ID: $orderId");
                         }
 

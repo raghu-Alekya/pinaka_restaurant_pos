@@ -653,9 +653,7 @@ class _OrderPanelState extends State<OrderPanel> {
     );
 
     try {
-      final orderRepo = OrderRepository(
-        baseUrl: AppConstants.baseDomain,
-      );
+      final orderRepo = OrderRepository(baseUrl: AppConstants.baseDomain);
 
       final orderState = context.read<OrderBloc>().state;
       final isTakeAway = widget.isTakeAway;
@@ -1906,24 +1904,22 @@ class _OrderPanelState extends State<OrderPanel> {
           /// KOT Print -> only if cart contains items
           final bool canPrintKot = hasCartItems;
 
+          /// cancel button enable in take away order
+          final bool disableCancel = !widget.isTakeAway && hasAnyValidKot;
+
           /// Pay -> enabled if there's any valid KOT (not voided or transferred)
           final bool canPay = hasAnyValidKot && !hasCartItems;
           final bool hasOrderItems = state.orderItems.isNotEmpty;
           return Container(
-            margin: const EdgeInsets.only(
-              top: 6,
-            ),
+            margin: const EdgeInsets.only(top: 6),
             width: 700,
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: isDark
-                  ? const Color(0xFF1B1B22)
-                  : Colors.white,
+              color: isDark ? const Color(0xFF1B1B22) : Colors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isDark
-                    ? const Color(0xFF2B2E37)
-                    : const Color(0xFFE0E0E0),
+                color:
+                    isDark ? const Color(0xFF2B2E37) : const Color(0xFFE0E0E0),
               ),
             ),
             child: Column(
@@ -2102,71 +2098,88 @@ class _OrderPanelState extends State<OrderPanel> {
                           const SizedBox(height: 12),
                           InkWell(
                             // 1. Disable tap function completely if a valid KOT has been generated
-                            onTap: hasAnyValidKot
-                                ? null
-                                : () {
-                              final currentOrderId =
-                                  context.read<OrderBloc>().state.orderId;
+                            onTap:
+                                disableCancel
+                                    ? null
+                                    : () {
+                                      final currentOrderId =
+                                          context
+                                              .read<OrderBloc>()
+                                              .state
+                                              .orderId;
 
-                              if (currentOrderId == 0) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    duration: Duration(seconds: 1),
-                                    content: Text("No active order to cancel"),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
-                                return;
-                              }
-                              showDialog(
-                                context: context,
-                                barrierDismissible: false,
-                                builder: (dialogContext) {
-                                  bool isLoading = false;
+                                      if (currentOrderId == 0) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            duration: Duration(seconds: 1),
+                                            content: Text(
+                                              "No active order to cancel",
+                                            ),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                        return;
+                                      }
+                                      showDialog(
+                                        context: context,
+                                        barrierDismissible: false,
+                                        builder: (dialogContext) {
+                                          bool isLoading = false;
 
-                                  return StatefulBuilder(
-                                    builder: (context, setState) {
-                                      return ConfirmationPopup(
-                                        title: "Are you sure?",
-                                        message:
-                                        widget.isTakeAway
-                                            ? "Do you want to really cancel this order?\nThis action cannot be undone."
-                                            : "Do you want to really delete the ",
-                                        highlightedText:
-                                        widget.isTakeAway
-                                            ? null
-                                            : state.tableName,
-                                        trailingMessage:
-                                        widget.isTakeAway
-                                            ? null
-                                            : "?\nThis will remove it from ${state.zoneName}.",
-                                        imagePath: "assets/warning_icon.png",
-                                        confirmButtonText: "Yes, Cancel!",
-                                        cancelButtonText: "No, Keep It",
-                                        primaryColor: const Color(0xFFD83434),
-                                        gradientColor: const Color(0xFFFCE9E9),
-                                        isLoading: isLoading,
-                                        onCancel: () {
-                                          Navigator.pop(dialogContext);
-                                        },
-                                        onConfirm: () async {
-                                          setState(() {
-                                            isLoading = true;
-                                          });
+                                          return StatefulBuilder(
+                                            builder: (context, setState) {
+                                              return ConfirmationPopup(
+                                                title: "Are you sure?",
+                                                message:
+                                                    widget.isTakeAway
+                                                        ? "Do you want to really cancel this order?\nThis action cannot be undone."
+                                                        : "Do you want to really delete the ",
+                                                highlightedText:
+                                                    widget.isTakeAway
+                                                        ? null
+                                                        : state.tableName,
+                                                trailingMessage:
+                                                    widget.isTakeAway
+                                                        ? null
+                                                        : "?\nThis will remove it from ${state.zoneName}.",
+                                                imagePath:
+                                                    "assets/warning_icon.png",
+                                                confirmButtonText:
+                                                    "Yes, Cancel!",
+                                                cancelButtonText: "No, Keep It",
+                                                primaryColor: const Color(
+                                                  0xFFD83434,
+                                                ),
+                                                gradientColor: const Color(
+                                                  0xFFFCE9E9,
+                                                ),
+                                                isLoading: isLoading,
+                                                onCancel: () {
+                                                  Navigator.pop(dialogContext);
+                                                },
+                                                onConfirm: () async {
+                                                  setState(() {
+                                                    isLoading = true;
+                                                  });
 
-                                          Navigator.pop(dialogContext);
-                                          await _cancelOrder(currentOrderId);
+                                                  Navigator.pop(dialogContext);
+                                                  await _cancelOrder(
+                                                    currentOrderId,
+                                                  );
+                                                },
+                                              );
+                                            },
+                                          );
                                         },
                                       );
                                     },
-                                  );
-                                },
-                              );
-                            },
                             borderRadius: BorderRadius.circular(8),
                             child: Opacity(
                               // 2. Wrap layout structure with opacity filter to give dynamic visual feedback
-                              opacity: hasAnyValidKot ? 0.45 : 1.0,
+                              // opacity: hasAnyValidKot ? 0.45 : 1.0,
+                              opacity: disableCancel ? 0.45 : 1.0,
                               child: Container(
                                 height: 36,
                                 padding: const EdgeInsets.symmetric(
@@ -2174,27 +2187,31 @@ class _OrderPanelState extends State<OrderPanel> {
                                 ),
                                 decoration: BoxDecoration(
                                   color:
-                                  isDark
-                                      ? const Color(0xFF34384F)
-                                      : const Color(0xFFF6F6F6),
+                                      isDark
+                                          ? const Color(0xFF34384F)
+                                          : const Color(0xFFF6F6F6),
                                   borderRadius: BorderRadius.circular(6),
                                   border: Border.all(
                                     width: 1,
                                     // 3. Fallback color maps if active state block triggers lock limits
                                     color:
-                                    (hasOrder && !hasAnyValidKot)
-                                        ? const Color(0xFFFE2222)
-                                        : const Color(0x7FC0C0C0),
+                                        // (hasOrder && !hasAnyValidKot)
+                                        (hasOrder && !disableCancel)
+                                            ? const Color(0xFFFE2222)
+                                            : const Color(0x7FC0C0C0),
                                   ),
-                                  boxShadow: hasAnyValidKot
-                                      ? []
-                                      : [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.08),
-                                      blurRadius: 6,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
+                                  boxShadow:
+                                      disableCancel
+                                          ? []
+                                          : [
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(
+                                                0.08,
+                                              ),
+                                              blurRadius: 6,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -2204,22 +2221,24 @@ class _OrderPanelState extends State<OrderPanel> {
                                       width: 18,
                                       height: 18,
                                       color:
-                                      (hasOrder && !hasAnyValidKot)
-                                          ? const Color(0xFFFE2222)
-                                          : (isDark
-                                          ? Colors.white
-                                          : Colors.grey.shade700),
+                                          // (hasOrder && !hasAnyValidKot)
+                                          (hasOrder && !disableCancel)
+                                              ? const Color(0xFFFE2222)
+                                              : (isDark
+                                                  ? Colors.white
+                                                  : Colors.grey.shade700),
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
                                       "Cancel",
                                       style: TextStyle(
                                         color:
-                                        (hasOrder && !hasAnyValidKot)
-                                            ? const Color(0xFFFE2222)
-                                            : (isDark
-                                            ? Colors.white
-                                            : Colors.grey.shade700),
+                                            // (hasOrder && !hasAnyValidKot)
+                                            (hasOrder && !disableCancel)
+                                                ? const Color(0xFFFE2222)
+                                                : (isDark
+                                                    ? Colors.white
+                                                    : Colors.grey.shade700),
                                         fontSize: 13,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -2228,7 +2247,7 @@ class _OrderPanelState extends State<OrderPanel> {
                                 ),
                               ),
                             ),
-                          )
+                          ),
                         ],
                       ),
                     ],
@@ -2524,17 +2543,20 @@ class _OrderPanelState extends State<OrderPanel> {
                           ],
                           child: ViewAllKOTDropdown(
                             kots: state.kotList,
-                            parentOrderId: state.orderId,
+                            parentOrderId:
+                                state.orderId > 0
+                                    ? state.orderId
+                                    : widget.orderId,
                             restaurantId: int.parse(widget.restaurantId),
                             zoneId: state.zoneId,
                             token: widget.token,
                             tableNo: state.tableName,
-                            // ✅ Wired up so expanding/collapsing the KOT
-                            // dropdown hides/shows the order header + item list below.
                             onToggle: (isExpanded) {
-                              setState(() {
-                                _showKotList = isExpanded;
-                              });
+                              if (_showKotList != isExpanded && mounted) {
+                                setState(() {
+                                  _showKotList = isExpanded;
+                                });
+                              }
                             },
                           ),
                         ),
@@ -3160,10 +3182,10 @@ class _OrderPanelState extends State<OrderPanel> {
       ),
     );
   }
+
   Widget modifierBadge({required bool hasModifier}) {
-    final Color color = hasModifier
-        ? const Color(0xFFFFB820)
-        : const Color(0xFFB8B8B8);
+    final Color color =
+        hasModifier ? const Color(0xFFFFB820) : const Color(0xFFB8B8B8);
 
     return Container(
       width: 61,
@@ -3172,10 +3194,7 @@ class _OrderPanelState extends State<OrderPanel> {
       clipBehavior: Clip.antiAlias,
       decoration: ShapeDecoration(
         shape: RoundedRectangleBorder(
-          side: BorderSide(
-            width: 1,
-            color: color,
-          ),
+          side: BorderSide(width: 1, color: color),
           borderRadius: BorderRadius.circular(10),
         ),
         shadows: [
@@ -3316,9 +3335,9 @@ class _OrderPanelState extends State<OrderPanel> {
       onTap:
           canCheckout
               ? () async {
-            final orderRepo = OrderRepository(
-              baseUrl: AppConstants.baseDomain,
-            );
+                final orderRepo = OrderRepository(
+                  baseUrl: AppConstants.baseDomain,
+                );
 
                 showDialog(
                   context: context,
@@ -3459,12 +3478,12 @@ class _OrderPanelState extends State<OrderPanel> {
   }
 
   Widget orderButton(
-      String text,
-      Color color, {
-        VoidCallback? onPressed,
-        bool isLoading = false,
-        Color? textColor,
-      }) => Expanded(
+    String text,
+    Color color, {
+    VoidCallback? onPressed,
+    bool isLoading = false,
+    Color? textColor,
+  }) => Expanded(
     child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2),
       child: SizedBox(
@@ -3479,27 +3498,27 @@ class _OrderPanelState extends State<OrderPanel> {
           ),
           onPressed: onPressed,
           child:
-          isLoading
-              ? const SizedBox(
-            height: 20,
-            width: 20,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-            ),
-          )
-              : Text(
-            text,
-            style: TextStyle(
-              color:
-              textColor ??
-                  (onPressed == null
-                      ? const Color(0xFF757575) // Disabled text
-                      : Colors.white), // Enabled text
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+              isLoading
+                  ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                  : Text(
+                    text,
+                    style: TextStyle(
+                      color:
+                          textColor ??
+                          (onPressed == null
+                              ? const Color(0xFF757575) // Disabled text
+                              : Colors.white), // Enabled text
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
         ),
       ),
     ),

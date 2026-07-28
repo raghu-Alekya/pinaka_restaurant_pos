@@ -69,7 +69,8 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   List<String> _orderTypes = [];
   late KitchenRepository kitchenRepo;
   bool isResetEnabled = false;
-  static const String _apiBaseUrl = "https://merchantrestaurant.alektasolutions.com";
+  static const String _apiBaseUrl =
+      "https://merchantrestaurant.alektasolutions.com";
   Timer? _timer;
   bool _isDialogOpen = false;
   final Map<String, List<Map<String, dynamic>>> _ordersCache = {};
@@ -90,12 +91,9 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     kitchenRepo = KitchenRepository(token: widget.token);
     _loadPermissions();
     _initializeData();
-    _timer = Timer.periodic(
-      const Duration(seconds: 1),
-          (_) {
-        _refreshSelectedTable();
-      },
-    );
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _refreshSelectedTable();
+    });
     _searchController.addListener(() {
       setState(() {
         searchQuery = _searchController.text.toLowerCase();
@@ -157,10 +155,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       });
     }
 
-    await Future.wait([
-      _fetchZones(),
-      _fetchOrderTypes(),
-    ]);
+    await Future.wait([_fetchZones(), _fetchOrderTypes()]);
     await _fetchOrders();
 
     _isInitialDataLoaded = true;
@@ -188,7 +183,6 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   Future<void> _fetchOrders() async {
     final cacheKey = "$selectedOrderType|${selectedArea ?? 'All'}";
 
-    // Clear selection when switching tabs
     if (!mounted) return;
 
     setState(() {
@@ -199,67 +193,71 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       _isKotLoadingForSelected = false;
     });
 
-    // For "All" tab, always fetch fresh data from all order types
+    // 1. INSTANT HOT LOAD FROM MEMORY:
+    List<Map<String, dynamic>>? cached;
     if (selectedOrderType == "All") {
-      // Clear the "All" cache to force fresh fetch
-      _ordersCache.removeWhere((key, value) => key.startsWith("All|"));
-
-      // FIX: force a true, fresh fetch of every order type in parallel so
-      // the "All" tab reliably shows every order (previously it silently
-      // reused stale/incomplete per-type cache entries, which is why only
-      // "a few" orders showed up under "All").
-      final List<Map<String, dynamic>> combined =
-      await _fetchAllOrderTypes(forceRefresh: true);
-
-      if (!mounted) return;
-
-      _ordersCache[cacheKey] = combined;
-      _orders = combined;
-
-      // Fetch KOT data for all orders
-      await Future.wait(
-        _orders.map((order) => _fetchParentKotOrders(order, updateState: false)),
-      );
-
-      if (mounted) {
-        setState(() {});
+      cached = _ordersCache[cacheKey];
+      if (cached == null || cached.isEmpty) {
+        final combinedFromCache = <Map<String, dynamic>>[];
+        for (final type in _orderTypes) {
+          if (type == "All") continue;
+          final k = "$type|${selectedArea ?? 'All'}";
+          final perTypeCached = _ordersCache[k];
+          if (perTypeCached != null) {
+            combinedFromCache.addAll(perTypeCached);
+          }
+        }
+        if (combinedFromCache.isNotEmpty) {
+          cached = combinedFromCache;
+        }
       }
-      return;
+    } else {
+      cached = _ordersCache[cacheKey];
     }
 
-    // For specific order types, use cached data or fetch fresh
-    final cached = _ordersCache[cacheKey];
-
-    // Show cached results immediately if available
-    if (cached != null && mounted) {
+    // Immediately render cached orders in 0ms!
+    if (cached != null && cached.isNotEmpty && mounted) {
       setState(() {
-        _orders = cached;
+        _orders = cached!;
       });
     }
 
-    final List<Map<String, dynamic>> orders = await kitchenRepo.fetchOrders(
-      selectedOrderType: selectedOrderType,
-      restaurantId: widget.restaurantId,
-      selectedArea: selectedArea == "All" ? null : selectedArea,
-      zones: _zones,
-      selectedUser: _selectedUser,
-    );
+    // 2. ASYNCHRONOUS BACKGROUND REFRESH:
+    List<Map<String, dynamic>> orders = [];
+    if (selectedOrderType == "All") {
+      orders = await _fetchAllOrderTypes(forceRefresh: false);
+    } else {
+      orders = await kitchenRepo.fetchOrders(
+        selectedOrderType: selectedOrderType,
+        restaurantId: widget.restaurantId,
+        selectedArea: selectedArea == "All" ? null : selectedArea,
+        zones: _zones,
+        selectedUser: _selectedUser,
+      );
+    }
 
     if (!mounted) return;
-
-    final isUnchanged =
-        cached != null && jsonEncode(cached) == jsonEncode(orders);
 
     _ordersCache[cacheKey] = orders;
     _orders = orders;
 
-    // Fetch KOT data for orders
+    // Fetch / Refresh KOT data
     final needsKotFetch = _orders.any((o) => o['kotOrders'] == null);
-
-    if (!isUnchanged || needsKotFetch) {
+    if (cached == null || needsKotFetch) {
       await Future.wait(
-        _orders.map((order) => _fetchParentKotOrders(order, updateState: false)),
+        _orders.map(
+          (order) => _fetchParentKotOrders(order, updateState: false),
+        ),
       );
+    } else {
+      // Background non-blocking update for existing KOTs
+      Future.wait(
+        _orders.map(
+          (order) => _fetchParentKotOrders(order, updateState: false),
+        ),
+      ).then((_) {
+        if (mounted) setState(() {});
+      });
     }
 
     if (mounted) {
@@ -267,7 +265,9 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     }
   }
 
-  Future<List<Map<String, dynamic>>> _fetchAllOrderTypes({bool forceRefresh = false}) async {
+  Future<List<Map<String, dynamic>>> _fetchAllOrderTypes({
+    bool forceRefresh = false,
+  }) async {
     final List<Map<String, dynamic>> combined = [];
 
     // Guard against race condition where _orderTypes is empty
@@ -291,51 +291,57 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     // FIX: fetch every order type IN PARALLEL (instead of one-by-one with
     // await in a loop) so a single slow type doesn't hold back the others,
     // and so the "All" tab reflects every type reliably and quickly.
-    final results = await Future.wait(typesToFetch.map((type) async {
-      final typeCacheKey = "$type|${selectedArea ?? 'All'}";
-      List<Map<String, dynamic>> typeOrders = _ordersCache[typeCacheKey] ?? [];
+    final results = await Future.wait(
+      typesToFetch.map((type) async {
+        final typeCacheKey = "$type|${selectedArea ?? 'All'}";
+        List<Map<String, dynamic>> typeOrders =
+            _ordersCache[typeCacheKey] ?? [];
 
-      final shouldFetchFresh = forceRefresh ||
-          typeOrders.isEmpty ||
-          !_ordersCache.containsKey(typeCacheKey);
+        final shouldFetchFresh =
+            forceRefresh ||
+            typeOrders.isEmpty ||
+            !_ordersCache.containsKey(typeCacheKey);
 
-      if (shouldFetchFresh) {
-        try {
-          typeOrders = await kitchenRepo.fetchOrders(
-            selectedOrderType: type,
-            restaurantId: widget.restaurantId,
-            selectedArea: selectedArea == "All" ? null : selectedArea,
-            zones: _zones,
-            selectedUser: _selectedUser,
-          );
+        if (shouldFetchFresh) {
+          try {
+            typeOrders = await kitchenRepo.fetchOrders(
+              selectedOrderType: type,
+              restaurantId: widget.restaurantId,
+              selectedArea: selectedArea == "All" ? null : selectedArea,
+              zones: _zones,
+              selectedUser: _selectedUser,
+            );
 
-          _ordersCache[typeCacheKey] = typeOrders;
-        } catch (e) {
-          debugPrint("Error fetching orders for type '$type' in 'All' tab: $e");
-          // If fetch fails and we have cached data, use it even if empty
-          if (!_ordersCache.containsKey(typeCacheKey)) {
-            _ordersCache[typeCacheKey] = [];
+            _ordersCache[typeCacheKey] = typeOrders;
+          } catch (e) {
+            debugPrint(
+              "Error fetching orders for type '$type' in 'All' tab: $e",
+            );
+            // If fetch fails and we have cached data, use it even if empty
+            if (!_ordersCache.containsKey(typeCacheKey)) {
+              _ordersCache[typeCacheKey] = [];
+            }
+            typeOrders = _ordersCache[typeCacheKey] ?? [];
           }
-          typeOrders = _ordersCache[typeCacheKey] ?? [];
         }
-      }
 
-      // FIX: always (re)tag every order with its real type — not just the
-      // ones that were freshly fetched this call. Previously, orders
-      // served from cache could keep an empty `order_type`, which made the
-      // "All" tab misclassify a Takeaway/Online order as a Dine-In card
-      // (or vice-versa) on a later render — this is what caused the
-      // Takeaway card flicker and, downstream, KOT lookups using the
-      // wrong "effective" order type.
-      for (final order in typeOrders) {
-        final currentType = (order['order_type'] ?? '').toString().trim();
-        if (currentType.isEmpty) {
-          order['order_type'] = type;
+        // FIX: always (re)tag every order with its real type — not just the
+        // ones that were freshly fetched this call. Previously, orders
+        // served from cache could keep an empty `order_type`, which made the
+        // "All" tab misclassify a Takeaway/Online order as a Dine-In card
+        // (or vice-versa) on a later render — this is what caused the
+        // Takeaway card flicker and, downstream, KOT lookups using the
+        // wrong "effective" order type.
+        for (final order in typeOrders) {
+          final currentType = (order['order_type'] ?? '').toString().trim();
+          if (currentType.isEmpty) {
+            order['order_type'] = type;
+          }
         }
-      }
 
-      return typeOrders;
-    }));
+        return typeOrders;
+      }),
+    );
 
     for (final typeOrders in results) {
       combined.addAll(typeOrders);
@@ -359,16 +365,20 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     return (order?['order_type'] ?? '').toString();
   }
 
-  Future<void> _fetchParentKotOrders(Map<String, dynamic> order, {bool updateState = true}) async {
+  Future<void> _fetchParentKotOrders(
+    Map<String, dynamic> order, {
+    bool updateState = true,
+  }) async {
     final orderType = _effectiveOrderType(order);
     final normalizedOrderType = _normalizeOrderType(orderType);
 
     if (selectedArea == null && normalizedOrderType != "takeaways") return;
 
     final parentOrderId = (order['order_id'] ?? order['id']).toString();
-    final zoneId = normalizedOrderType != "takeaways"
-        ? (order['zone_id'] ?? order['zoneId'])?.toString()
-        : null;
+    final zoneId =
+        normalizedOrderType != "takeaways"
+            ? (order['zone_id'] ?? order['zoneId'])?.toString()
+            : null;
 
     try {
       final kotOrders = await kitchenRepo.fetchParentKotOrders(
@@ -418,36 +428,81 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     return type.toLowerCase().replaceAll(" ", "");
   }
 
+  DateTime _parseOrderDateTime(Map<String, dynamic> order) {
+    final rawTime =
+        (order['order_time'] ?? order['created_at'] ?? order['time'] ?? '')
+            .toString()
+            .trim();
+    if (rawTime.isNotEmpty) {
+      try {
+        return DateTime.parse(rawTime);
+      } catch (_) {}
+      try {
+        return DateFormat('hh:mm a').parse(rawTime);
+      } catch (_) {}
+      try {
+        return DateFormat('hh:mm:ss a').parse(rawTime);
+      } catch (_) {}
+      try {
+        return DateFormat('HH:mm:ss').parse(rawTime);
+      } catch (_) {}
+      try {
+        return DateFormat('HH:mm').parse(rawTime);
+      } catch (_) {}
+    }
+    return DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
+  int _compareOrdersByTime(Map<String, dynamic> a, Map<String, dynamic> b) {
+    final timeA = _parseOrderDateTime(a);
+    final timeB = _parseOrderDateTime(b);
+    final timeComp = timeA.compareTo(timeB);
+    if (timeComp != 0) return timeComp;
+
+    final idA = int.tryParse((a['order_id'] ?? a['id'] ?? '0').toString()) ?? 0;
+    final idB = int.tryParse((b['order_id'] ?? b['id'] ?? '0').toString()) ?? 0;
+    return idA.compareTo(idB);
+  }
+
   List<Map<String, dynamic>> get filteredTables {
     final query = searchQuery.toLowerCase();
 
-    return _orders.where((order) {
-      final matchesOrderType = selectedOrderType == "All"
-          ? true
-          : normalizeOrderType(order['order_type'] ?? '') ==
-          normalizeOrderType(selectedOrderType);
+    final result =
+        _orders.where((order) {
+          final matchesOrderType =
+              selectedOrderType == "All"
+                  ? true
+                  : normalizeOrderType(order['order_type'] ?? '') ==
+                      normalizeOrderType(selectedOrderType);
 
-      final matchesArea =
-      selectedOrderType == "Takeaways"
-          ? true
-          : (selectedArea == null ||
-          selectedArea == "All" ||
-          order['zone_name'] == selectedArea);
+          final matchesArea =
+              selectedOrderType == "Takeaways"
+                  ? true
+                  : (selectedArea == null ||
+                      selectedArea == "All" ||
+                      order['zone_name'] == selectedArea);
 
-      final tableName = (order['table_name'] ?? '').toString().toLowerCase();
-      final orderId = (order['order_id'] ?? '').toString().toLowerCase();
+          final tableName =
+              (order['table_name'] ?? '').toString().toLowerCase();
+          final orderId = (order['order_id'] ?? '').toString().toLowerCase();
 
-      final matchesSearch = query.isEmpty ||
-          tableName.contains(query) ||
-          orderId.contains(query);
+          final matchesSearch =
+              query.isEmpty ||
+              tableName.contains(query) ||
+              orderId.contains(query);
 
-      return matchesOrderType && matchesArea && matchesSearch;
-    }).toList();
+          return matchesOrderType && matchesArea && matchesSearch;
+        }).toList();
+
+    result.sort(_compareOrdersByTime);
+    return result;
   }
 
   void _onKotSelected(String kot, int index) {
     setState(() {
-      final effectiveType = normalizeOrderType(_effectiveOrderType(_selectedTable));
+      final effectiveType = normalizeOrderType(
+        _effectiveOrderType(_selectedTable),
+      );
       if (_selectedKot == kot && effectiveType != "takeaways") {
         _selectedKot = null;
         _expandedKotIndex = null;
@@ -458,7 +513,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
 
         final allKotOrders = _selectedTable?['kotOrders'] ?? [];
         final selectedKotOrder = allKotOrders.firstWhere(
-              (k) => k['kot_number'].toString() == kot,
+          (k) => k['kot_number'].toString() == kot,
           orElse: () => <String, dynamic>{},
         );
 
@@ -542,7 +597,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
 
       final tableName = (_selectedTable?['table_name'] ?? '').toString();
       final dineInTitle =
-      tableName.isNotEmpty ? "Dine In: $tableName" : "Dine In";
+          tableName.isNotEmpty ? "Dine In: $tableName" : "Dine In";
 
       bytes += generator.text(
         dineInTitle,
@@ -578,7 +633,11 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
 
       // order /captain row
       final orderId = (_selectedTable?['order_id'] ?? '').toString();
-      final captainName = (selectedKotOrder['order_by'] ?? _selectedTable?['captain_name'] ?? 'Admin').toString();
+      final captainName =
+          (selectedKotOrder['order_by'] ??
+                  _selectedTable?['captain_name'] ??
+                  'Admin')
+              .toString();
       final orderIdText = "Order Id: $orderId";
       final captainText = "Captain: $captainName";
 
@@ -613,27 +672,16 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       bytes += [27, 32, 3];
 
       bytes += generator.row([
-        PosColumn(
-          width: 2,
-          text: "S.No",
-          styles: const PosStyles(
-            bold: true,
-          ),
-        ),
+        PosColumn(width: 2, text: "S.No", styles: const PosStyles(bold: true)),
         PosColumn(
           width: 8,
           text: "Item Name",
-          styles: const PosStyles(
-            bold: true,
-          ),
+          styles: const PosStyles(bold: true),
         ),
         PosColumn(
           width: 2,
           text: "Qty",
-          styles: const PosStyles(
-            bold: true,
-            align: PosAlign.right,
-          ),
+          styles: const PosStyles(bold: true, align: PosAlign.right),
         ),
       ]);
 
@@ -714,7 +762,9 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         }
 
         // Modifiers
-        if (item['modifiers'] != null && (item['modifiers'] is List) && (item['modifiers'] as List).isNotEmpty) {
+        if (item['modifiers'] != null &&
+            (item['modifiers'] is List) &&
+            (item['modifiers'] as List).isNotEmpty) {
           bytes += generator.row([
             PosColumn(width: 2, text: ""),
             PosColumn(
@@ -730,7 +780,9 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         }
 
         // Addons
-        if (item['addons'] != null && (item['addons'] is Map) && (item['addons'] as Map).isNotEmpty) {
+        if (item['addons'] != null &&
+            (item['addons'] is Map) &&
+            (item['addons'] as Map).isNotEmpty) {
           final addons = item['addons'] as Map<String, dynamic>;
 
           addons.forEach((name, details) {
@@ -795,11 +847,11 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-                content: Text(
-                  "No printer selected. Please set up a printer in settings.",
-                ),
-                backgroundColor: Colors.red,
-                duration: Duration(seconds: 1)
+              content: Text(
+                "No printer selected. Please set up a printer in settings.",
+              ),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 1),
             ),
           );
         }
@@ -855,8 +907,9 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   Map<String, dynamic>? _selectedKotOrder() {
     if (_selectedTable == null || _selectedKot == null) return null;
     final allKotOrders =
-        (_selectedTable!['kotOrders'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
-            <Map<String, dynamic>>[];
+        (_selectedTable!['kotOrders'] as List<dynamic>?)
+            ?.cast<Map<String, dynamic>>() ??
+        <Map<String, dynamic>>[];
     for (final kotOrder in allKotOrders) {
       if (kotOrder['kot_number']?.toString() == _selectedKot) {
         return kotOrder;
@@ -871,17 +924,21 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
 
     final kotId = _pickInt(kotOrder, ['kot_id', 'id']);
     final restaurantId = _asInt(widget.restaurantId);
-    final zoneId = _pickInt(_selectedTable, ['zone_id', 'zoneId']) != 0
-        ? _pickInt(_selectedTable, ['zone_id', 'zoneId'])
-        : _pickInt(kotOrder, ['zone_id', 'zoneId']);
-    final parentOrderId = _pickInt(
-      _selectedTable,
-      ['order_id', 'id', 'parent_order_id', 'parentOrderId'],
-    );
+    final zoneId =
+        _pickInt(_selectedTable, ['zone_id', 'zoneId']) != 0
+            ? _pickInt(_selectedTable, ['zone_id', 'zoneId'])
+            : _pickInt(kotOrder, ['zone_id', 'zoneId']);
+    final parentOrderId = _pickInt(_selectedTable, [
+      'order_id',
+      'id',
+      'parent_order_id',
+      'parentOrderId',
+    ]);
 
     if (kotId == 0 || restaurantId == 0 || zoneId == 0 || parentOrderId == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Unable to open Void Items for selected KOT"),
+        const SnackBar(
+          content: Text("Unable to open Void Items for selected KOT"),
           duration: Duration(seconds: 1),
           backgroundColor: Colors.red,
         ),
@@ -906,27 +963,22 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
           return MultiBlocProvider(
             providers: [
               BlocProvider<UpdatekotBloc>(
-                create: (_) => UpdatekotBloc(
-                  repository: UpdatekotRepository(),
-                ),
+                create: (_) => UpdatekotBloc(repository: UpdatekotRepository()),
               ),
               BlocProvider<KotBloc>(
-                create: (_) => KotBloc(
-                  KotRepository(
-                    baseUrl: AppConstants.baseDomain,
-                  ),
-                ),
+                create:
+                    (_) => KotBloc(
+                      KotRepository(baseUrl: AppConstants.baseDomain),
+                    ),
               ),
               BlocProvider<KotLineItemsBloc>(
-                create: (_) => KotLineItemsBloc(
-                  repository: VoidItemRepository(),
-                ),
+                create:
+                    (_) => KotLineItemsBloc(repository: VoidItemRepository()),
               ),
             ],
             child: VoidItemsDialog(
               items: response.items,
-              tableNo:
-              (_selectedTable?['table_name'] ?? '').toString(),
+              tableNo: (_selectedTable?['table_name'] ?? '').toString(),
               kotNo: response.kotNumber,
               kotId: response.kotId,
               restaurantId: response.restaurantId,
@@ -944,9 +996,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            "Failed to load KOT items: $e",
-          ),
+          content: Text("Failed to load KOT items: $e"),
           duration: Duration(seconds: 1),
           backgroundColor: Colors.red,
         ),
@@ -962,26 +1012,37 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     if (token == null || token.isEmpty) return;
 
     final kotId = _pickInt(kotOrder, ['kot_id', 'id']);
-    final orderId = _pickInt(
-      _selectedTable,
-      ['order_id', 'id', 'parent_order_id', 'parentOrderId'],
-    ) !=
-        0
-        ? _pickInt(
-      _selectedTable,
-      ['order_id', 'id', 'parent_order_id', 'parentOrderId'],
-    )
-        : _pickInt(kotOrder, ['parent_order_id', 'parentOrderId', 'order_id']);
+    final orderId =
+        _pickInt(_selectedTable, [
+                  'order_id',
+                  'id',
+                  'parent_order_id',
+                  'parentOrderId',
+                ]) !=
+                0
+            ? _pickInt(_selectedTable, [
+              'order_id',
+              'id',
+              'parent_order_id',
+              'parentOrderId',
+            ])
+            : _pickInt(kotOrder, [
+              'parent_order_id',
+              'parentOrderId',
+              'order_id',
+            ]);
     final fromTableId = _pickInt(_selectedTable, ['table_id', 'tableId']);
     final restaurantId = _asInt(widget.restaurantId);
-    final tableName = ((_selectedTable?['table_name'] ??
-        _selectedTable?['tableName'] ??
-        _selectedTable?['table_no']) ??
-        '')
-        .toString();
+    final tableName =
+        ((_selectedTable?['table_name'] ??
+                    _selectedTable?['tableName'] ??
+                    _selectedTable?['table_no']) ??
+                '')
+            .toString();
     if (kotId == 0 || orderId == 0 || restaurantId == 0 || tableName.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Unable to transfer selected KOT"),
+        const SnackBar(
+          content: Text("Unable to transfer selected KOT"),
           duration: Duration(seconds: 1),
           backgroundColor: Colors.red,
         ),
@@ -991,16 +1052,22 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
 
     try {
       final rawItems = (kotOrder['line_items'] as List<dynamic>?) ?? const [];
-      final transferItems = rawItems.map((item) {
-        final data = Map<String, dynamic>.from(item as Map);
-        final modifiers = (data['modifiers'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? <String>[];
-        return TransferKotItem(
-          name: (data['product_name'] ?? data['item_name'] ?? '').toString(),
-          note: modifiers.isNotEmpty ? modifiers.join(", ") : null,
-          qty: _asInt(data['quantity']) == 0 ? 1 : _asInt(data['quantity']),
-          amount: (data['amount'] as num?)?.toDouble() ?? 0.0,
-        );
-      }).toList();
+      final transferItems =
+          rawItems.map((item) {
+            final data = Map<String, dynamic>.from(item as Map);
+            final modifiers =
+                (data['modifiers'] as List<dynamic>?)
+                    ?.map((e) => e.toString())
+                    .toList() ??
+                <String>[];
+            return TransferKotItem(
+              name:
+                  (data['product_name'] ?? data['item_name'] ?? '').toString(),
+              note: modifiers.isNotEmpty ? modifiers.join(", ") : null,
+              qty: _asInt(data['quantity']) == 0 ? 1 : _asInt(data['quantity']),
+              amount: (data['amount'] as num?)?.toDouble() ?? 0.0,
+            );
+          }).toList();
 
       final zoneResponse = await ZoneRepository().getAllZones(token);
       final tableResponse = await TableRepository().getAllTables(token);
@@ -1038,10 +1105,11 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       }
 
       final resolvedFromTableId =
-      fromTableId != 0 ? fromTableId : (tableIds[tableName] ?? 0);
+          fromTableId != 0 ? fromTableId : (tableIds[tableName] ?? 0);
       if (resolvedFromTableId == 0) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Unable to transfer selected KOT"),
+          const SnackBar(
+            content: Text("Unable to transfer selected KOT"),
             duration: Duration(seconds: 1),
             backgroundColor: Colors.red,
           ),
@@ -1063,9 +1131,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         barrierDismissible: false,
         builder: (_) {
           return BlocProvider(
-            create: (_) => TransferKotBloc(
-              repository: KotTransferRepository(),
-            ),
+            create: (_) => TransferKotBloc(repository: KotTransferRepository()),
             child: TransferKOTDialog(
               tableName: tableName,
               kotNo: (_selectedKot ?? 'KOT'),
@@ -1089,7 +1155,8 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Transfer KOT failed: $e"),
+        SnackBar(
+          content: Text("Transfer KOT failed: $e"),
           duration: Duration(seconds: 1),
           backgroundColor: Colors.red,
         ),
@@ -1107,9 +1174,8 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      backgroundColor: isDark
-          ? const Color(0xFF161A26)
-          : const Color(0xFFF6F6F6),
+      backgroundColor:
+          isDark ? const Color(0xFF161A26) : const Color(0xFFF6F6F6),
       appBar: TopBar(
         token: widget.token,
         pin: widget.pin,
@@ -1141,15 +1207,14 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         padding: const EdgeInsets.all(12),
         child: Container(
           decoration: BoxDecoration(
-            color: isDark
-                ? const Color(0xFF202433)
-                : Colors.white,
+            color: isDark ? const Color(0xFF202433) : Colors.white,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: isDark
-                    ? Colors.black.withOpacity(0.45)
-                    : const Color(0x26000000),
+                color:
+                    isDark
+                        ? Colors.black.withOpacity(0.45)
+                        : const Color(0x26000000),
                 blurRadius: 10,
                 offset: const Offset(0, 2),
               ),
@@ -1161,11 +1226,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
               _buildHeader(),
               Expanded(
                 child: Container(
-                  margin: const EdgeInsets.only(
-                    left: 5,
-                    right: 5,
-                    bottom: 12,
-                  ),
+                  margin: const EdgeInsets.only(left: 5, right: 5, bottom: 12),
                   child: Row(
                     children: [
                       Expanded(
@@ -1181,32 +1242,36 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                                 child: Container(
                                   padding: const EdgeInsets.all(14),
                                   decoration: BoxDecoration(
-                                    color: filteredTables.isNotEmpty
-                                        ? (isDark
-                                        ? const Color(0xFF202433)
-                                        : Colors.white)
-                                        : (isDark
-                                        ? const Color(0xFF2B3042)
-                                        : const Color(0xFFF3F3F3)),
+                                    color:
+                                        filteredTables.isNotEmpty
+                                            ? (isDark
+                                                ? const Color(0xFF202433)
+                                                : Colors.white)
+                                            : (isDark
+                                                ? const Color(0xFF2B3042)
+                                                : const Color(0xFFF3F3F3)),
                                     borderRadius: const BorderRadius.only(
                                       bottomLeft: Radius.circular(8),
                                       bottomRight: Radius.circular(8),
                                     ),
                                     border: Border(
                                       bottom: BorderSide(
-                                        color: isDark
-                                            ? Colors.white24
-                                            : const Color(0xFFD8D8D8),
+                                        color:
+                                            isDark
+                                                ? Colors.white24
+                                                : const Color(0xFFD8D8D8),
                                       ),
                                       left: BorderSide(
-                                        color: isDark
-                                            ? Colors.white24
-                                            : const Color(0xFFD8D8D8),
+                                        color:
+                                            isDark
+                                                ? Colors.white24
+                                                : const Color(0xFFD8D8D8),
                                       ),
                                       right: BorderSide(
-                                        color: isDark
-                                            ? Colors.white24
-                                            : const Color(0xFFD8D8D8),
+                                        color:
+                                            isDark
+                                                ? Colors.white24
+                                                : const Color(0xFFD8D8D8),
                                       ),
                                     ),
                                   ),
@@ -1240,30 +1305,22 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 17),
       decoration: BoxDecoration(
-        color: isDark
-            ? const Color(0xFF34384F)
-            : const Color(0xFFFFDFAC),
+        color: isDark ? const Color(0xFF34384F) : const Color(0xFFFFDFAC),
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(8),
           topRight: Radius.circular(8),
         ),
         border: Border(
           top: BorderSide(
-            color: isDark
-                ? Colors.white24
-                : const Color(0xFFD8D8D8),
+            color: isDark ? Colors.white24 : const Color(0xFFD8D8D8),
           ),
           left: BorderSide(
-            color: isDark
-                ? Colors.white24
-                : const Color(0xFFD8D8D8),
+            color: isDark ? Colors.white24 : const Color(0xFFD8D8D8),
           ),
           right: BorderSide(
-            color: isDark
-                ? Colors.white24
-                : const Color(0xFFD8D8D8),
+            color: isDark ? Colors.white24 : const Color(0xFFD8D8D8),
           ),
         ),
       ),
@@ -1311,19 +1368,20 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                 color: isDark ? Colors.white : Colors.black87,
                 fontSize: 14,
               ),
-              onChanged: isDisabled
-                  ? null
-                  : (newValue) {
-                setState(() {
-                  selectedArea = newValue;
-                  _selectedTableIndex = null;
-                  _selectedTable = null;
-                  _selectedKot = null;
-                  _kotItems.clear();
-                  _isKotLoadingForSelected = false;
-                });
-                _fetchOrders();
-              },
+              onChanged:
+                  isDisabled
+                      ? null
+                      : (newValue) {
+                        setState(() {
+                          selectedArea = newValue;
+                          _selectedTableIndex = null;
+                          _selectedTable = null;
+                          _selectedKot = null;
+                          _kotItems.clear();
+                          _isKotLoadingForSelected = false;
+                        });
+                        _fetchOrders();
+                      },
               items: [
                 DropdownMenuItem<String>(
                   value: "All",
@@ -1394,9 +1452,10 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: isSelected && isEnabled
-                  ? const Color(0xFFFF4D20)
-                  : Colors.transparent,
+              color:
+                  isSelected && isEnabled
+                      ? const Color(0xFFFF4D20)
+                      : Colors.transparent,
               width: 4,
             ),
           ),
@@ -1404,13 +1463,13 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         child: Text(
           title,
           style: TextStyle(
-            color: !isEnabled
-                ? Colors.grey
-                : isSelected
-                ? const Color(0xFFFF4D20)
-                : (isDark ? Colors.white : Colors.black),
-            fontWeight:
-            isSelected ? FontWeight.w600 : FontWeight.w500,
+            color:
+                !isEnabled
+                    ? Colors.grey
+                    : isSelected
+                    ? const Color(0xFFFF4D20)
+                    : (isDark ? Colors.white : Colors.black),
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
           ),
         ),
       ),
@@ -1448,33 +1507,31 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                 height: 45,
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? const Color(0xFF2B3042)
-                      : Colors.white,
+                  color: isDark ? const Color(0xFF2B3042) : Colors.white,
                   border: Border.all(
-                    color: isDark
-                        ? Colors.white24
-                        : const Color(0xFFD4EBFF),
+                    color: isDark ? Colors.white24 : const Color(0xFFD4EBFF),
                     width: 1,
                   ),
                   borderRadius: BorderRadius.circular(10),
                   boxShadow: [
                     BoxShadow(
-                      color: isDark
-                          ? Colors.black.withOpacity(0.30)
-                          : Colors.black.withOpacity(0.05),
+                      color:
+                          isDark
+                              ? Colors.black.withOpacity(0.30)
+                              : Colors.black.withOpacity(0.05),
                       blurRadius: 6,
                     ),
                   ],
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: ["All", ..._orderTypes].map((type) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: _buildOrderTypeButton(type),
-                    );
-                  }).toList(),
+                  children:
+                      ["All", ..._orderTypes].map((type) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: _buildOrderTypeButton(type),
+                        );
+                      }).toList(),
                 ),
               ),
 
@@ -1486,10 +1543,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
               const SizedBox(width: 14),
 
               /// Search
-              SizedBox(
-                width: 260,
-                child: _buildSearchBar(),
-              ),
+              SizedBox(width: 260, child: _buildSearchBar()),
 
               const SizedBox(width: 12),
 
@@ -1513,18 +1567,18 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
           height: 45,
           padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
-            color: isResetEnabled
-                ? (isDark
-                ? const Color(0xFF2B3042)
-                : const Color(0xFFFDF8F8))
-                : (isDark
-                ? const Color(0xFF3A3F52)
-                : Colors.grey.shade300),
+            color:
+                isResetEnabled
+                    ? (isDark
+                        ? const Color(0xFF2B3042)
+                        : const Color(0xFFFDF8F8))
+                    : (isDark ? const Color(0xFF3A3F52) : Colors.grey.shade300),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: isResetEnabled
-                  ? Colors.red
-                  : (isDark ? Colors.white24 : Colors.grey.shade400),
+              color:
+                  isResetEnabled
+                      ? Colors.red
+                      : (isDark ? Colors.white24 : Colors.grey.shade400),
             ),
           ),
           child: Row(
@@ -1533,9 +1587,10 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
               Icon(
                 Icons.refresh,
                 size: 18,
-                color: isResetEnabled
-                    ? Colors.red
-                    : (isDark ? Colors.white54 : Colors.grey),
+                color:
+                    isResetEnabled
+                        ? Colors.red
+                        : (isDark ? Colors.white54 : Colors.grey),
               ),
               const SizedBox(width: 6),
               Text(
@@ -1543,9 +1598,10 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: isResetEnabled
-                      ? Colors.red
-                      : (isDark ? Colors.white54 : Colors.grey),
+                  color:
+                      isResetEnabled
+                          ? Colors.red
+                          : (isDark ? Colors.white54 : Colors.grey),
                 ),
               ),
             ],
@@ -1563,23 +1619,20 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       child: Container(
         height: 44,
         decoration: ShapeDecoration(
-          color: isDark
-              ? const Color(0xFF2B3042)
-              : Colors.white,
+          color: isDark ? const Color(0xFF2B3042) : Colors.white,
           shape: RoundedRectangleBorder(
             side: BorderSide(
-              color: isDark
-                  ? Colors.white24
-                  : const Color(0xFFD4EBFF),
+              color: isDark ? Colors.white24 : const Color(0xFFD4EBFF),
               width: 0.5,
             ),
             borderRadius: BorderRadius.circular(12),
           ),
           shadows: [
             BoxShadow(
-              color: isDark
-                  ? Colors.black.withOpacity(0.30)
-                  : const Color(0x4204347F),
+              color:
+                  isDark
+                      ? Colors.black.withOpacity(0.30)
+                      : const Color(0x4204347F),
               blurRadius: 5,
               offset: const Offset(0, 2),
             ),
@@ -1589,8 +1642,8 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
           controller: _searchController,
           cursorColor: isDark ? Colors.white : Colors.black,
           textAlignVertical: TextAlignVertical.center,
-          onChanged: (value) =>
-              setState(() => searchQuery = value.toLowerCase()),
+          onChanged:
+              (value) => setState(() => searchQuery = value.toLowerCase()),
           decoration: InputDecoration(
             border: InputBorder.none,
             enabledBorder: InputBorder.none,
@@ -1608,9 +1661,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
             ),
             hintText: "Order ID or Table No",
             hintStyle: TextStyle(
-              color: isDark
-                  ? Colors.white54
-                  : const Color(0xFFC3C2C2),
+              color: isDark ? Colors.white54 : const Color(0xFFC3C2C2),
               fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
@@ -1671,6 +1722,27 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
           rawCardOrderType.isNotEmpty ? rawCardOrderType : selectedOrderType,
         );
         final bool isDineInCard = cardOrderType == "dinein";
+        final bool isTakeAwayOuter = cardOrderType == "takeaways";
+
+        final Color outerBgColor =
+            isSelected
+                ? const Color(0xFF0C6FDB)
+                : (isTakeAwayOuter
+                    ? (isDark ? Colors.white : const Color(0xFFFFF0E5))
+                    : (isDark
+                        ? const Color(0xFF1B2A47)
+                        : const Color(0xFFE8F1FF)));
+
+        final Color outerBorderColor =
+            isSelected
+                ? const Color(0xFF0056B3)
+                : (isTakeAwayOuter
+                    ? (isDark
+                        ? const Color(0xFFCBD5E1)
+                        : const Color(0xFFFFD1B3))
+                    : (isDark
+                        ? const Color(0xFF2E4570)
+                        : const Color(0xFFB3D1FF)));
 
         return GestureDetector(
           onTap: () async {
@@ -1690,12 +1762,6 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                 _selectedKot = null;
                 _kotItems.clear();
 
-                // FIX: don't immediately try to select a KOT using data
-                // that hasn't loaded yet (previously this passed an empty
-                // string as the KOT when `table['kots']` was still null,
-                // which looked like "no order found" even though the
-                // order genuinely existed — the KOT list just hadn't
-                // arrived from the network yet).
                 final existingKots =
                     (currentTable['kots'] as List<dynamic>?) ?? [];
                 _isKotLoadingForSelected = existingKots.isEmpty;
@@ -1704,16 +1770,11 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
 
             if (isSameSelection || _selectedTable == null) return;
 
-            // If this order's KOT data was already loaded (e.g. during the
-            // initial list fetch), select the first KOT immediately — no
-            // need to wait on a network round-trip.
             final existingKots = (currentTable['kots'] as List<dynamic>?) ?? [];
             if (!isDineInCard && existingKots.isNotEmpty) {
               _onKotSelected(existingKots.first, 0);
             }
 
-            // Always refresh in the background so KOT status/items stay
-            // current, even if we already had cached data to show.
             await _fetchParentKotOrders(currentTable);
 
             if (!mounted || _selectedTable != currentTable) return;
@@ -1732,111 +1793,100 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
           },
           child: Container(
             decoration: BoxDecoration(
-              color: isDark
-                  ? const Color(0xFF2B3042)
-                  : Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white24
-                    : const Color(0xFFD4EBFF),
-                width: 1.2,
-              ),
+              color: outerBgColor,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: outerBorderColor, width: 1.2),
             ),
-            child: isDineInCard
-                ? _buildDineInCard(table, kotCount, isSelected)
-                : _buildTakeawayCard(table, kotCount, isSelected),
+            child:
+                isDineInCard
+                    ? _buildDineInCard(table, kotCount, isSelected)
+                    : _buildTakeawayCard(table, kotCount, isSelected),
           ),
         );
       },
     );
   }
 
-  Widget _buildTakeawayCard(
-      Map<String, dynamic> order,
-      int kotCount,
-      bool isSelected,
-      ) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  String _getDisplayOrderType(Map<String, dynamic> order) {
+    final rawType =
+        (order['order_type'] ?? order['type'] ?? '').toString().trim();
+    final lower = rawType.toLowerCase();
+    if (lower == 'dinein' || lower == 'dine-in') {
+      return 'Dine-In';
+    }
+    if (lower == 'takeaway' || lower == 'takeaways') {
+      return 'Takeaway';
+    }
+    if (rawType.isNotEmpty) {
+      return rawType;
+    }
+    return 'Dine-In';
+  }
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isSelected
-            ? const Color(0xFF0C6FDB)
-            : (isDark ? const Color(0xFF2B3042) : Colors.white),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: Text(
-              "Order ID: ${order['order_id']}",
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-                color: isSelected
-                    ? Colors.white
-                    : (isDark ? Colors.white : Colors.black),
-              ),
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                order["order_time"] ?? '',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isSelected
-                      ? Colors.white
-                      : (isDark ? Colors.white70 : Colors.black),
-                ),
-              ),
-              const SizedBox(height: 8),
-              CircleAvatar(
-                radius: 18,
-                backgroundColor: isSelected
-                    ? Colors.white
-                    : (isDark
-                    ? const Color(0xFF4C81F1)
-                    : const Color(0xFF0C6FDB)),
-                child: Text(
-                  "KOT",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    color: isSelected
-                        ? const Color(0xFF0C6FDB)
-                        : Colors.white,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+  Widget _buildTakeawayCard(
+    Map<String, dynamic> order,
+    int kotCount,
+    bool isSelected,
+  ) {
+    return _buildDineInCard(order, kotCount, isSelected);
   }
 
   Widget _buildDineInCard(
-      Map<String, dynamic> order,
-      int kotCount,
-      bool isSelected,
-      ) {
+    Map<String, dynamic> order,
+    int kotCount,
+    bool isSelected,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final orderTypeStr = _getDisplayOrderType(order);
+
+    final bool isTakeAway =
+        normalizeOrderType(_effectiveOrderType(order)) == "takeaways" ||
+        orderTypeStr.toLowerCase().contains("takeaway");
+
+    final Color unselectedBgColor =
+        isTakeAway
+            ? (isDark ? Colors.white : const Color(0xFFFFF0E5))
+            : (isDark ? const Color(0xFF1B2A47) : const Color(0xFFE8F1FF));
+
+    final Color cardBgColor =
+        isSelected ? const Color(0xFF0C6FDB) : unselectedBgColor;
+
+    final Color titleTextColor =
+        isSelected
+            ? Colors.white
+            : (isTakeAway
+                ? (isDark ? const Color(0xFFC2410C) : const Color(0xFF5C2600))
+                : (isDark ? const Color(0xFFD4E5FF) : const Color(0xFF002855)));
+
+    final Color subTextColor =
+        isSelected
+            ? Colors.white
+            : (isTakeAway
+                ? (isDark ? const Color(0xFF475569) : const Color(0xFF6E320A))
+                : (isDark ? const Color(0xFFB8D5FF) : const Color(0xFF003366)));
+
+    final Color bodyTextColor =
+        isSelected
+            ? Colors.white
+            : (isTakeAway
+                ? (isDark ? const Color(0xFF1E293B) : const Color(0xFF4D2409))
+                : (isDark ? const Color(0xFFE3F0FF) : const Color(0xFF1C355E)));
+
+    final rawTableName = (order['table_name'] ?? '').toString().trim();
+    final bool hasValidTable = rawTableName.isNotEmpty && rawTableName != '-';
+    final displayTable = hasValidTable ? "Table: $rawTableName" : "Table: N/A";
+
+    final rawZoneName = (order['zone_name'] ?? '').toString().trim();
+    final bool hasValidZone = rawZoneName.isNotEmpty && rawZoneName != '-';
+    final displayZone = hasValidZone ? "Zone: $rawZoneName" : "Zone: N/A";
+
+    final timeStr = (order["order_time"] ?? '').toString().trim();
 
     return Container(
-      constraints: const BoxConstraints(
-        minHeight: 100,
-      ),
+      constraints: const BoxConstraints(minHeight: 100),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isSelected
-            ? const Color(0xFF0C6FDB)
-            : (isDark ? const Color(0xFF2B3042) : Colors.white),
+        color: cardBgColor,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Column(
@@ -1844,34 +1894,31 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         children: [
           const SizedBox(height: 6),
 
-          // ───────── Table + Time ─────────
+          // ───────── Order Type + Table ─────────
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
                 child: Text(
-                  "Table: ${order['table_name'] ?? '-'}",
+                  orderTypeStr,
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
-                    color: isSelected
-                        ? Colors.white
-                        : (isDark ? Colors.white : Colors.black),
+                    color: titleTextColor,
                   ),
                 ),
               ),
               const SizedBox(width: 6),
               Text(
-                order["order_time"] ?? '',
+                displayTable,
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
                 style: TextStyle(
+                  fontWeight: FontWeight.w600,
                   fontSize: 13,
-                  color: isSelected
-                      ? Colors.white
-                      : (isDark ? Colors.white70 : Colors.black),
+                  color: subTextColor,
                 ),
               ),
             ],
@@ -1879,7 +1926,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
 
           const SizedBox(height: 6),
 
-          // ───────── Order ID + KOT ─────────
+          // ───────── Order ID + Zone + Time + KOT ─────────
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1893,26 +1940,25 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                       "Order ID: ${order['order_id']}",
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: isSelected
-                            ? Colors.white
-                            : (isDark ? Colors.white : Colors.black),
-                      ),
+                      style: TextStyle(fontSize: 13, color: bodyTextColor),
                     ),
 
                     const SizedBox(height: 6),
 
                     Text(
-                      "Zone: ${order['zone_name'] ?? '-'}",
+                      displayZone,
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: isSelected
-                            ? Colors.white
-                            : (isDark ? Colors.white70 : Colors.black),
-                      ),
+                      style: TextStyle(fontSize: 13, color: bodyTextColor),
+                    ),
+
+                    const SizedBox(height: 6),
+
+                    Text(
+                      "Time: ${timeStr.isNotEmpty ? timeStr : '-'}",
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      style: TextStyle(fontSize: 13, color: bodyTextColor),
                     ),
                   ],
                 ),
@@ -1932,9 +1978,10 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                     Text(
                       "+${order['remaining_count']}",
                       style: TextStyle(
-                        color: isSelected
-                            ? Colors.white
-                            : (isDark ? Colors.white70 : Colors.black87),
+                        color:
+                            isSelected
+                                ? Colors.white
+                                : (isDark ? Colors.white70 : Colors.black87),
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),
@@ -1957,17 +2004,15 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final primaryColor = isSelected
-        ? const Color(0xFFA6C4E4)
-        : (isDark
-        ? const Color(0xFF4C81F1)
-        : const Color(0xFF125BCE));
+    final primaryColor =
+        isSelected
+            ? const Color(0xFFA6C4E4)
+            : (isDark ? const Color(0xFF4C81F1) : const Color(0xFF125BCE));
 
-    final secondaryColor = isSelected
-        ? const Color(0xFFD8E9FB)
-        : (isDark
-        ? const Color(0xFF6A96F5)
-        : const Color(0xFF81ACEF));
+    final secondaryColor =
+        isSelected
+            ? const Color(0xFFD8E9FB)
+            : (isDark ? const Color(0xFF6A96F5) : const Color(0xFF81ACEF));
 
     return Container(
       width: 36,
@@ -1977,19 +2022,21 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         shape: BoxShape.circle,
       ),
       alignment: Alignment.center,
-      child: kotText.isNotEmpty
-          ? Text(
-        kotText,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-          color: isSelected
-              ? (isDark ? Colors.white : Colors.black)
-              : Colors.white,
-        ),
-      )
-          : null,
+      child:
+          kotText.isNotEmpty
+              ? Text(
+                kotText,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color:
+                      isSelected
+                          ? (isDark ? Colors.white : Colors.black)
+                          : Colors.white,
+                ),
+              )
+              : null,
     );
   }
 
@@ -2009,19 +2056,19 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
 
     // 👉 Resolve the REAL order type of the currently selected table when
     // the "All" tab is active, instead of trusting the tab label itself.
-    final String selectedOrderTypeForDetails = selectedOrderType == "All"
-        ? (_selectedTable?['order_type'] ?? '').toString()
-        : selectedOrderType;
-    final String normalizedSelectedType =
-    normalizeOrderType(selectedOrderTypeForDetails);
+    final String selectedOrderTypeForDetails =
+        selectedOrderType == "All"
+            ? (_selectedTable?['order_type'] ?? '').toString()
+            : selectedOrderType;
+    final String normalizedSelectedType = normalizeOrderType(
+      selectedOrderTypeForDetails,
+    );
     final bool showTableFields = normalizedSelectedType != "takeaways";
     final bool showDineInActions = normalizedSelectedType == "dinein";
 
     return Container(
       margin: const EdgeInsets.only(left: 0, right: 7, bottom: 0),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(3),
-      ),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(3)),
       padding: const EdgeInsets.all(3),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2030,9 +2077,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: isDark
-                  ? const Color(0xFF34384F)
-                  : const Color(0xFFC2DFFF),
+              color: isDark ? const Color(0xFF34384F) : const Color(0xFFC2DFFF),
               border: Border(
                 top: BorderSide(
                   color: isDark ? Colors.white24 : const Color(0xFFD8D8D8),
@@ -2079,7 +2124,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                     ),
                     const SizedBox(width: 18),
                     Text(
-                      _selectedKot != null ? "KOT: $_selectedKot" : "KOT: ---",
+                      _selectedKot != null ? "$_selectedKot" : "KOT:",
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 15,
@@ -2104,20 +2149,24 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ).copyWith(
-                        backgroundColor:
-                        WidgetStateProperty.resolveWith<Color>(
-                              (states) => states.contains(WidgetState.disabled)
-                              ? const Color(0xFFBDE5C0)
-                              : const Color(0xFF2E9E44),
+                        backgroundColor: WidgetStateProperty.resolveWith<Color>(
+                          (states) =>
+                              states.contains(WidgetState.disabled)
+                                  ? const Color(0xFFBDE5C0)
+                                  : const Color(0xFF2E9E44),
                         ),
-                        foregroundColor:
-                        WidgetStateProperty.resolveWith<Color>(
-                              (states) => states.contains(WidgetState.disabled)
-                              ? Colors.white70
-                              : Colors.white,
+                        foregroundColor: WidgetStateProperty.resolveWith<Color>(
+                          (states) =>
+                              states.contains(WidgetState.disabled)
+                                  ? Colors.white70
+                                  : Colors.white,
                         ),
                       ),
-                      icon: const Icon(Icons.print, size: 18, color: Colors.white),
+                      icon: const Icon(
+                        Icons.print,
+                        size: 18,
+                        color: Colors.white,
+                      ),
                       label: const Text(
                         'Print KOT',
                         style: TextStyle(
@@ -2125,7 +2174,8 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      onPressed: _selectedKot != null ? _printSelectedKot : null,
+                      onPressed:
+                          _selectedKot != null ? _printSelectedKot : null,
                     ),
 
                     if (showDineInActions) ...[
@@ -2146,22 +2196,32 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                           ),
                         ).copyWith(
                           backgroundColor:
-                          WidgetStateProperty.resolveWith<Color>(
-                                (states) => states.contains(WidgetState.disabled)
-                                ? const Color(0xFFCBD9F0)
-                                : const Color(0xFF1D63D8),
-                          ),
+                              WidgetStateProperty.resolveWith<Color>(
+                                (states) =>
+                                    states.contains(WidgetState.disabled)
+                                        ? const Color(0xFFCBD9F0)
+                                        : const Color(0xFF1D63D8),
+                              ),
                           foregroundColor:
-                          WidgetStateProperty.resolveWith<Color>(
-                                (states) => states.contains(WidgetState.disabled)
-                                ? Colors.white70
-                                : Colors.white,
-                          ),
+                              WidgetStateProperty.resolveWith<Color>(
+                                (states) =>
+                                    states.contains(WidgetState.disabled)
+                                        ? Colors.white70
+                                        : Colors.white,
+                              ),
                         ),
-                        icon: const Icon(
-                          Icons.cancel,
-                          size: 18,
-                          color: Color(0xFFE53935), // red circle-X like the image
+                        icon: Stack(
+                          alignment: Alignment.center,
+                          children: const [
+                            Icon(Icons.circle, size: 20, color: Colors.white),
+                            Icon(
+                              Icons.close,
+                              size: 11,
+                              color: Color(
+                                0xFF1D63D8,
+                              ), // same as button background
+                            ),
+                          ],
                         ),
                         label: const Text(
                           'Void Items',
@@ -2170,9 +2230,10 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        onPressed: _selectedKot != null
-                            ? () => _showSingleDialog(_openVoidItemsDialog)
-                            : null,
+                        onPressed:
+                            _selectedKot != null
+                                ? () => _showSingleDialog(_openVoidItemsDialog)
+                                : null,
                       ),
 
                       const SizedBox(width: 12),
@@ -2192,17 +2253,19 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                           ),
                         ).copyWith(
                           backgroundColor:
-                          WidgetStateProperty.resolveWith<Color>(
-                                (states) => states.contains(WidgetState.disabled)
-                                ? const Color(0xFFFCECCB)
-                                : const Color(0xFFF5B93D),
-                          ),
+                              WidgetStateProperty.resolveWith<Color>(
+                                (states) =>
+                                    states.contains(WidgetState.disabled)
+                                        ? const Color(0xFFFCECCB)
+                                        : const Color(0xFFF5B93D),
+                              ),
                           foregroundColor:
-                          WidgetStateProperty.resolveWith<Color>(
-                                (states) => states.contains(WidgetState.disabled)
-                                ? Colors.black45
-                                : Colors.black87,
-                          ),
+                              WidgetStateProperty.resolveWith<Color>(
+                                (states) =>
+                                    states.contains(WidgetState.disabled)
+                                        ? Colors.black45
+                                        : Colors.black87,
+                              ),
                         ),
                         icon: const Icon(Icons.edit, size: 18),
                         label: const Text(
@@ -2212,9 +2275,11 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        onPressed: _selectedKot != null
-                            ? () => _showSingleDialog(_openTransferKotDialog)
-                            : null,
+                        onPressed:
+                            _selectedKot != null
+                                ? () =>
+                                    _showSingleDialog(_openTransferKotDialog)
+                                : null,
                       ),
                     ],
                   ],
@@ -2228,11 +2293,12 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: hasData
-                    ? (isDark ? const Color(0xFF202433) : Colors.white)
-                    : (isDark
-                    ? const Color(0xFF161A26)
-                    : const Color(0xFFF3F3F3)),
+                color:
+                    hasData
+                        ? (isDark ? const Color(0xFF202433) : Colors.white)
+                        : (isDark
+                            ? const Color(0xFF161A26)
+                            : const Color(0xFFF3F3F3)),
                 border: Border(
                   bottom: BorderSide(
                     color: isDark ? Colors.white24 : const Color(0xFFD8D8D8),
@@ -2249,262 +2315,331 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                   bottomLeft: Radius.circular(8),
                 ),
               ),
-              child: hasTable && kots.isNotEmpty
-                  ? SingleChildScrollView(
-                child: Column(
-                  children: kots.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final kot = entry.value;
-                    final kotOrders =
-                        (_selectedTable?['kotOrders'] as List<dynamic>?)
-                            ?.cast<Map<String, dynamic>>() ??
-                            [];
-
-                    final kotOrder = kotOrders.firstWhere(
-                          (k) => k['kot_number'] == kot,
-                      orElse: () => {},
-                    );
-
-                    final bool isSelectedKot = kot == _selectedKot;
-                    final kotTime = kotOrder['time'] ?? '';
-                    final kotOrderBy = kotOrder['order_by'] ?? '';
-                    final String status =
-                    (kotOrder['status'] ?? 'Pending').toString();
-
-                    String displayTime = '';
-                    if (kotTime.isNotEmpty) {
-                      final parts = kotTime.split(' ');
-                      if (parts.length >= 3) {
-                        displayTime = "${parts[1]} ${parts[2]}";
-                      }
-                    }
-
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: isSelectedKot
-                              ? const Color(0xFFB9CBF2)
-                              : (isDark
-                              ? Colors.white24
-                              : const Color(0XFFECEEFB)),
-                          width: 1.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: isDark
-                                ? Colors.black.withOpacity(0.30)
-                                : const Color(0x1A000000),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
+              child:
+                  hasTable && kots.isNotEmpty
+                      ? SingleChildScrollView(
                         child: Column(
-                          children: [
-                            GestureDetector(
-                              onTap: () => _onKotSelected(kot, index),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isSelectedKot
-                                      ? (isDark
-                                      ? const Color(0xFF0C6FDB)
-                                      : const Color(0xFFDCE6FA))
-                                      : (isDark
-                                      ? const Color(0xFF2B3042)
-                                      : const Color(0xFFF5F6FA)),
-                                ),
-                                child: Row(
-                                  children: [
-                                    // KOT Number badge
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: isDark
-                                            ? const Color(0xFF34384F)
-                                            : Colors.white,
-                                        borderRadius:
-                                        BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        "$kot",
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
-                                          color: isDark
-                                              ? Colors.white
-                                              : Colors.black,
-                                        ),
-                                      ),
-                                    ),
+                          children:
+                              kots.asMap().entries.map((entry) {
+                                final index = entry.key;
+                                final kot = entry.value;
+                                final kotOrders =
+                                    (_selectedTable?['kotOrders']
+                                            as List<dynamic>?)
+                                        ?.cast<Map<String, dynamic>>() ??
+                                    [];
 
-                                    const SizedBox(width: 14),
+                                final kotOrder = kotOrders.firstWhere(
+                                  (k) => k['kot_number'] == kot,
+                                  orElse: () => {},
+                                );
 
-                                    if (displayTime.isNotEmpty)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: isDark
-                                              ? const Color(0xFF34384F)
-                                              : Colors.white,
-                                          borderRadius:
-                                          BorderRadius.circular(4),
-                                        ),
-                                        child: Text(
-                                          displayTime,
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: isDark
-                                                ? Colors.white
-                                                : Colors.black,
-                                          ),
-                                        ),
+                                final bool isSelectedKot = kot == _selectedKot;
+                                final kotTime = kotOrder['time'] ?? '';
+                                final kotOrderBy = kotOrder['order_by'] ?? '';
+                                final String status =
+                                    (kotOrder['status'] ?? 'Pending')
+                                        .toString();
+
+                                String displayTime = '';
+                                if (kotTime.isNotEmpty) {
+                                  final parts = kotTime.split(' ');
+                                  if (parts.length >= 3) {
+                                    displayTime = "${parts[1]} ${parts[2]}";
+                                  }
+                                }
+
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(8),
+                                    // border: Border.all(
+                                    //   color:
+                                    //       isSelectedKot
+                                    //           ? const Color(0xFFB9CBF2)
+                                    //           : (isDark
+                                    //               ? Colors.white24
+                                    //               : const Color(0XFFECEEFB)),
+                                    //   width: 1.5,
+                                    // ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color:
+                                            isDark
+                                                ? Colors.black.withOpacity(0.50)
+                                                : const Color(0x1A000000),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
                                       ),
-
-                                    const SizedBox(width: 14),
-
-                                    if (kotOrderBy.isNotEmpty)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: isDark
-                                              ? const Color(0xFF5A4B1A)
-                                              : const Color(0xFFFFF3CD),
-                                          borderRadius:
-                                          BorderRadius.circular(4),
-                                        ),
-                                        child: Text(
-                                          kotOrderBy,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 14,
-                                            color: isDark
-                                                ? Colors.white
-                                                : Colors.black,
-                                          ),
-                                        ),
-                                      ),
-
-                                    const Spacer(),
-
-                                    if (isSelectedKot) ...[
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 14,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: isDark
-                                              ? const Color(0xFF202433)
-                                              : Colors.white,
-                                          borderRadius:
-                                          BorderRadius.circular(20),
-                                          border: Border.all(
-                                            color: _getStatusColor(status)
-                                                .withOpacity(0.6),
-                                            width: 1,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Container(
-                                              width: 8,
-                                              height: 8,
-                                              decoration: BoxDecoration(
-                                                color:
-                                                _getStatusColor(status),
-                                                shape: BoxShape.circle,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 6),
-                                            Text(
-                                              status.isNotEmpty
-                                                  ? status[0]
-                                                  .toUpperCase() +
-                                                  status
-                                                      .substring(1)
-                                                      .toLowerCase()
-                                                  : status,
-                                              style: TextStyle(
-                                                color:
-                                                _getStatusColor(status),
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
                                     ],
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Column(
+                                      children: [
+                                        GestureDetector(
+                                          onTap:
+                                              () => _onKotSelected(kot, index),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 14,
+                                              vertical: 12,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color:
+                                                  isSelectedKot
+                                                      ? (isDark
+                                                          ? const Color(
+                                                            0xFF4B4F62,
+                                                          )
+                                                          : const Color(
+                                                            0xFFDCE6FA,
+                                                          ))
+                                                      : (isDark
+                                                          ? const Color(
+                                                            0xFF2B3042,
+                                                          )
+                                                          : const Color(
+                                                            0xFFF5F6FA,
+                                                          )),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                // KOT Number badge
+                                                Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 10,
+                                                        vertical: 6,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color:
+                                                        isDark
+                                                            ? const Color(
+                                                              0xFF34384F,
+                                                            )
+                                                            : Colors.white,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          4,
+                                                        ),
+                                                  ),
+                                                  child: Text(
+                                                    "$kot",
+                                                    style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 14,
+                                                      color:
+                                                          isDark
+                                                              ? Colors.white
+                                                              : Colors.black,
+                                                    ),
+                                                  ),
+                                                ),
 
-                                    if (showTableFields)
-                                      Container(
-                                        width: 30,
-                                        height: 30,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: isDark
-                                              ? const Color(0xFF2B3042)
-                                              : Colors.white,
-                                          border: Border.all(
-                                            color: isDark
-                                                ? Colors.white24
-                                                : Colors.grey.shade300,
+                                                const SizedBox(width: 14),
+
+                                                if (displayTime.isNotEmpty)
+                                                  Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 10,
+                                                          vertical: 6,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color:
+                                                          isDark
+                                                              ? const Color(
+                                                                0xFF34384F,
+                                                              )
+                                                              : Colors.white,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            4,
+                                                          ),
+                                                    ),
+                                                    child: Text(
+                                                      displayTime,
+                                                      style: TextStyle(
+                                                        fontSize: 14,
+                                                        color:
+                                                            isDark
+                                                                ? Colors.white
+                                                                : Colors.black,
+                                                      ),
+                                                    ),
+                                                  ),
+
+                                                const SizedBox(width: 14),
+
+                                                if (kotOrderBy.isNotEmpty)
+                                                  Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 10,
+                                                          vertical: 6,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color:
+                                                          isDark
+                                                              ? const Color(
+                                                                0xFF5A4B1A,
+                                                              )
+                                                              : const Color(
+                                                                0xFFFFF3CD,
+                                                              ),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            4,
+                                                          ),
+                                                    ),
+                                                    child: Text(
+                                                      kotOrderBy,
+                                                      style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        fontSize: 14,
+                                                        color:
+                                                            isDark
+                                                                ? Colors.white
+                                                                : Colors.black,
+                                                      ),
+                                                    ),
+                                                  ),
+
+                                                const Spacer(),
+
+                                                if (isSelectedKot) ...[
+                                                  Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 14,
+                                                          vertical: 6,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color:
+                                                          isDark
+                                                              ? const Color(
+                                                                0xFF202433,
+                                                              )
+                                                              : Colors.white,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            20,
+                                                          ),
+                                                      border: Border.all(
+                                                        color: _getStatusColor(
+                                                          status,
+                                                        ).withOpacity(0.6),
+                                                        width: 1,
+                                                      ),
+                                                    ),
+                                                    child: Row(
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      children: [
+                                                        Container(
+                                                          width: 8,
+                                                          height: 8,
+                                                          decoration: BoxDecoration(
+                                                            color:
+                                                                _getStatusColor(
+                                                                  status,
+                                                                ),
+                                                            shape:
+                                                                BoxShape.circle,
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 6,
+                                                        ),
+                                                        Text(
+                                                          status.isNotEmpty
+                                                              ? status[0]
+                                                                      .toUpperCase() +
+                                                                  status
+                                                                      .substring(
+                                                                        1,
+                                                                      )
+                                                                      .toLowerCase()
+                                                              : status,
+                                                          style: TextStyle(
+                                                            color:
+                                                                _getStatusColor(
+                                                                  status,
+                                                                ),
+                                                            fontSize: 13,
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 12),
+                                                ],
+
+                                                if (showTableFields)
+                                                  Container(
+                                                    width: 30,
+                                                    height: 30,
+                                                    decoration: BoxDecoration(
+                                                      shape: BoxShape.circle,
+                                                      color:
+                                                          isDark
+                                                              ? const Color(
+                                                                0xFF2B3042,
+                                                              )
+                                                              : Colors.white,
+                                                      border: Border.all(
+                                                        color:
+                                                            isDark
+                                                                ? Colors.white24
+                                                                : Colors
+                                                                    .grey
+                                                                    .shade300,
+                                                      ),
+                                                    ),
+                                                    alignment: Alignment.center,
+                                                    child: Icon(
+                                                      isSelectedKot
+                                                          ? Icons
+                                                              .keyboard_arrow_up
+                                                          : Icons
+                                                              .keyboard_arrow_down,
+                                                      size: 20,
+                                                      color:
+                                                          isDark
+                                                              ? Colors.white
+                                                              : Colors.black,
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
                                           ),
                                         ),
-                                        alignment: Alignment.center,
-                                        child: Icon(
-                                          isSelectedKot
-                                              ? Icons.keyboard_arrow_up
-                                              : Icons.keyboard_arrow_down,
-                                          size: 20,
-                                          color: isDark
-                                              ? Colors.white
-                                              : Colors.black,
-                                        ),
-                                      ),
-                                  ],
-                                ),
+
+                                        if (isSelectedKot)
+                                          _buildKotItemsOverlay(),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                        ),
+                      )
+                      : (isLoadingKots
+                          ? const Center(child: CircularProgressIndicator())
+                          : Center(
+                            child: Text(
+                              'Order details will appear here',
+                              style: TextStyle(
+                                color: isDark ? Colors.white54 : Colors.grey,
+                                fontSize: 16,
                               ),
                             ),
-
-                            if (isSelectedKot) _buildKotItemsOverlay(),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              )
-                  : (isLoadingKots
-                  ? const Center(child: CircularProgressIndicator())
-                  : Center(
-                child: Text(
-                  'Order details will appear here',
-                  style: TextStyle(
-                    color: isDark ? Colors.white54 : Colors.grey,
-                    fontSize: 16,
-                  ),
-                ),
-              )),
+                          )),
             ),
           ),
         ],
@@ -2518,33 +2653,23 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     return Container(
       width: double.infinity,
       color: isDark ? const Color(0xFF202433) : Colors.white,
-      constraints: const BoxConstraints(
-        maxHeight: 290,
-      ),
+      constraints: const BoxConstraints(maxHeight: 290),
       child: Theme(
         data: Theme.of(context).copyWith(
-          dividerColor: isDark
-              ? Colors.white24
-              : const Color(0xFFEFEFEF),
+          dividerColor: isDark ? Colors.white24 : const Color(0xFFEFEFEF),
           dataTableTheme: DataTableThemeData(
             headingRowColor: WidgetStateProperty.all(
-              isDark
-                  ? const Color(0xFF34384F)
-                  : const Color(0xFFE3E3E3),
+              isDark ? const Color(0xFF34384F) : const Color(0xFFE3E3E3),
             ),
             dataRowColor: WidgetStateProperty.all(
-              isDark
-                  ? const Color(0xFF202433)
-                  : Colors.white,
+              isDark ? const Color(0xFF202433) : Colors.white,
             ),
           ),
         ),
         child: SingleChildScrollView(
           child: DataTable(
             headingRowColor: WidgetStateProperty.all(
-              isDark
-                  ? const Color(0xFF34384F)
-                  : const Color(0xFFE3E3E3),
+              isDark ? const Color(0xFF34384F) : const Color(0xFFE3E3E3),
             ),
             headingRowHeight: 52,
             dataRowMinHeight: 56,
@@ -2603,79 +2728,67 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                 ),
               ),
             ],
-            rows: _kotItems
-                .asMap()
-                .entries
-                .map((entry) {
-              final index = entry.key + 1;
-              final item = entry.value;
-              final qty = (item['quantity'] ?? 0).toDouble();
-              final price = (item['price'] ?? 0).toDouble();
-              final total = qty * price;
+            rows:
+                _kotItems.asMap().entries.map((entry) {
+                  final index = entry.key + 1;
+                  final item = entry.value;
+                  final qty = (item['quantity'] ?? 0).toDouble();
+                  final price = (item['price'] ?? 0).toDouble();
+                  final total = qty * price;
 
-              return DataRow(
-                cells: [
-                  DataCell(
-                    Text(
-                      index.toString(),
-                      style: TextStyle(
-                        color: isDark
-                            ? Colors.white
-                            : Colors.black,
-                        fontSize: 15,
+                  return DataRow(
+                    cells: [
+                      DataCell(
+                        Text(
+                          index.toString(),
+                          style: TextStyle(
+                            color: isDark ? Colors.white : Colors.black,
+                            fontSize: 15,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  DataCell(
-                    Text(
-                      item['item_name'] ?? '',
-                      style: TextStyle(
-                        color: isDark
-                            ? Colors.white
-                            : Colors.black,
-                        fontSize: 15,
+                      DataCell(
+                        Text(
+                          item['item_name'] ?? '',
+                          style: TextStyle(
+                            color: isDark ? Colors.white : Colors.black,
+                            fontSize: 15,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  DataCell(
-                    Text(
-                      qty.toStringAsFixed(0),
-                      style: TextStyle(
-                        color: isDark
-                            ? Colors.white
-                            : Colors.black,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
+                      DataCell(
+                        Text(
+                          qty.toStringAsFixed(0),
+                          style: TextStyle(
+                            color: isDark ? Colors.white : Colors.black,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  DataCell(
-                    Text(
-                      price.toStringAsFixed(2),
-                      style: TextStyle(
-                        color: isDark
-                            ? Colors.white
-                            : Colors.black,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
+                      DataCell(
+                        Text(
+                          price.toStringAsFixed(2),
+                          style: TextStyle(
+                            color: isDark ? Colors.white : Colors.black,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  DataCell(
-                    Text(
-                      total.toStringAsFixed(2),
-                      style: TextStyle(
-                        color: isDark
-                            ? Colors.white
-                            : Colors.black,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
+                      DataCell(
+                        Text(
+                          total.toStringAsFixed(2),
+                          style: TextStyle(
+                            color: isDark ? Colors.white : Colors.black,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                ],
-              );
-            }).toList(),
+                    ],
+                  );
+                }).toList(),
           ),
         ),
       ),

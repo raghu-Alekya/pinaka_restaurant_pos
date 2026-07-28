@@ -56,7 +56,7 @@ import '../widgets/top_bar.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/table_helpers.dart';
 import 'CheckinPopup.dart';
-import 'DailyAttendanceScreen.dart';
+import 'package:pinaka_restaurant_pos/App%20flow/ui/DailyAttendanceScreen.dart';
 import 'dashboard screen.dart';
 import 'guest_details_popup.dart';
 import 'home_screen.dart';
@@ -226,8 +226,21 @@ class _TablesScreenState extends State<TablesScreen> {
   List<String> get areaNames => _usedAreaNames.toList();
 
   void _selectArea(String area) {
+    final index = areaNames.indexOf(area);
     setState(() {
       selectedArea = area;
+      if (index != -1) {
+        if (index == 0) {
+          _currentZoneIndex = 0;
+        } else if (index == areaNames.length - 1) {
+          _currentZoneIndex =
+              (areaNames.length - _visibleZoneCount).clamp(0, areaNames.length);
+        } else if (index < _currentZoneIndex) {
+          _currentZoneIndex = index;
+        } else if (index >= _currentZoneIndex + _visibleZoneCount) {
+          _currentZoneIndex = index - _visibleZoneCount + 1;
+        }
+      }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final key = _areaKeys[area];
@@ -1798,6 +1811,10 @@ class _TablesScreenState extends State<TablesScreen> {
   Widget _buildSharedAreaFilter() {
     if (areaNames.isEmpty) return const SizedBox.shrink();
 
+    final bool isLeftDisabled = _currentZoneIndex <= 0;
+    final bool isRightDisabled =
+        _currentZoneIndex + _visibleZoneCount >= areaNames.length;
+
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 370),
       child: Container(
@@ -1812,7 +1829,8 @@ class _TablesScreenState extends State<TablesScreen> {
             // LEFT SCROLL BUTTON
             _scrollButton(
               icon: Icons.chevron_left,
-              onTap: _currentZoneIndex > 0 ? _moveLeft : () {},
+              isDisabled: isLeftDisabled,
+              onTap: isLeftDisabled ? null : _moveLeft,
             ),
 
             const SizedBox(width: 4),
@@ -1824,8 +1842,11 @@ class _TablesScreenState extends State<TablesScreen> {
                   (_currentZoneIndex + _visibleZoneCount > areaNames.length)
                       ? areaNames.length - _currentZoneIndex
                       : _visibleZoneCount,
-                      (index) {
+                  (index) {
                     final actualIndex = _currentZoneIndex + index;
+                    if (actualIndex >= areaNames.length) {
+                      return const SizedBox.shrink();
+                    }
                     final area = areaNames[actualIndex];
 
                     final bool isSelected = selectedArea == area;
@@ -1839,8 +1860,7 @@ class _TablesScreenState extends State<TablesScreen> {
                             backgroundColor: isSelected
                                 ? const Color(0xFFFD6464)
                                 : Colors.transparent,
-                            foregroundColor:
-                            isSelected
+                            foregroundColor: isSelected
                                 ? Colors.white
                                 : AppColors.text(context),
                             shape: RoundedRectangleBorder(
@@ -1864,36 +1884,55 @@ class _TablesScreenState extends State<TablesScreen> {
             // RIGHT SCROLL BUTTON
             _scrollButton(
               icon: Icons.chevron_right,
-              onTap: (_currentZoneIndex + _visibleZoneCount < areaNames.length)
-                  ? _moveRight
-                  : () {},
+              isDisabled: isRightDisabled,
+              onTap: isRightDisabled ? null : _moveRight,
             ),
           ],
         ),
       ),
     );
   }
+
   Widget _scrollButton({
     required IconData icon,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
+    bool isDisabled = false,
   }) {
+    final bool disabled = isDisabled || onTap == null;
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: AppColors.card(context),
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.grey.shade300),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 4,
-              )
-            ],
+      onTap: disabled ? null : onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: disabled
+              ? (Theme.of(context).brightness == Brightness.dark
+                  ? Colors.grey.shade800
+                  : Colors.grey.shade200)
+              : AppColors.card(context),
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: disabled
+                ? Colors.grey.shade300.withOpacity(0.5)
+                : Colors.grey.shade300,
           ),
-          child: Icon(icon, size: 18,color: AppColors.text(context),)
+          boxShadow: disabled
+              ? []
+              : [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 4,
+                  )
+                ],
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: disabled
+              ? Colors.grey.shade400
+              : AppColors.text(context),
+        ),
       ),
     );
   }

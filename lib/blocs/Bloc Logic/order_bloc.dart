@@ -317,7 +317,10 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
     });
 
     on<RefreshKotList>((event, emit) {
-      debugPrint("RefreshKotList: ${event.kots.length}");
+      if (_areKotListsEqual(state.kotList, event.kots)) {
+        return;
+      }
+      debugPrint("RefreshKotList updated: ${event.kots.length}");
       emit(
         state.copyWith(
           kotList: event.kots,
@@ -465,15 +468,17 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
     }
   }
 
-
-
-
-
-
-
-
-
-
-
+  bool _areKotListsEqual(List<KotModel> a, List<KotModel> b) {
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i].kotId != b[i].kotId ||
+          a[i].kotNumber != b[i].kotNumber ||
+          a[i].status != b[i].status ||
+          a[i].items.length != b[i].items.length) {
+        return false;
+      }
+    }
+    return true;
+  }
 }
 
