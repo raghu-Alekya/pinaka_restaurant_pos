@@ -2297,7 +2297,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
                         color:
                             isDark
                                 ? const Color(
-                                  0x66FF364C,
+                              0xFFE73E50,
                                 ) // Light red in dark mode
                                 : const Color(0xFFFF364C),
                         borderRadius: BorderRadius.circular(8),

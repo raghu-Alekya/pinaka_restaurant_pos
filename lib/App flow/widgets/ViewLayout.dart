@@ -79,6 +79,7 @@ class ViewLayoutToggle extends StatelessWidget {
       IconData icon,
       ) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final isSelected = mode == selected;
 
     return GestureDetector(
@@ -89,13 +90,17 @@ class ViewLayoutToggle extends StatelessWidget {
         height: 34,
         decoration: BoxDecoration(
           color: isSelected
-              ? theme.cardColor
+              ? (isDark
+              ? const Color(0xFF202433) // selected dark background
+              : Colors.white)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
           boxShadow: isSelected
               ? [
             BoxShadow(
-              color: theme.shadowColor.withOpacity(0.25),
+              color: isDark
+                  ? Colors.black54
+                  : Colors.black26,
               blurRadius: 3,
               offset: const Offset(0, 1),
             ),
@@ -107,8 +112,10 @@ class ViewLayoutToggle extends StatelessWidget {
             icon,
             size: 22,
             color: isSelected
-                ? theme.colorScheme.primary
-                : theme.colorScheme.onSurface,
+                ? const Color(0xFF4C81F1) // selected blue
+                : (isDark
+                ? Colors.grey // unselected dark
+                : Colors.black),
           ),
         ),
       ),

@@ -1806,11 +1806,11 @@ class _paymentsummaryState extends State<paymentsummary> {
                 //   _balanceAmountCard(balAmt),
                 // ],
                 children: [
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
 
                   // Each card is now its own white elevated card (matches image)
                   _netAmountCard(netPayableVal),
-                  const SizedBox(height: 15),
+                  const SizedBox(height: 10),
                   _balanceAmountCard(balAmt),
 
                   const SizedBox(height: 10),
@@ -2874,11 +2874,11 @@ class _paymentsummaryState extends State<paymentsummary> {
                   ),
                 ),
                 if (applied) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   Text(
                     "${selectedServiceCharge}%",
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: subColor,
                     ),

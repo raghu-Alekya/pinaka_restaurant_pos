@@ -374,9 +374,9 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                               Text(
                                 "Table name/ No.",
                                 style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: 14,
                                   fontFamily: 'Inter',
-                                  fontWeight: FontWeight.w900,
+                                  fontWeight: FontWeight.w700,
                                   color: isDark
                                       ? Colors.white70
                                       : const Color(0xFF4C5F7D),
@@ -456,9 +456,9 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                               Text(
                                 "Seating capacity",
                                 style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: 14,
                                   fontFamily: 'Inter',
-                                  fontWeight: FontWeight.w900,
+                                  fontWeight: FontWeight.w700,
                                   color: isDark
                                       ? Colors.white70
                                       : const Color(0xFF4C5F7D),
@@ -533,9 +533,9 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                             child: Text(
                               "Table Model",
                               style: TextStyle(
-                                fontSize: 13,
+                                fontSize: 14,
                                 fontFamily: 'Inter',
-                                fontWeight: FontWeight.w900,
+                                fontWeight: FontWeight.w700,
                                 color: isDark
                                     ? Colors.white70
                                     : const Color(0xFF4C5F7D),

@@ -85,8 +85,14 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _statusRepository = StatusCountRepository(
+      baseUrl: AppConstants.baseDomain,
+    );
+
+    print("Repository initialized");
     _preFetchOrders(); // MOVED: now fires FIRST so it has the earliest possible head start on the network
     _loadSavedPermissions();
+    loadStatusCount();
     loadKotOrderCount();
     _startClock();
     _loadCurrency();
@@ -114,6 +120,7 @@ class _HomeScreenState extends State<HomeScreen> {
         token: widget.token,
         restaurantId: widget.restaurantId,
       );
+      debugPrint("Queue = ${statusCount?.queue}");
 
       if (mounted) {
         setState(() {});
@@ -140,7 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final zones = await zoneRepo.getAllZones(widget.token);
 
       final initialOrderType =
-          orderTypes.isNotEmpty ? orderTypes.first : "Dine-In";
+      orderTypes.isNotEmpty ? orderTypes.first : "Dine-In";
       final initialArea = zones.isNotEmpty ? zones.first['zone_name'] : null;
 
       final orders = await kitchenRepo.fetchOrders(
@@ -154,9 +161,9 @@ class _HomeScreenState extends State<HomeScreen> {
         orders.map((o) async {
           final parentOrderId = (o['order_id'] ?? o['id']).toString();
           final zoneId =
-              initialOrderType.toLowerCase().replaceAll(" ", "") != "takeaways"
-                  ? (o['zone_id'] ?? o['zoneId'])?.toString()
-                  : null;
+          initialOrderType.toLowerCase().replaceAll(" ", "") != "takeaways"
+              ? (o['zone_id'] ?? o['zoneId'])?.toString()
+              : null;
           final kots = await kitchenRepo.fetchParentKotOrders(
             restaurantId: widget.restaurantId,
             parentOrderId: parentOrderId,
@@ -253,7 +260,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _updateTime();
     _clockTimer = Timer.periodic(
       const Duration(seconds: 1),
-      (_) => _updateTime(),
+          (_) => _updateTime(),
     );
   }
 
@@ -283,7 +290,7 @@ class _HomeScreenState extends State<HomeScreen> {
         widget.token,
       );
       final shiftStatus =
-          currentShift?['shift_status']?.toString().toLowerCase();
+      currentShift?['shift_status']?.toString().toLowerCase();
       if (shiftStatus == 'closed') {
         context.read<AttendanceBloc>().add(
           InitializeAttendanceFlow(token: widget.token, pin: widget.pin),
@@ -386,17 +393,21 @@ class _HomeScreenState extends State<HomeScreen> {
     return BlocListener<AttendanceBloc, AttendanceState>(
       listener: (context, state) async {
         if (state is AttendancePopupReady) {
+          final permissions = await SessionManager.loadPermissions();
+
+          if (permissions == null ||
+              !permissions.canCreateShiftAttendance) {
+            return;
+          }
+
           showDialog(
             context: context,
             barrierDismissible: false,
-            builder:
-                (_) => AttendancePopup(
-                  employees: state.employees,
-                  token: widget.token,
-                  onComplete: (String extractedStartTime) async {
-                    // Handle completion
-                  },
-                ),
+            builder: (_) => AttendancePopup(
+              employees: state.employees,
+              token: widget.token,
+              onComplete: (String extractedStartTime) async {},
+            ),
           );
         }
       },
@@ -608,7 +619,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     const SizedBox(height: 8),
                                     Row(
                                       crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                      CrossAxisAlignment.start,
                                       children: [
                                         SizedBox(
                                           width: 250,
@@ -646,15 +657,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                                 MaterialPageRoute(
                                                   builder:
                                                       (_) => TablesScreen(
-                                                        pin: widget.pin,
-                                                        token: widget.token,
-                                                        restaurantId:
-                                                            widget.restaurantId,
-                                                        restaurantName:
-                                                            widget
-                                                                .restaurantName,
-                                                        loadedTables: [],
-                                                      ),
+                                                    pin: widget.pin,
+                                                    token: widget.token,
+                                                    restaurantId:
+                                                    widget.restaurantId,
+                                                    restaurantName:
+                                                    widget
+                                                        .restaurantName,
+                                                    loadedTables: [],
+                                                  ),
                                                 ),
                                               );
                                             },
@@ -666,9 +677,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                         BlocBuilder<OrderBloc, OrderState>(
                                           builder: (context, state) {
                                             final activeOrderCount =
-                                                state.orderItems.isNotEmpty
-                                                    ? "1"
-                                                    : "0";
+                                            state.orderItems.isNotEmpty
+                                                ? "1"
+                                                : "0";
 
                                             return SizedBox(
                                               width: 250,
@@ -699,10 +710,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   ),
                                                 ],
                                                 icon:
-                                                    Icons.inventory_2_outlined,
+                                                Icons.inventory_2_outlined,
                                                 onTap: () {
                                                   final orderBloc =
-                                                      context.read<OrderBloc>();
+                                                  context.read<OrderBloc>();
                                                   final state = orderBloc.state;
 
                                                   if (state
@@ -723,21 +734,21 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     MaterialPageRoute(
                                                       builder:
                                                           (
-                                                            _,
+                                                          _,
                                                           ) => DashboardScreen(
-                                                            pin: widget.pin,
-                                                            token: widget.token,
-                                                            restaurantId:
-                                                                widget
-                                                                    .restaurantId,
-                                                            restaurantName:
-                                                                widget
-                                                                    .restaurantName,
-                                                            userPermissions:
-                                                                widget
-                                                                    .userPermissions,
-                                                            isTakeAway: true,
-                                                          ),
+                                                        pin: widget.pin,
+                                                        token: widget.token,
+                                                        restaurantId:
+                                                        widget
+                                                            .restaurantId,
+                                                        restaurantName:
+                                                        widget
+                                                            .restaurantName,
+                                                        userPermissions:
+                                                        widget
+                                                            .userPermissions,
+                                                        isTakeAway: true,
+                                                      ),
                                                     ),
                                                   );
                                                 },
@@ -790,7 +801,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     // Your Kitchen Row
                                     Row(
                                       crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                      CrossAxisAlignment.start,
                                       children: [
                                         SizedBox(
                                           width: 250,
@@ -801,25 +812,25 @@ class _HomeScreenState extends State<HomeScreen> {
                                             icon: Icons.restaurant_menu,
                                             iconColor: Colors.red,
                                             description:
-                                                "Monitor live kitchen order tickets and prep times",
+                                            "Monitor live kitchen order tickets and prep times",
                                             onTap: () {
                                               Navigator.push(
                                                 context,
                                                 MaterialPageRoute(
                                                   builder:
                                                       (
-                                                        _,
+                                                      _,
                                                       ) => KitchenStatusScreen(
-                                                        pin: widget.pin,
-                                                        associatedManagerPin:
-                                                            widget.pin,
-                                                        token: widget.token,
-                                                        restaurantId:
-                                                            widget.restaurantId,
-                                                        restaurantName:
-                                                            widget
-                                                                .restaurantName,
-                                                      ),
+                                                    pin: widget.pin,
+                                                    associatedManagerPin:
+                                                    widget.pin,
+                                                    token: widget.token,
+                                                    restaurantId:
+                                                    widget.restaurantId,
+                                                    restaurantName:
+                                                    widget
+                                                        .restaurantName,
+                                                  ),
                                                 ),
                                               );
                                             },
@@ -835,35 +846,35 @@ class _HomeScreenState extends State<HomeScreen> {
                                             icon: Icons.receipt_long,
                                             iconColor: Colors.blue,
                                             description:
-                                                "View, modify and settle all active orders",
+                                            "View, modify and settle all active orders",
                                             onTap: () {
                                               Navigator.push(
                                                 context,
                                                 MaterialPageRoute(
                                                   builder:
                                                       (_) => BlocProvider(
-                                                        create:
-                                                            (
-                                                              context,
-                                                            ) => OrderstatusBloc(
-                                                              OrderstatusRepository(),
-                                                            ),
-                                                        child: OrdersListTable(
-                                                          token: widget.token,
-                                                          pin: widget.pin,
-                                                          restaurantId:
-                                                              widget
-                                                                  .restaurantId,
-                                                          restaurantName:
-                                                              widget
-                                                                  .restaurantName,
-                                                          userPermissions:
-                                                              _userPermissions,
-                                                          orders: const [],
-                                                          loadedTables:
-                                                              const [],
-                                                        ),
-                                                      ),
+                                                    create:
+                                                        (
+                                                        context,
+                                                        ) => OrderstatusBloc(
+                                                      OrderstatusRepository(),
+                                                    ),
+                                                    child: OrdersListTable(
+                                                      token: widget.token,
+                                                      pin: widget.pin,
+                                                      restaurantId:
+                                                      widget
+                                                          .restaurantId,
+                                                      restaurantName:
+                                                      widget
+                                                          .restaurantName,
+                                                      userPermissions:
+                                                      _userPermissions,
+                                                      orders: const [],
+                                                      loadedTables:
+                                                      const [],
+                                                    ),
+                                                  ),
                                                 ),
                                               );
                                             },
@@ -877,33 +888,33 @@ class _HomeScreenState extends State<HomeScreen> {
                                             child: _whiteModuleCard(
                                               title: "Tips",
                                               count:
-                                                  "$_currency${totalTipAmount.toStringAsFixed(2)}",
+                                              "$_currency${totalTipAmount.toStringAsFixed(2)}",
                                               // count: "₹${totalTipAmount.toStringAsFixed(2)}",
                                               // count: totalTipAmount.toStringAsFixed(2),
                                               countLabel: "Tips",
                                               icon:
-                                                  Icons
-                                                      .account_balance_wallet_outlined,
+                                              Icons
+                                                  .account_balance_wallet_outlined,
                                               iconColor: Colors.orange,
                                               description:
-                                                  "Manage and view tips",
+                                              "Manage and view tips",
                                               onTap: () {
                                                 Navigator.push(
                                                   context,
                                                   MaterialPageRoute(
                                                     builder:
                                                         (_) => TipsScreen(
-                                                          token: widget.token,
-                                                          pin: widget.pin,
-                                                          userPermissions:
-                                                              _userPermissions,
-                                                          restaurantId:
-                                                              widget
-                                                                  .restaurantId,
-                                                          restaurantName:
-                                                              widget
-                                                                  .restaurantName,
-                                                        ),
+                                                      token: widget.token,
+                                                      pin: widget.pin,
+                                                      userPermissions:
+                                                      _userPermissions,
+                                                      restaurantId:
+                                                      widget
+                                                          .restaurantId,
+                                                      restaurantName:
+                                                      widget
+                                                          .restaurantName,
+                                                    ),
                                                   ),
                                                 );
                                               },
@@ -920,35 +931,35 @@ class _HomeScreenState extends State<HomeScreen> {
                                     // Your Customer Row
                                     Row(
                                       crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                      CrossAxisAlignment.start,
                                       children: [
                                         SizedBox(
                                           width: 250,
                                           child: _whiteModuleCard(
                                             title: "Reservation",
                                             count:
-                                                upcomingReservations.toString(),
+                                            upcomingReservations.toString(),
                                             countLabel: "Upcoming",
                                             icon: Icons.calendar_today,
                                             iconColor: Colors.blue,
                                             description:
-                                                "Accept, confirm and seat table reservations",
+                                            "Accept, confirm and seat table reservations",
                                             onTap: () {
                                               Navigator.push(
                                                 context,
                                                 MaterialPageRoute(
                                                   builder:
                                                       (
-                                                        _,
+                                                      _,
                                                       ) => ReservationListScreen(
-                                                        pin: widget.pin,
-                                                        token: widget.token,
-                                                        restaurantId:
-                                                            widget.restaurantId,
-                                                        restaurantName:
-                                                            widget
-                                                                .restaurantName,
-                                                      ),
+                                                    pin: widget.pin,
+                                                    token: widget.token,
+                                                    restaurantId:
+                                                    widget.restaurantId,
+                                                    restaurantName:
+                                                    widget
+                                                        .restaurantName,
+                                                  ),
                                                 ),
                                               );
                                             },
@@ -964,7 +975,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                             icon: Icons.people_outline,
                                             iconColor: Colors.purple,
                                             description:
-                                                "Profiles, loyalty history and preferences",
+                                            "Profiles, loyalty history and preferences",
                                           ),
                                         ),
                                         if (_userPermissions?.canViewVendors ==
@@ -977,31 +988,31 @@ class _HomeScreenState extends State<HomeScreen> {
                                               title: "Today's Vendor Payments",
                                               // count: vendorcount.toInt().toString(),
                                               count:
-                                                  todayVendorPaymentsCount
-                                                      .toString(),
+                                              todayVendorPaymentsCount
+                                                  .toString(),
                                               countLabel: "Vendors",
                                               icon:
-                                                  Icons.local_shipping_outlined,
+                                              Icons.local_shipping_outlined,
                                               iconColor: Colors.orange,
                                               description:
-                                                  "Manage supplier profiles, orders and deliveries",
+                                              "Manage supplier profiles, orders and deliveries",
                                               onTap: () {
                                                 Navigator.push(
                                                   context,
                                                   MaterialPageRoute(
                                                     builder:
                                                         (
-                                                          _,
+                                                        _,
                                                         ) => Vendorpaymentsscreen(
-                                                          token: widget.token,
-                                                          pin: widget.pin,
-                                                          restaurantId:
-                                                              widget
-                                                                  .restaurantId,
-                                                          restaurantName:
-                                                              widget
-                                                                  .restaurantName,
-                                                        ),
+                                                      token: widget.token,
+                                                      pin: widget.pin,
+                                                      restaurantId:
+                                                      widget
+                                                          .restaurantId,
+                                                      restaurantName:
+                                                      widget
+                                                          .restaurantName,
+                                                    ),
                                                   ),
                                                 );
                                               },
@@ -1415,9 +1426,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TextStyle(
                         fontSize: 11,
                         color:
-                            isDark
-                                ? Colors.grey.shade400
-                                : const Color(0xFF8B97A8),
+                        isDark
+                            ? Colors.grey.shade400
+                            : const Color(0xFF8B97A8),
                       ),
                     ),
                   ],
@@ -1514,25 +1525,25 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _overviewRow(
-    IconData icon,
-    Color bgColor,
-    Color iconColor,
-    String title,
-    String value,
-    bool isDark, {
-    bool showDivider = true,
-  }) {
+      IconData icon,
+      Color bgColor,
+      Color iconColor,
+      String title,
+      String value,
+      bool isDark, {
+        bool showDivider = true,
+      }) {
     return Container(
       decoration: BoxDecoration(
         border:
-            showDivider
-                ? Border(
-                  bottom: BorderSide(
-                    color:
-                        isDark ? Colors.grey.shade800 : const Color(0xFFE5E7EB),
-                  ),
-                )
-                : null,
+        showDivider
+            ? Border(
+          bottom: BorderSide(
+            color:
+            isDark ? Colors.grey.shade800 : const Color(0xFFE5E7EB),
+          ),
+        )
+            : null,
       ),
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
@@ -1834,11 +1845,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _kotStatusWidget(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
+      String title,
+      String value,
+      IconData icon,
+      Color color,
+      ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
@@ -1855,9 +1866,9 @@ class _HomeScreenState extends State<HomeScreen> {
         shadows: [
           BoxShadow(
             color:
-                isDark
-                    ? Colors.black.withOpacity(0.35)
-                    : const Color(0x2602B443),
+            isDark
+                ? Colors.black.withOpacity(0.35)
+                : const Color(0x2602B443),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),

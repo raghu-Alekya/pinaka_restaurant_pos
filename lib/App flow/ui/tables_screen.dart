@@ -1985,6 +1985,7 @@ class _TablesScreenState extends State<TablesScreen> {
   /// Returns a `Scaffold` widget that holds all the layered UI elements.
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final popupWidth = MediaQuery.of(context).size.width * 0.35;
 
     return MultiBlocListener(
@@ -2120,11 +2121,18 @@ class _TablesScreenState extends State<TablesScreen> {
               }
 
               if (_isCheckInDone) return;
+
+              final permissions = await SessionManager.loadPermissions();
+
+              if (permissions == null ||
+                  !permissions.canCreateShiftAttendance) {
+                return;
+              }
+
               showDialog(
                 context: context,
                 barrierDismissible: false,
-                builder:
-                    (_) => AttendancePopup(
+                builder: (_) => AttendancePopup(
                   employees: state.employees,
                   token: widget.token,
                   onComplete: (String extractedStartTime) async {
@@ -2445,7 +2453,9 @@ class _TablesScreenState extends State<TablesScreen> {
                       child: Container(
                         padding: EdgeInsets.all(13),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: isDark
+                              ? const Color(0xFF202433)
+                              : Colors.white,
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: PlacedTableBuilder.buildPlacedTableWidget(
@@ -2472,7 +2482,9 @@ class _TablesScreenState extends State<TablesScreen> {
                     Positioned.fill(
                       child: IgnorePointer(
                         child: DottedBorder(
-                          color: Colors.red,
+                          color: isDark
+                              ? Colors.grey
+                              : Colors.red,
                           strokeWidth: 2,
                           dashPattern: [10, 8],
                           borderType: BorderType.RRect,

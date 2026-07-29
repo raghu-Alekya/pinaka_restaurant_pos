@@ -226,91 +226,91 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
                       // Modifiers section
                       if (modifiers.isNotEmpty) ...[
                         Container(
+                          width: double.infinity,
+                          constraints: const BoxConstraints(
+                            maxHeight: 180,
+                          ),
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color:
-                                isDark
-                                    ? const Color(0xFF34384F)
-                                    : const Color(0xFFFFF8F8),
-                            borderRadius: BorderRadius.circular(8),
+                            color: isDark
+                                ? const Color(0xFF2B3042)
+                                : Colors.white,
+                            border: Border.all(
+                              color: const Color(0xFFF06161),
+                              width: 1.5,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          width: 900,
-                          height: 150,
                           child: SingleChildScrollView(
                             child: Wrap(
                               spacing: 8,
-                              runSpacing: 6,
-                              children:
-                                  modifiers.map((mod) {
-                                    final selected = selectedModifiers.contains(
-                                      mod.name,
-                                    );
+                              runSpacing: 8,
+                              children: modifiers.map((mod) {
+                                final selected = selectedModifiers.contains(mod.name);
 
-                                    return GestureDetector(
-                                      onTap: () => toggleModifier(mod.name),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color:
-                                              isDark
-                                                  ? const Color(0xFF34384F)
-                                                  : const Color(0xFFFFF8F8),
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                          border: Border.all(
-                                            color:
-                                                isDark
-                                                    ? Colors.white24
-                                                    : Colors.transparent,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Theme(
-                                              data: Theme.of(context).copyWith(
-                                                unselectedWidgetColor:
-                                                    const Color(0xFFF06161),
-                                              ),
-                                              child: Checkbox(
-                                                value: selected,
-                                                onChanged:
-                                                    (_) => toggleModifier(
-                                                      mod.name,
-                                                    ),
-                                                side: const BorderSide(
-                                                  color: Color(0xFFF06161),
-                                                  width: 1.5,
-                                                ),
-                                                activeColor: const Color(
-                                                  0xFFF06161,
-                                                ),
-                                                checkColor: Colors.white,
-                                              ),
-                                            ),
-                                            Text(
-                                              mod.name,
-                                              style: TextStyle(
-                                                color:
-                                                    isDark
-                                                        ? Colors.white
-                                                        : Colors.black,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                                return GestureDetector(
+                                  onTap: () => toggleModifier(mod.name),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: isDark
+                                          ? const Color(0xFF34384F)
+                                          : const Color(0xFFFFF8F8),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: selected
+                                            ? const Color(0xFFF06161)
+                                            : (isDark
+                                            ? Colors.white24
+                                            : Colors.grey.shade300),
+                                        width: 1.2,
                                       ),
-                                    );
-                                  }).toList(),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Theme(
+                                          data: Theme.of(context).copyWith(
+                                            checkboxTheme: CheckboxThemeData(
+                                              side: const BorderSide(
+                                                color: Color(0xFFF06161),
+                                                width: 1.5,
+                                              ),
+                                              fillColor: MaterialStateProperty.resolveWith((states) {
+                                                if (states.contains(MaterialState.selected)) {
+                                                  return const Color(0xFFF06161);
+                                                }
+                                                return Colors.transparent;
+                                              }),
+                                              checkColor: MaterialStateProperty.all(Colors.white),
+                                            ),
+                                          ),
+                                          child: Checkbox(
+                                            value: selected,
+                                            visualDensity: VisualDensity.compact,
+                                            onChanged: (_) => toggleModifier(mod.name),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          mod.name,
+                                          style: TextStyle(
+                                            color: isDark ? Colors.white : Colors.black,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 8),
                       ],
 
                       if (addOns.isNotEmpty) ...[
@@ -356,10 +356,12 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
                                                 : const Color(0xFFF2F6FF),
                                         borderRadius: BorderRadius.circular(8),
                                         border: Border.all(
-                                          color:
-                                              isDark
-                                                  ? Colors.white24
-                                                  : Colors.transparent,
+                                          color: selected
+                                              ? const Color(0xFF3C51DA) // Blue when selected
+                                              : (isDark
+                                              ? Colors.white24
+                                              : Colors.grey.shade300), // Grey when not selected
+                                          width: selected ? 2 : 1,
                                         ),
                                       ),
                                       padding: const EdgeInsets.symmetric(
@@ -379,12 +381,6 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
                                                   context,
                                                 ).copyWith(
                                                   checkboxTheme: CheckboxThemeData(
-                                                    shape: RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            5,
-                                                          ), // curve radius
-                                                    ),
                                                     side: const BorderSide(
                                                       color: Color(0xFF3C51DA),
                                                       width: 1.5,
@@ -468,7 +464,7 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
                                               ),
                                             ],
                                           ),
-                                          const SizedBox(height: 8),
+                                          const SizedBox(height: 6),
                                           if (selected)
                                             Row(
                                               mainAxisAlignment:
@@ -545,7 +541,7 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 8),
                       ],
 
                       Text(

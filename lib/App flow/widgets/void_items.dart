@@ -118,7 +118,7 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
           topLeft: Radius.circular(12),
           topRight: Radius.circular(12),
         ),
-        border: isDark ? Border.all(color: Colors.white24) : null,
+        // border: isDark ? Border.all(color: Colors.white24) : null,
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -242,7 +242,7 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
         width: 26,
         height: 26,
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF34384F) : const Color(0xFFFFE6E6),
+          color: isDark ? const Color(0xFF4D0808) : const Color(0xFFFFE6E6),
           borderRadius: BorderRadius.circular(4),
           border: Border.all(
             color: isDark ? Colors.white24 : Colors.transparent,
@@ -251,12 +251,33 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
         child: Icon(
           icon,
           size: 16,
-          color: isDark ? Colors.white : Colors.black87,
+          color: isDark ? Colors.white : Colors.red,
         ),
       ),
     );
   }
-
+  Widget _qtyButtonadd({required IconData icon, required VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      child: Container(
+        width: 26,
+        height: 26,
+        decoration: BoxDecoration(
+          color: const Color(0xFFE4E4EC), // same blue/grey in light & dark
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(
+            color: Colors.transparent,
+          ),
+        ),
+        child: Icon(
+          icon,
+          size: 16,
+          color: Colors.grey,
+        ),
+      ),
+    );
+  }
   // ─── LEFT PANEL (Original KOT - No changes) ────────────────────────────────
   Widget _leftPanel() {
     final isDark = Provider.of<ThemeProvider>(context).isDark;
@@ -297,20 +318,19 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                   color: isDark ? const Color(0xFF202433) : Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
-                    side: BorderSide(
-                      color: isDark ? Colors.white24 : const Color(0xFFE6E6E6),
+                    side: const BorderSide(
+                      color: Colors.transparent,
                     ),
                   ),
-                  shadows:
-                      isDark
-                          ? []
-                          : const [
-                            BoxShadow(
-                              color: Color(0x19000000),
-                              blurRadius: 0,
-                              offset: Offset(0, 0),
-                            ),
-                          ],
+                  shadows: isDark
+                      ? []
+                      : const [
+                    BoxShadow(
+                      color: Color(0x19000000),
+                      blurRadius: 0,
+                      offset: Offset(0, 0),
+                    ),
+                  ],
                 ),
                 child: Column(
                   children: [
@@ -320,10 +340,7 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                       child: Container(
                         decoration: BoxDecoration(
                           border: Border.all(
-                            color:
-                                isDark
-                                    ? Colors.white24
-                                    : const Color(0xFFE6E6E6),
+                            color: Theme.of(context).dividerColor,
                           ),
                           borderRadius: const BorderRadius.only(
                             bottomLeft: Radius.circular(8),
@@ -463,7 +480,7 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
-                        vertical: 10,
+                        vertical: 8,
                       ),
                       decoration: BoxDecoration(
                         color:
@@ -805,47 +822,27 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                                                     const SizedBox(width: 8),
 
                                                     // ➕ Plus button
-                                                    _qtyButton(
+                                                    (item.quantity < originalKotItems[index].quantity)
+                                                        ? _qtyButton(
                                                       icon: Icons.add,
                                                       onTap: () {
-                                                        final originalQty =
-                                                            originalKotItems[index]
-                                                                .quantity;
+                                                        final originalQty = originalKotItems[index].quantity;
 
-                                                        if (item.quantity >=
-                                                            originalQty) {
-                                                          ScaffoldMessenger.of(
-                                                            context,
-                                                          ).showSnackBar(
-                                                            SnackBar(
-                                                              content: Text(
-                                                                "Cannot exceed actual quantity ($originalQty)",
-                                                              ),
-                                                              duration:
-                                                                  Duration(
-                                                                    seconds: 1,
-                                                                  ),
-                                                              backgroundColor:
-                                                                  Colors.red,
-                                                            ),
-                                                          );
-                                                          return;
-                                                        }
+                                                        if (item.quantity >= originalQty) return;
 
                                                         item.quantity++;
-                                                        item.amount =
-                                                            item.price *
-                                                            item.quantity;
+                                                        item.amount = item.price * item.quantity;
+
                                                         setState(() {
-                                                          _hasQuantityChanged =
-                                                              _checkQuantityChanged();
+                                                          _hasQuantityChanged = _checkQuantityChanged();
                                                         });
-                                                        // refresh UI
-                                                        itemsNotifier
-                                                            .value = List.from(
-                                                          itemsNotifier.value,
-                                                        );
+
+                                                        itemsNotifier.value = List.from(itemsNotifier.value);
                                                       },
+                                                    )
+                                                        : _qtyButtonadd(
+                                                      icon: Icons.add,
+                                                      onTap: null,
                                                     ),
                                                   ],
                                                 ),
@@ -1083,7 +1080,7 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
       child: Dialog(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: isDark ? Colors.white24 : Colors.transparent),
+          // side: BorderSide(color: isDark ? Colors.white24 : Colors.transparent),
         ),
         insetPadding: const EdgeInsets.symmetric(horizontal: 26, vertical: 10),
         backgroundColor: isDark ? const Color(0xFF202433) : Colors.white,
@@ -1093,9 +1090,9 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF202433) : Colors.white,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isDark ? Colors.white24 : Colors.transparent,
-            ),
+            // border: Border.all(
+            //   color: isDark ? Colors.white24 : Colors.transparent,
+            // ),
           ),
           child: Column(
             children: [
