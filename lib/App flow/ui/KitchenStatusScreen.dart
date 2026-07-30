@@ -1718,26 +1718,41 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         final bool isDineInCard = cardOrderType == "dinein";
         final bool isTakeAwayOuter = cardOrderType == "takeaways";
 
+// Outer card background color
         final Color outerBgColor =
         isSelected
-            ? const Color(0xFF0C6FDB)
-            : (isTakeAwayOuter
-            ? (isDark ? Colors.white : const Color(0xFFFFF0E5))
+            ? (isTakeAwayOuter
+            ? (isDark
+            ? const Color(0xFF1B4F8C) // Take Away - Dark Mode - Selected Background
+            : const Color(0xFF0C6FDB)) // Take Away - Light Mode - Selected Background
             : (isDark
-            ? const Color(0xFF1B2A47)
-            : const Color(0xFFE8F1FF)));
-
-        final Color outerBorderColor =
-        isSelected
-            ? const Color(0xFF0056B3)
+            ? const Color(0xFF3B82C4) // Dine In - Dark Mode - Selected Background
+            : const Color(0xFF0C6FDB))) // Dine In - Light Mode - Selected Background
             : (isTakeAwayOuter
             ? (isDark
-            ? const Color(0xFFCBD5E1)
-            : const Color(0xFFFFD1B3))
+            ? Colors.white // Take Away - Dark Mode - Unselected Background
+            : const Color(0xFFFFF0E5)) // Take Away - Light Mode - Unselected Background
             : (isDark
-            ? const Color(0xFF2E4570)
-            : const Color(0xFFB3D1FF)));
+            ? const Color(0xFF1B2A47) // Dine In - Dark Mode - Unselected Background
+            : const Color(0xFFF6CFC1))); // Dine In - Light Mode - Unselected Background
 
+// Outer card border color
+        final Color outerBorderColor =
+        isSelected
+            ? (isTakeAwayOuter
+            ? (isDark
+            ? const Color(0xFF0D66BA) // Take Away - Dark Mode - Selected Border
+            : const Color(0xFF0D3B66)) // Take Away - Light Mode - Selected Border
+            : (isDark
+            ? const Color(0xFFC74716) // Dine In - Dark Mode - Selected Border
+            : const Color(0xFFFF8F64))) // Dine In - Light Mode - Selected Border
+            : (isTakeAwayOuter
+            ? (isDark
+            ? const Color(0xFF476B8A) // Take Away - Dark Mode - Unselected Border
+            : const Color(0xFFA1B3C3)) // Take Away - Light Mode - Unselected Border
+            : (isDark
+            ? const Color(0xFFB36648) // Dine In - Dark Mode - Unselected Border
+            : const Color(0xFFF6CFC1))); // Dine In - Light Mode - Unselected Border
         return GestureDetector(
           onTap: () async {
             final currentTable = table;
@@ -1837,34 +1852,62 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         normalizeOrderType(_effectiveOrderType(order)) == "takeaways" ||
             orderTypeStr.toLowerCase().contains("takeaway");
 
+// Card background color
     final Color unselectedBgColor =
     isTakeAway
-        ? (isDark ? Colors.white : const Color(0xFFFFF0E5))
-        : (isDark ? const Color(0xFF1B2A47) : const Color(0xFFE8F1FF));
+        ? (isDark
+        ? Color(0xFF2F3241) // Take Away - Dark Mode - Unselected Background
+        : const Color(0xFFFFFFFF)) // Take Away - Light Mode - Unselected Background
+        : (isDark
+        ? const Color(0xFF2F3241) // Dine In - Dark Mode - Unselected Background
+        : const Color(0xFFFFFFFF)); // Dine In - Light Mode - Unselected Background
 
     final Color cardBgColor =
-    isSelected ? const Color(0xFF0C6FDB) : unselectedBgColor;
+    isSelected
+        ? (isTakeAway
+        ? (isDark
+        ? const Color(0xFF0D66BA) // Take Away - Dark Mode - Selected Background
+        : const Color(0xFF0D3B66)) // Take Away - Light Mode - Selected Background
+        : (isDark
+        ? const Color(0xFFC74716) // Dine In - Dark Mode - Selected Background
+        : const Color(0xFFFA6938))) // Dine In - Light Mode - Selected Background
+        : unselectedBgColor;
 
+// Title text color
     final Color titleTextColor =
     isSelected
-        ? Colors.white
+        ? Colors.white // Selected Title Text
         : (isTakeAway
-        ? (isDark ? const Color(0xFFC2410C) : const Color(0xFF5C2600))
-        : (isDark ? const Color(0xFFD4E5FF) : const Color(0xFF002855)));
+        ? (isDark
+        ? const Color(0xFFFFFFFF) // Take Away - Dark Mode - Unselected Title
+        : const Color(0xFF000000)) // Take Away - Light Mode - Unselected Title
+        : (isDark
+        ? const Color(0xFFFFFFFF) // Dine In - Dark Mode - Unselected Title
+        : const Color(0xFF000000))); // Dine In - Light Mode - Unselected Title
 
+// Subtitle text color
     final Color subTextColor =
     isSelected
-        ? Colors.white
+        ? Colors.white // Selected Subtitle Text
         : (isTakeAway
-        ? (isDark ? const Color(0xFF475569) : const Color(0xFF6E320A))
-        : (isDark ? const Color(0xFFB8D5FF) : const Color(0xFF003366)));
+        ? (isDark
+        ? const Color(0xFFFFFFFF) // Take Away - Dark Mode - Unselected Subtitle
+        : const Color(0xFF000000)) // Take Away - Light Mode - Unselected Subtitle
+        : (isDark
+        ? const Color(0xFFFFFFFF) // Dine In - Dark Mode - Unselected Subtitle
+        : const Color(0xFF000000))); // Dine In - Light Mode - Unselected Subtitle
 
+// Body text color
     final Color bodyTextColor =
     isSelected
-        ? Colors.white
+        ? Colors.white // Selected Body Text
         : (isTakeAway
-        ? (isDark ? const Color(0xFF1E293B) : const Color(0xFF4D2409))
-        : (isDark ? const Color(0xFFE3F0FF) : const Color(0xFF1C355E)));
+        ? (isDark
+        ? const Color(0xFFFFFFFF) // Take Away - Dark Mode - Unselected Body
+        : const Color(0xFF000000)) // Take Away - Light Mode - Unselected Body
+        : (isDark
+        ? const Color(0xFFFFFFFF) // Dine In - Dark Mode - Unselected Body
+        : const Color(0xFF000000))); // Dine In - Light Mode - Unselected Body
 
     final rawTableName = (order['table_name'] ?? '').toString().trim();
     final bool hasValidTable = rawTableName.isNotEmpty && rawTableName != '-';
@@ -1967,6 +2010,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                     kotText: "KOT",
                     isSelected: isSelected,
                     kotCount: kotCount,
+                    isTakeAway: isTakeAway, // Pass order type here
                   ),
                   if ((order['remaining_count'] ?? 0) > 0) ...[
                     Text(
@@ -1995,19 +2039,47 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     required bool isSelected,
     required int kotCount,
     bool isSecondary = false,
+    required bool isTakeAway,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final primaryColor =
+// Order Type - Primary Circle Color
+    // Order Type - Primary Circle Color
+// Primary Circle Color
+    final Color primaryColor =
     isSelected
-        ? const Color(0xFFA6C4E4)
-        : (isDark ? const Color(0xFF4C81F1) : const Color(0xFF125BCE));
+        ? (isTakeAway
+        ? (isDark
+        ? const Color(0xFF0C508E) // Take Away - Dark - Selected
+        : const Color(0xFFA6C4E4)) // Take Away - Light - Selected
+        : (isDark
+        ? const Color(0xFF852703) // Dine In - Dark - Selected
+        : const Color(0xFFFDCEB9))) // Dine In - Light - Selected
+        : (isTakeAway
+        ? (isDark
+        ? const Color(0xFF4C81F1) // Take Away - Dark - Unselected
+        : const Color(0xFF125BCE)) // Take Away - Light - Unselected
+        : (isDark
+        ? const Color(0xFFC2410C) // Dine In - Dark - Unselected
+        : const Color(0xFFFFA36C))); // Dine In - Light - Unselected
 
-    final secondaryColor =
+// Secondary Circle Color
+    final Color secondaryColor =
     isSelected
-        ? const Color(0xFFD8E9FB)
-        : (isDark ? const Color(0xFF6A96F5) : const Color(0xFF81ACEF));
-
+        ? (isTakeAway
+        ? (isDark
+        ? const Color(0xFF1B5A99) // Take Away - Dark - Selected
+        : const Color(0xFFD8E9FB)) // Take Away - Light - Selected
+        : (isDark
+        ? const Color(0xFFB45309) // Dine In - Dark - Selected
+        : const Color(0xFFFFE2D5))) // Dine In - Light - Selected
+        : (isTakeAway
+        ? (isDark
+        ? const Color(0xFF6A96F5) // Take Away - Dark - Unselected
+        : const Color(0xFF81ACEF)) // Take Away - Light - Unselected
+        : (isDark
+        ? const Color(0xFFD97706) // Dine In - Dark - Unselected
+        : const Color(0xFFFFC4A3))); // Dine In - Light - Unselected
     return Container(
       width: 36,
       height: 36,
@@ -2072,17 +2144,17 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF34384F) : const Color(0xFFC2DFFF),
-              // border: Border(
-              //   top: BorderSide(
-              //     color: isDark ? Colors.white24 : const Color(0xFFF3F4F6),
-              //   ),
-              //   left: BorderSide(
-              //     color: isDark ? Colors.white24 : const Color(0xFFF3F4F6),
-              //   ),
-              //   right: BorderSide(
-              //     color: isDark ? Colors.white24 : const Color(0xFFF3F4F6),
-              //   ),
-              // ),
+              border: Border(
+                top: BorderSide(
+                  color: isDark ? Colors.white24 : const Color(0xFFF3F4F6),
+                ),
+                left: BorderSide(
+                  color: isDark ? Colors.white24 : const Color(0xFFF3F4F6),
+                ),
+                right: BorderSide(
+                  color: isDark ? Colors.white24 : const Color(0xFFF3F4F6),
+                ),
+              ),
               borderRadius: const BorderRadius.only(
                 topRight: Radius.circular(8),
                 topLeft: Radius.circular(8),
@@ -2293,17 +2365,17 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                     : (isDark
                     ? const Color(0xFF161A26)
                     : const Color(0xFFF3F3F3)),
-                // border: Border(
-                //   bottom: BorderSide(
-                //     color: isDark ? Colors.white24 : const Color(0xFFFAFAFA),
-                //   ),
-                //   left: BorderSide(
-                //     color: isDark ? Colors.white24 : const Color(0xFFFAFAFA),
-                //   ),
-                //   right: BorderSide(
-                //     color: isDark ? Colors.white24 : const Color(0xFFFAFAFA),
-                //   ),
-                // ),
+                border: Border(
+                  bottom: BorderSide(
+                    color: isDark ? Colors.white24 : const Color(0xFFFAFAFA),
+                  ),
+                  left: BorderSide(
+                    color: isDark ? Colors.white24 : const Color(0xFFFAFAFA),
+                  ),
+                  right: BorderSide(
+                    color: isDark ? Colors.white24 : const Color(0xFFFAFAFA),
+                  ),
+                ),
                 borderRadius: const BorderRadius.only(
                   bottomRight: Radius.circular(8),
                   bottomLeft: Radius.circular(8),
