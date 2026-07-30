@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 
-import '../providers/order_provider.dart';
+import '../services/repeated_item.dart';
+
+// import '../services/repeateditem_apiservices.dart';
 
 class RepeatedItem {
   final String name;
@@ -36,21 +36,30 @@ class RepeatedItemsScreen extends StatefulWidget {
 }
 
 class _RepeatedItemsScreenState extends State<RepeatedItemsScreen> {
+  List<RepeatedItem> items = [];
   bool isLoading = true;
   String lastUpdated = "";
+
 
   @override
   void initState() {
     super.initState();
-    lastUpdated = DateFormat('hh:mm a').format(DateTime.now());
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      loadRepeatedItems();
-    });
+    loadRepeatedItems();
+    _updateLastUpdated();
   }
 
   @override
   void dispose() {
+    // _timer?.cancel();
     super.dispose();
+  }
+
+  void _updateLastUpdated() {
+    if (!mounted) return;
+
+    setState(() {
+      // lastUpdated = DateTime.now() as String;
+    });
   }
 
   Future<void> loadRepeatedItems() async {
@@ -61,11 +70,27 @@ class _RepeatedItemsScreenState extends State<RepeatedItemsScreen> {
     });
 
     try {
-      await context.read<OrderProvider>().loadExistingOrders();
+      final response = await getKitchenItemsCount(
+        token: widget.token,
+        restaurantId: widget.restaurantId,
+      );
+
       if (!mounted) return;
-      setState(() {
-        lastUpdated = DateFormat('hh:mm a').format(DateTime.now());
-      });
+
+      items =
+          response.map<RepeatedItem>((e) {
+            final bool isVeg = e['is_veg'] ?? true;
+
+            return RepeatedItem(
+              name: e['item_name'] ?? '',
+              count: e['quantity'] ?? 0,
+              veg: isVeg,
+              borderColor:
+              isVeg ? const Color(0xff2DB347) : const Color(0xffC61D1D),
+            );
+          }).toList();
+
+      _updateLastUpdated();
     } catch (e) {
       debugPrint(e.toString());
     }
@@ -79,48 +104,6 @@ class _RepeatedItemsScreenState extends State<RepeatedItemsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final orderProvider = context.watch<OrderProvider>();
-
-    final summaryOrders = orderProvider.orders.where((o) {
-      return o.status == 'Preparing';
-    });
-
-    final Map<String, int> nameToCount = {};
-    final Map<String, bool> nameToVeg = {};
-
-    for (final order in summaryOrders) {
-      for (final item in order.items) {
-        final itemStatus = item.status.toLowerCase();
-        if (itemStatus == 'cancelled' || itemStatus == 'cancel') {
-          continue;
-        }
-
-        final name = item.name;
-        nameToCount[name] = (nameToCount[name] ?? 0) + item.qty;
-        nameToVeg[name] = item.isVeg;
-      }
-    }
-
-    final computedItems = nameToCount.entries.map((entry) {
-      final name = entry.key;
-      final count = entry.value;
-      final isVeg = nameToVeg[name] ?? true;
-      return RepeatedItem(
-        name: name,
-        count: count,
-        veg: isVeg,
-        borderColor: isVeg ? const Color(0xff2DB347) : const Color(0xffC61D1D),
-      );
-    }).toList();
-
-    computedItems.sort((a, b) {
-      final countCompare = b.count.compareTo(a.count);
-      if (countCompare != 0) return countCompare;
-      return a.name.compareTo(b.name);
-    });
-
-    final items = computedItems;
-
     final content = Column(
       children: [
         Row(
@@ -146,7 +129,7 @@ class _RepeatedItemsScreenState extends State<RepeatedItemsScreen> {
                   ),
                 ),
                 const Text(
-                  "Cumulative summary of preparing KOT items",
+                  "Items appearing in multiple pending KOTs",
                   style: TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               ],
@@ -176,89 +159,89 @@ class _RepeatedItemsScreenState extends State<RepeatedItemsScreen> {
         const SizedBox(height: 20),
         Expanded(
           child:
-              isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : GridView.builder(
-                    itemCount: items.length,
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 5,
-                          crossAxisSpacing: 14,
-                          mainAxisSpacing: 14,
-                          childAspectRatio: 2.15,
+          isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : GridView.builder(
+            itemCount: items.length,
+            gridDelegate:
+            const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 5,
+              crossAxisSpacing: 14,
+              mainAxisSpacing: 14,
+              childAspectRatio: 2.15,
+            ),
+            itemBuilder: (_, i) {
+              final item = items[i];
+              return Stack(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border(
+                        left: BorderSide(
+                          color: item.borderColor,
+                          width: 3,
                         ),
-                    itemBuilder: (_, i) {
-                      final item = items[i];
-                      return Stack(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border(
-                                left: BorderSide(
-                                  color: item.borderColor,
-                                  width: 3,
-                                ),
-                              ),
-                              boxShadow: const [
-                                BoxShadow(color: Colors.black12, blurRadius: 6),
-                              ],
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    item.name,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontSize: 18),
-                                  ),
-                                ),
-                                Text(
-                                  "${item.count}",
-                                  style: const TextStyle(
-                                    fontSize: 30,
-                                    color: Color(0xffB31313),
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
+                      ),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black12, blurRadius: 6),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            item.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 18),
                           ),
-                          Positioned(
-                            right: 0,
-                            top: 0,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color:
-                                    item.veg
-                                        ? const Color(0xff2DB347)
-                                        : const Color(0xffC61D1D),
-                                borderRadius: const BorderRadius.only(
-                                  topRight: Radius.circular(12),
-                                  bottomLeft: Radius.circular(8),
-                                ),
-                              ),
-                              child: Text(
-                                item.veg ? "Veg" : "Non-Veg",
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
+                        ),
+                        Text(
+                          "${item.count}",
+                          style: const TextStyle(
+                            fontSize: 30,
+                            color: Color(0xffB31313),
+                            fontWeight: FontWeight.bold,
                           ),
-                        ],
-                      );
-                    },
+                        ),
+                      ],
+                    ),
                   ),
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                        item.veg
+                            ? const Color(0xff2DB347)
+                            : const Color(0xffC61D1D),
+                        borderRadius: const BorderRadius.only(
+                          topRight: Radius.circular(12),
+                          bottomLeft: Radius.circular(8),
+                        ),
+                      ),
+                      child: Text(
+                        item.veg ? "Veg" : "Non-Veg",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
         ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -273,7 +256,7 @@ class _RepeatedItemsScreenState extends State<RepeatedItemsScreen> {
               SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  "Counts indicate the total quantity of items across all preparing KOTs.",
+                  "Count indicate the number of items pending KOT's that contain the item.",
                 ),
               ),
             ],
