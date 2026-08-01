@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/complete_order_model.dart';
 import '../models/kitchen_order.dart';
 import '../models/void_kot.dart';
 import '../services/api_services.dart';
@@ -403,10 +404,67 @@ class OrderProvider extends ChangeNotifier {
       return false;
     }
   }
+
+  Future<bool> recallOrderFromHistory({
+    required CompletedOrderModel order,
+    required String token,
+  }) async {
+    try {
+      final orderIdStr = order.kotOrderId.toString();
+
+      // Optimistically update existing order or add temporary representation in memory
+      final existingIndex = _orders.indexWhere(
+        (o) => o.kotId == order.kotOrderId || o.id == orderIdStr,
+      );
+
+      if (existingIndex != -1) {
+        _orders[existingIndex].status = 'Preparing';
+        _orders[existingIndex].servedAt = null;
+        _orders[existingIndex].isCancelled = false;
+        _optimisticStatuses[orderIdStr] =
+            _OptimisticStatus('Preparing', DateTime.now());
+      } else {
+        final tempOrder = KitchenOrder(
+          id: orderIdStr,
+          kotId: order.kotOrderId,
+          parentOrderId: order.orderId,
+          zoneId: order.zoneId,
+          type: order.orderType,
+          tableName: order.tableName,
+          status: 'Preparing',
+          kotTime: order.kotDateTime ?? DateTime.now(),
+          items: [],
+          kotStatus: 'preparing',
+        );
+        _orders.add(tempOrder);
+        _optimisticStatuses[orderIdStr] =
+            _OptimisticStatus('Preparing', DateTime.now());
+      }
+      notifyListeners();
+
+      // Send status update request to backend API
+      await _apiService.updateKotOrderStatus(
+        orderId: order.kotOrderId,
+        parentId: order.orderId,
+        zoneId: order.zoneId,
+        restaurantId: order.restaurantId,
+        status: "preparing",
+      );
+
+      // Reload full order details asynchronously without blocking UI navigation
+      unawaited(loadExistingOrders());
+
+      return true;
+    } catch (e, stack) {
+      KdsDebugLog.error("recallOrderFromHistory failed: $e\n$stack");
+      unawaited(loadExistingOrders());
+      return false;
+    }
+  }
+
   Future<void> loadExistingOrders() async {
     try {
       final apiOrders = await _apiService.getKitchenDisplayOrders();
-      debugPrint(jsonEncode(apiOrders));
 
       // Keep locally served orders so they don't disappear prematurely
       final servedLocal = _orders.where((o) => o.status.toLowerCase() == 'served').toList();
@@ -415,28 +473,9 @@ class OrderProvider extends ChangeNotifier {
 
       for (final json in apiOrders) {
         try {
-          final kotItems = json['kot_items'] as List? ?? [];
-
-          for (final item in kotItems) {
-            debugPrint(
-              'KOT: ${json['kot_number']} '
-                  'Item: ${item['item_name']} '
-                  'Modifiers: ${item['modifiers']} '
-                  'Addons: ${item['addons']}',
-            );
-          }
-
           final order = KitchenOrder.fromJson(
             Map<String, dynamic>.from(json),
-
           );
-          for (final item in order.items) {
-            debugPrint(
-              "PARSED => ${item.name} "
-                  "Modifiers=${item.modifiers} "
-                  "Addons=${item.addons}",
-            );
-          }
 
 
 

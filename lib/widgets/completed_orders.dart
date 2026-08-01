@@ -44,6 +44,7 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
 
   List<CompletedOrderModel> orders = [];
   bool isLoading = true;
+  final Set<int> _recallingKotIds = {};
   // ADD THESE
   DateTime? selectedDate;
   final TextEditingController _dateController = TextEditingController();
@@ -1003,110 +1004,115 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
                                               )
                                               : (order.canRecall
                                                   ? InkWell(
-                                                    onTap: () async {
-                                                      final api = OrderApiService(
-                                                        getToken:
-                                                            () async =>
-                                                                widget.token,
-                                                        restaurantId:
-                                                            widget.restaurantId,
-                                                      );
+                                                     onTap: () async {
+                                                       if (_recallingKotIds.contains(order.kotOrderId)) return;
 
-                                                      await api.updateKotOrderStatus(
-                                                        orderId:
-                                                            order.kotOrderId,
-                                                        parentId: order.orderId,
-                                                        zoneId:
-                                                            order
-                                                                .zoneId, // <-- must exist
-                                                        restaurantId:
-                                                            order.restaurantId,
-                                                        status: "preparing",
-                                                      );
-                                                      debugPrint(
-                                                        "Restaurant ID: ${order.restaurantId}",
-                                                      );
-                                                      debugPrint(
-                                                        "Zone ID: ${order.zoneId}",
-                                                      );
-                                                      debugPrint(
-                                                        "Order ID: ${order.orderId}",
-                                                      );
-                                                      // Refresh KDS orders
-                                                      await context
-                                                          .read<OrderProvider>()
-                                                          .loadExistingOrders();
+                                                       setState(() {
+                                                         _recallingKotIds.add(order.kotOrderId);
+                                                       });
 
-                                                      // if (!mounted) return;
+                                                       try {
+                                                         final success = await context
+                                                             .read<OrderProvider>()
+                                                             .recallOrderFromHistory(
+                                                               order: order,
+                                                               token: widget.token,
+                                                             );
 
-                                                      if (!mounted) return;
+                                                         if (!mounted) return;
 
-                                                      if (widget.isEmbedded) {
-                                                        widget.onRecallSuccess
-                                                            ?.call();
-                                                      } else {
-                                                        Navigator.pushReplacement(
-                                                          context,
-                                                          MaterialPageRoute(
-                                                            builder:
-                                                                (
-                                                                  _,
-                                                                ) => ActiveOrdersScreen(
-                                                                  token:
-                                                                      widget
-                                                                          .token,
-                                                                  restaurantId:
-                                                                      widget
-                                                                          .restaurantId,
-                                                                ),
-                                                          ),
-                                                        );
-                                                      }
-                                                    },
-                                                    child: Container(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            vertical: 8,
-                                                          ),
-                                                      decoration: BoxDecoration(
-                                                        color: const Color(
-                                                          0xff2563EB,
-                                                        ),
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              4,
-                                                            ),
-                                                      ),
-                                                      child: SizedBox(
-                                                        width: 130,
-                                                        child: Row(
-                                                          mainAxisAlignment:
-                                                              MainAxisAlignment
-                                                                  .center,
-                                                          children: const [
-                                                            Icon(
-                                                              Icons.refresh,
-                                                              size: 14,
-                                                              color:
-                                                                  Colors.white,
-                                                            ),
-                                                            SizedBox(width: 6),
-                                                            Text(
-                                                              "Recall/Alter",
-                                                              style: TextStyle(
-                                                                color:
-                                                                    Colors
-                                                                        .white,
-                                                                fontSize: 12,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .bold,
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
+                                                         if (success) {
+                                                           if (widget.isEmbedded) {
+                                                             widget.onRecallSuccess
+                                                                 ?.call();
+                                                           } else {
+                                                             Navigator.pushReplacement(
+                                                               context,
+                                                               MaterialPageRoute(
+                                                                 builder:
+                                                                     (
+                                                                       _,
+                                                                     ) => ActiveOrdersScreen(
+                                                                       token:
+                                                                           widget
+                                                                               .token,
+                                                                       restaurantId:
+                                                                           widget
+                                                                               .restaurantId,
+                                                                     ),
+                                                               ),
+                                                             );
+                                                           }
+                                                         } else {
+                                                           ScaffoldMessenger.of(context).showSnackBar(
+                                                             const SnackBar(
+                                                               content: Text("Failed to recall KOT order. Please try again."),
+                                                             ),
+                                                           );
+                                                         }
+                                                       } finally {
+                                                         if (mounted) {
+                                                           setState(() {
+                                                             _recallingKotIds.remove(order.kotOrderId);
+                                                           });
+                                                         }
+                                                       }
+                                                     },
+                                                     child: Container(
+                                                       padding:
+                                                           const EdgeInsets.symmetric(
+                                                             vertical: 8,
+                                                           ),
+                                                       decoration: BoxDecoration(
+                                                         color: const Color(
+                                                           0xff2563EB,
+                                                         ),
+                                                         borderRadius:
+                                                             BorderRadius.circular(
+                                                               4,
+                                                             ),
+                                                       ),
+                                                       child: SizedBox(
+                                                         width: 130,
+                                                         child: _recallingKotIds.contains(order.kotOrderId)
+                                                             ? const Center(
+                                                                 child: SizedBox(
+                                                                   width: 14,
+                                                                   height: 14,
+                                                                   child: CircularProgressIndicator(
+                                                                     strokeWidth: 2,
+                                                                     color: Colors.white,
+                                                                   ),
+                                                                 ),
+                                                               )
+                                                             : Row(
+                                                                 mainAxisAlignment:
+                                                                     MainAxisAlignment
+                                                                         .center,
+                                                                 children: const [
+                                                                   Icon(
+                                                                     Icons.refresh,
+                                                                     size: 14,
+                                                                     color:
+                                                                         Colors.white,
+                                                                   ),
+                                                                   SizedBox(width: 6),
+                                                                   Text(
+                                                                     "Recall/Alter",
+                                                                     style: TextStyle(
+                                                                       color:
+                                                                           Colors
+                                                                               .white,
+                                                                       fontSize: 12,
+                                                                       fontWeight:
+                                                                           FontWeight
+                                                                               .bold,
+                                                                     ),
+                                                                   ),
+                                                                 ],
+                                                               ),
+                                                       ),
+                                                     ),
                                                   )
                                                   : const Center(
                                                     child: SizedBox(
