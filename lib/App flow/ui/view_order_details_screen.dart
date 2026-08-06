@@ -1018,7 +1018,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                     children: [
                                       Expanded(
                                         child: Container(
-                                          height: 120,
+                                          height: 130,
                                           padding: const EdgeInsets.all(12),
                                           decoration: BoxDecoration(
                                             color: theme.cardColor,
@@ -1141,7 +1141,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                     TextSpan(
                                                       text:
                                                           "${orderModel.orderType ?? '-'}"
-                                                          "${orderModel.tableName != null ? ', ${orderModel.tableName}' : ''}",
+                                                          "${(orderModel.tableName != null && orderModel.tableName!.trim().isNotEmpty) ? ', ${orderModel.tableName}' : ''}",
                                                       style: Theme.of(
                                                         context,
                                                       ).textTheme.bodyMedium?.copyWith(
@@ -1218,7 +1218,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                       // customer details
                                       Expanded(
                                         child: Container(
-                                          height: 120,
+                                          height: 130,
                                           padding: const EdgeInsets.all(12),
                                           decoration: BoxDecoration(
                                             color: theme.cardColor,

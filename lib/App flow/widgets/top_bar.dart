@@ -38,6 +38,11 @@ import '../../blocs/Bloc Event/product_event.dart';
 import '../../blocs/Bloc Logic/subcategory_bloc.dart';
 import '../../blocs/Bloc Logic/minisubcategory_bloc.dart';
 import '../../blocs/Bloc Logic/product_bloc.dart';
+import '../../blocs/Bloc Event/order_event.dart';
+import '../../blocs/Bloc Logic/order_bloc.dart';
+import '../../constants/constants.dart';
+import '../../repositories/order_repository.dart';
+import 'confirmation_pop_up.dart';
 
 class TopBar extends StatefulWidget implements PreferredSizeWidget {
   final String token;
@@ -191,6 +196,126 @@ class _TopBarState extends State<TopBar> {
     } catch (e) {
       debugPrint(" Order Types Error in TopBar: $e");
     }
+  }
+
+  Future<void> _cancelTakeAwayAndGoHome() async {
+    final currentOrderId = context.read<OrderBloc>().state.orderId;
+
+    if (currentOrderId == 0) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder:
+              (_) => HomeScreen(
+                pin: widget.pin,
+                token: widget.token,
+                restaurantId: widget.restaurantId,
+                restaurantName: widget.restaurantName,
+              ),
+        ),
+        (route) => false,
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        bool isLoading = false;
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return ConfirmationPopup(
+              title: "Exit Current Order?",
+              message:
+                  "The current order has items in the cart. Do you want to really cancel this order?",
+              imagePath: "assets/warning_icon.png",
+              confirmButtonText: "Yes, Cancel!",
+              cancelButtonText: "No, Keep It",
+              primaryColor: const Color(0xFFD83434),
+              gradientColor: const Color(0xFFFCE9E9),
+              isLoading: isLoading,
+
+              onCancel: () {
+                Navigator.pop(dialogContext);
+              },
+
+              onConfirm: () async {
+                setState(() {
+                  isLoading = true;
+                });
+
+                try {
+                  final orderRepo = OrderRepository(
+                    baseUrl: AppConstants.baseDomain,
+                  );
+
+                  final orderState = context.read<OrderBloc>().state;
+
+                  await orderRepo.cancelTakeAwayOrder(
+                    parentOrderId: currentOrderId,
+                    restaurantId: int.parse(orderState.restaurantId),
+                    token: widget.token,
+                  );
+
+                  if (!context.mounted) return;
+
+                  // close popup
+                  Navigator.pop(dialogContext);
+
+                  // update bloc
+                  context.read<OrderBloc>().add(
+                    CancelOrder(
+                      parentOrderId: currentOrderId,
+                      token: widget.token,
+                    ),
+                  );
+
+                  context.read<OrderBloc>().add(ClearOrder());
+                  context.read<OrderBloc>().add(ResetOrder());
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Takeaway order cancelled successfully"),
+                      backgroundColor: Colors.red,
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (_) => HomeScreen(
+                            pin: widget.pin,
+                            token: widget.token,
+                            restaurantId: widget.restaurantId,
+                            restaurantName: widget.restaurantName,
+                          ),
+                    ),
+                    (route) => false,
+                  );
+                } catch (e) {
+                  if (context.mounted) {
+                    Navigator.pop(dialogContext);
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          e.toString().replaceFirst("Exception: ", ""),
+                        ),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<List<Map<String, dynamic>>> _getCashPrinterCandidates() async {
@@ -975,9 +1100,8 @@ class _TopBarState extends State<TopBar> {
                         height: 40,
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.black
-                              : const Color(0xFFF9FBFF),
+                          color:
+                              isDark ? Colors.black : const Color(0xFFF9FBFF),
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
                             color:
@@ -1162,6 +1286,11 @@ class _TopBarState extends State<TopBar> {
   Widget _buildHomeButton() {
     return GestureDetector(
       onTap: () async {
+        if (widget.isOrderPanel && widget.isTakeAway) {
+          _cancelTakeAwayAndGoHome();
+          return;
+        }
+
         bool shouldNavigate = true;
 
         if (widget.onHomePressed != null) {

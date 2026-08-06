@@ -147,8 +147,14 @@ class _DashboardScreenState extends State<DashboardScreen>
     productRepo = ProductRepository();
     variantRepository = VariantRepository(token: widget.token);
 
-    // ✅ CRITICAL FIX: Reset takeaway state on init
-    // _resetTakeawayState();
+    // ✅ CRITICAL FIX: Reset takeaway state if previous order was a table order
+    if (widget.isTakeAway) {
+      final orderBloc = context.read<OrderBloc>();
+      if (orderBloc.state.tableId != 0 || orderBloc.state.tableName.isNotEmpty) {
+        debugPrint("🧹 Takeaway mode opened with Table order state. Resetting OrderBloc.");
+        orderBloc.add(ResetOrder());
+      }
+    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _searchFocusNode.unfocus();

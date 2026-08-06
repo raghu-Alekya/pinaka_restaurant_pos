@@ -665,8 +665,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
                                         BlocBuilder<OrderBloc, OrderState>(
                                           builder: (context, state) {
+                                            final isTakeAwayOrder =
+                                                state.tableId == 0 &&
+                                                state.tableName.isEmpty;
                                             final activeOrderCount =
-                                                state.orderItems.isNotEmpty
+                                                (state.orderItems.isNotEmpty &&
+                                                        isTakeAwayOrder)
                                                     ? "1"
                                                     : "0";
 
@@ -705,11 +709,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                                       context.read<OrderBloc>();
                                                   final state = orderBloc.state;
 
-                                                  if (state
-                                                      .orderItems
-                                                      .isEmpty) {
+                                                  final isTableOrder =
+                                                      state.tableId != 0 ||
+                                                      state.tableName.isNotEmpty;
+
+                                                  if (state.orderItems.isEmpty ||
+                                                      isTableOrder) {
                                                     debugPrint(
-                                                      "🧹 No active order found. Resetting OrderBloc.",
+                                                      "🧹 No active takeaway order found (or Table order was active). Resetting OrderBloc.",
                                                     );
                                                     orderBloc.add(ResetOrder());
                                                   } else {
