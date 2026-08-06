@@ -117,9 +117,9 @@ class TableSetupHeader extends StatelessWidget {
                                     color: isDark
                                         ? Colors.white
                                         : const Color(0xFF373535),
-                                    fontSize: 25,
+                                    fontSize: 24,
                                     fontFamily: 'Inter',
-                                    fontWeight: FontWeight.w900,
+                                    fontWeight: FontWeight.w700,
                                     height: 1.56,
                                   ),
                                 ),
@@ -143,8 +143,8 @@ class TableSetupHeader extends StatelessWidget {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     SizedBox(
-                                      width: 100,
-                                      height: 40,
+                                      width: 180,
+                                      height: 45,
                                       child: ElevatedButton(
                                         onPressed: () => Navigator.of(context).pop(),
                                         style: ElevatedButton.styleFrom(
@@ -176,7 +176,7 @@ class TableSetupHeader extends StatelessWidget {
                                     ),
                                     const SizedBox(width: 12),
                                     SizedBox(
-                                      width: 110,
+                                      width: 180,
                                       height: 45,
                                       child: ElevatedButton(
                                         onPressed: () {
@@ -214,16 +214,16 @@ class TableSetupHeader extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              Text(
-                "Table Setup",
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
-                  color: isDark
-                      ? Colors.white
-                      : const Color(0xFF15315E),
-                ),
-              ),
+              // Text(
+              //   "Table Setup",
+              //   style: TextStyle(
+              //     fontSize: 17,
+              //     fontWeight: FontWeight.w800,
+              //     color: isDark
+              //         ? Colors.white
+              //         : const Color(0xFF15315E),
+              //   ),
+              // ),
               SizedBox(width: 10),
               Text(
                 "Table Setup",
@@ -243,7 +243,7 @@ class TableSetupHeader extends StatelessWidget {
             child: Text(
               "Area/Zone:",
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: FontWeight.w600,
                 color: isDark
                     ? Colors.white70

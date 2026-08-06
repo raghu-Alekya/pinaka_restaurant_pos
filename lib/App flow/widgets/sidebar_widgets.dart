@@ -105,7 +105,7 @@ class _SideBarWidgetsState extends State<SideBarWidgets> {
           decoration: ShapeDecoration(
             color: isSelected
                 ? (isDark
-                ? const Color(0xFFB53A48) // Selected in dark mode
+                ? const Color(0xFFE73E50) // Selected in dark mode
                 : const Color(0xFFFF364C))
                 : (isDark
                 ? const Color(0xFF252837) // Unselected in dark mode

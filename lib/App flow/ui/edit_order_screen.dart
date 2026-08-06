@@ -96,8 +96,23 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
     _orderStatusRepo = OrderstatusRepository();
     _loadPermissions();
     _loadCurrency(); // <-- Add this
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadInitialData();
+    });
   }
 
+  Future<void> _loadInitialData() async {
+    await Future.wait([
+      _loadPermissions(),
+      _loadCurrency(),
+    ]);
+
+    if (!mounted) return;
+
+    setState(() {
+      _ordersFuture = _orderRepo.fetchOrders(widget.token);
+    });
+  }
   Future<void> _loadCurrency() async {
     final currency = await SessionManager.getCurrencySymbol();
 
@@ -652,44 +667,49 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                           const SizedBox(width: 10),
                           SizedBox(
                             width: 110, // button width
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(
-                                  0xFF3B4259,
-                                ), // dark button color
-                                minimumSize: const Size(110, 40),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 8,
-                                  horizontal: 12,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                              onPressed: () {
-                                Navigator.pop(
-                                  context,
-                                  _kotUpdated,
-                                ); // CHANGED: only report an update if one actually happened
+                            child:GestureDetector(
+                              onTap: () {
+                                Navigator.pop(context, _kotUpdated);
                               },
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: const [
-                                  Icon(
-                                    Icons.arrow_back,
-                                    size: 20,
-                                    color: Colors.white,
+                              child: Container(
+                                width: 110,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                                decoration: ShapeDecoration(
+                                  color: const Color(0xFF3B4259),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
                                   ),
-                                  SizedBox(width: 6),
-                                  Text(
-                                    "Edit Order",
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white, // white text
+                                  shadows: const [
+                                    BoxShadow(
+                                      color: Color(0x19000000),
+                                      blurRadius: 4,
+                                      offset: Offset(0, 1),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: const [
+                                    Icon(
+                                      Icons.arrow_back,
+                                      size: 20,
+                                      color: Colors.white,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      "Edit Order",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -742,7 +762,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                                   value: _selectedKotId,
                                   icon: Icon(
                                     Icons.keyboard_arrow_down,
-                                    color: theme.iconTheme.color,
+                                    color: Colors.white,
                                   ),
                                   dropdownColor:
                                       isDark
@@ -996,7 +1016,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                                   const SizedBox(width: 20),
 
                                   SizedBox(
-                                    width: 450,
+                                    width: 430,
                                     height: 30,
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(
@@ -1955,13 +1975,17 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       child: Container(
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFFFFE5E5) : const Color(0xFFFFE5E5),
+          color: isEnabled
+              ? const Color(0xFFFFE5E5)
+              : Colors.grey.shade200,
           borderRadius: BorderRadius.circular(4),
         ),
         child: Icon(
           icon,
           size: 14,
-          color: isEnabled ? const Color(0xFFFE6464) : Colors.grey,
+          color: isEnabled
+              ? const Color(0xFFFE6464)
+              : Colors.grey,
         ),
       ),
     );

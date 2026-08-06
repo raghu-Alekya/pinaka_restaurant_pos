@@ -120,6 +120,7 @@ class _EditTablePopupState extends State<EditTablePopup> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final shapeOptions = ['rectangle', 'circle', 'square'].where((shape) {
       if (shape == _selectedShape) return true;
       if (shape == 'square') {
@@ -146,7 +147,9 @@ class _EditTablePopupState extends State<EditTablePopup> {
       child: Material(
         borderRadius: BorderRadius.circular(16),
         elevation: 10,
-        color: Colors.white,
+        color: isDark
+            ? const Color(0xFF202433)
+            : Colors.white,
         child: Container(
           width: 400,
           height: 520,
@@ -158,7 +161,14 @@ class _EditTablePopupState extends State<EditTablePopup> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Edit Table', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(
+                    'Edit Table',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : const Color(0xFF373535),
+                    ),
+                  ),
                   GestureDetector(
                     onTap: widget.onClose,
                     child: Container(
@@ -170,13 +180,27 @@ class _EditTablePopupState extends State<EditTablePopup> {
                 ],
               ),
               const SizedBox(height: 4),
-              Text(widget.tableData['tableName'],
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w400)),
+              Text(
+                widget.tableData['tableName'],
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w400,
+                  color: isDark ? Colors.white70 : Colors.black87,
+                ),
+              ),
               const SizedBox(height: 18),
 
               // Table Name
-              const Text('Table name/ No.',
-                  style: TextStyle(color: Color(0xFF4C5F7D), fontSize: 13, fontWeight: FontWeight.w500)),
+              Text(
+                'Table name/ No.',
+                style: TextStyle(
+                  color: isDark
+                      ? Colors.white70
+                      : const Color(0xFF4C5F7D),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
               const SizedBox(height: 6),
               TextField(
                 controller: _nameController,
@@ -184,12 +208,18 @@ class _EditTablePopupState extends State<EditTablePopup> {
                 decoration: InputDecoration(
                   isDense: true,
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: isDark
+                      ? const Color(0xFF34384F)
+                      : Colors.white,
                   contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
                   errorText: _isDuplicateName ? 'Duplicate table name' : null,
                   border: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.grey.shade300),
                     borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(
+                      color: isDark
+                          ? Colors.white24
+                          : Colors.grey.shade300,
+                    ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderSide: BorderSide(color: Colors.grey.shade300),
@@ -201,21 +231,35 @@ class _EditTablePopupState extends State<EditTablePopup> {
               const SizedBox(height: 15),
 
               // Capacity
-              const Text('Seating capacity',
-                  style: TextStyle(color: Color(0xFF4C5F7D), fontSize: 13, fontWeight: FontWeight.w500)),
+              Text('Seating capacity',
+                  style: TextStyle(  color: isDark
+                      ? Colors.white70
+                      : const Color(0xFF4C5F7D), fontSize: 13, fontWeight: FontWeight.w500)),
               const SizedBox(height: 4),
               Container(
                 decoration: BoxDecoration(
+                  color: isDark
+                      ? const Color(0xFF34384F)
+                      : Colors.white,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.grey.shade300),
-                  color: Colors.white,
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white24
+                        : Colors.grey.shade300,
+                  ),
                 ),
                 child: Row(
                   children: [
                     Expanded(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        child: Text('$_capacity', style: const TextStyle(fontSize: 14)),
+                        child: Text(
+                          '$_capacity',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: isDark ? Colors.white : Colors.black,
+                          ),
+                        ),
                       ),
                     ),
                     Container(
@@ -245,45 +289,129 @@ class _EditTablePopupState extends State<EditTablePopup> {
               ),
               const SizedBox(height: 15),
 
-              // Shape
-              const Text('Shape',
-                  style: TextStyle(color: Color(0xFF4C5F7D), fontSize: 13, fontWeight: FontWeight.w500)),
+// Shape
+              Text(
+                'Shape',
+                style: TextStyle(
+                  color: isDark
+                      ? Colors.white70
+                      : const Color(0xFF4C5F7D),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
               const SizedBox(height: 6),
+
               Theme(
-                data: Theme.of(context).copyWith(canvasColor: Colors.white),
+                data: Theme.of(context).copyWith(
+                  canvasColor: isDark
+                      ? const Color(0xFF34384F)
+                      : Colors.white,
+                ),
                 child: DropdownButtonFormField<String>(
                   isExpanded: true,
                   value: _selectedShape,
-                  items: shapeOptions,
+
+                  items: shapeOptions.map((item) {
+                    return DropdownMenuItem<String>(
+                      value: item.value,
+                      child: DefaultTextStyle(
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: isDark
+                              ? Colors.white
+                              : Colors.black87,
+                        ),
+                        child: item.child,
+                      ),
+                    );
+                  }).toList(),
+
                   onChanged: (val) {
-                    if (val != null) setState(() => _selectedShape = val);
+                    if (val != null) {
+                      setState(() => _selectedShape = val);
+                    }
                   },
+
+                  iconEnabledColor: isDark
+                      ? Colors.white70
+                      : Colors.black54,
+
+                  dropdownColor: isDark
+                      ? const Color(0xFF34384F)
+                      : Colors.white,
+
                   decoration: InputDecoration(
                     isDense: true,
                     filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+
+                    fillColor: isDark
+                        ? const Color(0xFF202433)
+                        : Colors.white,
+
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: 10,
+                      horizontal: 12,
+                    ),
+
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
+                      borderSide: BorderSide(
+                        color: isDark
+                            ? Colors.white24
+                            : Colors.grey.shade300,
+                      ),
                     ),
+
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
+                      borderSide: BorderSide(
+                        color: isDark
+                            ? Colors.white24
+                            : Colors.grey.shade300,
+                      ),
+                    ),
+
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(
+                        color: isDark
+                            ? const Color(0xFF4C81F1)
+                            : const Color(0xFFFF4D20),
+                        width: 1.5,
+                      ),
                     ),
                   ),
                 ),
               ),
+
               const SizedBox(height: 15),
 
               // Area
-              const Text('Area',
-                  style: TextStyle(color: Color(0xFF4C5F7D), fontSize: 13, fontWeight: FontWeight.w500)),
+              Text(
+                'Area',
+                style: TextStyle(
+                  color: isDark ? Colors.white70 : const Color(0xFF4C5F7D),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
               const SizedBox(height: 4),
+
               _isLoadingZones
                   ? const Center(child: CircularProgressIndicator())
                   : Theme(
-                data: Theme.of(context).copyWith(canvasColor: Colors.white),
+                data: Theme.of(context).copyWith(
+                  canvasColor: isDark
+                      ? const Color(0xFF34384F)
+                      : Colors.white,
+                  dropdownMenuTheme: DropdownMenuThemeData(
+                    textStyle: TextStyle(
+                      color: isDark ? Colors.white : Colors.black87,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
                 child: DropdownButtonFormField<String>(
                   isExpanded: true,
                   value: _areaNames.contains(_selectedArea)
@@ -291,33 +419,76 @@ class _EditTablePopupState extends State<EditTablePopup> {
                       : _areaNames.isNotEmpty
                       ? _areaNames.first
                       : null,
+
                   items: _areaNames.map((area) {
                     return DropdownMenuItem(
                       value: area,
-                      child: Text(area, style: const TextStyle(fontSize: 14)),
+                      child: Text(
+                        area,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                      ),
                     );
                   }).toList(),
+
                   onChanged: (val) {
-                    if (val != null) setState(() => _selectedArea = val);
+                    if (val != null) {
+                      setState(() => _selectedArea = val);
+                    }
                   },
+
+                  iconEnabledColor: isDark ? Colors.white70 : Colors.black54,
+
+                  dropdownColor: isDark
+                      ? const Color(0xFF34384F)
+                      : Colors.white,
+
                   decoration: InputDecoration(
                     isDense: true,
                     filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                    fillColor: isDark
+                        ? const Color(0xFF202433)
+                        : Colors.white,
+
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 12,
+                    ),
+
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
+                      borderSide: BorderSide(
+                        color: isDark
+                            ? Colors.white24
+                            : Colors.grey.shade300,
+                      ),
                     ),
+
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
+                      borderSide: BorderSide(
+                        color: isDark
+                            ? Colors.white24
+                            : Colors.grey.shade300,
+                      ),
+                    ),
+
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(
+                        color: isDark
+                            ? const Color(0xFF4C81F1)
+                            : const Color(0xFFFF4D20),
+                        width: 1.5,
+                      ),
                     ),
                   ),
                 ),
               ),
-              const Spacer(),
 
+              const Spacer(),
               // Update Button
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,

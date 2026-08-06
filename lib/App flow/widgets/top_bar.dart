@@ -16,6 +16,7 @@ import '../../printer/printer_db_helper.dart';
 import '../../printer/printer_settings.dart';
 import '../../repositories/auth_repository.dart';
 import '../../repositories/employee_repository.dart';
+import '../../utils/SessionManager.dart';
 import '../../utils/theme_provider.dart';
 import '../ui/CheckinPopup.dart';
 import '../ui/DailyAttendanceScreen.dart';
@@ -124,7 +125,7 @@ class _TopBarState extends State<TopBar> {
   List<String> orderTypes = [];
   String? selectedOrderType;
   final TextEditingController _customerPhoneController =
-      TextEditingController();
+  TextEditingController();
 
   PaymentSummary? _localPaymentSummary;
 
@@ -178,19 +179,19 @@ class _TopBarState extends State<TopBar> {
           orderTypes = result.orderTypes;
 
           final filtered =
-              widget.isTakeAway
-                  ? orderTypes
-                      .where((t) => t.toLowerCase().contains("takeaway"))
-                      .toList()
-                  : orderTypes
-                      .where((t) => t.toLowerCase().contains("dine in"))
-                      .toList();
+          widget.isTakeAway
+              ? orderTypes
+              .where((t) => t.toLowerCase().contains("takeaway"))
+              .toList()
+              : orderTypes
+              .where((t) => t.toLowerCase().contains("dine in"))
+              .toList();
 
           selectedOrderType =
-              widget.paymentSummary?.orderType != null &&
-                      filtered.contains(widget.paymentSummary?.orderType)
-                  ? widget.paymentSummary?.orderType
-                  : (filtered.isNotEmpty ? filtered.first : null);
+          widget.paymentSummary?.orderType != null &&
+              filtered.contains(widget.paymentSummary?.orderType)
+              ? widget.paymentSummary?.orderType
+              : (filtered.isNotEmpty ? filtered.first : null);
         });
       }
     } catch (e) {
@@ -611,11 +612,11 @@ class _TopBarState extends State<TopBar> {
         debugPrint("Stack trace: $stack");
         try {
           final fallbackType =
-              type == 'usb'
-                  ? PrinterType.usb
-                  : type == 'bluetooth'
-                  ? PrinterType.bluetooth
-                  : PrinterType.network;
+          type == 'usb'
+              ? PrinterType.usb
+              : type == 'bluetooth'
+              ? PrinterType.bluetooth
+              : PrinterType.network;
           await PrinterManager.instance.disconnect(type: fallbackType);
         } catch (_) {}
 
@@ -702,7 +703,7 @@ class _TopBarState extends State<TopBar> {
       PosColumn(
         width: 6,
         text:
-            "Date: ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}",
+        "Date: ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}",
       ),
       PosColumn(
         width: 6,
@@ -715,7 +716,7 @@ class _TopBarState extends State<TopBar> {
       PosColumn(
         width: 6,
         text:
-            "Cashier: ${widget.cashierName.isNotEmpty ? widget.cashierName : widget.userPermissions?.displayName ?? 'Admin'}",
+        "Cashier: ${widget.cashierName.isNotEmpty ? widget.cashierName : widget.userPermissions?.displayName ?? 'Admin'}",
       ),
       PosColumn(
         width: 6,
@@ -913,9 +914,9 @@ class _TopBarState extends State<TopBar> {
         boxShadow: [
           BoxShadow(
             color:
-                isDark
-                    ? Colors.black.withValues(alpha: 0.45)
-                    : Colors.black.withValues(alpha: 0.08),
+            isDark
+                ? Colors.black.withValues(alpha: 0.45)
+                : Colors.black.withValues(alpha: 0.08),
             spreadRadius: 0,
             blurRadius: 8,
             offset: const Offset(0, 2),
@@ -987,13 +988,13 @@ class _TopBarState extends State<TopBar> {
                           height: 42,
                           decoration: BoxDecoration(
                             color:
-                                isDark ? const Color(0xFF2A2A2A) : Colors.white,
+                            isDark ? const Color(0xFF2A2A2A) : Colors.white,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color:
-                                  isDark
-                                      ? Colors.grey.shade700
-                                      : const Color(0xFFE5E7EB),
+                              isDark
+                                  ? Colors.grey.shade700
+                                  : const Color(0xFFE5E7EB),
                             ),
                             boxShadow: [
                               BoxShadow(
@@ -1019,9 +1020,9 @@ class _TopBarState extends State<TopBar> {
                               hintText: "Search item or short code....",
                               hintStyle: TextStyle(
                                 color:
-                                    isDark
-                                        ? Colors.grey.shade400
-                                        : const Color(0xFF9CA3AF),
+                                isDark
+                                    ? Colors.grey.shade400
+                                    : const Color(0xFF9CA3AF),
                               ),
                               prefixIcon: const Padding(
                                 padding: EdgeInsets.only(left: 10, right: 8),
@@ -1105,9 +1106,9 @@ class _TopBarState extends State<TopBar> {
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
                             color:
-                                isDark
-                                    ? Colors.grey.shade700
-                                    : const Color(0xFFE6E6E6),
+                            isDark
+                                ? Colors.grey.shade700
+                                : const Color(0xFFE6E6E6),
                             width: 1,
                           ),
                         ),
@@ -1116,9 +1117,9 @@ class _TopBarState extends State<TopBar> {
                             value: selectedOrderType,
                             isExpanded: true,
                             dropdownColor:
-                                isDark ? const Color(0xFF2B2B2B) : Colors.white,
+                            isDark ? const Color(0xFF2B2B2B) : Colors.white,
                             iconEnabledColor:
-                                isDark ? Colors.white : Colors.black,
+                            isDark ? Colors.white : Colors.black,
                             style: TextStyle(
                               color: isDark ? Colors.white : Colors.black,
                               fontSize: 14,
@@ -1130,20 +1131,20 @@ class _TopBarState extends State<TopBar> {
                               ),
                             ),
                             items:
-                                orderTypes.map((type) {
-                                  return DropdownMenuItem<String>(
-                                    value: type,
-                                    child: Text(
-                                      type,
-                                      style: TextStyle(
-                                        color:
-                                            isDark
-                                                ? Colors.white
-                                                : Colors.black,
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
+                            orderTypes.map((type) {
+                              return DropdownMenuItem<String>(
+                                value: type,
+                                child: Text(
+                                  type,
+                                  style: TextStyle(
+                                    color:
+                                    isDark
+                                        ? Colors.white
+                                        : Colors.black,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
                             onChanged: (value) async {
                               if (value == null) return;
 
@@ -1152,12 +1153,12 @@ class _TopBarState extends State<TopBar> {
                               });
 
                               final result =
-                                  await OrderTypesInPaymentScreenRepository()
-                                      .updateOrderType(
-                                        token: widget.token,
-                                        orderId: widget.paymentSummary!.orderId,
-                                        orderType: value,
-                                      );
+                              await OrderTypesInPaymentScreenRepository()
+                                  .updateOrderType(
+                                token: widget.token,
+                                orderId: widget.paymentSummary!.orderId,
+                                orderType: value,
+                              );
 
                               if (result?.success == true) {
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -1183,40 +1184,40 @@ class _TopBarState extends State<TopBar> {
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           decoration: BoxDecoration(
                             color:
-                                _isPrinting
-                                    ? const Color(0xFF9AD9AE)
-                                    : const Color(0xFF22C55E),
+                            _isPrinting
+                                ? const Color(0xFF9AD9AE)
+                                : const Color(0xFF22C55E),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child:
-                              _isPrinting
-                                  ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                  : const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.print_outlined,
-                                        color: Colors.white,
-                                        size: 16,
-                                      ),
-                                      SizedBox(width: 6),
-                                      Text(
-                                        "Print",
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                          _isPrinting
+                              ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                              : const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.print_outlined,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                              SizedBox(width: 6),
+                              Text(
+                                "Print",
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -1230,8 +1231,7 @@ class _TopBarState extends State<TopBar> {
                   _buildProfileSection(),
                 ] else ...[
                   if (widget.isHomeScreen) ...[
-                    if (widget.userPermissions?.canUpdateShiftAttendance ??
-                        false) ...[
+                    if (widget.userPermissions?.canCreateShiftAttendance ?? false) ...[
                       _buildAttendanceIconButton(context),
                       const SizedBox(width: 10),
                     ],
@@ -1304,13 +1304,13 @@ class _TopBarState extends State<TopBar> {
           MaterialPageRoute(
             builder:
                 (_) => HomeScreen(
-                  token: widget.token,
-                  pin: widget.pin,
-                  restaurantId: widget.restaurantId,
-                  restaurantName: widget.restaurantName,
-                ),
+              token: widget.token,
+              pin: widget.pin,
+              restaurantId: widget.restaurantId,
+              restaurantName: widget.restaurantName,
+            ),
           ),
-          (route) => false,
+              (route) => false,
         );
       },
       child: Container(
@@ -1356,13 +1356,13 @@ class _TopBarState extends State<TopBar> {
           MaterialPageRoute(
             builder:
                 (_) => TablesScreen(
-                  loadedTables: const [],
-                  pin: widget.pin,
-                  token: widget.token,
-                  restaurantId: widget.restaurantId,
-                  restaurantName: widget.restaurantName,
-                  userPermissions: widget.userPermissions,
-                ),
+              loadedTables: const [],
+              pin: widget.pin,
+              token: widget.token,
+              restaurantId: widget.restaurantId,
+              restaurantName: widget.restaurantName,
+              userPermissions: widget.userPermissions,
+            ),
           ),
         );
       },
@@ -1455,12 +1455,12 @@ class _TopBarState extends State<TopBar> {
           MaterialPageRoute(
             builder:
                 (_) => SettingsScreen(
-                  token: widget.token,
-                  pin: widget.pin,
-                  userId: widget.userPermissions?.userId ?? '',
-                  displayName: widget.userPermissions?.displayName ?? '',
-                  role: widget.userPermissions?.role ?? '',
-                ),
+              token: widget.token,
+              pin: widget.pin,
+              userId: widget.userPermissions?.userId ?? '',
+              displayName: widget.userPermissions?.displayName ?? '',
+              role: widget.userPermissions?.role ?? '',
+            ),
           ),
         );
       },
@@ -1512,9 +1512,9 @@ class _TopBarState extends State<TopBar> {
           barrierDismissible: false,
           builder:
               (_) => LogoutConfirmationDialog(
-                onCancel: () => Navigator.pop(context, false),
-                onConfirm: () => Navigator.pop(context, true),
-              ),
+            onCancel: () => Navigator.pop(context, false),
+            onConfirm: () => Navigator.pop(context, true),
+          ),
         );
 
         if (result != true) return;
@@ -1554,12 +1554,12 @@ class _TopBarState extends State<TopBar> {
               MaterialPageRoute(
                 builder:
                     (_) => const EmployeeLoginPage(
-                      storeBaseUrl: '',
-                      storeName: '',
-                      storeId: '',
-                    ),
+                  storeBaseUrl: '',
+                  storeName: '',
+                  storeId: '',
+                ),
               ),
-              (route) => false,
+                  (route) => false,
             );
           }
           // if (success && context.mounted) {
@@ -1698,12 +1698,12 @@ class _TopBarState extends State<TopBar> {
           final response = await repository.getAllEmployees(widget.token);
 
           final List<Employee> employees =
-              response.map((e) {
-                return Employee(
-                  id: e['ID'].toString(),
-                  name: e['name'].toString(),
-                );
-              }).toList();
+          response.map((e) {
+            return Employee(
+              id: e['ID'].toString(),
+              name: e['name'].toString(),
+            );
+          }).toList();
 
           final currentShift = await repository.getCurrentShift(widget.token);
 
@@ -1732,16 +1732,22 @@ class _TopBarState extends State<TopBar> {
               widget.token,
             );
 
+            final permissions = await SessionManager.loadPermissions();
+
+            if (permissions == null ||
+                !permissions.canUpdateShiftAttendance) {
+              return;
+            }
+
             await showDialog(
               context: context,
               barrierDismissible: false,
-              builder:
-                  (_) => AttendancePopup(
-                    token: widget.token,
-                    employees: employees,
-                    isUpdateMode: true,
-                    currentShiftData: shiftData,
-                  ),
+              builder: (_) => AttendancePopup(
+                token: widget.token,
+                employees: employees,
+                isUpdateMode: true,
+                currentShiftData: shiftData,
+              ),
             );
           }
         } catch (e) {
@@ -1937,9 +1943,9 @@ class _TopBarState extends State<TopBar> {
             radius: isPayment ? 15 : 20,
             backgroundColor: Colors.grey.shade200,
             backgroundImage:
-                avatarUrl != null && avatarUrl.isNotEmpty
-                    ? NetworkImage(avatarUrl)
-                    : const AssetImage('assets/loginname.png') as ImageProvider,
+            avatarUrl != null && avatarUrl.isNotEmpty
+                ? NetworkImage(avatarUrl)
+                : const AssetImage('assets/loginname.png') as ImageProvider,
           ),
           SizedBox(width: isPayment ? 8 : 12),
           Column(

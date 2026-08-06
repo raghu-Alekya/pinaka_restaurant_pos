@@ -2580,7 +2580,7 @@ class _OrderPanelState extends State<OrderPanel> {
                             children: [
                               /// Header
                               Container(
-                                height: 30,
+                                height: 40,
                                 decoration: BoxDecoration(
                                   color:
                                       isDark
@@ -2739,7 +2739,7 @@ class _OrderPanelState extends State<OrderPanel> {
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 12,
-                                  vertical: 6,
+                                  vertical: 7,
                                 ),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFF1A3C71),
@@ -2790,7 +2790,7 @@ class _OrderPanelState extends State<OrderPanel> {
                 Container(
                   padding: const EdgeInsets.all(2),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF2A2F45) : Colors.white,
+                    color: isDark ? const Color(0xFF1B1B22) : Colors.white,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child:

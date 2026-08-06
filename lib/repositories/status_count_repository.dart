@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 
+import '../constants/constants.dart';
+
 class StatusCountModel {
   final int restaurantId;
   final int queue;
@@ -50,7 +52,7 @@ class StatusCountRepository {
     required String restaurantId,
   }) async {
     final url = Uri.parse(
-      '$baseUrl/wp-json/pinaka-restaurant-pos/v1/kot/get-status-wise-count?restaurant_id=$restaurantId',
+      "${AppConstants.baseApiPath}/kot/get-status-wise-count?restaurant_id=$restaurantId",
     );
 
     debugPrint("========== KOT STATUS COUNT API ==========");

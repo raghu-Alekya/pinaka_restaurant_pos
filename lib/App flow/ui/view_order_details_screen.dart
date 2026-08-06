@@ -1350,21 +1350,12 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                   const SizedBox(height: 8),
 
                                   // payment summary
-                                  Expanded(
+                                  Flexible(
+                                    fit: FlexFit.tight,
                                     child: Container(
                                       width: double.infinity,
-                                      margin: const EdgeInsets.fromLTRB(
-                                        4,
-                                        2,
-                                        4,
-                                        0,
-                                      ),
-                                      padding: const EdgeInsets.fromLTRB(
-                                        10,
-                                        6,
-                                        10,
-                                        0,
-                                      ),
+                                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                                      padding: const EdgeInsets.all(10),
                                       decoration: BoxDecoration(
                                         color: theme.cardColor,
                                         borderRadius: BorderRadius.circular(10),
@@ -1386,10 +1377,14 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                       //   blendMode: BlendMode.dstIn,
                                       child: SingleChildScrollView(
                                         physics: const ClampingScrollPhysics(),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
+                                        child: ConstrainedBox(
+                                          constraints: BoxConstraints(
+                                            minHeight: MediaQuery.of(context).size.height,
+                                          ),
+                                          child: IntrinsicHeight(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
                                             // ================= HEADER =================
                                             Row(
                                               mainAxisAlignment:
@@ -1469,12 +1464,10 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                         : Colors.black,
                                               ),
                                             ),
-
                                             paymentRow(
                                               "Sub Total",
                                               "$_currency${(orderModel.subTotal ?? 0).toDouble().toStringAsFixed(2)}",
                                             ),
-
                                             paymentRow(
                                               "Tax @5% Food",
                                               "",
@@ -1482,7 +1475,6 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                               fontSize: 12,
                                               fontWeight: FontWeight.w700,
                                             ),
-
                                             Padding(
                                               padding: const EdgeInsets.only(
                                                 left: 36,
@@ -1494,7 +1486,6 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                 color: Colors.grey,
                                               ),
                                             ),
-
                                             Padding(
                                               padding: const EdgeInsets.only(
                                                 left: 36,
@@ -1506,7 +1497,6 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                 color: Colors.grey,
                                               ),
                                             ),
-
                                             paymentRow(
                                               "Tax @Alcohol Nil (Price inclusive of Excise Duty)",
                                               "${_currency}0.00",
@@ -1565,7 +1555,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                 ),
                                               ),
                                             ),
-
+                                                const SizedBox(height: 10),
                                             paymentRow(
                                               "Total Tax",
                                               "$_currency${(orderModel.totalTax ?? 0).toDouble().toStringAsFixed(2)}",
@@ -1601,13 +1591,11 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                         : Colors.black,
                                               ),
                                             ),
-
                                             paymentRow(
                                               "Net Total",
                                               "$_currency${(orderModel.netTotal ?? 0).toStringAsFixed(2)}",
                                               fontWeight: FontWeight.bold,
                                             ),
-
                                             paymentRow(
                                               "Merchant Discount",
                                               "-$_currency${(orderModel.merchantDiscount ?? 0).toDouble().toStringAsFixed(2)}",
@@ -1619,7 +1607,6 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                 "$_currency${(orderModel.tipAmount ?? 0).toDouble().toStringAsFixed(2)}",
                                                 color: Colors.green,
                                               ),
-
                                             if ((orderModel
                                                         .serviceChargeValue ??
                                                     0) >
@@ -1629,13 +1616,11 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                 "$_currency${(orderModel.serviceChargeValue ?? 0).toDouble().toStringAsFixed(2)}",
                                                 color: Colors.blue,
                                               ),
-
                                             paymentRow(
                                               "Round Off",
                                               "${(orderModel.roundOff ?? 0) >= 0 ? '+' : '-'}₹${(orderModel.roundOff ?? 0).abs().toStringAsFixed(2)}",
                                               color: Colors.grey,
                                             ),
-
                                             ShaderMask(
                                               shaderCallback: (Rect bounds) {
                                                 final baseColor =
@@ -1678,8 +1663,9 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                           ],
                                         ),
                                       ),
-                                      // ),
+                                      ),
                                     ),
+                                  ),
                                   ),
                                   const SizedBox(height: 10),
                                   SizedBox(
@@ -2408,7 +2394,9 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
           // Table Header
           Container(
             decoration: BoxDecoration(
-              color: const Color(0xFF999393),
+              color: isDark
+                  ? const Color(0xFF34384F)   // dark mode color
+                  : const Color(0xFF999393),  // light mode color
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(8),
                 topRight: Radius.circular(8),

@@ -671,6 +671,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // ==================== UI WIDGETS ====================
 
   Widget _photoBox(Uint8List? bytes) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -716,12 +718,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    border: Border.all(color: Colors.grey.shade300),
+                    border: Border.all(
+                      color: isDark ? Colors.white24 : Colors.grey.shade300,
+                    ),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.edit,
-                    color: Colors.black54,
+                    color: isDark ? Colors.white70 : Colors.black54,
                     size: 20,
                   ),
                 ),
@@ -765,7 +769,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    border: Border.all(color: Colors.grey.shade300),
+                    border: Border.all(
+                      color: isDark ? Colors.white24 : Colors.grey.shade300,
+                    ),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: const Icon(
@@ -783,6 +789,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _logoBox(Uint8List? bytes, String? imageUrl) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -828,12 +836,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    border: Border.all(color: Colors.grey.shade300),
+                    border: Border.all(
+                      color: isDark ? Colors.white24 : Colors.grey.shade300,
+                    ),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.edit,
-                    color: Colors.black54,
+                    color: isDark ? Colors.white70 : Colors.black54,
                     size: 20,
                   ),
                 ),
@@ -877,7 +887,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    border: Border.all(color: Colors.grey.shade300),
+                    border: Border.all(
+                      color: isDark ? Colors.white24 : Colors.grey.shade300,
+                    ),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: const Icon(
@@ -958,14 +970,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
         String? hint,
         bool readOnly = false,
       }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.w600,
-            color: Colors.black87,
+            color: theme.colorScheme.onSurface,
             fontSize: 15,
           ),
         ),
@@ -973,29 +987,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
         TextFormField(
           controller: controller,
           readOnly: readOnly,
+          style: TextStyle(
+            color: isDark ? Colors.white : Colors.black,
+          ),
           decoration: InputDecoration(
             filled: true,
-            fillColor: readOnly ? const Color(0xFFF5F5F5) : const Color(0xFFEDF2F6),
+            fillColor: isDark
+                ? (readOnly
+                ? const Color(0xFF2B3142)
+                : const Color(0xFF353C4E))
+                : (readOnly
+                ? const Color(0xFFF5F5F5)
+                : const Color(0xFFEDF2F6)),
+
+            hintText: hint,
+            hintStyle: TextStyle(
+              color: isDark ? Colors.white54 : Colors.grey,
+            ),
+
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(6),
-              borderSide: const BorderSide(color: Color(0xFFE0E4EC)),
+              borderSide: BorderSide(
+                color: isDark
+                    ? Colors.white24
+                    : const Color(0xFFE0E4EC),
+              ),
             ),
+
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(6),
-              borderSide: const BorderSide(color: Color(0xFFE0E4EC)),
+              borderSide: BorderSide(
+                color: isDark
+                    ? Colors.white24
+                    : const Color(0xFFE0E4EC),
+              ),
             ),
+
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(6),
-              borderSide: const BorderSide(
-                color: Color(0xFFE0E4EC),
+              borderSide: BorderSide(
+                color: isDark
+                    ? Colors.white54
+                    : const Color(0xFFE0E4EC),
                 width: 1.5,
               ),
             ),
+
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 14,
               vertical: 12,
             ),
-            hintText: hint,
           ),
         ),
       ],
@@ -1004,8 +1045,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6FC),
+      backgroundColor:
+      isDark ? const Color(0xFF161A26) : const Color(0xFFF6F6F6),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(22.0),
@@ -1018,7 +1061,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(27),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).cardColor,
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Column(
@@ -1030,7 +1073,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               vertical: 8,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF4F6FB),
+                              color: Theme.of(context).cardColor,
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Row(
@@ -1041,7 +1084,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     horizontal: 10,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.white,
+                                    color: Theme.of(context).cardColor,
                                     border: Border.all(
                                       color: Colors.grey.shade300,
                                     ),
@@ -1109,6 +1152,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildGeneralSection() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1116,24 +1161,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 "Personal Information",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: theme.colorScheme.onSurface,
+                ),
               ),
               const SizedBox(height: 6),
-              const Text(
+              Text(
                 "Change your personal information",
-                style: TextStyle(color: Colors.grey, fontSize: 13),
+                style: TextStyle(
+                  color: isDark ? Colors.white70 : Colors.grey,
+                  fontSize: 13,
+                ),
               ),
               const SizedBox(height: 20),
               Row(
                 children: [
                   _photoBox(_photoBytes),
                   const SizedBox(width: 20),
-                  const Expanded(
+                   Expanded(
                     child: Text(
                       "Upload\nPlease Upload a Clear Photo\nAccepted formats: JPG, PNG · Max size: 5MB",
-                      style: TextStyle(fontSize: 13, color: Colors.black54),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDark ? Colors.white70 : Colors.black54,
+                      ),
                     ),
                   ),
                 ],
@@ -1151,20 +1206,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 future: PackageInfo.fromPlatform(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Text(
+                    return Text(
                       "Loading version...",
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        color: Colors.black54,
+                        color: isDark ? Colors.white70 : Colors.black54,
                         fontSize: 15,
                       ),
                     );
                   } else if (snapshot.hasError) {
-                    return const Text(
+                    return Text(
                       "Version info not available",
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        color: Colors.black54,
+                        color: isDark ? Colors.white70 : Colors.black54,
                         fontSize: 15,
                       ),
                     );
@@ -1174,9 +1229,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         '${packageInfo.version}+${packageInfo.buildNumber}';
                     return Text(
                       "App Version $version",
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        color: Colors.black87,
+                        color: theme.colorScheme.onSurface,
                         fontSize: 15,
                       ),
                     );
@@ -1194,14 +1249,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 "Receipt Settings",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: theme.colorScheme.onSurface,
+                ),
               ),
               const SizedBox(height: 6),
-              const Text(
+              Text(
                 "Customise your own receipt",
-                style: TextStyle(color: Colors.grey, fontSize: 14),
+                style: TextStyle(
+                  color: isDark ? Colors.white70 : Colors.grey,
+                  fontSize: 14,
+                ),
               ),
               const SizedBox(height: 20),
               Row(
@@ -1225,11 +1287,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     "Printer Settings",
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -1248,18 +1311,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
+                        color: isDark
+                            ? const Color(0xFF2B3142)
+                            : Colors.grey.shade50,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey.shade300),
+                        border: Border.all(
+                          color: isDark ? Colors.white24 : Colors.grey.shade300,
+                        ),
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
-                          Icon(Icons.info_outline, color: Colors.orange, size: 20),
-                          SizedBox(width: 8),
+                          const Icon(Icons.info_outline, color: Colors.orange, size: 20),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               'No printers connected. Please add a printer.',
-                              style: TextStyle(color: Colors.black54),
+                              style: TextStyle(
+                                color: isDark ? Colors.white70 : Colors.black54,
+                              ),
                             ),
                           ),
                         ],
@@ -1278,13 +1347,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             margin: const EdgeInsets.only(bottom: 8),
                             decoration: BoxDecoration(
                               color: printer.isSelected
-                                  ? Colors.green.shade50
-                                  : Colors.grey.shade50,
+                                  ? (isDark
+                                  ? const Color(0xFF1F3A2D)
+                                  : Colors.green.shade50)
+                                  : (isDark
+                                  ? const Color(0xFF2B3142)
+                                  : Colors.grey.shade50),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
                                 color: printer.isSelected
-                                    ? Colors.green.shade300
-                                    : Colors.grey.shade300,
+                                    ? Colors.green
+                                    : (isDark ? Colors.white24 : Colors.grey.shade300),
                               ),
                             ),
                             child: ListTile(
@@ -1299,10 +1372,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   Text(
                                     printer.name,
                                     style: TextStyle(
-                                      fontWeight: printer.isSelected
-                                          ? FontWeight.w600
-                                          : FontWeight.normal,
+                                      fontWeight:
+                                      printer.isSelected ? FontWeight.w600 : FontWeight.normal,
                                       fontSize: 14,
+                                      color: theme.colorScheme.onSurface,
                                     ),
                                   ),
                                   const SizedBox(width: 8),
@@ -1341,7 +1414,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                               subtitle: Text(
                                 '${printer.address}:${printer.port}',
-                                style: const TextStyle(fontSize: 12),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDark ? Colors.white70 : Colors.black54,
+                                ),
                               ),
                               trailing: IconButton(
                                 icon: const Icon(Icons.close, color: Colors.red, size: 20),
@@ -1355,7 +1431,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
+                            color: isDark
+                                ? const Color(0xFF22324A)
+                                : Colors.blue.shade50,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Row(
@@ -1490,64 +1568,105 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildPaymentSection() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             "Payment Settings",
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: isDark ? Colors.white : Colors.black,
+            ),
           ),
           const SizedBox(height: 24),
 
-          const Text(
+          Text(
             "Default Payment Method",
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white70 : Colors.black,
+            ),
           ),
           const SizedBox(height: 6),
 
-          DropdownButtonFormField<String>(
-            value: _selectedDefaultMethod != null &&
-                _paymentSelections.containsKey(_selectedDefaultMethod)
-                ? _selectedDefaultMethod
-                : null,
-            items: _paymentSelections.keys
-                .map((method) => DropdownMenuItem(
-              value: method,
-              child: Text(method),
-            ))
-                .toList(),
-            onChanged: (val) {
-              setState(() {
-                _selectedDefaultMethod = val;
-              });
-            },
-            decoration: InputDecoration(
-              hintText: "Select Payment Method",
-              filled: true,
-              fillColor: const Color(0xFFF4F6FB),
-              contentPadding:
-              const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
+          Theme(
+            data: Theme.of(context).copyWith(
+              canvasColor:
+              isDark ? const Color(0xFF34384F) : Colors.white,
+            ),
+            child: DropdownButtonFormField<String>(
+              value: _selectedDefaultMethod != null &&
+                  _paymentSelections.containsKey(_selectedDefaultMethod)
+                  ? _selectedDefaultMethod
+                  : null,
+              dropdownColor:
+              isDark ? const Color(0xFF34384F) : Colors.white,
+              style: TextStyle(
+                color: isDark ? Colors.white : Colors.black,
               ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
+              iconEnabledColor:
+              isDark ? Colors.white70 : Colors.black54,
+              items: _paymentSelections.keys
+                  .map(
+                    (method) => DropdownMenuItem(
+                  value: method,
+                  child: Text(
+                    method,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
+                  ),
+                ),
+              )
+                  .toList(),
+              onChanged: (val) {
+                setState(() {
+                  _selectedDefaultMethod = val;
+                });
+              },
+              decoration: InputDecoration(
+                hintText: "Select Payment Method",
+                hintStyle: TextStyle(
+                  color: isDark ? Colors.white54 : Colors.grey,
+                ),
+                filled: true,
+                fillColor:
+                isDark ? const Color(0xFF202433) : const Color(0xFFF4F6FB),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
               ),
             ),
           ),
 
           const SizedBox(height: 26),
-          const Text(
+
+          Text(
             "Payment Methods",
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white70 : Colors.black,
+            ),
           ),
           const SizedBox(height: 10),
 
@@ -1563,18 +1682,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       value: _paymentSelections[method],
                       onChanged: (val) =>
                           setState(() => _paymentSelections[method] = val!),
-                      activeColor: Colors.black,
+                      activeColor:
+                      isDark ? Colors.white : Colors.black,
+                      checkColor:
+                      isDark ? Colors.black : Colors.white,
+                      fillColor:
+                      WidgetStateProperty.resolveWith<Color>((states) {
+                        if (states.contains(WidgetState.selected)) {
+                          return isDark ? Colors.white : Colors.black;
+                        }
+                        return isDark
+                            ? Colors.white54
+                            : Colors.grey;
+                      }),
                     ),
-                    Text(method, style: const TextStyle(fontSize: 14)),
+                    Text(
+                      method,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color:
+                        isDark ? Colors.white70 : Colors.black,
+                      ),
+                    ),
                   ],
                 ),
             ],
           ),
 
           const SizedBox(height: 30),
-          const Text(
+
+          Text(
             "Other Options",
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white70 : Colors.black,
+            ),
           ),
           const SizedBox(height: 10),
 
@@ -1590,9 +1733,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       value: _otherSelections[opt],
                       onChanged: (val) =>
                           setState(() => _otherSelections[opt] = val!),
-                      activeColor: Colors.black,
+                      activeColor:
+                      isDark ? Colors.white : Colors.black,
+                      checkColor:
+                      isDark ? Colors.black : Colors.white,
+                      fillColor:
+                      WidgetStateProperty.resolveWith<Color>((states) {
+                        if (states.contains(WidgetState.selected)) {
+                          return isDark ? Colors.white : Colors.black;
+                        }
+                        return isDark
+                            ? Colors.white54
+                            : Colors.grey;
+                      }),
                     ),
-                    Text(opt, style: const TextStyle(fontSize: 14)),
+                    Text(
+                      opt,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color:
+                        isDark ? Colors.white70 : Colors.black,
+                      ),
+                    ),
                   ],
                 ),
             ],
@@ -1603,19 +1765,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildAdvancedSection() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             "Advanced Settings",
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: isDark ? Colors.white : Colors.black,
+            ),
           ),
           const SizedBox(height: 24),
-          const Text(
+          Text(
             "Order Type",
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white70 : Colors.black,
+            ),
           ),
           const SizedBox(height: 10),
           Wrap(
@@ -1631,9 +1803,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onChanged: (val) {
                         setState(() => _orderTypeSelections[opt] = val!);
                       },
-                      activeColor: Colors.black,
+                      activeColor: Colors.white,
+                      checkColor: Colors.black,
+                      fillColor: WidgetStateProperty.resolveWith<Color>((states) {
+                        if (states.contains(WidgetState.selected)) {
+                          return isDark ? Colors.white : Colors.black;
+                        }
+                        return isDark ? Colors.white54 : Colors.grey;
+                      }),
                     ),
-                    Text(opt, style: const TextStyle(fontSize: 14)),
+                    Text(
+                      opt,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: isDark ? Colors.white70 : Colors.black,
+                      ),
+                    ),
                   ],
                 ),
             ],

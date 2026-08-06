@@ -14,14 +14,21 @@ class DeleteConfirmationDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return AlertDialog(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
       ),
-      backgroundColor: const Color(0xFFFDFDFD),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      backgroundColor: isDark
+          ? const Color(0xFF202433)
+          : Colors.white,
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 24,
+        vertical: 16,
+      ),
       content: SizedBox(
-        width: 300,
+        width: 340,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -33,68 +40,122 @@ class DeleteConfirmationDialog extends StatelessWidget {
                 fit: BoxFit.cover,
               ),
             ),
+
             const SizedBox(height: 16),
-            const Text(
+
+            Text(
               'Are you sure ?',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: isDark
+                    ? Colors.white
+                    : const Color(0xFF373535),
+              ),
             ),
+
             const SizedBox(height: 12),
+
             RichText(
               textAlign: TextAlign.center,
               text: TextSpan(
-                style: const TextStyle(color: Colors.black87),
+                style: TextStyle(
+                  color: isDark
+                      ? Colors.white70
+                      : Colors.black87,
+                  fontSize: 14,
+                ),
                 children: [
-                  const TextSpan(text: 'Do you want to really delete the '),
+                  const TextSpan(
+                    text: 'Do you want to really delete the ',
+                  ),
                   TextSpan(
                     text: tableName,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isDark
+                          ? Colors.white
+                          : Colors.black87,
+                    ),
                   ),
-                  const TextSpan(text: '? This will be deleted in '),
+                  const TextSpan(
+                    text: '? This will be deleted in ',
+                  ),
                   TextSpan(
                     text: areaName,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isDark
+                          ? Colors.white
+                          : Colors.black87,
+                    ),
                   ),
                 ],
               ),
             ),
+
             const SizedBox(height: 24),
+
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                TextButton(
-                  style: TextButton.styleFrom(
-                    backgroundColor: const Color(0xFFF1F4F8),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                Expanded(
+                  child: TextButton(
+                    style: TextButton.styleFrom(
+                      backgroundColor: isDark
+                          ? const Color(0xFF34384F)
+                          : const Color(0xFFF1F4F8),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 10,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        side: BorderSide(
+                          color: isDark
+                              ? Colors.white24
+                              : Colors.transparent,
+                        ),
+                      ),
                     ),
-                  ),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text(
-                    'No, Keep It.',
-                    style: TextStyle(color: Color(0xFF4C5F7D)),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: Text(
+                      'No, Keep It.',
+                      style: TextStyle(
+                        color: isDark
+                            ? Colors.white
+                            : const Color(0xFF4C5F7D),
+                      ),
+                    ),
                   ),
                 ),
+
                 const SizedBox(width: 12),
-                TextButton(
-                  style: TextButton.styleFrom(
-                    backgroundColor: const Color(0xFFDA4A38),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+
+                Expanded(
+                  child: TextButton(
+                    style: TextButton.styleFrom(
+                      backgroundColor: const Color(0xFFDA4A38),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 10,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
-                  ),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      onConfirm();
-                    });
-                  },
-                  child: const Text(
-                    'Yes, Delete!',
-                    style: TextStyle(color: Colors.white),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        onConfirm();
+                      });
+                    },
+                    child: const Text(
+                      'Yes, Delete!',
+                      style: TextStyle(
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ),
               ],

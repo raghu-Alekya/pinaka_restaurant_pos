@@ -2260,8 +2260,12 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                           style: TextButton.styleFrom(
                             backgroundColor:
                             isMerged
-                                ? const Color(0xFFFFE6E6)
-                                : Colors.black12,
+                                ? (Theme.of(context).brightness == Brightness.dark
+                                ? const Color(0xFF4A2A2A) // dark red tint when merged
+                                : const Color(0xFFFFE6E6))
+                                : (Theme.of(context).brightness == Brightness.dark
+                                ? const Color(0xFFE0E0E0) // light grey in dark mode
+                                : Colors.black12),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -2304,7 +2308,11 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                           child: Text(
                             "Unmerge Table",
                             style: TextStyle(
-                              color: isMerged ? Colors.red : Colors.black26,
+                              color: isMerged
+                                  ? Colors.red
+                                  : (Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.grey.shade600
+                                  : Colors.black26),
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),
