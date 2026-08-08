@@ -239,9 +239,18 @@ class _TopBarState extends State<TopBar> {
               isLoading: isLoading,
 
               onCancel: () {
-                Navigator.pop(dialogContext);
+                Navigator.of(dialogContext).pushAndRemoveUntil(
+                  MaterialPageRoute(
+                    builder: (_) => HomeScreen(
+                      pin: widget.pin,
+                      token: widget.token,
+                      restaurantId: widget.restaurantId,
+                      restaurantName: widget.restaurantName,
+                    ),
+                  ),
+                      (route) => false,
+                );
               },
-
               onConfirm: () async {
                 setState(() {
                   isLoading = true;

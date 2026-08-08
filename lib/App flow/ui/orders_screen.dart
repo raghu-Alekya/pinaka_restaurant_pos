@@ -1867,8 +1867,13 @@ class _OrderPanelState extends State<OrderPanel> {
     return BlocListener<KotBloc, KotState>(
       listener: (context, kotState) {
         if (kotState is KotLoaded) {
-          debugPrint("KotLoaded: ${kotState.kots.length}");
-          context.read<OrderBloc>().add(RefreshKotList(kotState.kots));
+          final seen = <String>{};
+          final dedupedKots = <KotModel>[
+            for (final k in kotState.kots)
+              if (seen.add(k.kotNumber ?? k.kotId.toString())) k,
+          ];
+          debugPrint("KotLoaded: ${kotState.kots.length} (deduped: ${dedupedKots.length})");
+          context.read<OrderBloc>().add(RefreshKotList(dedupedKots));
         }
       },
       child: BlocBuilder<OrderBloc, OrderState>(
@@ -3011,9 +3016,9 @@ class _OrderPanelState extends State<OrderPanel> {
                                               );
 
                                               orderBloc.add(AddKOT(updatedKot));
-                                              kotBloc.add(
-                                                AddKotToList(updatedKot),
-                                              ); // ✅ Use updatedKot here
+                                              // kotBloc.add(
+                                              //   AddKotToList(updatedKot),
+                                              // ); // ✅ Use updatedKot here
 
                                               orderBloc.add(ClearOrder());
 
