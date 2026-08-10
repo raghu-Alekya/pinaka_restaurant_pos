@@ -19,6 +19,7 @@ import 'package:thermal_printer/thermal_printer.dart';
 import '../../blocs/Bloc Event/kot_event.dart';
 import '../../blocs/Bloc Event/kot_event.dart' as kot_evt;
 import '../../blocs/Bloc Event/order_event.dart';
+import '../../blocs/Bloc Logic/auth_bloc.dart';
 import '../../blocs/Bloc Logic/checkin_bloc.dart';
 import '../../blocs/Bloc Logic/discount_bloc.dart';
 import '../../blocs/Bloc Logic/kot_bloc.dart';
@@ -1835,6 +1836,7 @@ class _OrderPanelState extends State<OrderPanel> {
   // }
   @override
   Widget build(BuildContext context) {
+    final authState = context.read<AuthBloc>().state;
     // 1️⃣ Trigger KOT loading for existing order
     final orderBloc = context.read<OrderBloc>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -2548,6 +2550,7 @@ class _OrderPanelState extends State<OrderPanel> {
                           ],
                           child: ViewAllKOTDropdown(
                             kots: state.kotList,
+                            pin: widget.pin,
                             parentOrderId:
                                 state.orderId > 0
                                     ? state.orderId

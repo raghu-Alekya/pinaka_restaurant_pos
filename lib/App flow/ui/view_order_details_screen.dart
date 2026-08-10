@@ -15,6 +15,7 @@ import 'package:pinaka_restaurant_pos/App%20flow/widgets/print_receipt.dart';
 import 'package:pinaka_restaurant_pos/models/payment/payment_summary_model.dart'
     as psm;
 import '../widgets/navigationhelper.dart';
+import '../widgets/pin_confirmation_popup.dart';
 import '../widgets/top_bar.dart';
 import '../widgets/bottom_nav_bar.dart';
 import 'CheckinPopup.dart';
@@ -608,7 +609,9 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                             !canEditOrder
                                                 ? null
                                                 : () async {
-                                                  // order with merchant discount
+                                                  // -----------------------------------------
+                                                  // 1. MERCHANT DISCOUNT CHECK
+                                                  // -----------------------------------------
                                                   if ((orderModel
                                                               .merchantDiscount ??
                                                           0) >
@@ -616,8 +619,8 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                     ScaffoldMessenger.of(
                                                       context,
                                                     ).showSnackBar(
-                                                      SnackBar(
-                                                        content: const Text(
+                                                      const SnackBar(
+                                                        content: Text(
                                                           'Order with Merchant Discount is not editable',
                                                           style: TextStyle(
                                                             color: Colors.white,
@@ -632,11 +635,15 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                     );
                                                     return;
                                                   }
+
+                                                  // -----------------------------------------
+                                                  // 2. ROLE + PERMISSION CHECK
+                                                  // -----------------------------------------
                                                   final String role =
                                                       (_userPermissions?.role ??
                                                               '')
                                                           .toLowerCase();
-                                                  // 1 TOP-BAR ROLE CHECK (blocks captains)
+
                                                   if (!((_userPermissions
                                                               ?.canEditOrder ??
                                                           false) &&
@@ -661,53 +668,32 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                     );
                                                     return;
                                                   }
-                                                  // 3️ PIN-ENTERED USER MUST BE MANAGER
-                                                  // Permission check from login response
-                                                  // if (!(_userPermissions?.canEditOrder ?? false)) {
-                                                  //   ScaffoldMessenger.of(context).showSnackBar(
-                                                  //     const SnackBar(
-                                                  //       content: Text("Only managers can edit orders"),
-                                                  //       duration: Duration(seconds: 1),
-                                                  //       backgroundColor: Colors.red,
-                                                  //     ),
-                                                  //   );
-                                                  //   return;
-                                                  // }
 
-                                                  // 4️ SAME MANAGER DOUBLE CHECK
-                                                  // final String pinEnteredManagerId = _permissions!.userId;
-                                                  // final String? orderCompletedById =
-                                                  //     orderModel.completedByUserId;
+                                                  // -----------------------------------------
+                                                  // 3. SHOW PIN CONFIRMATION POPUP
+                                                  // -----------------------------------------
+
+                                                  // -----------------------------------------
+                                                  // 3. VERIFY TOP-BAR LOGIN PIN
+                                                  // -----------------------------------------
                                                   //
-                                                  // if (orderCompletedById != null &&
-                                                  //     pinEnteredManagerId != orderCompletedById) {
-                                                  //   ScaffoldMessenger.of(context).showSnackBar(
-                                                  //     const SnackBar(
-                                                  //       content: Text(
-                                                  //         'Only the same manager who completed this order can edit it.',
-                                                  //       ),
-                                                  //       duration: Duration(seconds: 1),
-                                                  //       backgroundColor: Colors.red,
-                                                  //     ),
-                                                  //   );
-                                                  //   return;
-                                                  // }
+                                                  // widget.pin = PIN used for the current
+                                                  // employee/top-bar login session.
+                                                  //
+                                                  final bool pinMatched =
+                                                      await PinConfirmationPopup.show(
+                                                        context: context,
+                                                        expectedPin: widget.pin,
+                                                      );
 
-                                                  //  OPTIONAL: ensure same top-bar manager & PIN manager
-                                                  // if (pinEnteredManagerId != originalLoggedInUserId) {
-                                                  //   ScaffoldMessenger.of(context).showSnackBar(
-                                                  //     const SnackBar(
-                                                  //       content: Text(
-                                                  //         'PIN must belong to the logged-in manager.',
-                                                  //       ),
-                                                  //       duration: Duration(seconds: 1),
-                                                  //       backgroundColor: Colors.red,
-                                                  //     ),
-                                                  //   );
-                                                  //   return;
-                                                  // }
+                                                  if (!pinMatched) {
+                                                    // User cancelled OR entered the wrong PIN.
+                                                    return;
+                                                  }
 
-                                                  // 5️ Navigation
+                                                  // -----------------------------------------
+                                                  // 4. PIN MATCHED → OPEN EDIT ORDER
+                                                  // -----------------------------------------
                                                   final bool?
                                                   updated = await Navigator.push<
                                                     bool
@@ -719,15 +705,21 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                             context,
                                                           ) => EditOrdersListScreen(
                                                             token: widget.token,
+
+                                                            // Use the verified/current login PIN.
                                                             pin: widget.pin,
+
                                                             restaurantId:
                                                                 widget
                                                                     .restaurantId,
+
                                                             restaurantName:
                                                                 widget
                                                                     .restaurantName,
+
                                                             userPermissions:
                                                                 _permissions,
+
                                                             orderId:
                                                                 orderModel
                                                                     .orderId!,
@@ -735,9 +727,63 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                     ),
                                                   );
 
-                                                  if (updated == true) {
+                                                  // -----------------------------------------
+                                                  // 5. RELOAD AFTER EDIT
+                                                  // -----------------------------------------
+                                                  if (updated == true &&
+                                                      mounted) {
                                                     _reloadAfterEdit();
                                                   }
+
+                                                  // await PinConfirmationPopup.show(
+                                                  //   context: context,
+                                                  //
+                                                  //   onProceed: (
+                                                  //     enteredPin,
+                                                  //   ) async {
+                                                  //     debugPrint(
+                                                  //       'PIN entered in confirmation popup: $enteredPin',
+                                                  //     );
+                                                  //
+                                                  //     // TODO:
+                                                  //     // Verify enteredPin against your backend/API
+                                                  //     // before allowing the edit.
+                                                  //
+                                                  //     final bool?
+                                                  //     updated = await Navigator.push<
+                                                  //       bool
+                                                  //     >(
+                                                  //       context,
+                                                  //       MaterialPageRoute(
+                                                  //         builder:
+                                                  //             (
+                                                  //               context,
+                                                  //             ) => EditOrdersListScreen(
+                                                  //               token:
+                                                  //                   widget
+                                                  //                       .token,
+                                                  //               pin: enteredPin,
+                                                  //               restaurantId:
+                                                  //                   widget
+                                                  //                       .restaurantId,
+                                                  //               restaurantName:
+                                                  //                   widget
+                                                  //                       .restaurantName,
+                                                  //               userPermissions:
+                                                  //                   _permissions,
+                                                  //               orderId:
+                                                  //                   orderModel
+                                                  //                       .orderId!,
+                                                  //             ),
+                                                  //       ),
+                                                  //     );
+                                                  //
+                                                  //     if (updated == true &&
+                                                  //         mounted) {
+                                                  //       _reloadAfterEdit();
+                                                  //     }
+                                                  //   },
+                                                  // );
                                                 },
 
                                         style: ElevatedButton.styleFrom(
@@ -1354,7 +1400,9 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                     fit: FlexFit.tight,
                                     child: Container(
                                       width: double.infinity,
-                                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                                      margin: const EdgeInsets.symmetric(
+                                        horizontal: 4,
+                                      ),
                                       padding: const EdgeInsets.all(10),
                                       decoration: BoxDecoration(
                                         color: theme.cardColor,
@@ -1379,137 +1427,72 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                         physics: const ClampingScrollPhysics(),
                                         child: ConstrainedBox(
                                           constraints: BoxConstraints(
-                                            minHeight: MediaQuery.of(context).size.height,
+                                            minHeight:
+                                                MediaQuery.of(
+                                                  context,
+                                                ).size.height,
                                           ),
                                           child: IntrinsicHeight(
                                             child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
                                               children: [
-                                            // ================= HEADER =================
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                const Text(
-                                                  "Payment Details",
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                if (orderModel.isUpdated
-                                                        ?.toLowerCase() ==
-                                                    'yes')
-                                                  Row(
-                                                    children: [
-                                                      Image.asset(
-                                                        'assets/refreshicon.png',
-                                                        width: 12,
-                                                        height: 12,
-                                                        color: Colors.orange,
+                                                // ================= HEADER =================
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    const Text(
+                                                      "Payment Details",
+                                                      style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
                                                       ),
-                                                      const SizedBox(width: 4),
-                                                      const Text(
-                                                        "Updated",
-                                                        style: TextStyle(
-                                                          color: Colors.orange,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                          fontSize: 12,
-                                                        ),
+                                                    ),
+                                                    if (orderModel.isUpdated
+                                                            ?.toLowerCase() ==
+                                                        'yes')
+                                                      Row(
+                                                        children: [
+                                                          Image.asset(
+                                                            'assets/refreshicon.png',
+                                                            width: 12,
+                                                            height: 12,
+                                                            color:
+                                                                Colors.orange,
+                                                          ),
+                                                          const SizedBox(
+                                                            width: 4,
+                                                          ),
+                                                          const Text(
+                                                            "Updated",
+                                                            style: TextStyle(
+                                                              color:
+                                                                  Colors.orange,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize: 12,
+                                                            ),
+                                                          ),
+                                                        ],
                                                       ),
-                                                    ],
-                                                  ),
-                                              ],
-                                            ),
-
-                                            paymentRow(
-                                              "Gross Total",
-                                              "$_currency${(orderModel.grossTotal ?? 0).toDouble().toStringAsFixed(2)}",
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                            paymentRow(
-                                              "Coupon / Discounts",
-                                              "-$_currency${orderModel.totalCouponDiscount.toDouble().toStringAsFixed(2)}",
-                                              color: Colors.green,
-                                            ),
-
-                                            ShaderMask(
-                                              shaderCallback: (Rect bounds) {
-                                                final baseColor =
-                                                    isDark
-                                                        ? Colors.white
-                                                        : Colors.black;
-
-                                                return LinearGradient(
-                                                  begin: Alignment.centerLeft,
-                                                  end: Alignment.centerRight,
-                                                  colors: [
-                                                    baseColor.withOpacity(0.1),
-                                                    baseColor.withOpacity(0.7),
-                                                    baseColor.withOpacity(0.1),
                                                   ],
-                                                  stops: const [0.0, 0.5, 1.0],
-                                                ).createShader(bounds);
-                                              },
-                                              blendMode: BlendMode.srcIn,
-                                              child: DottedLine(
-                                                dashLength: 6,
-                                                dashGapLength: 4,
-                                                lineThickness: 1,
-                                                direction: Axis.horizontal,
-                                                dashColor:
-                                                    isDark
-                                                        ? Colors.white
-                                                        : Colors.black,
-                                              ),
-                                            ),
-                                            paymentRow(
-                                              "Sub Total",
-                                              "$_currency${(orderModel.subTotal ?? 0).toDouble().toStringAsFixed(2)}",
-                                            ),
-                                            paymentRow(
-                                              "Tax @5% Food",
-                                              "",
-                                              color: Colors.grey,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                            Padding(
-                                              padding: const EdgeInsets.only(
-                                                left: 36,
-                                              ),
-                                              child: paymentRow(
-                                                "CGST 2.5%",
-                                                "$_currency${((orderModel.totalTax ?? 0) / 2).toStringAsFixed(2)}",
-                                                fontSize: 10,
-                                                color: Colors.grey,
-                                              ),
-                                            ),
-                                            Padding(
-                                              padding: const EdgeInsets.only(
-                                                left: 36,
-                                              ),
-                                              child: paymentRow(
-                                                "SGST 2.5%",
-                                                "$_currency${((orderModel.totalTax ?? 0) / 2).toStringAsFixed(2)}",
-                                                fontSize: 10,
-                                                color: Colors.grey,
-                                              ),
-                                            ),
-                                            paymentRow(
-                                              "Tax @Alcohol Nil (Price inclusive of Excise Duty)",
-                                              "${_currency}0.00",
-                                              fontSize: 12,
-                                              color: Colors.grey,
-                                              fontWeight: FontWeight.w700,
-                                            ),
+                                                ),
 
-                                            Align(
-                                              alignment: Alignment.centerRight,
-                                              child: FractionallySizedBox(
-                                                widthFactor: 0.5,
-                                                child: ShaderMask(
+                                                paymentRow(
+                                                  "Gross Total",
+                                                  "$_currency${(orderModel.grossTotal ?? 0).toDouble().toStringAsFixed(2)}",
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                                paymentRow(
+                                                  "Coupon / Discounts",
+                                                  "-$_currency${orderModel.totalCouponDiscount.toDouble().toStringAsFixed(2)}",
+                                                  color: Colors.green,
+                                                ),
+
+                                                ShaderMask(
                                                   shaderCallback: (
                                                     Rect bounds,
                                                   ) {
@@ -1553,119 +1536,248 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                                                             : Colors.black,
                                                   ),
                                                 ),
-                                              ),
-                                            ),
+                                                paymentRow(
+                                                  "Sub Total",
+                                                  "$_currency${(orderModel.subTotal ?? 0).toDouble().toStringAsFixed(2)}",
+                                                ),
+                                                paymentRow(
+                                                  "Tax @5% Food",
+                                                  "",
+                                                  color: Colors.grey,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        left: 36,
+                                                      ),
+                                                  child: paymentRow(
+                                                    "CGST 2.5%",
+                                                    "$_currency${((orderModel.totalTax ?? 0) / 2).toStringAsFixed(2)}",
+                                                    fontSize: 10,
+                                                    color: Colors.grey,
+                                                  ),
+                                                ),
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        left: 36,
+                                                      ),
+                                                  child: paymentRow(
+                                                    "SGST 2.5%",
+                                                    "$_currency${((orderModel.totalTax ?? 0) / 2).toStringAsFixed(2)}",
+                                                    fontSize: 10,
+                                                    color: Colors.grey,
+                                                  ),
+                                                ),
+                                                paymentRow(
+                                                  "Tax @Alcohol Nil (Price inclusive of Excise Duty)",
+                                                  "${_currency}0.00",
+                                                  fontSize: 12,
+                                                  color: Colors.grey,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+
+                                                Align(
+                                                  alignment:
+                                                      Alignment.centerRight,
+                                                  child: FractionallySizedBox(
+                                                    widthFactor: 0.5,
+                                                    child: ShaderMask(
+                                                      shaderCallback: (
+                                                        Rect bounds,
+                                                      ) {
+                                                        final baseColor =
+                                                            isDark
+                                                                ? Colors.white
+                                                                : Colors.black;
+
+                                                        return LinearGradient(
+                                                          begin:
+                                                              Alignment
+                                                                  .centerLeft,
+                                                          end:
+                                                              Alignment
+                                                                  .centerRight,
+                                                          colors: [
+                                                            baseColor
+                                                                .withOpacity(
+                                                                  0.1,
+                                                                ),
+                                                            baseColor
+                                                                .withOpacity(
+                                                                  0.7,
+                                                                ),
+                                                            baseColor
+                                                                .withOpacity(
+                                                                  0.1,
+                                                                ),
+                                                          ],
+                                                          stops: const [
+                                                            0.0,
+                                                            0.5,
+                                                            1.0,
+                                                          ],
+                                                        ).createShader(bounds);
+                                                      },
+                                                      blendMode:
+                                                          BlendMode.srcIn,
+                                                      child: DottedLine(
+                                                        dashLength: 6,
+                                                        dashGapLength: 4,
+                                                        lineThickness: 1,
+                                                        direction:
+                                                            Axis.horizontal,
+                                                        dashColor:
+                                                            isDark
+                                                                ? Colors.white
+                                                                : Colors.black,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
                                                 const SizedBox(height: 10),
-                                            paymentRow(
-                                              "Total Tax",
-                                              "$_currency${(orderModel.totalTax ?? 0).toDouble().toStringAsFixed(2)}",
-                                            ),
+                                                paymentRow(
+                                                  "Total Tax",
+                                                  "$_currency${(orderModel.totalTax ?? 0).toDouble().toStringAsFixed(2)}",
+                                                ),
 
-                                            ShaderMask(
-                                              shaderCallback: (Rect bounds) {
-                                                final baseColor =
-                                                    isDark
-                                                        ? Colors.white
-                                                        : Colors.black;
+                                                ShaderMask(
+                                                  shaderCallback: (
+                                                    Rect bounds,
+                                                  ) {
+                                                    final baseColor =
+                                                        isDark
+                                                            ? Colors.white
+                                                            : Colors.black;
 
-                                                return LinearGradient(
-                                                  begin: Alignment.centerLeft,
-                                                  end: Alignment.centerRight,
-                                                  colors: [
-                                                    baseColor.withOpacity(0.1),
-                                                    baseColor.withOpacity(0.7),
-                                                    baseColor.withOpacity(0.1),
-                                                  ],
-                                                  stops: const [0.0, 0.5, 1.0],
-                                                ).createShader(bounds);
-                                              },
-                                              blendMode: BlendMode.srcIn,
-                                              child: DottedLine(
-                                                dashLength: 6,
-                                                dashGapLength: 4,
-                                                lineThickness: 1,
-                                                direction: Axis.horizontal,
-                                                dashColor:
-                                                    isDark
-                                                        ? Colors.white
-                                                        : Colors.black,
-                                              ),
-                                            ),
-                                            paymentRow(
-                                              "Net Total",
-                                              "$_currency${(orderModel.netTotal ?? 0).toStringAsFixed(2)}",
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                            paymentRow(
-                                              "Merchant Discount",
-                                              "-$_currency${(orderModel.merchantDiscount ?? 0).toDouble().toStringAsFixed(2)}",
-                                              color: Colors.blue,
-                                            ),
-                                            if ((orderModel.tipAmount ?? 0) > 0)
-                                              paymentRow(
-                                                "Tip Amount",
-                                                "$_currency${(orderModel.tipAmount ?? 0).toDouble().toStringAsFixed(2)}",
-                                                color: Colors.green,
-                                              ),
-                                            if ((orderModel
-                                                        .serviceChargeValue ??
-                                                    0) >
-                                                0)
-                                              paymentRow(
-                                                "Service Charges",
-                                                "$_currency${(orderModel.serviceChargeValue ?? 0).toDouble().toStringAsFixed(2)}",
-                                                color: Colors.blue,
-                                              ),
-                                            paymentRow(
-                                              "Round Off",
-                                              "${(orderModel.roundOff ?? 0) >= 0 ? '+' : '-'}₹${(orderModel.roundOff ?? 0).abs().toStringAsFixed(2)}",
-                                              color: Colors.grey,
-                                            ),
-                                            ShaderMask(
-                                              shaderCallback: (Rect bounds) {
-                                                final baseColor =
-                                                    isDark
-                                                        ? Colors.white
-                                                        : Colors.black;
+                                                    return LinearGradient(
+                                                      begin:
+                                                          Alignment.centerLeft,
+                                                      end:
+                                                          Alignment.centerRight,
+                                                      colors: [
+                                                        baseColor.withOpacity(
+                                                          0.1,
+                                                        ),
+                                                        baseColor.withOpacity(
+                                                          0.7,
+                                                        ),
+                                                        baseColor.withOpacity(
+                                                          0.1,
+                                                        ),
+                                                      ],
+                                                      stops: const [
+                                                        0.0,
+                                                        0.5,
+                                                        1.0,
+                                                      ],
+                                                    ).createShader(bounds);
+                                                  },
+                                                  blendMode: BlendMode.srcIn,
+                                                  child: DottedLine(
+                                                    dashLength: 6,
+                                                    dashGapLength: 4,
+                                                    lineThickness: 1,
+                                                    direction: Axis.horizontal,
+                                                    dashColor:
+                                                        isDark
+                                                            ? Colors.white
+                                                            : Colors.black,
+                                                  ),
+                                                ),
+                                                paymentRow(
+                                                  "Net Total",
+                                                  "$_currency${(orderModel.netTotal ?? 0).toStringAsFixed(2)}",
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                                paymentRow(
+                                                  "Merchant Discount",
+                                                  "-$_currency${(orderModel.merchantDiscount ?? 0).toDouble().toStringAsFixed(2)}",
+                                                  color: Colors.blue,
+                                                ),
+                                                if ((orderModel.tipAmount ??
+                                                        0) >
+                                                    0)
+                                                  paymentRow(
+                                                    "Tip Amount",
+                                                    "$_currency${(orderModel.tipAmount ?? 0).toDouble().toStringAsFixed(2)}",
+                                                    color: Colors.green,
+                                                  ),
+                                                if ((orderModel
+                                                            .serviceChargeValue ??
+                                                        0) >
+                                                    0)
+                                                  paymentRow(
+                                                    "Service Charges",
+                                                    "$_currency${(orderModel.serviceChargeValue ?? 0).toDouble().toStringAsFixed(2)}",
+                                                    color: Colors.blue,
+                                                  ),
+                                                paymentRow(
+                                                  "Round Off",
+                                                  "${(orderModel.roundOff ?? 0) >= 0 ? '+' : '-'}₹${(orderModel.roundOff ?? 0).abs().toStringAsFixed(2)}",
+                                                  color: Colors.grey,
+                                                ),
+                                                ShaderMask(
+                                                  shaderCallback: (
+                                                    Rect bounds,
+                                                  ) {
+                                                    final baseColor =
+                                                        isDark
+                                                            ? Colors.white
+                                                            : Colors.black;
 
-                                                return LinearGradient(
-                                                  begin: Alignment.centerLeft,
-                                                  end: Alignment.centerRight,
-                                                  colors: [
-                                                    baseColor.withOpacity(0.1),
-                                                    baseColor.withOpacity(0.7),
-                                                    baseColor.withOpacity(0.1),
-                                                  ],
-                                                  stops: const [0.0, 0.5, 1.0],
-                                                ).createShader(bounds);
-                                              },
-                                              blendMode: BlendMode.srcIn,
-                                              child: DottedLine(
-                                                dashLength: 6,
-                                                dashGapLength: 4,
-                                                lineThickness: 1,
-                                                direction: Axis.horizontal,
-                                                dashColor:
-                                                    isDark
-                                                        ? Colors.white
-                                                        : Colors.black,
-                                              ),
-                                            ),
+                                                    return LinearGradient(
+                                                      begin:
+                                                          Alignment.centerLeft,
+                                                      end:
+                                                          Alignment.centerRight,
+                                                      colors: [
+                                                        baseColor.withOpacity(
+                                                          0.1,
+                                                        ),
+                                                        baseColor.withOpacity(
+                                                          0.7,
+                                                        ),
+                                                        baseColor.withOpacity(
+                                                          0.1,
+                                                        ),
+                                                      ],
+                                                      stops: const [
+                                                        0.0,
+                                                        0.5,
+                                                        1.0,
+                                                      ],
+                                                    ).createShader(bounds);
+                                                  },
+                                                  blendMode: BlendMode.srcIn,
+                                                  child: DottedLine(
+                                                    dashLength: 6,
+                                                    dashGapLength: 4,
+                                                    lineThickness: 1,
+                                                    direction: Axis.horizontal,
+                                                    dashColor:
+                                                        isDark
+                                                            ? Colors.white
+                                                            : Colors.black,
+                                                  ),
+                                                ),
 
-                                            paymentRow(
-                                              "Net Payable",
-                                              "$_currency${(orderModel.netPayable ?? 0).toDouble().toStringAsFixed(2)}",
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 15,
-                                            ),
+                                                paymentRow(
+                                                  "Net Payable",
+                                                  "$_currency${(orderModel.netPayable ?? 0).toDouble().toStringAsFixed(2)}",
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 15,
+                                                ),
 
-                                            // const SizedBox(height: 10),
-                                          ],
+                                                // const SizedBox(height: 10),
+                                              ],
+                                            ),
+                                          ),
                                         ),
                                       ),
-                                      ),
                                     ),
-                                  ),
                                   ),
                                   const SizedBox(height: 10),
                                   SizedBox(
@@ -2394,9 +2506,10 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
           // Table Header
           Container(
             decoration: BoxDecoration(
-              color: isDark
-                  ? const Color(0xFF34384F)   // dark mode color
-                  : const Color(0xFF999393),  // light mode color
+              color:
+                  isDark
+                      ? const Color(0xFF34384F) // dark mode color
+                      : const Color(0xFF999393), // light mode color
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(8),
                 topRight: Radius.circular(8),

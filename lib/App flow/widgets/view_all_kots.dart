@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:pinaka_restaurant_pos/App%20flow/widgets/pin_confirmation_popup.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/widgets/transer_kot.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/widgets/void_items.dart';
 import '../../blocs/Bloc Event/kot_event.dart';
@@ -48,6 +49,7 @@ class ViewAllKOTDropdown extends StatefulWidget {
   // ✅ NEW: notifies the parent whenever this dropdown expands/collapses,
   // so the parent can hide/show its own order list accordingly.
   final ValueChanged<bool>? onToggle;
+  final String pin; // ✅ ADD THIS
 
   const ViewAllKOTDropdown({
     super.key,
@@ -58,6 +60,7 @@ class ViewAllKOTDropdown extends StatefulWidget {
     required this.token,
     required this.kots, // ✅ FIXED
     this.onToggle, // ✅ NEW
+    required this.pin, // ✅ ADD THIS
   });
 
   @override
@@ -932,6 +935,9 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                         /// Void Button
                                                         InkWell(
                                                           onTap: () async {
+                                                            // -----------------------------------------
+                                                            // 1. CHECK KOT ID
+                                                            // -----------------------------------------
                                                             if (kot.kotId ==
                                                                 null) {
                                                               debugPrint(
@@ -940,6 +946,9 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                               return;
                                                             }
 
+                                                            // -----------------------------------------
+                                                            // 2. FETCH KOT LINE ITEMS
+                                                            // -----------------------------------------
                                                             final bloc =
                                                                 context
                                                                     .read<
@@ -976,12 +985,94 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                 .mounted)
                                                               return;
 
+                                                            // -----------------------------------------
+                                                            // 3. HANDLE FETCH ERROR
+                                                            // -----------------------------------------
+                                                            if (state
+                                                                is KotLineItemsError) {
+                                                              ScaffoldMessenger.of(
+                                                                context,
+                                                              ).showSnackBar(
+                                                                SnackBar(
+                                                                  content: Text(
+                                                                    state
+                                                                        .message,
+                                                                  ),
+                                                                  duration:
+                                                                      const Duration(
+                                                                        seconds:
+                                                                            1,
+                                                                      ),
+                                                                  backgroundColor:
+                                                                      Colors
+                                                                          .red,
+                                                                ),
+                                                              );
+
+                                                              return;
+                                                            }
+
+                                                            // -----------------------------------------
+                                                            // 4. KOT ITEMS LOADED
+                                                            // -----------------------------------------
                                                             if (state
                                                                 is KotLineItemsLoaded) {
                                                               final response =
                                                                   state
                                                                       .response;
 
+                                                              // -----------------------------------------
+                                                              // 5. SHOW PIN CONFIRMATION POPUP
+                                                              // -----------------------------------------
+                                                              final bool
+                                                              pinMatched = await PinConfirmationPopup.show(
+                                                                context:
+                                                                    context,
+                                                                expectedPin:
+                                                                    widget.pin,
+
+                                                                // Dynamic text for VOID action
+                                                                title:
+                                                                    'Confirm Void',
+                                                                message:
+                                                                    'Please enter your PIN to void items from this KOT.',
+                                                                cancelText:
+                                                                    'Cancel',
+                                                                proceedText:
+                                                                    'Proceed',
+
+                                                                // Optional callbacks
+                                                                onCancel: () {
+                                                                  debugPrint(
+                                                                    '❌ Void cancelled',
+                                                                  );
+                                                                },
+
+                                                                onProceed: () {
+                                                                  debugPrint(
+                                                                    '✅ PIN verified for void action',
+                                                                  );
+                                                                },
+                                                              );
+
+                                                              if (!context
+                                                                  .mounted)
+                                                                return;
+
+                                                              // -----------------------------------------
+                                                              // 6. CANCEL / PIN FAILED
+                                                              // -----------------------------------------
+                                                              if (!pinMatched) {
+                                                                debugPrint(
+                                                                  '❌ Void cancelled or PIN verification failed',
+                                                                );
+                                                                return;
+                                                              }
+
+                                                              // -----------------------------------------
+                                                              // 7. PIN VERIFIED
+                                                              // OPEN VOID ITEMS DIALOG
+                                                              // -----------------------------------------
                                                               await showDialog(
                                                                 context:
                                                                     context,
@@ -1009,78 +1100,71 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                       items:
                                                                           response
                                                                               .items,
+
                                                                       tableNo:
                                                                           widget
                                                                               .tableNo,
+
                                                                       kotNo:
                                                                           response
                                                                               .kotNumber,
+
                                                                       kotId:
                                                                           response
                                                                               .kotId,
+
                                                                       restaurantId:
                                                                           response
                                                                               .restaurantId,
+
                                                                       zoneId:
                                                                           response
                                                                               .zoneId,
+
                                                                       token:
                                                                           widget
                                                                               .token,
+
                                                                       parentOrderId:
                                                                           context
                                                                               .read<
                                                                                 KotBloc
                                                                               >()
                                                                               .currentParentOrderId,
+
                                                                       item: kot,
+
                                                                       onRemark: (
                                                                         value,
                                                                       ) {
                                                                         debugPrint(
-                                                                          value,
+                                                                          "Void remark: $value",
                                                                         );
                                                                       },
                                                                     ),
                                                                   );
                                                                 },
                                                               );
-                                                              // 🔴 FIX: after the void dialog closes (whatever the
-                                                              // outcome), immediately refetch so the status/strike-through
-                                                              // reflects without needing another manual action.
+
+                                                              // -----------------------------------------
+                                                              // 8. REFRESH KOTS AFTER VOID DIALOG CLOSES
+                                                              // -----------------------------------------
                                                               if (context
                                                                   .mounted) {
                                                                 _fetchKots();
                                                               }
-                                                            } else if (state
-                                                                is KotLineItemsError) {
-                                                              ScaffoldMessenger.of(
-                                                                context,
-                                                              ).showSnackBar(
-                                                                SnackBar(
-                                                                  content: Text(
-                                                                    state
-                                                                        .message,
-                                                                  ),
-                                                                  duration:
-                                                                      const Duration(
-                                                                        seconds:
-                                                                            1,
-                                                                      ),
-                                                                  backgroundColor:
-                                                                      Colors
-                                                                          .red,
-                                                                ),
-                                                              );
                                                             }
                                                           },
+
                                                           borderRadius:
                                                               BorderRadius.circular(
                                                                 8,
                                                               ),
+
                                                           child: Container(
                                                             height: 28,
                                                             width: 28,
+
                                                             decoration:
                                                                 BoxDecoration(
                                                                   color:
@@ -1091,6 +1175,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                         8,
                                                                       ),
                                                                 ),
+
                                                             child: Center(
                                                               child: Image.asset(
                                                                 "assets/icon/Void.png",
@@ -1103,6 +1188,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                             ),
                                                           ),
                                                         ),
+
                                                         const SizedBox(
                                                           width: 15,
                                                         ),
@@ -1115,13 +1201,68 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                             );
 
                                                             try {
+                                                              // -----------------------------------------
+                                                              // 1. GET TOKEN
+                                                              // -----------------------------------------
                                                               final token =
                                                                   await SessionManager.getToken();
+
                                                               if (token ==
                                                                       null ||
-                                                                  token.isEmpty)
+                                                                  token
+                                                                      .isEmpty) {
+                                                                debugPrint(
+                                                                  "❌ Token is missing",
+                                                                );
+                                                                return;
+                                                              }
+
+                                                              if (!context
+                                                                  .mounted)
                                                                 return;
 
+                                                              // -----------------------------------------
+                                                              // 2. SHOW PIN CONFIRMATION POPUP
+                                                              // -----------------------------------------
+                                                              final bool
+                                                              pinMatched = await PinConfirmationPopup.show(
+                                                                context:
+                                                                    context,
+                                                                expectedPin:
+                                                                    widget.pin,
+
+                                                                // Dynamic popup text
+                                                                title:
+                                                                    'Confirm Transfer',
+                                                                message:
+                                                                    'Please enter your PIN to transfer this KOT.',
+                                                                cancelText:
+                                                                    'Cancel',
+                                                                proceedText:
+                                                                    'Transfer',
+                                                              );
+
+                                                              // -----------------------------------------
+                                                              // 3. CANCEL / WRONG PIN
+                                                              // -----------------------------------------
+                                                              if (!pinMatched) {
+                                                                debugPrint(
+                                                                  "❌ Transfer cancelled or PIN verification failed",
+                                                                );
+                                                                return;
+                                                              }
+
+                                                              if (!context
+                                                                  .mounted)
+                                                                return;
+
+                                                              debugPrint(
+                                                                "✅ PIN verified. Continuing transfer...",
+                                                              );
+
+                                                              // -----------------------------------------
+                                                              // 4. PREPARE TRANSFER ITEMS
+                                                              // -----------------------------------------
                                                               final transferItems =
                                                                   kot.items.map((
                                                                     e,
@@ -1146,8 +1287,12 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                     );
                                                                   }).toList();
 
+                                                              // -----------------------------------------
+                                                              // 5. GET ZONES
+                                                              // -----------------------------------------
                                                               final zoneRepository =
                                                                   ZoneRepository();
+
                                                               final zoneResponse =
                                                                   await zoneRepository
                                                                       .getAllZones(
@@ -1163,14 +1308,21 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                     zoneResponse,
                                                                   );
 
+                                                              // -----------------------------------------
+                                                              // 6. GET TABLES
+                                                              // -----------------------------------------
                                                               final tableRepository =
                                                                   TableRepository();
+
                                                               final tableResponse =
                                                                   await tableRepository
                                                                       .getAllTables(
                                                                         token,
                                                                       );
 
+                                                              // -----------------------------------------
+                                                              // 7. PREPARE TABLE / ZONE DATA
+                                                              // -----------------------------------------
                                                               final Map<
                                                                 String,
                                                                 List<String>
@@ -1203,6 +1355,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                 final status =
                                                                     table['status'];
 
+                                                                // Zone -> Tables
                                                                 if (zoneId !=
                                                                         null &&
                                                                     tableName !=
@@ -1213,14 +1366,13 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                             .toString(),
                                                                         () =>
                                                                             [],
-                                                                      );
-                                                                  zoneTables[zoneId
-                                                                          .toString()]!
+                                                                      )
                                                                       .add(
                                                                         tableName,
                                                                       );
                                                                 }
 
+                                                                // Table -> ID
                                                                 if (tableName !=
                                                                         null &&
                                                                     tableId !=
@@ -1229,6 +1381,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                       tableId;
                                                                 }
 
+                                                                // Zone -> ID
                                                                 if (zoneId !=
                                                                     null) {
                                                                   zoneIds[zoneId
@@ -1236,6 +1389,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                       zoneId;
                                                                 }
 
+                                                                // Table -> Status
                                                                 if (tableName !=
                                                                         null &&
                                                                     status !=
@@ -1245,6 +1399,9 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                 }
                                                               }
 
+                                                              // -----------------------------------------
+                                                              // 8. FIND CURRENT TABLE'S ZONE
+                                                              // -----------------------------------------
                                                               String
                                                               getZoneFromTable(
                                                                 String
@@ -1267,6 +1424,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                         .key;
                                                                   }
                                                                 }
+
                                                                 return '';
                                                               }
 
@@ -1277,63 +1435,121 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                     zoneTables,
                                                                   );
 
+                                                              // -----------------------------------------
+                                                              // 9. VERIFY CURRENT TABLE ID
+                                                              // -----------------------------------------
+                                                              final fromTableId =
+                                                                  tableIds[widget
+                                                                      .tableNo];
+
+                                                              if (fromTableId ==
+                                                                  null) {
+                                                                if (!context
+                                                                    .mounted)
+                                                                  return;
+
+                                                                ScaffoldMessenger.of(
+                                                                  context,
+                                                                ).showSnackBar(
+                                                                  const SnackBar(
+                                                                    content: Text(
+                                                                      'Unable to find the current table.',
+                                                                    ),
+                                                                    backgroundColor:
+                                                                        Colors
+                                                                            .red,
+                                                                  ),
+                                                                );
+
+                                                                return;
+                                                              }
+
+                                                              // -----------------------------------------
+                                                              // 10. OPEN TRANSFER KOT DIALOG
+                                                              // -----------------------------------------
                                                               final result = await showDialog(
                                                                 context:
                                                                     context,
                                                                 barrierDismissible:
                                                                     false,
-                                                                builder:
-                                                                    (
-                                                                      _,
-                                                                    ) => BlocProvider(
-                                                                      create:
-                                                                          (
-                                                                            _,
-                                                                          ) => TransferKotBloc(
-                                                                            repository:
-                                                                                KotTransferRepository(),
-                                                                          ),
-                                                                      child: TransferKOTDialog(
-                                                                        tableName:
-                                                                            widget.tableNo,
-                                                                        kotNo:
-                                                                            (kot.kotNumber?.isNotEmpty ??
-                                                                                    false)
-                                                                                ? kot.kotNumber!
-                                                                                : "KOT#${kot.kotId}",
-                                                                        dateTime:
-                                                                            kot.time ??
-                                                                            DateTime.now(),
-                                                                        items:
-                                                                            transferItems,
-                                                                        zoneTables:
-                                                                            zoneTables,
-                                                                        orderId:
-                                                                            widget.parentOrderId!,
-                                                                        kotId:
-                                                                            kot.kotId!,
-                                                                        fromTableId:
-                                                                            tableIds[widget.tableNo]!,
-                                                                        restaurantId:
-                                                                            widget.restaurantId!,
-                                                                        authToken:
-                                                                            widget.token,
-                                                                        zoneIds:
-                                                                            zoneIds,
-                                                                        tableIds:
-                                                                            tableIds,
-                                                                        tableStatus:
-                                                                            tableStatus,
-                                                                        kotZone:
-                                                                            kotZone,
-                                                                        zoneNames:
-                                                                            zoneNames,
-                                                                      ),
+                                                                builder: (_) {
+                                                                  return BlocProvider(
+                                                                    create:
+                                                                        (
+                                                                          _,
+                                                                        ) => TransferKotBloc(
+                                                                          repository:
+                                                                              KotTransferRepository(),
+                                                                        ),
+                                                                    child: TransferKOTDialog(
+                                                                      tableName:
+                                                                          widget
+                                                                              .tableNo,
+
+                                                                      kotNo:
+                                                                          (kot.kotNumber?.isNotEmpty ??
+                                                                                  false)
+                                                                              ? kot.kotNumber!
+                                                                              : "KOT#${kot.kotId}",
+
+                                                                      dateTime:
+                                                                          kot.time ??
+                                                                          DateTime.now(),
+
+                                                                      items:
+                                                                          transferItems,
+
+                                                                      zoneTables:
+                                                                          zoneTables,
+
+                                                                      orderId:
+                                                                          widget
+                                                                              .parentOrderId!,
+
+                                                                      kotId:
+                                                                          kot.kotId!,
+
+                                                                      fromTableId:
+                                                                          fromTableId,
+
+                                                                      restaurantId:
+                                                                          widget
+                                                                              .restaurantId!,
+
+                                                                      authToken:
+                                                                          widget
+                                                                              .token,
+
+                                                                      zoneIds:
+                                                                          zoneIds,
+
+                                                                      tableIds:
+                                                                          tableIds,
+
+                                                                      tableStatus:
+                                                                          tableStatus,
+
+                                                                      kotZone:
+                                                                          kotZone,
+
+                                                                      zoneNames:
+                                                                          zoneNames,
                                                                     ),
+                                                                  );
+                                                                },
                                                               );
 
+                                                              // -----------------------------------------
+                                                              // 11. REFRESH KOTS AFTER TRANSFER
+                                                              // -----------------------------------------
                                                               if (result !=
-                                                                  null) {
+                                                                      null &&
+                                                                  context
+                                                                      .mounted) {
+                                                                debugPrint(
+                                                                  "✅ Transfer completed. Refreshing KOTs...",
+                                                                );
+
                                                                 context.read<KotBloc>().add(
                                                                   FetchKots(
                                                                     parentOrderId:
@@ -1351,16 +1567,43 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                   ),
                                                                 );
                                                               }
-                                                            } catch (e) {
+                                                            } catch (
+                                                              e,
+                                                              stackTrace
+                                                            ) {
                                                               debugPrint(
-                                                                e.toString(),
+                                                                "❌ Transfer KOT error: $e",
+                                                              );
+
+                                                              debugPrint(
+                                                                stackTrace
+                                                                    .toString(),
+                                                              );
+
+                                                              if (!context
+                                                                  .mounted)
+                                                                return;
+
+                                                              ScaffoldMessenger.of(
+                                                                context,
+                                                              ).showSnackBar(
+                                                                SnackBar(
+                                                                  content: Text(
+                                                                    "Transfer failed: $e",
+                                                                  ),
+                                                                  backgroundColor:
+                                                                      Colors
+                                                                          .red,
+                                                                ),
                                                               );
                                                             }
                                                           },
+
                                                           borderRadius:
                                                               BorderRadius.circular(
                                                                 8,
                                                               ),
+
                                                           child: Container(
                                                             height: 28,
                                                             width: 28,
@@ -1386,6 +1629,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                             ),
                                                           ),
                                                         ),
+
                                                         const SizedBox(
                                                           width: 10,
                                                         ),
