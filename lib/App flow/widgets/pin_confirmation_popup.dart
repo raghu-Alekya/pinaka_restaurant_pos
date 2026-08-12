@@ -179,7 +179,7 @@ class _PinConfirmationPopupState extends State<PinConfirmationPopup> {
 
       child: Container(
         width: 400,
-height: 480,
+        height: 480,
         padding: const EdgeInsets.fromLTRB(30, 30, 30, 30),
 
         decoration: BoxDecoration(

@@ -1091,6 +1091,7 @@ import '../../blocs/Bloc Logic/order_bloc.dart';
 import '../../blocs/Bloc Logic/subcategory_bloc.dart';
 import '../../blocs/Bloc State/subcategory_states.dart';
 import '../../constants/constants.dart';
+import '../../models/UserPermissions.dart';
 import '../../models/category/items_model.dart';
 import '../../models/category/minisubcategory_model.dart';
 import '../../models/order/modifier_model.dart';
@@ -1283,7 +1284,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
   // fetch) — never cleared to show a spinner or a blank screen first.
   List<MiniSubCategory> currentSubCategories = [];
   MiniSubCategory? selectedFolder;
-
+  UserPermissions? _userPermissions;
   // Request-id guards: every subcategory switch / folder tap bumps its
   // counter. A background fetch only applies its result if its id still
   // matches — so a slow response for a tab/folder the user already left
@@ -1308,6 +1309,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
   @override
   void initState() {
     super.initState();
+    _loadPermissions();
     currentSubCategories = widget.subCategories;
     orderRepository = OrderRepository(baseUrl: AppConstants.baseDomain);
     _loadCurrency();
@@ -2175,6 +2177,174 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
     }
   }
 
+  Future<void> _loadPermissions() async {
+    final savedPermissions = await SessionManager.loadPermissions();
+    if (savedPermissions != null) {
+      setState(() {
+        _userPermissions = savedPermissions;
+      });
+    }
+  }
+
+  Future<void> _onProductLongPress(Product item) async {
+    if (!mounted) return;
+
+    // -----------------------------------------
+    // 1. MAKE SURE PERMISSIONS ARE LOADED
+    // -----------------------------------------
+    UserPermissions? permissions = _userPermissions;
+
+    if (permissions == null) {
+      debugPrint('⚠️ _userPermissions is null. Loading from SessionManager...');
+
+      permissions = await SessionManager.loadPermissions();
+
+      if (!mounted) return;
+
+      if (permissions != null) {
+        setState(() {
+          _userPermissions = permissions;
+        });
+      }
+    }
+
+    // -----------------------------------------
+    // 2. DEBUG
+    // -----------------------------------------
+    final String rawRole = permissions?.role ?? '';
+    final String role = rawRole.toLowerCase().trim();
+
+    debugPrint('════════════════════════════════════');
+    debugPrint('🔐 PRODUCT LONG PRESS');
+    debugPrint('👤 Raw role: "$rawRole"');
+    debugPrint('👤 Normalized role: "$role"');
+    debugPrint('📋 User permissions: $permissions');
+    debugPrint('🏷️ Product: ${item.name}');
+    debugPrint('🆔 Product ID: ${item.id}');
+    debugPrint('📦 Current stock: ${item.inStock}');
+    debugPrint('════════════════════════════════════');
+
+    // -----------------------------------------
+    // 3. ROLE CHECK
+    // -----------------------------------------
+    final bool canChangeStock =
+        role == 'administrator' ||
+        role == 'admin' ||
+        role == 'manager' ||
+        role == 'merchant';
+
+    debugPrint('🔑 Can change stock: $canChangeStock');
+
+    if (!canChangeStock) {
+      debugPrint('❌ Stock change BLOCKED for role: "$role"');
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Only administrators, managers, and merchants can change stock status',
+          ),
+          duration: Duration(seconds: 1),
+          backgroundColor: Colors.red,
+        ),
+      );
+
+      return;
+    }
+
+    debugPrint('✅ Stock change AUTHORIZED for role: "$role"');
+
+    // -----------------------------------------
+    // 4. TOGGLE STOCK
+    // -----------------------------------------
+    final newStockStatus = !item.inStock;
+
+    debugPrint(
+      '🔄 Stock changing: '
+      '${item.inStock} → $newStockStatus',
+    );
+
+    setState(() {
+      // Update every cached occurrence
+      _productCache.forEach((key, products) {
+        _productCache[key] =
+            products.map((product) {
+              if (product.id == item.id) {
+                return product.copyWith(inStock: newStockStatus);
+              }
+
+              return product;
+            }).toList();
+      });
+
+      // Update selected folder
+      if (selectedFolder != null) {
+        final updatedProducts =
+            selectedFolder!.products.map((product) {
+              if (product.id == item.id) {
+                return product.copyWith(inStock: newStockStatus);
+              }
+
+              return product;
+            }).toList();
+
+        selectedFolder = selectedFolder!.copyWith(
+          products: updatedProducts,
+          count: updatedProducts.length,
+        );
+
+        currentSubCategories =
+            currentSubCategories.map((sub) {
+              if (sub.id == selectedFolder!.id) {
+                return selectedFolder!;
+              }
+
+              return sub;
+            }).toList();
+      }
+
+      // Update direct products
+      currentSubCategories =
+          currentSubCategories.map((sub) {
+            final updatedProducts =
+                sub.products.map((product) {
+                  if (product.id == item.id) {
+                    return product.copyWith(inStock: newStockStatus);
+                  }
+
+                  return product;
+                }).toList();
+
+            return sub.copyWith(
+              products: updatedProducts,
+              count: updatedProducts.length,
+            );
+          }).toList();
+    });
+
+    debugPrint(
+      '✅ Stock successfully changed: '
+      '${item.name} → '
+      '${newStockStatus ? "IN STOCK" : "OUT OF STOCK"}',
+    );
+
+    // -----------------------------------------
+    // 5. RESULT
+    // -----------------------------------------
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          newStockStatus
+              ? '${item.name} - In Stock'
+              : '${item.name} - Out of Stock',
+        ),
+        duration: const Duration(seconds: 1),
+        backgroundColor: newStockStatus ? Colors.green : Colors.red,
+      ),
+    );
+  }
+
   void _showVariantPopup(
     BuildContext context,
     Product product,
@@ -2297,7 +2467,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
                         color:
                             isDark
                                 ? const Color(
-                              0xFFE73E50,
+                                  0xFFE73E50,
                                 ) // Light red in dark mode
                                 : const Color(0xFFFF364C),
                         borderRadius: BorderRadius.circular(8),
@@ -2392,172 +2562,198 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
             // 🔹 PRODUCT CARD
             GestureDetector(
               onTap: () => _onItemTap(context, item),
-              child: Container(
-                height: 105,
-                padding: const EdgeInsets.fromLTRB(
-                  stripWidth + stripGap,
-                  0,
-                  0,
-                  0,
-                ),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF2B3045) : Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  // border: Border.all(
-                  //   color: isDark
-                  //       ? const Color(0xFF444A63)
-                  //       : const Color(0x7FC4C7D1),
-                  // ),
-                  boxShadow: [
-                    BoxShadow(
-                      color:
-                          isDark
-                              ? Colors.white.withOpacity(0.08)
-                              : Colors.black.withOpacity(0.10),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Stack(
-                  children: [
-                    // CONTENT
-                    Row(
-                      children: [
-                        const SizedBox(width: 8),
-                        if (item.image.isNotEmpty)
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            // ✅ CachedNetworkImage: disk-cached like the
-                            // Home screen promo/logo images, so repeat
-                            // loads are instant and survive offline.
-                            child: CachedNetworkImage(
-                              imageUrl: item.image,
-                              width: 80,
-                              height: 80,
-                              fit: BoxFit.cover,
-                              fadeInDuration: const Duration(milliseconds: 120),
-                              memCacheWidth: 160,
-                              // placeholder: (_, __) => Container(
-                              //   width: 80,
-                              //   height: 80,
-                              //   color: const Color(0xFFF2F2F2),
-                              // ),
-                              placeholder:
-                                  (_, __) => const SizedBox(
-                                    width: 80,
-                                    height: 80,
-                                    child: ProductImageLoading(),
-                                  ),
-                              errorWidget:
-                                  (_, __, ___) =>
-                                      const Icon(Icons.fastfood, size: 40),
-                            ),
-                          )
-                        else
-                          const Icon(Icons.fastfood, size: 40),
-
-                        const SizedBox(width: 8),
-
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.name,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                softWrap: true,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: isDark ? Colors.white : Colors.black,
+              onLongPress: () => _onProductLongPress(item),
+              child: Opacity(
+                opacity: item.inStock ? 1.0 : 0.45,
+                child: Container(
+                  height: 105,
+                  padding: const EdgeInsets.fromLTRB(
+                    stripWidth + stripGap,
+                    0,
+                    0,
+                    0,
+                  ),
+                  decoration: BoxDecoration(
+                    color:
+                        item.inStock
+                            ? (isDark ? const Color(0xFF2B3045) : Colors.white)
+                            : (isDark
+                                ? const Color(0xFF555555)
+                                : const Color(0xFFD0D0D0)),
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color:
+                            isDark
+                                ? Colors.white.withOpacity(0.08)
+                                : Colors.black.withOpacity(0.10),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Stack(
+                    children: [
+                      // CONTENT
+                      Row(
+                        children: [
+                          const SizedBox(width: 8),
+                          if (item.image.isNotEmpty)
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              // ✅ CachedNetworkImage: disk-cached like the
+                              // Home screen promo/logo images, so repeat
+                              // loads are instant and survive offline.
+                              child: CachedNetworkImage(
+                                imageUrl: item.image,
+                                width: 80,
+                                height: 80,
+                                fit: BoxFit.cover,
+                                fadeInDuration: const Duration(
+                                  milliseconds: 120,
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '$_currency${item.price.toStringAsFixed(2)}',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: isDark ? Colors.white : Colors.black,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    // 🌱 VEG / NON-VEG STRIP
-                    Positioned(
-                      top: 6,
-                      right: 8,
-                      child:
-                          item.isVeg == null
-                              ? const SizedBox.shrink()
-                              : Container(
-                                width: 16,
-                                height: 16,
-                                decoration: const BoxDecoration(
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Color(0x3F000000),
-                                      blurRadius: 5,
-                                      offset: Offset(0, 1),
+                                memCacheWidth: 160,
+                                // placeholder: (_, __) => Container(
+                                //   width: 80,
+                                //   height: 80,
+                                //   color: const Color(0xFFF2F2F2),
+                                // ),
+                                placeholder:
+                                    (_, __) => const SizedBox(
+                                      width: 80,
+                                      height: 80,
+                                      child: ProductImageLoading(),
                                     ),
-                                  ],
+                                errorWidget:
+                                    (_, __, ___) =>
+                                        const Icon(Icons.fastfood, size: 40),
+                              ),
+                            )
+                          else
+                            const Icon(Icons.fastfood, size: 40),
+
+                          const SizedBox(width: 8),
+
+                          Expanded(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item.name,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  softWrap: true,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark ? Colors.white : Colors.black,
+                                  ),
                                 ),
-                                child: Stack(
-                                  children: [
-                                    Container(
-                                      width: 20,
-                                      height: 20,
-                                      decoration: ShapeDecoration(
-                                        color: Colors.white,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            2,
+                                const SizedBox(height: 4),
+                                Text(
+                                  '$_currency${item.price.toStringAsFixed(2)}',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark ? Colors.white : Colors.black,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // 🌱 VEG / NON-VEG STRIP
+                      Positioned(
+                        top: 6,
+                        right: 8,
+                        child:
+                            item.isVeg == null
+                                ? const SizedBox.shrink()
+                                : Container(
+                                  width: 16,
+                                  height: 16,
+                                  decoration: const BoxDecoration(
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Color(0x3F000000),
+                                        blurRadius: 5,
+                                        offset: Offset(0, 1),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Stack(
+                                    children: [
+                                      Container(
+                                        width: 20,
+                                        height: 20,
+                                        decoration: ShapeDecoration(
+                                          color: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              2,
+                                            ),
                                           ),
                                         ),
                                       ),
-                                    ),
-                                    Positioned(
-                                      left: 4,
-                                      top: 4,
-                                      child: Container(
-                                        width: 8,
-                                        height: 8,
-                                        decoration: BoxDecoration(
-                                          color:
-                                              item.isVeg!
-                                                  ? const Color(0xFF34C759)
-                                                  : const Color(0xFFFF0404),
-                                          shape: BoxShape.circle,
+                                      Positioned(
+                                        left: 4,
+                                        top: 4,
+                                        child: Container(
+                                          width: 8,
+                                          height: 8,
+                                          decoration: BoxDecoration(
+                                            color:
+                                                item.isVeg!
+                                                    ? const Color(0xFF34C759)
+                                                    : const Color(0xFFFF0404),
+                                            shape: BoxShape.circle,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
+                                ),
+                      ),
+                      // 🔹 VARIANT ICON
+                      if (item.isVariantProduct)
+                        Positioned(
+                          top: 65,
+                          right: 12,
+                          child: Image.asset(
+                            'assets/variant_icon.png',
+                            width: 14,
+                            height: 14,
+                          ),
+                        ),
+                      // OUT OF STOCK OVERLAY
+                      if (!item.inStock)
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.20),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Center(
+                              child: Text(
+                                'OUT OF STOCK',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.5,
                                 ),
                               ),
-                    ),
-                    // 🔹 VARIANT ICON
-                    if (item.isVariantProduct)
-                      Positioned(
-                        top: 65,
-                        right: 12,
-                        child: Image.asset(
-                          'assets/variant_icon.png',
-                          width: 14,
-                          height: 14,
+                            ),
+                          ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-
             // 🔥 VIEW MORE (ONLY FOR COMBO)
             if (isComboItem(item))
               Padding(

@@ -2297,13 +2297,13 @@ class _TablesScreenState extends State<TablesScreen> {
                         right: 20,
                         child: RichText(
                           textAlign: TextAlign.center,
-                          text: const TextSpan(
+                          text: TextSpan(
                             style: TextStyle(
                               fontSize: 16,
-                              color: Color(0xFF0A1B4D),
+                              color: isDark ? Colors.white : const Color(0xFF0A1B4D),
                               fontWeight: FontWeight.w400,
                             ),
-                            children: [
+                            children: const [
                               TextSpan(
                                 text:
                                 'No tables have been added in this area yet.\n Click the',
