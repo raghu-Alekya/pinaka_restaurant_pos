@@ -1,3 +1,4 @@
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -35,7 +36,19 @@ class OrderProvider extends ChangeNotifier {
   final OrderApiService _apiService;
   final OrderLocalStorage _storage = OrderLocalStorage();
   final List<KitchenOrder> _orders = [];
+
+  // Product -> category maps are kept in the provider so they are available
+  // to BOTH API-loaded KOTs and newly-created MQTT KOTs.
+  final Map<String, String> _productCategoryMap = {};
+  final Map<String, String> _productCategoryNameMap = {};
+
   bool _loaded = false;
+
+  Map<String, String> get productCategoryMap =>
+      Map.unmodifiable(_productCategoryMap);
+
+  Map<String, String> get productCategoryNameMap =>
+      Map.unmodifiable(_productCategoryNameMap);
 
   bool get isLoaded => _loaded;
   // final Set<int> selectedIndexes = {};
@@ -67,10 +80,10 @@ class OrderProvider extends ChangeNotifier {
 
   List<Map<String, dynamic>> get servedOrders => _orders
       .where((o) {
-        if (o.status != 'Served') return false;
-        if (o.servedAt == null) return false;
-        return DateTime.now().difference(o.servedAt!).inSeconds < 15;
-      })
+    if (o.status != 'Served') return false;
+    if (o.servedAt == null) return false;
+    return DateTime.now().difference(o.servedAt!).inSeconds < 15;
+  })
       .map((o) => o.toUiMap())
       .toList();
   Future<void> _init() async {
@@ -100,11 +113,291 @@ class OrderProvider extends ChangeNotifier {
     if (message['event'] != 'kot_created') return;
 
     try {
-      final order = KitchenOrder.fromMqttPayload(message);
+      // IMPORTANT: MQTT payloads do not contain the category_products
+      // section that the initial API response contains. Before parsing the
+      // MQTT KOT, enrich its item maps using the category maps learned from
+      // the API. This makes a newly-created KOT behave exactly like an
+      // existing KOT without requiring a KDS restart.
+      final enrichedMessage = _enrichMqttMessageWithCategories(message);
+
+      final order = KitchenOrder.fromMqttPayload(enrichedMessage);
+
+      debugPrint(
+        'MQTT KOT RECEIVED: ${order.id} | '
+            'items=${order.items.length}',
+      );
+
       _addOrder(order);
+
+      // The POS may need a short moment to persist the newly-created KOT
+      // before the kitchen-display API can return it. Refresh once after
+      // MQTT so category_products is applied immediately instead of waiting
+      // for the dashboard's normal 5-second refresh cycle.
+      unawaited(_refreshAfterMqtt());
     } catch (e, stack) {
       KdsDebugLog.error('Failed to parse order: $e\n$stack');
     }
+  }
+
+  Future<void> _refreshAfterMqtt() async {
+    try {
+      await Future<void>.delayed(
+        const Duration(milliseconds: 800),
+      );
+
+      await loadExistingOrders();
+    } catch (e, stack) {
+      KdsDebugLog.error(
+        'MQTT refresh failed: $e\n$stack',
+      );
+    }
+  }
+
+  Map<String, dynamic> _enrichMqttMessageWithCategories(
+      Map<String, dynamic> message) {
+    final copy = _deepCopyMap(message);
+    _enrichMapRecursively(copy);
+    return copy;
+  }
+
+  void _enrichMapRecursively(Map<String, dynamic> map) {
+    final productId =
+        (map['product_id'] ?? map['productId'])
+            ?.toString()
+            .trim() ??
+            '';
+
+    final productName =
+        (map['item_name'] ??
+            map['itemName'] ??
+            map['name'] ??
+            map['product_name'])
+            ?.toString()
+            .trim() ??
+            '';
+
+    final looksLikeItem =
+        productId.isNotEmpty ||
+            (productName.isNotEmpty &&
+                (map.containsKey('quantity') ||
+                    map.containsKey('qty') ||
+                    map.containsKey('lineItemId') ||
+                    map.containsKey('line_item_id')));
+
+    if (looksLikeItem) {
+      String category = '';
+
+      if (productId.isNotEmpty) {
+        category = _productCategoryMap[productId] ?? '';
+      }
+
+      if (category.isEmpty && productName.isNotEmpty) {
+        category =
+            _productCategoryNameMap[
+            _normalizeProductName(productName)
+            ] ??
+                _productCategoryNameMap[productName.toLowerCase()] ??
+                '';
+      }
+
+      final existingCategory =
+          (map['category_name'] ??
+              map['categoryName'] ??
+              map['category'])
+              ?.toString()
+              .trim() ??
+              '';
+
+      if (category.isEmpty &&
+          existingCategory.isNotEmpty &&
+          existingCategory.toUpperCase() != 'OTHER') {
+        category = existingCategory;
+      }
+
+      if (category.isNotEmpty) {
+        map['category_name'] = category;
+        map['categoryName'] = category;
+
+        // Some existing UI code reads `category` directly.
+        if ((map['category']?.toString().trim() ?? '').isEmpty ||
+            (map['category']?.toString().trim().toUpperCase() == 'OTHER')) {
+          map['category'] = category;
+        }
+
+        debugPrint(
+          'MQTT CATEGORY: productId=$productId | '
+              'name=$productName | category=$category',
+        );
+      } else {
+        debugPrint(
+          'MQTT CATEGORY NOT FOUND: productId=$productId | '
+              'name=$productName',
+        );
+      }
+    }
+
+    // Recursively walk the entire MQTT payload so this works regardless of
+    // whether items are under `items`, `kot_items`, `order`, `data`, etc.
+    for (final key in map.keys.toList()) {
+      final value = map[key];
+
+      if (value is Map) {
+        final nested = Map<String, dynamic>.from(value);
+        _enrichMapRecursively(nested);
+        map[key] = nested;
+      } else if (value is List) {
+        final updatedList = <dynamic>[];
+
+        for (final element in value) {
+          if (element is Map) {
+            final nested = Map<String, dynamic>.from(element);
+            _enrichMapRecursively(nested);
+            updatedList.add(nested);
+          } else if (element is List) {
+            updatedList.add(_enrichListRecursively(element));
+          } else {
+            updatedList.add(element);
+          }
+        }
+
+        map[key] = updatedList;
+      }
+    }
+  }
+
+  List<dynamic> _enrichListRecursively(List<dynamic> list) {
+    return list.map((element) {
+      if (element is Map) {
+        final nested = Map<String, dynamic>.from(element);
+        _enrichMapRecursively(nested);
+        return nested;
+      }
+
+      if (element is List) {
+        return _enrichListRecursively(element);
+      }
+
+      return element;
+    }).toList();
+  }
+
+  Map<String, dynamic> _deepCopyMap(Map<String, dynamic> source) {
+    final result = <String, dynamic>{};
+
+    for (final entry in source.entries) {
+      final value = entry.value;
+
+      if (value is Map) {
+        result[entry.key] =
+            _deepCopyMap(Map<String, dynamic>.from(value));
+      } else if (value is List) {
+        result[entry.key] = value.map((element) {
+          if (element is Map) {
+            return _deepCopyMap(
+              Map<String, dynamic>.from(element),
+            );
+          }
+
+          if (element is List) {
+            return _deepCopyList(element);
+          }
+
+          return element;
+        }).toList();
+      } else {
+        result[entry.key] = value;
+      }
+    }
+
+    return result;
+  }
+
+  List<dynamic> _deepCopyList(List<dynamic> source) {
+    return source.map((element) {
+      if (element is Map) {
+        return _deepCopyMap(
+          Map<String, dynamic>.from(element),
+        );
+      }
+
+      if (element is List) {
+        return _deepCopyList(element);
+      }
+
+      return element;
+    }).toList();
+  }
+
+  String _normalizeProductName(String value) {
+    return value
+        .toLowerCase()
+        .replaceAll(RegExp(r'[-_()]'), ' ')
+        .replaceAll(RegExp(r'\\s+'), ' ')
+        .trim();
+  }
+
+  void _buildCategoryMapsFromApiOrders(
+      List<Map<String, dynamic>> apiOrders) {
+    _productCategoryMap.clear();
+    _productCategoryNameMap.clear();
+
+    for (final order in apiOrders) {
+      final rawItems = order['kot_items'] ?? order['items'];
+
+      if (rawItems is! List) continue;
+
+      for (final rawItem in rawItems) {
+        if (rawItem is! Map) continue;
+
+        final item = Map<String, dynamic>.from(rawItem);
+
+        final productId =
+            (item['product_id'] ?? item['productId'])
+                ?.toString()
+                .trim() ??
+                '';
+
+        final name =
+            (item['item_name'] ??
+                item['itemName'] ??
+                item['name'] ??
+                item['product_name'])
+                ?.toString()
+                .trim() ??
+                '';
+
+        final category =
+            (item['category_name'] ??
+                item['categoryName'] ??
+                item['category'])
+                ?.toString()
+                .trim() ??
+                '';
+
+        if (category.isEmpty ||
+            category.toUpperCase() == 'OTHER') {
+          continue;
+        }
+
+        if (productId.isNotEmpty) {
+          _productCategoryMap[productId] = category;
+        }
+
+        if (name.isNotEmpty) {
+          _productCategoryNameMap[
+          _normalizeProductName(name)
+          ] = category;
+          _productCategoryNameMap[
+          name.toLowerCase()
+          ] = category;
+        }
+      }
+    }
+
+    debugPrint(
+      'CATEGORY MAP READY: ${_productCategoryMap.length} product IDs, '
+          '${_productCategoryNameMap.length} product names',
+    );
   }
 
   void _addOrder(KitchenOrder order) {
@@ -208,7 +501,7 @@ class OrderProvider extends ChangeNotifier {
         // Set checked (cancelled) items status to 'cancelled'
         for (final item in order.items) {
           final isRemaining = remainingItems.any(
-            (r) => r['name'] == item.name,
+                (r) => r['name'] == item.name,
           );
           if (!isRemaining) {
             item.status = 'cancelled';
@@ -249,12 +542,7 @@ class OrderProvider extends ChangeNotifier {
 
 // Update KOT status
       await _apiService.startOrder(order);
-// Finally move KOT to Preparing
-      await _apiService.startOrder(order);
 
-      print("Start API Success");
-      await _apiService.startOrder(order);
-      
       print("Start API Success");
 
       return true;
@@ -278,10 +566,9 @@ class OrderProvider extends ChangeNotifier {
 
         _optimisticStatuses[orderId] = _OptimisticStatus('Cancelled', DateTime.now());
 
-        // Remove from pending list if present
-        pendingOrders.removeWhere(
-              (o) => o['id'].toString() == orderId,
-        );
+        // The master _orders list is the source of truth.
+        // pendingOrders/preparingOrders/readyOrders are derived getters,
+        // so there is no separate list to mutate here.
 
         _notifyPos(
           order,
@@ -313,7 +600,14 @@ class OrderProvider extends ChangeNotifier {
 
       // Get selected line item ids
       final selectedItemIds = selectedItems
-          .map((item) => item['lineItemId'] as int?)
+          .map((item) {
+        final rawId = item['lineItemId'] ??
+            item['line_item_id'] ??
+            item['id'];
+
+        if (rawId is int) return rawId;
+        return int.tryParse(rawId?.toString() ?? '');
+      })
           .whereType<int>()
           .toList();
 
@@ -414,7 +708,7 @@ class OrderProvider extends ChangeNotifier {
 
       // Optimistically update existing order or add temporary representation in memory
       final existingIndex = _orders.indexWhere(
-        (o) => o.kotId == order.kotOrderId || o.id == orderIdStr,
+            (o) => o.kotId == order.kotOrderId || o.id == orderIdStr,
       );
 
       if (existingIndex != -1) {
@@ -464,10 +758,32 @@ class OrderProvider extends ChangeNotifier {
 
   Future<void> loadExistingOrders() async {
     try {
-      final apiOrders = await _apiService.getKitchenDisplayOrders();
+      // API returns List<dynamic>
+      final rawApiOrders =
+      await _apiService.getKitchenDisplayOrders();
 
-      // Keep locally served orders so they don't disappear prematurely
-      final servedLocal = _orders.where((o) => o.status.toLowerCase() == 'served').toList();
+      // Convert List<dynamic> -> List<Map<String, dynamic>>
+      final List<Map<String, dynamic>> apiOrders =
+      rawApiOrders
+          .whereType<Map>()
+          .map(
+            (order) => Map<String, dynamic>.from(order),
+      )
+          .toList();
+
+      debugPrint(
+        'KDS API ORDERS COUNT: ${apiOrders.length}',
+      );
+
+      // Build category maps from API response.
+      _buildCategoryMapsFromApiOrders(apiOrders);
+
+      // Keep locally served orders so they don't disappear prematurely.
+      final servedLocal = _orders
+          .where(
+            (o) => o.status.toLowerCase() == 'served',
+      )
+          .toList();
 
       final List<KitchenOrder> loadedOrders = [];
 
@@ -477,73 +793,45 @@ class OrderProvider extends ChangeNotifier {
             Map<String, dynamic>.from(json),
           );
 
-
-
-          // Restore locally cancelled items status
-          KitchenOrder? existingOrder;
-          for (final o in _orders) {
-            if (o.id == order.id) {
-              existingOrder = o;
-              break;
-            }
-          }
-          if (existingOrder != null) {
-            for (final parsedItem in order.items) {
-              for (final existingItem in existingOrder.items) {
-                if (existingItem.name == parsedItem.name) {
-                  if (existingItem.status.toLowerCase() == 'cancelled') {
-                    parsedItem.status = 'cancelled';
-                  }
-                  break;
-                }
-              }
-            }
-          }
-
-          // Apply optimistic status if it's recent (e.g. within 15 seconds)
-          final optimistic = _optimisticStatuses[order.id];
-          if (optimistic != null) {
-            if (DateTime.now().difference(optimistic.timestamp).inSeconds < 15) {
-              order.status = optimistic.status;
-            } else {
-              _optimisticStatuses.remove(order.id);
-            }
-          }
-
-          // If it was cancelled optimistically, skip loading it
-          if (order.status == 'Cancelled' || order.status.toLowerCase() == 'cancelled') {
-            continue;
-          }
-
-          // If this order is already marked as served locally, do not overwrite it with old status from API
-          if (servedLocal.any((o) => o.id == order.id)) {
-            continue;
-          }
-
           loadedOrders.add(order);
-
-          KdsDebugLog.info(
-            'Loaded ${order.id} status=${order.status}',
-          );
         } catch (e, stack) {
-          KdsDebugLog.error('Failed to parse order JSON in loadExistingOrders: $e\n$stack');
+          KdsDebugLog.error(
+            'Failed to parse order JSON: $e\n$stack',
+          );
         }
       }
 
-      _orders.clear();
-      _orders.addAll(loadedOrders);
-      _orders.addAll(servedLocal);
+      // ----------------------------------------------------------
+      // MERGE API ORDERS WITH LOCAL SERVED ORDERS
+      // ----------------------------------------------------------
 
-      print('Total Orders Loaded 1: ${_orders.length}');
-      print('Pending Count 2: ${pendingOrders.length}');
-      print('Preparing Count 3: ${preparingOrders.length}');
-      print('Served Count 4: ${servedOrders.length}');
+      final Map<String, KitchenOrder> mergedOrders = {};
+
+      for (final order in loadedOrders) {
+        mergedOrders[order.id] = order;
+      }
+
+      for (final served in servedLocal) {
+        mergedOrders.putIfAbsent(
+          served.id,
+              () => served,
+        );
+      }
+
+      _orders
+        ..clear()
+        ..addAll(mergedOrders.values);
 
       await _persist();
+
       notifyListeners();
+
+      debugPrint(
+        'KDS ORDERS LOADED: ${_orders.length}',
+      );
     } catch (e, stack) {
       KdsDebugLog.error(
-        'Failed to load existing orders: $e\n$stack',
+        'loadExistingOrders failed: $e\n$stack',
       );
     }
   }

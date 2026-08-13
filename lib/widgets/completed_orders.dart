@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../active_orderscreen.dart';
+import '../kitchen_display_screen.dart';
 import '../models/complete_order_model.dart';
 import '../providers/order_provider.dart';
 import '../services/api_services.dart';
 import '../services/completeorder_api service.dart';
 import '../top_bar.dart';
+import 'kds_drawer.dart';
+import 'login_screen.dart';
 
 class CompletedOrdersScreen extends StatefulWidget {
   final String token;
@@ -32,6 +36,8 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
   List<CompletedOrderModel> filteredOrders = [];
   OrderTypeFilter selectedFilter = OrderTypeFilter.all;
   KotView selectedView = KotView.history;
+  final GlobalKey<ScaffoldState> _scaffoldKey =
+  GlobalKey<ScaffoldState>();
 
   String selectedOrderType = 'All';
   String searchText = '';
@@ -479,18 +485,18 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 if (!widget.isEmbedded) ...[
-                  InkWell(
-                    onTap: () => Navigator.pop(context),
-                    child: const Icon(
-                      Icons.arrow_back,
-                      size: 24,
-                      color: Color(0xff222222),
-                    ),
-                  ),
+                  // InkWell(
+                  //   onTap: () => Navigator.pop(context),
+                  //   child: const Icon(
+                  //     Icons.arrow_back,
+                  //     size: 24,
+                  //     color: Color(0xff222222),
+                  //   ),
+                  // ),
                   const SizedBox(width: 10),
                 ],
                 const Text(
-                  "KOT History",
+                  "Recall",
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -1205,17 +1211,152 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
     }
 
     return Scaffold(
+      key: _scaffoldKey,
+
       backgroundColor: const Color(0xffF4F4F4),
-      body: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.zero,
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(15),
+
+      drawer: KdsDrawer(
+        onDashboard: () {
+          Navigator.pop(context);
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => KitchenDashboardScreen(
+                token: widget.token,
+                restaurantId: widget.restaurantId,
+              ),
             ),
-            child: contentWidget,
-          ),
+          );
+        },
+
+        onSelectItemCategory: () {
+          Navigator.pop(context);
+        },
+
+        onStock: () {
+          Navigator.pop(context);
+        },
+
+        onRecall: () {
+          Navigator.pop(context);
+        },
+
+        onSettings: () {
+          Navigator.pop(context);
+          widget.onRecallSuccess?.call();
+        },
+
+        // ========================================================
+        // LOGOUT
+        // ========================================================
+
+        onLogout: () async {
+          Navigator.pop(context);
+
+          final prefs = await SharedPreferences.getInstance();
+
+          final storeBaseUrl =
+              prefs.getString('store_base_url') ?? '';
+
+          final storeName =
+              prefs.getString('store_name') ?? '';
+
+          final storeId =
+              prefs.getString('store_id') ?? '';
+
+          // Remove only login/session information
+          await prefs.remove('token');
+          await prefs.remove('auth_token');
+          await prefs.remove('user_id');
+          await prefs.remove('employee_name');
+          await prefs.remove('display_name');
+          await prefs.remove('role');
+
+          if (!context.mounted) return;
+
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (context) => EmployeeLoginScreen(
+                storeBaseUrl: storeBaseUrl,
+                storeName: storeName,
+                storeId: storeId,
+
+                onLoginSuccess: (config) {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => KitchenDashboardScreen(
+                        token: config.apiToken,
+                        restaurantId:
+                        int.tryParse(config.restaurantId) ?? 0,
+                      ),
+                    ),
+                        (route) => false,
+                  );
+                },
+              ),
+            ),
+                (route) => false,
+          );
+        },
+      ),
+
+      body: SafeArea(
+        child: Column(
+          children: [
+
+            // ==================================================
+            // YOUR EXISTING COMMON TOP BAR
+            // ==================================================
+
+            TopBarWidget(
+              token: widget.token,
+              restaurantId: widget.restaurantId,
+              selectedView: KotView.history,
+
+              onViewChanged: (view) {
+                if (view == KotView.history) {
+                  return;
+                }
+
+                Navigator.pop(context);
+              },
+
+              onLogout: widget.onRecallSuccess,
+
+              pendingCount: 0,
+              activeCount: 0,
+              repeatedCount: 0,
+
+              // =================================================
+              // HAMBURGER CLICK
+              // =================================================
+
+              onMenuTap: () {
+                _scaffoldKey.currentState?.openDrawer();
+              },
+            ),
+
+            // ==================================================
+            // EXISTING RECALL CONTENT
+            // ==================================================
+
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.zero,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius:
+                    BorderRadius.circular(15),
+                  ),
+                  child: contentWidget,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

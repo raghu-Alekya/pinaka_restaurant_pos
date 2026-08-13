@@ -277,13 +277,16 @@ class OrderApiService {
         'Content-Type': 'application/json',
       },
     );
-    print("====================================");
-    print("Kitchen Display Orders API");
-    print("Status Code: ${response.statusCode}");
-    print("Response Body: ${response.body}");
-    print("====================================");
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
+    print('');
+    print('==============================================');
+    print('       KITCHEN DISPLAY ORDERS API');
+    print('==============================================');
+    print('Status Code: ${response.statusCode}');
+    print('==============================================');
+
+    if (response.statusCode < 200 ||
+        response.statusCode >= 300) {
       throw OrderApiException(
         statusCode: response.statusCode,
         message: 'Failed to load kitchen display orders',
@@ -291,24 +294,445 @@ class OrderApiService {
       );
     }
 
-
     final decoded = jsonDecode(response.body);
 
-    if (decoded is List) {
-      return decoded;
+    if (decoded is! Map<String, dynamic>) {
+      return [];
     }
 
-    if (decoded is Map<String, dynamic>) {
-      if (decoded['data'] is List) {
-        return decoded['data'];
-      }
+    // ==========================================================
+    // PRODUCT MAPS
+    //
+    // product_id -> isVeg
+    // product_id -> category
+    // ==========================================================
 
-      if (decoded['orders'] is List) {
-        return decoded['orders'];
+    final Map<String, bool?> vegByProductId = {};
+    final Map<String, String> productCategoryById = {};
+
+    // ==========================================================
+    // CATEGORY PRODUCTS
+    // ==========================================================
+
+    final categoryProducts =
+    decoded['category_products'];
+
+    if (categoryProducts is List) {
+      for (final category in categoryProducts) {
+        if (category is! Map) {
+          continue;
+        }
+
+        // --------------------------------------------------------
+        // CATEGORY NAME
+        // --------------------------------------------------------
+
+        final categoryName =
+            category['category_name']
+                ?.toString()
+                .trim() ??
+                category['categoryName']
+                    ?.toString()
+                    .trim() ??
+                '';
+
+        final products =
+        category['products'];
+
+        if (products is! List) {
+          continue;
+        }
+
+        // --------------------------------------------------------
+        // PRODUCTS
+        // --------------------------------------------------------
+
+        for (final product in products) {
+          if (product is! Map) {
+            continue;
+          }
+
+          final productId =
+              product['product_id'] ??
+                  product['productId'];
+
+          if (productId == null) {
+            continue;
+          }
+
+          final productIdString =
+          productId.toString();
+
+          // ======================================================
+          // PRODUCT -> CATEGORY
+          // ======================================================
+
+          if (categoryName.isNotEmpty) {
+            productCategoryById[
+            productIdString] = categoryName;
+          }
+
+          // ======================================================
+          // PRODUCT -> VEG / NON VEG
+          // ======================================================
+
+          final dynamic rawIsVeg;
+
+          if (product.containsKey('is_veg')) {
+            rawIsVeg = product['is_veg'];
+          } else if (product.containsKey('isVeg')) {
+            rawIsVeg = product['isVeg'];
+          } else {
+            rawIsVeg = null;
+          }
+
+          bool? isVeg;
+
+          if (rawIsVeg == null) {
+            isVeg = null;
+          } else {
+            final normalized =
+            rawIsVeg.toString().trim().toLowerCase();
+
+            isVeg =
+                rawIsVeg == true ||
+                    rawIsVeg == 1 ||
+                    normalized == 'true' ||
+                    normalized == '1';
+          }
+
+          vegByProductId[productIdString] = isVeg;
+
+          // print(
+          //   'PRODUCT MAP: '
+          //       '$productIdString -> '
+          //       '$categoryName -> '
+          //       '$isVeg',
+          // );
+
+          print(
+            'PRODUCT MAP: '
+                '$productIdString -> '
+                '$categoryName -> '
+                '$isVeg',
+          );
+        }
       }
     }
 
-    return [];
+    // ==========================================================
+    // PRINT PRODUCT CATEGORY MAP
+    // ==========================================================
+
+    print('');
+    print('========== PRODUCT CATEGORY MAP ==========');
+
+    productCategoryById.forEach(
+          (productId, category) {
+        print(
+          '$productId -> $category',
+        );
+      },
+    );
+
+    print('==========================================');
+
+    // ==========================================================
+    // PRINT VEG MAP
+    // ==========================================================
+
+    print('');
+    print('========== VEG MAP ==========');
+    print(vegByProductId);
+    print('=============================');
+
+    // ==========================================================
+    // ORDERS
+    // ==========================================================
+
+    final rawOrders =
+    decoded['response'];
+
+    if (rawOrders is! List) {
+      return [];
+    }
+
+    final List<Map<String, dynamic>> orders = [];
+
+    // ==========================================================
+    // LOOP ORDERS
+    // ==========================================================
+
+    for (final rawOrder in rawOrders) {
+      if (rawOrder is! Map) {
+        continue;
+      }
+
+      final order =
+      Map<String, dynamic>.from(rawOrder);
+
+      // ========================================================
+      // KOT ITEMS
+      // ========================================================
+
+      final rawKotItems =
+      order['kot_items'];
+
+      if (rawKotItems is List) {
+        final List<Map<String, dynamic>>
+        enrichedItems = [];
+
+        // ======================================================
+        // LOOP KOT ITEMS
+        // ======================================================
+
+        for (final rawItem in rawKotItems) {
+          if (rawItem is! Map) {
+            continue;
+          }
+
+          final item =
+          Map<String, dynamic>.from(rawItem);
+
+          // ====================================================
+          // PRODUCT ID
+          // ====================================================
+
+          final productId =
+              item['product_id'] ??
+                  item['productId'];
+
+          final productIdString =
+              productId?.toString() ?? '';
+
+          // ====================================================
+          // CATEGORY
+          // ====================================================
+
+          final categoryName =
+              productCategoryById[
+              productIdString] ??
+                  item['category_name']
+                      ?.toString()
+                      .trim() ??
+                  item['categoryName']
+                      ?.toString()
+                      .trim() ??
+                  item['category']
+                      ?.toString()
+                      .trim() ??
+                  'OTHER';
+
+          item['category_name'] =
+              categoryName;
+
+          item['categoryName'] =
+              categoryName;
+
+          // ====================================================
+          // ITEM NAME
+          // ====================================================
+
+          item['name'] =
+              item['name'] ??
+                  item['item_name'] ??
+                  item['product_name'] ??
+                  'Unknown';
+
+          // ====================================================
+          // QUANTITY
+          // ====================================================
+
+          item['quantity'] =
+              item['quantity'] ??
+                  item['qty'] ??
+                  1;
+
+          item['qty'] =
+              item['qty'] ??
+                  item['quantity'];
+
+          // ====================================================
+          // VEG / NON VEG
+          //
+          // Priority:
+          // 1. item-level is_veg
+          // 2. category_products map
+          // 3. false
+          // ====================================================
+// ====================================================
+// VEG / NON VEG
+//
+// Priority:
+// 1. item-level is_veg
+// 2. product map
+// 3. null
+//
+// IMPORTANT:
+// Never convert null to false.
+// ====================================================
+
+          final dynamic rawIsVeg;
+
+          if (item.containsKey('is_veg')) {
+            rawIsVeg = item['is_veg'];
+          } else if (item.containsKey('isVeg')) {
+            rawIsVeg = item['isVeg'];
+          } else {
+            rawIsVeg = null;
+          }
+
+          bool? isVeg;
+
+          if (rawIsVeg != null) {
+            final normalized =
+            rawIsVeg.toString().trim().toLowerCase();
+
+            isVeg =
+                rawIsVeg == true ||
+                    rawIsVeg == 1 ||
+                    normalized == 'true' ||
+                    normalized == '1';
+          } else {
+            // Only use product map if item-level field
+            // does NOT contain a value.
+            isVeg = vegByProductId[productIdString];
+          }
+
+// Keep NULL as NULL.
+          item['is_veg'] = isVeg;
+          item['isVeg'] = isVeg;
+
+          print(
+            'FINAL VEG => '
+                'product=$productIdString | '
+                'raw=$rawIsVeg | '
+                'final=$isVeg',
+          );
+          // ====================================================
+          // MODIFIERS
+          // ====================================================
+
+          final rawModifiers =
+          item['modifiers'];
+
+          if (rawModifiers is List) {
+            item['modifiers'] =
+                rawModifiers
+                    .map(
+                      (e) => e.toString(),
+                )
+                    .toList();
+          } else {
+            item['modifiers'] = [];
+          }
+
+          // ====================================================
+          // ADDONS
+          // ====================================================
+
+          dynamic rawAddons =
+              item['addons'] ??
+                  item['addOns'];
+
+          if (rawAddons is List) {
+            item['addons'] = rawAddons;
+            item['addOns'] = rawAddons;
+          } else if (rawAddons is Map) {
+            item['addons'] = rawAddons;
+            item['addOns'] = rawAddons;
+          } else {
+            item['addons'] = [];
+            item['addOns'] = [];
+          }
+
+          // ====================================================
+          // NOTE
+          //
+          // Supports:
+          // note
+          // notes
+          // modifier_note
+          // modifier_notes
+          // ====================================================
+
+          String note =
+              item['note']
+                  ?.toString()
+                  .trim() ??
+                  '';
+
+          if (note.isEmpty) {
+            note =
+                item['notes']
+                    ?.toString()
+                    .trim() ??
+                    '';
+          }
+
+          if (note.isEmpty) {
+            note =
+                item['modifier_note']
+                    ?.toString()
+                    .trim() ??
+                    '';
+          }
+
+          if (note.isEmpty) {
+            note =
+                item['modifier_notes']
+                    ?.toString()
+                    .trim() ??
+                    '';
+          }
+
+          item['note'] = note;
+
+          // ====================================================
+          // DEBUG
+          // ====================================================
+
+          print('');
+          print('========== API KOT ITEM ==========');
+          print('NAME       : ${item['name']}');
+          print('PRODUCT ID : $productIdString');
+          print('CATEGORY   : $categoryName');
+          print('IS VEG     : ${item['is_veg']}');
+          print('MODIFIERS  : ${item['modifiers']}');
+          print('ADDONS     : ${item['addons']}');
+          print('NOTE       : ${item['note']}');
+          print('==================================');
+
+          enrichedItems.add(item);
+        }
+
+        // ========================================================
+        // SAVE ENRICHED KOT ITEMS
+        // ========================================================
+
+        order['kot_items'] =
+            enrichedItems;
+      }
+
+      // ==========================================================
+      // ADD ORDER
+      // ==========================================================
+
+      orders.add(order);
+    }
+
+    // ==========================================================
+    // FINAL DEBUG
+    // ==========================================================
+
+    print('');
+    print('==============================================');
+    print(
+      'TOTAL KITCHEN ORDERS: ${orders.length}',
+    );
+    print('==============================================');
+
+    return orders;
   }
 
 }

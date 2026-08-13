@@ -1,12 +1,15 @@
-import 'dart:async';
+
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:kds_app/top_bar.dart';
 import 'package:kds_app/widgets/completed_orders.dart';
+import 'package:kds_app/widgets/login_screen.dart';
 import 'package:kds_app/widgets/repeated_item.dart';
+import 'package:kds_app/widgets/stock_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'active_orderscreen.dart';
 import 'providers/order_provider.dart';
 import 'services/kds_mqtt_service.dart';
@@ -15,12 +18,15 @@ class KitchenDashboardScreen extends StatefulWidget {
   final String token;
   final int restaurantId;
   final VoidCallback? onOpenSettings;
+  final VoidCallback? onMenuTap;
 
   const KitchenDashboardScreen({
     super.key,
     required this.token,
     required this.restaurantId,
     this.onOpenSettings,
+    this.onMenuTap,
+
   });
 
   @override
@@ -31,11 +37,27 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
   String selectedOrderType = "All";
   OrderTypeFilter selectedFilter = OrderTypeFilter.all;
   String? selectedCancelKotId;
-  Timer? _refreshTimer;
   String? selectedCancelItemKotId;
   final Set<String> selectedItems = {};
+  // final VoidCallback? onMenuTap;
+  bool _categoryMapLoaded = false;
+  final GlobalKey<ScaffoldState> _scaffoldKey =
+  GlobalKey<ScaffoldState>();
 
+  // final Map<String, String> productCategoryMap = {};
+  Map<String, String> productCategoryMap = {};
+  Map<String, String> productCategoryNameMap = {};
+
+  // Existing map - used only by the Ready/Running item switches.
   final Map<String, List<bool>> selectedItemsMap = {};
+
+  // Separate map for item cancellation so existing switch state is untouched.
+  final Map<String, List<bool>> cancelSelectionMap = {};
+
+  // Keeps successfully cancelled item(s) visually struck through immediately.
+  // The provider/API remains the source of truth; this only prevents the UI
+  // from losing the visual state during the same rebuild.
+  final Set<String> locallyCancelledItemKeys = {};
 
   KotView selectedView = KotView.pending;
   bool isZoomedOut = true;
@@ -44,17 +66,212 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<OrderProvider>().loadExistingOrders();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final orderProvider = context.read<OrderProvider>();
+
+      // Load existing KOTs once. New KOTs should arrive through MQTT via OrderProvider.
+      await orderProvider.loadExistingOrders();
     });
-    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      context.read<OrderProvider>().loadExistingOrders();
+  }
+  bool itemStatusIsCancelled(dynamic rawItem) {
+    if (rawItem is! Map) return false;
+
+    final status =
+        rawItem['status']?.toString().trim().toLowerCase() ?? '';
+
+    return status == 'cancelled' || status == 'cancel';
+  }
+
+  void _clearCancelSelection(String kotId) {
+    cancelSelectionMap.remove(kotId);
+
+    if (selectedCancelItemKotId == kotId) {
+      selectedCancelItemKotId = null;
+    }
+  }
+  List<bool> _getCancelSelectionValues(
+      String kotId,
+      int itemCount,
+      ) {
+    final existing = cancelSelectionMap[kotId];
+
+    if (existing != null) {
+      while (existing.length < itemCount) {
+        existing.add(false);
+      }
+
+      if (existing.length > itemCount) {
+        return existing.sublist(0, itemCount);
+      }
+
+      return existing;
+    }
+
+    final values = List<bool>.filled(itemCount, false);
+    cancelSelectionMap[kotId] = values;
+
+    return values;
+  }
+  // ==========================================================
+  // COMMON ORDER ITEM READER
+  // Prefer kot_items because that is the KOT payload used by KDS.
+  // Fall back to items for older/local payloads.
+  // ==========================================================
+  List<dynamic> _getOrderItems(Map<String, dynamic> order) {
+    // The backend/KOT payload may contain both `kot_items` and `items`.
+    // Some provider states keep `kot_items` as an empty list while the
+    // actual active KOT items are present in `items`. In that case, using
+    // `kot_items ?? items` incorrectly returns the empty list.
+    final kotItems = order['kot_items'];
+
+    if (kotItems is List && kotItems.isNotEmpty) {
+      return kotItems;
+    }
+
+    // Support camelCase payloads as well.
+    final kotItemsCamel = order['kotItems'];
+
+    if (kotItemsCamel is List && kotItemsCamel.isNotEmpty) {
+      return kotItemsCamel;
+    }
+
+    final items = order['items'];
+
+    if (items is List && items.isNotEmpty) {
+      return items;
+    }
+
+    // Return an existing empty list if the order has one; otherwise empty.
+    if (kotItems is List) {
+      return kotItems;
+    }
+
+    if (items is List) {
+      return items;
+    }
+
+    return <dynamic>[];
+  }
+
+  // Stable key used to keep a cancelled item struck through immediately
+  // even before the provider refreshes/rebuilds the KOT list.
+  String _getCancelItemKey(dynamic rawItem, int index) {
+    if (rawItem is Map) {
+      final item = Map<String, dynamic>.from(rawItem);
+      final lineItemId = item['lineItemId'] ??
+          item['line_item_id'] ??
+          item['id'];
+
+      if (lineItemId != null && lineItemId.toString().trim().isNotEmpty) {
+        return lineItemId.toString().trim();
+      }
+    }
+
+    return 'index_$index';
+  }
+
+  String _normalizeProductName(String name) {
+    String value = name
+        .trim()
+        .toLowerCase();
+
+    // Remove common variation suffixes
+    value = value.replaceAll(
+      RegExp(
+        r'\s*-\s*(jumbo|single|family|full|half|regular|small|medium|large)\s*$',
+        caseSensitive: false,
+      ),
+      '',
+    );
+
+    return value.trim();
+  }
+  String formatAddOns(Map<String, dynamic> addOns) {
+    final result = <String>[];
+
+    addOns.forEach((name, value) {
+      if (value is Map) {
+        final quantity =
+            value['quantity'] ??
+                value['qty'] ??
+                1;
+
+        result.add('$name x$quantity');
+      } else {
+        result.add('$name x$value');
+      }
     });
+
+    return result.join(', ');
+  }String _getItemNote(dynamic rawItem) {
+    if (rawItem is! Map) {
+      return '';
+    }
+
+    final item = Map<String, dynamic>.from(rawItem);
+
+    // ==========================================================
+    // 1. DIRECT NOTE
+    // ==========================================================
+
+    final directNote = item['note']?.toString().trim();
+
+    if (directNote != null && directNote.isNotEmpty) {
+      return directNote;
+    }
+
+    final notes = item['notes']?.toString().trim();
+
+    if (notes != null && notes.isNotEmpty) {
+      return notes;
+    }
+
+    // ==========================================================
+    // 2. NOTE FROM meta_data
+    // ==========================================================
+
+    final metaData = item['meta_data'];
+
+    if (metaData is List) {
+      for (final meta in metaData) {
+        if (meta is! Map) {
+          continue;
+        }
+
+        final key = meta['key']?.toString().trim();
+
+        if (key == '_modifier_notes') {
+          final value = meta['value'];
+
+          if (value == null) {
+            continue;
+          }
+
+          // Normal String
+          if (value is String) {
+            final note = value.trim();
+
+            if (note.isNotEmpty) {
+              return note;
+            }
+          }
+
+          // If backend sends something else
+          final note = value.toString().trim();
+
+          if (note.isNotEmpty) {
+            return note;
+          }
+        }
+      }
+    }
+
+    return '';
   }
 
   @override
   void dispose() {
-    _refreshTimer?.cancel();
     super.dispose();
   }
 
@@ -80,23 +297,23 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
     final orders = orderProvider.pendingOrders;
 
     final filteredOrders =
-        orders.where((order) {
-          final type = order['type']?.toString().toLowerCase() ?? '';
+    orders.where((order) {
+      final type = order['type']?.toString().toLowerCase() ?? '';
 
-          switch (selectedFilter) {
-            case OrderTypeFilter.all:
-              return true;
+      switch (selectedFilter) {
+        case OrderTypeFilter.all:
+          return true;
 
-            case OrderTypeFilter.dineIn:
-              return type.contains('dine');
+        case OrderTypeFilter.dineIn:
+          return type.contains('dine');
 
-            case OrderTypeFilter.takeaway:
-              return type.contains('take');
+        case OrderTypeFilter.takeaway:
+          return type.contains('take');
 
-            case OrderTypeFilter.online:
-              return type.contains('online');
-          }
-        }).toList();
+        case OrderTypeFilter.online:
+          return type.contains('online');
+      }
+    }).toList();
 
     Widget bodyWidget;
     switch (selectedView) {
@@ -132,26 +349,60 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
     }
 
     return Scaffold(
+      key: _scaffoldKey,
+
       backgroundColor: const Color(0xffF4F4F4),
+
+      // ==========================================================
+      // LEFT MENU / DRAWER
+      // ==========================================================
+
+      drawer: _buildKdsDrawer(),
+
       body: SafeArea(
         child: Column(
           children: [
+
+            // ======================================================
+            // COMMON TOP BAR
+            // ======================================================
+
             TopBarWidget(
               token: widget.token,
               restaurantId: widget.restaurantId,
               selectedView: selectedView,
+
               onViewChanged: (view) {
                 setState(() {
                   selectedView = view;
                 });
               },
+
               onLogout: widget.onOpenSettings,
-              pendingCount: orderProvider.pendingOrders.length,
+
+              pendingCount:
+              orderProvider.pendingOrders.length,
+
               activeCount:
-                  orderProvider.preparingOrders.length +
+              orderProvider.preparingOrders.length +
                   orderProvider.readyOrders.length,
-              repeatedCount: summaryItemsCount,
+
+              repeatedCount:
+              summaryItemsCount,
+
+              // ====================================================
+              // HAMBURGER MENU CLICK
+              // ====================================================
+
+              onMenuTap: () {
+                _scaffoldKey.currentState?.openDrawer();
+              },
             ),
+
+            // ======================================================
+            // EXISTING KDS BODY
+            // ======================================================
+
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(
@@ -166,952 +417,3080 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
       ),
     );
   }
+  Widget _buildKdsDrawer() {
+    return Drawer(
+      width: 250,
+      backgroundColor: Colors.white,
 
-  Widget _buildPendingBody(
-    List<Map<String, dynamic>> filteredOrders,
-    OrderProvider orderProvider,
-  ) {
-    final size = MediaQuery.of(context).size;
-    final crossAxisCount = isZoomedOut ? 4 : 2;
-    // Account for scaffold padding (12 * 2), outer container padding (16 * 2), outer container border (1 * 2), and gaps (16 * (crossAxisCount - 1))
-    final cardWidth =
-        (size.width - 58 - (16 * (crossAxisCount - 1))) / crossAxisCount;
-    // Calculate the perfect height for cards considering TopBar, padding, and spacing
-    final cardHeight =
-        isZoomedOut ? (size.height - 202 - 16) / 2 : (size.height - 202);
-
-    // Distribute all filtered orders into vertical columns (row-major filling)
-    final List<List<Map<String, dynamic>>> columns = List.generate(
-      crossAxisCount,
-      (_) => [],
-    );
-    for (int i = 0; i < filteredOrders.length; i++) {
-      columns[i % crossAxisCount].add(filteredOrders[i]);
-    }
-
-    // Build the columns widgets list
-    List<Widget> columnWidgets = [];
-    for (int i = 0; i < columns.length; i++) {
-      final colOrders = columns[i];
-      final colWidget = SizedBox(
-        width: cardWidth,
+      child: SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            for (int j = 0; j < colOrders.length; j++) ...[
-              if (j > 0) const SizedBox(height: 16),
-              (() {
-                final order = colOrders[j];
-                final isThisKotZoomed =
-                    isZoomedOut &&
-                    zoomedKotIds.contains(order['id']?.toString());
-                final currentCardHeight =
-                    isThisKotZoomed ? (cardHeight * 2 + 16) : cardHeight;
-                return SizedBox(
-                  width: cardWidth,
-                  height: currentCardHeight,
-                  child: _buildOrderCard(order, orderProvider),
-                );
-              })(),
-            ],
+
+            // ====================================================
+            // DRAWER HEADER
+            // ====================================================
+
+            Container(
+              height: 65,
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+              ),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                border: Border(
+                  bottom: BorderSide(
+                    color: Color(0xffE4E7EC),
+                    width: 1,
+                  ),
+                ),
+              ),
+
+              child: Row(
+                children: [
+
+                  // PINAKA LOGO
+                  Expanded(
+                    child: Image.asset(
+                      'assets/pinaka.png',
+                      height: 42,
+                      fit: BoxFit.contain,
+                      alignment: Alignment.centerLeft,
+                      errorBuilder: (
+                          context,
+                          error,
+                          stackTrace,
+                          ) {
+                        return const Text(
+                          'PINAKA',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xff2F4376),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+
+                  // CLOSE BUTTON
+                  InkWell(
+                    onTap: () {
+                      Navigator.of(context).pop();
+                    },
+
+                    borderRadius:
+                    BorderRadius.circular(20),
+
+                    child: const Padding(
+                      padding: EdgeInsets.all(5),
+
+                      child: Icon(
+                        Icons.chevron_left,
+                        size: 26,
+                        color: Color(0xff667085),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ====================================================
+            // MENU ITEMS
+            // ====================================================
+
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(
+                  10,
+                  12,
+                  10,
+                  10,
+                ),
+
+                child: Column(
+                  children: [
+
+                    // ==================================================
+                    // KDS DASHBOARD
+                    // ==================================================
+
+                    _buildDrawerMenuItem(
+                      title: 'KDS Dashboard',
+                      icon: Icons.grid_view_rounded,
+                      isSelected: true,
+
+                      onTap: () {
+                        Navigator.of(context).pop();
+                      },
+                    ),
+
+                    const SizedBox(height: 7),
+
+                    // ==================================================
+                    // SELECT ITEM / CATEGORY
+                    // ==================================================
+
+                    _buildDrawerMenuItem(
+                      title: 'Select Item / Category',
+                      icon: Icons.format_list_bulleted,
+
+                      onTap: () {
+                        Navigator.of(context).pop();
+
+                        // Add navigation here
+                      },
+                    ),
+
+                    const SizedBox(height: 7),
+
+                    // ==================================================
+                    // STOCK
+                    // ==================================================
+
+                    _buildDrawerMenuItem(
+                      title: 'Stock',
+                      icon: Icons.inventory_2_outlined,
+
+                      onTap: () {
+                        // Close drawer first
+                        Navigator.of(context).pop();
+
+                        // Navigate to Stock Screen
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => StockScreen(
+                              token: widget.token,
+                              restaurantId: widget.restaurantId,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 7),
+
+                    // ==================================================
+                    // RECALL
+                    // ==================================================
+
+                    _buildDrawerMenuItem(
+                      title: 'Recall',
+                      icon: Icons.refresh,
+
+                      onTap: () {
+                        Navigator.of(context).pop();
+
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                CompletedOrdersScreen(
+                                  token: widget.token,
+                                  restaurantId:
+                                  widget.restaurantId,
+                                ),
+                          ),
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 7),
+
+                    // ==================================================
+                    // SETTINGS
+                    // ==================================================
+
+                    _buildDrawerMenuItem(
+                      title: 'Settings',
+                      icon: Icons.settings_outlined,
+
+                      onTap: () {
+                        Navigator.of(context).pop();
+
+                        widget.onOpenSettings?.call();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // ====================================================
+            // LOGOUT
+            // ====================================================
+
+            _buildDrawerLogout(),
           ],
         ),
+      ),
+    );
+  }
+  Widget _buildDrawerLogout() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        10,
+        10,
+        10,
+        15,
+      ),
+      child: InkWell(
+        onTap: () async {
+          // ==================================================
+          // CLOSE DRAWER
+          // ==================================================
+
+          Navigator.of(context).pop();
+
+          // ==================================================
+          // GET STORE DETAILS BEFORE LOGOUT
+          // ==================================================
+
+          final prefs =
+          await SharedPreferences.getInstance();
+
+          final storeBaseUrl =
+              prefs.getString('store_base_url') ?? '';
+
+          final storeName =
+              prefs.getString('store_name') ?? '';
+
+          final storeId =
+              prefs.getString('store_id') ?? '';
+
+          // ==================================================
+          // REMOVE EMPLOYEE LOGIN SESSION
+          // ==================================================
+
+          await prefs.remove('token');
+          await prefs.remove('auth_token');
+          await prefs.remove('user_id');
+          await prefs.remove('employee_name');
+          await prefs.remove('display_name');
+          await prefs.remove('role');
+          await prefs.remove('emp_login_pin');
+          await prefs.remove('emp_login_pin_str');
+
+          if (!mounted) return;
+
+          // ==================================================
+          // GO TO EMPLOYEE LOGIN
+          // ==================================================
+
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (context) => EmployeeLoginScreen(
+                storeBaseUrl: storeBaseUrl,
+                storeName: storeName,
+                storeId: storeId,
+
+                // ==================================================
+                // AFTER SUCCESSFUL PIN LOGIN
+                // ==================================================
+
+                onLoginSuccess: (config) {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          KitchenDashboardScreen(
+                            token: config.apiToken,
+                            restaurantId:
+                            int.tryParse(
+                              config.restaurantId,
+                            ) ??
+                                0,
+                          ),
+                    ),
+                        (route) => false,
+                  );
+                },
+              ),
+            ),
+                (route) => false,
+          );
+        },
+
+        borderRadius: BorderRadius.circular(8),
+
+        child: Container(
+          height: 44,
+          width: double.infinity,
+
+          decoration: BoxDecoration(
+            color: const Color(0xffffefec),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: const Color(0xffffa69b),
+              width: 0.8,
+            ),
+          ),
+
+          child: const Row(
+            mainAxisAlignment:
+            MainAxisAlignment.center,
+
+            children: [
+
+              Icon(
+                Icons.logout,
+                size: 17,
+                color: Color(0xffff4f3d),
+              ),
+
+              SizedBox(width: 7),
+
+              Text(
+                'Logout',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight:
+                  FontWeight.w600,
+                  color:
+                  Color(0xffff4f3d),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  Widget _buildDrawerMenuItem({
+    required String title,
+    required IconData icon,
+    required VoidCallback onTap,
+    bool isSelected = false,
+  }) {
+    return InkWell(
+      onTap: onTap,
+
+      borderRadius:
+      BorderRadius.circular(8),
+
+      child: Container(
+        height: 44,
+        width: double.infinity,
+
+        padding:
+        const EdgeInsets.symmetric(
+          horizontal: 13,
+        ),
+
+        decoration: BoxDecoration(
+          color: isSelected
+              ? const Color(0xffff5b4f)
+              : Colors.transparent,
+
+          borderRadius:
+          BorderRadius.circular(8),
+
+          boxShadow: isSelected
+              ? const [
+            BoxShadow(
+              color: Color(0x20000000),
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ]
+              : null,
+        ),
+
+        child: Row(
+          children: [
+
+            Icon(
+              icon,
+              size: 19,
+
+              color: isSelected
+                  ? Colors.white
+                  : const Color(0xff64748B),
+            ),
+
+            const SizedBox(width: 12),
+
+            Expanded(
+              child: Text(
+                title,
+
+                maxLines: 1,
+
+                overflow:
+                TextOverflow.ellipsis,
+
+                style: TextStyle(
+                  fontSize: 13,
+
+                  fontWeight: isSelected
+                      ? FontWeight.w700
+                      : FontWeight.w500,
+
+                  color: isSelected
+                      ? Colors.white
+                      : const Color(
+                    0xff1E293B,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+
+  // ---------------------------------------------------------------------------
+  // PENDING + ACTIVE KOT DASHBOARD
+  // Matches the supplied reference image:
+  //   LEFT  = ITEM QUEUE
+  //   RIGHT = ACTIVE KOT'S
+  // ---------------------------------------------------------------------------
+  Widget _buildPendingBody(List<Map<String, dynamic>> filteredOrders,
+      OrderProvider orderProvider,) {
+    // Item Queue must aggregate every currently active KOT, not only Pending.
+    // This keeps Pending + Preparing + Ready items visible in the queue.
+    final itemQueueOrders = <Map<String, dynamic>>[
+      ...orderProvider.pendingOrders,
+      ...orderProvider.preparingOrders,
+      ...orderProvider.readyOrders,
+    ];
+
+    debugPrint('========== ITEM QUEUE SOURCE ==========');
+    debugPrint('Pending KOTs   : ${orderProvider.pendingOrders.length}');
+    debugPrint('Preparing KOTs : ${orderProvider.preparingOrders.length}');
+    debugPrint('Ready KOTs     : ${orderProvider.readyOrders.length}');
+    debugPrint('Queue KOTs     : ${itemQueueOrders.length}');
+    for (final order in itemQueueOrders) {
+      final queueItems = _getOrderItems(order);
+      debugPrint(
+        'KOT ${order['kotNo'] ?? order['kot_number'] ?? order['kotNumber']}: '
+            '${queueItems.length} items',
       );
-      columnWidgets.add(colWidget);
-      if (i < columns.length - 1) {
-        columnWidgets.add(const SizedBox(width: 16));
+    }
+    debugPrint('========================================');
+
+    // A freshly printed KOT is initially Pending. The old version only
+    // displayed Preparing + Ready orders, so Pending KOTs were invisible.
+    // Display Pending + Preparing + Ready and de-duplicate by KOT id.
+    final displayOrders = <Map<String, dynamic>>[];
+    final seenKotIds = <String>{};
+
+    final allKots = <Map<String, dynamic>>[
+      ...orderProvider.pendingOrders,
+      ...orderProvider.preparingOrders,
+      ...orderProvider.readyOrders,
+    ];
+
+    for (final order in allKots) {
+      final kotId = order['id']?.toString() ?? '';
+      final status = order['status']?.toString().toLowerCase() ?? '';
+
+      if (status == 'cancelled' ||
+          status == 'cancel' ||
+          status == 'served' ||
+          status == 'completed') {
+        continue;
+      }
+
+      final uniqueKey = kotId.isNotEmpty
+          ? kotId
+          : '${order['kotNo']}_${order['parentOrderId']}';
+
+      if (seenKotIds.add(uniqueKey)) {
+        displayOrders.add(order);
       }
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xffe2e8f0)),
-      ),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: SizedBox(
-              height: 52,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    "New KOT's(${filteredOrders.length.toString().padLeft(2, '0')})",
-                    style: GoogleFonts.montserrat(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xff1E293B),
-                    ),
-                  ),
-                  const Spacer(),
-                  _filterButtonGroup(),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 2),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Column(
-                children: [
-                  Expanded(
-                    child:
-                        filteredOrders.isEmpty
-                            ? Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.receipt_long,
-                                    size: 64,
-                                    color: Colors.grey.shade400,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    orderProvider.connectionState ==
-                                            KdsConnectionState.connected
-                                        ? 'Waiting for orders from POS...'
-                                        : 'Connecting to POS...',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      color: Colors.grey.shade600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                            : SingleChildScrollView(
-                              scrollDirection: Axis.vertical,
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: columnWidgets,
-                              ),
-                            ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+    final filteredActiveOrders = displayOrders.where((order) {
+      final type = order['type']?.toString().toLowerCase() ?? '';
 
-  Widget _filterButtonGroup() {
+      switch (selectedFilter) {
+        case OrderTypeFilter.all:
+          return true;
+        case OrderTypeFilter.dineIn:
+          return type.contains('dine');
+        case OrderTypeFilter.takeaway:
+          return type.contains('take');
+        case OrderTypeFilter.online:
+          return type.contains('online');
+      }
+    }).toList();
+
     return Container(
-      width: 510,
-      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xffe2e8f0), width: 1),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x35595858),
-            offset: Offset(0, 4),
-            blurRadius: 10,
-            spreadRadius: 0,
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _filterButton(
-              title: "All",
-              selected: selectedFilter == OrderTypeFilter.all,
-              icon: Icons.grid_view,
-              iconColor: const Color(0xff2F4376),
-              onTap: () {
-                setState(() {
-                  selectedFilter = OrderTypeFilter.all;
-                });
-              },
-            ),
-          ),
-          Expanded(
-            child: _filterButton(
-              title: "Dine-In",
-              selected: selectedFilter == OrderTypeFilter.dineIn,
-              icon: Icons.restaurant,
-              iconColor: Colors.orange,
-              onTap: () {
-                setState(() {
-                  selectedFilter = OrderTypeFilter.dineIn;
-                });
-              },
-            ),
-          ),
-          Expanded(
-            child: _filterButton(
-              title: "Takeaways",
-              selected: selectedFilter == OrderTypeFilter.takeaway,
-              icon: Icons.shopping_bag_outlined,
-              iconColor: Colors.blueGrey,
-              onTap: () {
-                setState(() {
-                  selectedFilter = OrderTypeFilter.takeaway;
-                });
-              },
-            ),
-          ),
-          Expanded(
-            child: _filterButton(
-              title: "Online Orders",
-              selected: selectedFilter == OrderTypeFilter.online,
-              icon: Icons.delivery_dining,
-              iconColor: Colors.green,
-              onTap: () {
-                setState(() {
-                  selectedFilter = OrderTypeFilter.online;
-                });
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _filterButton({
-    required String title,
-    required bool selected,
-    required VoidCallback onTap,
-    IconData? icon,
-    Color? iconColor,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 2),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? const Color(0xff2F4376) : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: const Color(0xffE4E7EC),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (icon != null)
-              Icon(icon, size: 16, color: selected ? Colors.white : iconColor),
-            if (icon != null) const SizedBox(width: 4),
-            Text(
-              title,
-              style: TextStyle(
-                color: selected ? Colors.white : Colors.black87,
-                fontWeight: FontWeight.w500,
-                fontSize: 12,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+
+          // ================================================================
+          // LEFT PANEL - ITEM QUEUE
+          // 40% WIDTH
+          // ================================================================
+          Expanded(
+            flex: 4,
+            child: _buildItemQueuePanel(
+              itemQueueOrders,
+              orderProvider,
+            ),
+          ),
+
+          // ================================================================
+          // CENTER DIVIDER
+          // ================================================================
+          Container(
+            width: 1,
+            margin: const EdgeInsets.symmetric(
+              vertical: 14,
+            ),
+            color: const Color(0xffD0D5DD),
+          ),
+
+          // ================================================================
+          // RIGHT PANEL - ACTIVE KOT'S
+          // 60% WIDTH
+          // ================================================================
+          Expanded(
+            flex: 6,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                12,
+                12,
+                12,
+                8,
+              ),
+              child: Column(
+                crossAxisAlignment:
+                CrossAxisAlignment.start,
+                children: [
+
+                  // ----------------------------------------------------------
+                  // ACTIVE HEADER
+                  // ----------------------------------------------------------
+                  _buildActiveHeader(
+                    orderProvider,
+                    displayOrders,
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  // ----------------------------------------------------------
+                  // ACTIVE KOT GRID
+                  // ----------------------------------------------------------
+                  Expanded(
+                    child: filteredActiveOrders.isEmpty
+                        ? _buildNoActiveKots()
+                        : GridView.builder(
+                      padding: const EdgeInsets.only(
+                        left: 0,
+                        right: 0,
+                        bottom: 4,
+                      ),
+
+                      gridDelegate:
+                      const SliverGridDelegateWithFixedCrossAxisCount(
+                        // Exactly 2 KOT cards per row
+                        crossAxisCount: 2,
+
+                        // Horizontal spacing
+                        crossAxisSpacing: 8,
+
+                        // Vertical spacing
+                        mainAxisSpacing: 8,
+
+                        // Increased KOT card height
+                        mainAxisExtent: 300,
+                      ),
+
+                      itemCount: filteredActiveOrders.length,
+
+                      itemBuilder: (context, index) {
+                        return _buildReferenceKotCard(
+                          filteredActiveOrders[index],
+                          orderProvider,
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildOrderCard(
-    Map<String, dynamic> order,
-    OrderProvider orderProvider,
-  ) {
-    final kotId = order['id']?.toString() ?? '';
-    final orderId = order['parentOrderId']?.toString() ?? '';
-    final kotNo = order['kotNo']?.toString() ?? '';
-    final orderType = order['type']?.toString() ?? '';
-    final items = order['items'] as List<dynamic>? ?? [];
-    selectedItemsMap.putIfAbsent(
-      kotId,
-      () => List.generate(items.length, (_) => false),
+  // ---------------------------------------------------------------------------
+  // ITEM QUEUE
+  // ---------------------------------------------------------------------------
+  Widget _buildItemQueuePanel(
+      List<Map<String, dynamic>> orders,
+      OrderProvider orderProvider,
+      ) {
+    final totalItems = _getTotalItems(orders);
+
+    final groups = _groupPendingItems(
+      orders,
+      productCategoryMap,
+      productCategoryNameMap,
     );
 
-    final selected = selectedItemsMap[kotId]!;
+    final entries = groups.entries.toList();
 
-    // String? selectedCancelItemKotId;
-    // final Map<String, List<bool>> selectedItemsMap = {};
-    final tableNo =
-        order['tableName']?.toString() ?? order['tableNo']?.toString() ?? '';
+    // ==========================================================
+    // BUILD VEG / NON-VEG MAP
+    //
+    // true  = Veg
+    // false = Non-Veg
+    // null  = No icon
+    // ==========================================================
 
-    String zoneName = order['zoneName']?.toString() ?? '';
+    final Map<String, bool?> itemVegMap = {};
 
-    if (zoneName.isEmpty) {
-      final location = order['locationLabel']?.toString() ?? '';
+    for (final order in orders) {
+      final rawItems = _getOrderItems(order);
 
-      if (location.contains(' - ')) {
-        final parts = location.split(' - ');
+      if (rawItems.isEmpty) {
+        continue;
+      }
 
-        if (parts.length >= 2) {
-          zoneName = parts[1];
+      for (final rawItem in rawItems) {
+        if (rawItem is! Map) {
+          continue;
+        }
 
-          if (zoneName.contains('-')) {
-            zoneName = zoneName.substring(0, zoneName.lastIndexOf('-'));
-          }
+        final item = Map<String, dynamic>.from(rawItem);
+
+        final name =
+        item['item_name']?.toString().trim().isNotEmpty == true
+            ? item['item_name'].toString().trim()
+            : item['name']?.toString().trim() ?? '';
+
+        if (name.isEmpty) {
+          continue;
+        }
+
+        // ========================================================
+        // DO NOT USE ?? false HERE
+        //
+        // Backend:
+        // true  -> Veg
+        // false -> Non-Veg
+        // null  -> No icon
+        // ========================================================
+        final dynamic vegValue;
+
+        if (item.containsKey('is_veg')) {
+          // IMPORTANT:
+          // If backend sends is_veg: null,
+          // preserve null. Do NOT fallback.
+          vegValue = item['is_veg'];
+        } else if (item.containsKey('isVeg')) {
+          vegValue = item['isVeg'];
+        } else if (item.containsKey('is_vegetarian')) {
+          vegValue = item['is_vegetarian'];
+        } else if (item.containsKey('veg')) {
+          vegValue = item['veg'];
+        } else {
+          vegValue = null;
+        }
+
+        bool? isVeg;
+
+        if (vegValue == null) {
+          // Backend explicitly says NULL
+          // => no veg/non-veg icon
+          isVeg = null;
+        } else if (
+        vegValue == true ||
+            vegValue == 1 ||
+            vegValue
+                .toString()
+                .trim()
+                .toLowerCase() ==
+                'true' ||
+            vegValue.toString().trim() == '1') {
+          // Veg
+          isVeg = true;
+        } else if (
+        vegValue == false ||
+            vegValue == 0 ||
+            vegValue
+                .toString()
+                .trim()
+                .toLowerCase() ==
+                'false' ||
+            vegValue.toString().trim() == '0') {
+          // Non-Veg
+          isVeg = false;
+        } else {
+          // Unknown backend value
+          // => don't display icon
+          isVeg = null;
+        }
+
+        itemVegMap[name] = isVeg;
+      }
+    }
+
+    debugPrint('========== ITEM QUEUE ==========');
+    debugPrint('TOTAL ITEMS: $totalItems');
+    debugPrint('CATEGORIES: ${entries.length}');
+    debugPrint('VEG MAP: $itemVegMap');
+    debugPrint('================================');
+
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(
+        14,
+        16,
+        14,
+        10,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+
+          // ==========================================================
+          // ITEM QUEUE TITLE
+          // ==========================================================
+
+          Text(
+            'ITEM QUEUE',
+            style: GoogleFonts.montserrat(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xff172033),
+            ),
+          ),
+
+          const SizedBox(height: 2),
+
+          // ==========================================================
+          // TOTAL ITEMS
+          // ==========================================================
+
+          Text(
+            '$totalItems items pending across all KOTs',
+            style: GoogleFonts.montserrat(
+              fontSize: 9,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xff667085),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // ==========================================================
+          // CATEGORY CARDS
+          // ==========================================================
+
+          Expanded(
+            child: entries.isEmpty
+                ? Center(
+              child: Text(
+                orderProvider.connectionState ==
+                    KdsConnectionState.connected
+                    ? 'No pending items'
+                    : 'Connecting to POS...',
+                style: GoogleFonts.montserrat(
+                  fontSize: 10,
+                  color: const Color(0xff98A2B3),
+                ),
+              ),
+            )
+                : LayoutBuilder(
+              builder: (context, constraints) {
+                const double spacing = 10;
+
+                final cardWidth =
+                    (constraints.maxWidth - spacing) / 2;
+
+                return SingleChildScrollView(
+                  physics:
+                  const AlwaysScrollableScrollPhysics(),
+                  child: Wrap(
+                    spacing: spacing,
+                    runSpacing: 10,
+                    children: List.generate(
+                      entries.length,
+                          (index) {
+                        final entry = entries[index];
+
+                        return SizedBox(
+                          width: cardWidth,
+                          child: _buildQueueCategory(
+                            entry.key,
+                            entry.value,
+                            index,
+                            itemVegMap,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQueueCategory(
+      String category,
+      Map<String, int> items,
+      int index,
+      Map<String, bool?> itemVegMap,
+      ) {
+    final categoryColor = _queueColor(index);
+
+    // ==========================================================
+    // CATEGORY TOTAL
+    // ==========================================================
+
+    final categoryTotal = items.values.fold<int>(
+      0,
+          (sum, quantity) => sum + quantity,
+    );
+
+    // ==========================================================
+    // LIGHT CATEGORY BADGE COLOR
+    // ==========================================================
+
+    final badgeColor = categoryColor.withOpacity(0.10);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(
+        10,
+        9,
+        10,
+        9,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(7),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x18000000),
+            blurRadius: 5,
+            offset: Offset(0, 2),
+          ),
+        ],
+        border: Border.all(
+          color: const Color(0xffE4E7EC),
+          width: .7,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+
+          // ========================================================
+          // CATEGORY HEADER
+          // ========================================================
+
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+
+              Expanded(
+                child: Text(
+                  category.toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.montserrat(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: categoryColor,
+                  ),
+                ),
+              ),
+
+              const SizedBox(width: 5),
+
+              // ====================================================
+              // CATEGORY TOTAL
+              // ====================================================
+
+              Container(
+                constraints: const BoxConstraints(
+                  minWidth: 26,
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 6,
+                  vertical: 3,
+                ),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: badgeColor,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  '$categoryTotal',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.montserrat(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: categoryColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 7),
+
+          // ========================================================
+          // ITEMS
+          // ========================================================
+
+          ...items.entries.map(
+                (entry) {
+              final itemName = entry.key;
+              final quantity = entry.value;
+
+              // ==================================================
+              // IMPORTANT
+              //
+              // true  = Veg
+              // false = Non-Veg
+              // null  = Don't show icon
+              // ==================================================
+
+              final bool? isVeg =
+              itemVegMap[itemName];
+
+              return Padding(
+                padding: const EdgeInsets.only(
+                  bottom: 6,
+                ),
+                child: Row(
+                  crossAxisAlignment:
+                  CrossAxisAlignment.center,
+                  children: [
+
+                    // ==================================================
+                    // VEG / NON-VEG ICON
+                    //
+                    // Only display when backend provided
+                    // true or false.
+                    //
+                    // null = NO ICON
+                    // ==================================================
+
+                    if (isVeg != null)
+                      vegNonVegIcon(isVeg),
+
+                    // Add spacing only if icon exists
+                    if (isVeg != null)
+                      const SizedBox(width: 7),
+
+                    // ==================================================
+                    // ITEM NAME
+                    // ==================================================
+
+                    Expanded(
+                      child: Text(
+                        itemName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.montserrat(
+                          fontSize: 12,
+                          height: 1.0,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xff344054),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 5),
+
+                    // ==================================================
+                    // QUANTITY
+                    // ==================================================
+
+                    Text(
+                      '$quantity',
+                      textAlign: TextAlign.right,
+                      style: GoogleFonts.montserrat(
+                        fontSize: 12,
+                        height: 1.0,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xff172033),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+// ============================================================================
+// QUEUE CATEGORY COLORS
+// ============================================================================
+
+  Color _queueColor(int index) {
+    switch (index) {
+      case 0:
+        return const Color(0xffF04438); // STARTERS
+      case 1:
+        return const Color(0xff009688); // MAIN COURSE
+      case 2:
+        return const Color(0xff2E8B3C); // BREADS
+      default:
+        return const Color(0xff475467);
+    }
+  }
+  // ==========================================================
+// BUILD PRODUCT CATEGORY MAP
+// ==========================================================
+
+  void _buildProductCategoryMap(dynamic categoryProducts) {
+    productCategoryMap.clear();
+    productCategoryNameMap.clear();
+
+    if (categoryProducts is! List) {
+      debugPrint(
+        'category_products is not a List: $categoryProducts',
+      );
+
+      _categoryMapLoaded = false;
+
+      if (mounted) {
+        setState(() {});
+      }
+
+      return;
+    }
+
+    for (final categoryData in categoryProducts) {
+      if (categoryData is! Map) {
+        continue;
+      }
+
+      final category =
+          categoryData['category_name']
+              ?.toString()
+              .trim() ??
+              categoryData['categoryName']
+                  ?.toString()
+                  .trim() ??
+              '';
+
+      if (category.isEmpty) {
+        continue;
+      }
+
+      final products = categoryData['products'];
+
+      if (products is! List) {
+        continue;
+      }
+
+      for (final product in products) {
+        if (product is! Map) {
+          continue;
+        }
+
+        final productId =
+            product['product_id']
+                ?.toString()
+                .trim() ??
+                product['productId']
+                    ?.toString()
+                    .trim() ??
+                '';
+
+        final productName =
+            product['item_name']
+                ?.toString()
+                .trim() ??
+                product['name']
+                    ?.toString()
+                    .trim() ??
+                product['product_name']
+                    ?.toString()
+                    .trim() ??
+                '';
+
+        if (productId.isNotEmpty) {
+          productCategoryMap[productId] = category;
+        }
+
+        if (productName.isNotEmpty) {
+          productCategoryNameMap[
+          _normalizeProductName(productName)
+          ] = category;
         }
       }
     }
 
-    // final items = order['items'] as List<dynamic>? ?? [];
+    _categoryMapLoaded = true;
 
-    final isDineIn = orderType.toLowerCase().contains('dine');
-    final isCardZoomedOut = isZoomedOut && !zoomedKotIds.contains(kotId);
+    debugPrint(
+      'CATEGORY MAP LOADED: '
+          '${productCategoryMap.length} products',
+    );
 
-    return Stack(
+    // IMPORTANT:
+    // Rebuild Item Queue after category map is ready.
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+// ============================================================================
+// GROUP KOT ITEMS BY CATEGORY
+// ============================================================================
+
+  Map<String, Map<String, int>> _groupPendingItems(
+      List<Map<String, dynamic>> orders,
+      Map<String, String> productCategoryMap,
+      Map<String, String> productCategoryNameMap,
+      ) {
+    final result = <String, Map<String, int>>{};
+
+    for (final order in orders) {
+      // ==========================================================
+      // KOT ITEMS
+      // ==========================================================
+
+      final rawItems = _getOrderItems(order);
+
+      if (rawItems.isEmpty) {
+        debugPrint(
+          'NO KOT ITEMS FOUND FOR ORDER: ${order['order_id']}',
+        );
+        continue;
+      }
+
+      for (final rawItem in rawItems) {
+        if (rawItem is! Map) {
+          continue;
+        }
+
+        final item =
+        Map<String, dynamic>.from(rawItem);
+
+        // ==========================================================
+        // STATUS
+        // ==========================================================
+
+        final status =
+            item['status']
+                ?.toString()
+                .trim()
+                .toLowerCase() ??
+                '';
+
+        if (status == 'cancelled' ||
+            status == 'cancel') {
+          continue;
+        }
+
+        // ==========================================================
+        // ITEM NAME
+        // ==========================================================
+
+        final itemName =
+            item['item_name']
+                ?.toString()
+                .trim() ??
+                '';
+
+        final name =
+        itemName.isNotEmpty
+            ? itemName
+            : (
+            item['name']
+                ?.toString()
+                .trim()
+                .isNotEmpty ==
+                true
+                ? item['name']
+                .toString()
+                .trim()
+                : (
+                item['itemName']
+                    ?.toString()
+                    .trim()
+                    .isNotEmpty ==
+                    true
+                    ? item['itemName']
+                    .toString()
+                    .trim()
+                    : 'Item'
+            )
+        );
+
+        // ==========================================================
+        // PRODUCT ID
+        // ==========================================================
+
+        final productId =
+            item['product_id']
+                ?.toString()
+                .trim() ??
+                item['productId']
+                    ?.toString()
+                    .trim() ??
+                '';
+
+        // ==========================================================
+        // CATEGORY
+        //
+        // PRIORITY:
+        //
+        // 1. category_name from API
+        // 2. categoryName
+        // 3. product ID map
+        // 4. PRODUCT NAME map   <-- IMPORTANT
+        // 5. section
+        // 6. category
+        // 7. OTHER
+        // ==========================================================
+
+        String category = '';
+
+        // ----------------------------------------------------------
+        // 1. API category_name
+        // ----------------------------------------------------------
+
+        final apiCategory =
+            item['category_name']
+                ?.toString()
+                .trim() ??
+                '';
+
+        // Don't accept OTHER from API as the final answer yet.
+        if (apiCategory.isNotEmpty &&
+            apiCategory.toUpperCase() != 'OTHER') {
+          category = apiCategory;
+        }
+
+        // ----------------------------------------------------------
+        // 2. categoryName
+        // ----------------------------------------------------------
+
+        if (category.isEmpty) {
+          final categoryName =
+              item['categoryName']
+                  ?.toString()
+                  .trim() ??
+                  '';
+
+          if (categoryName.isNotEmpty &&
+              categoryName.toUpperCase() != 'OTHER') {
+            category = categoryName;
+          }
+        }
+
+        // ----------------------------------------------------------
+        // 3. PRODUCT ID → CATEGORY
+        // ----------------------------------------------------------
+
+        if (category.isEmpty && productId.isNotEmpty) {
+          category = productCategoryMap[productId] ?? '';
+        }
+
+        // ----------------------------------------------------------
+        // 4. PRODUCT NAME → CATEGORY
+        // ----------------------------------------------------------
+
+        if (category.isEmpty && name.isNotEmpty) {
+
+          // First try exact product name
+          category =
+              productCategoryNameMap[
+              name.toLowerCase()] ??
+                  '';
+        }
+
+// ----------------------------------------------------------
+// 4A. NORMALIZED PRODUCT NAME → CATEGORY
+// ----------------------------------------------------------
+// Example:
+//
+// Fish Biryani - Jumbo
+// Fish Biryani - Single
+// Fish Biryani - Family
+// Fish Biryani - full
+//
+// All become:
+//
+// fish biryani
+//
+// Then lookup:
+//
+// fish biryani → Main Course
+// ----------------------------------------------------------
+
+        if (category.isEmpty && name.isNotEmpty) {
+
+          final normalizedName =
+          _normalizeProductName(name);
+
+          category =
+              productCategoryNameMap[
+              normalizedName] ??
+                  '';
+
+          debugPrint(
+            'NORMALIZED NAME : $normalizedName',
+          );
+
+          debugPrint(
+            'NORMALIZED CATEGORY : $category',
+          );
+        }
+
+        // ----------------------------------------------------------
+        // 4. PRODUCT NAME → CATEGORY
+        // ----------------------------------------------------------
+        // This fixes:
+        //
+        // KOT:
+        // 2043 -> Fish Biryani - Single
+        //
+        // Category API:
+        // 1908 -> Fish Biryani - Single -> Main Course
+        // ----------------------------------------------------------
+
+        if (category.isEmpty &&
+            name.isNotEmpty) {
+          category =
+              productCategoryNameMap[
+              name.toLowerCase()] ??
+                  '';
+        }
+
+        // ----------------------------------------------------------
+        // 5. SECTION MAP
+        // ----------------------------------------------------------
+
+        if (category.isEmpty) {
+          final section =
+          item['section'];
+
+          if (section is Map) {
+            category =
+                section['name']
+                    ?.toString()
+                    .trim() ??
+                    section['category_name']
+                        ?.toString()
+                        .trim() ??
+                    '';
+          }
+        }
+
+        // ----------------------------------------------------------
+        // 6. CATEGORY STRING
+        // ----------------------------------------------------------
+
+        if (category.isEmpty) {
+          final rawCategory =
+          item['category'];
+
+          if (rawCategory is String) {
+            category =
+                rawCategory.trim();
+          }
+        }
+
+        // ----------------------------------------------------------
+        // 7. FINAL FALLBACK
+        // ----------------------------------------------------------
+
+        if (category.isEmpty ||
+            category.toUpperCase() == 'OTHER') {
+          category = 'OTHER';
+        }
+
+        // ==========================================================
+        // DEBUG
+        // ==========================================================
+
+        debugPrint(
+            '========== QUEUE CATEGORY DEBUG =========='
+        );
+
+        debugPrint(
+          'ITEM          : $name',
+        );
+
+        debugPrint(
+          'PRODUCT ID    : $productId',
+        );
+
+        debugPrint(
+          'API CATEGORY  : ${item['category_name']}',
+        );
+
+        debugPrint(
+          'ID MAP        : '
+              '${productCategoryMap[productId]}',
+        );
+
+        debugPrint(
+          'NAME MAP      : '
+              '${productCategoryNameMap[name.toLowerCase()]}',
+        );
+
+        debugPrint(
+          'FINAL CATEGORY: $category',
+        );
+
+        debugPrint(
+            '=========================================='
+        );
+
+        // ==========================================================
+        // QUANTITY
+        // ==========================================================
+
+        final quantity = _toInt(
+          item['quantity'] ??
+              item['qty'] ??
+              1,
+        );
+
+        if (quantity <= 0) {
+          continue;
+        }
+
+        // ==========================================================
+        // CREATE CATEGORY
+        // ==========================================================
+
+        result.putIfAbsent(
+          category,
+              () => <String, int>{},
+        );
+
+        // ==========================================================
+        // ADD ITEM
+        // ==========================================================
+
+        result[category]![name] =
+            (result[category]![name] ?? 0) +
+                quantity;
+      }
+    }
+
+    // ==========================================================
+    // FINAL DEBUG
+    // ==========================================================
+
+    debugPrint(
+        '========== GROUPED ITEM QUEUE =========='
+    );
+
+    result.forEach(
+          (category, items) {
+        debugPrint(
+          '$category => $items',
+        );
+      },
+    );
+
+    debugPrint(
+        '========================================'
+    );
+
+    return result;
+  }
+// ============================================================================
+// TOTAL PENDING ITEMS
+// ============================================================================
+
+  int _getTotalItems(
+      List<Map<String, dynamic>> orders,
+      ) {
+    var total = 0;
+
+    for (final order in orders) {
+      final rawItems = _getOrderItems(order);
+
+      if (rawItems.isEmpty) {
+        continue;
+      }
+
+      for (final rawItem in rawItems) {
+        if (rawItem is! Map) {
+          continue;
+        }
+
+        final item = Map<String, dynamic>.from(
+          rawItem,
+        );
+
+        // ==========================================================
+        // STATUS
+        // ==========================================================
+        final status = item['status']
+            ?.toString()
+            .trim()
+            .toLowerCase() ??
+            '';
+
+        if (status == 'cancelled' ||
+            status == 'cancel') {
+          continue;
+        }
+
+        // ==========================================================
+        // QUANTITY
+        // ==========================================================
+        final quantity = _toInt(
+          item['quantity'] ??
+              item['qty'] ??
+              1,
+        );
+
+        if (quantity > 0) {
+          total += quantity;
+        }
+      }
+    }
+
+    return total;
+  }
+
+
+// ============================================================================
+// SAFE INT CONVERSION
+// ============================================================================
+
+  int _toInt(dynamic value) {
+    if (value is int) {
+      return value;
+    }
+
+    if (value is double) {
+      return value.round();
+    }
+
+    if (value is num) {
+      return value.toInt();
+    }
+
+    final parsed = int.tryParse(
+      value?.toString().trim() ?? '',
+    );
+
+    return parsed ?? 1;
+  }
+
+  // ---------------------------------------------------------------------------
+  // ACTIVE HEADER
+  // ---------------------------------------------------------------------------
+  Widget _buildActiveHeader(OrderProvider provider,
+      List<Map<String, dynamic>> activeOrders,) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Container(
-          height: double.infinity,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.grey.shade200, width: 1),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(.08),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "ACTIVE KOT'S",
+              style: GoogleFonts.montserrat(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xff172033),
               ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              /// Solid header bar spanning full width
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: isCardZoomedOut ? 5 : 8,
-                ),
-                decoration: BoxDecoration(
-                  color:
-                      isDineIn
-                          ? const Color(0xffF26B3A)
-                          : const Color(0xff3B73B9),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(9),
-                    topRight: Radius.circular(9),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    // Left segment (Table No and Zone Name) - taking all remaining space
-                    Expanded(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: [
-                          if (tableNo.isNotEmpty) ...[
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: isCardZoomedOut ? 2 : 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                tableNo,
-                                style: TextStyle(
-                                  color:
-                                      isDineIn
-                                          ? const Color(0xffF26B3A)
-                                          : const Color(0xff3B73B9),
-                                  fontSize: isCardZoomedOut ? 9 : 11,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                          ],
-                          Expanded(
-                            child: Text(
-                              zoneName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: isCardZoomedOut ? 11 : 13,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 16),
+            ),
+            const SizedBox(height: 1),
+            Text(
+              "Currently active KOT's",
+              style: GoogleFonts.montserrat(
+                fontSize: 9,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xff667085),
+              ),
+            ),
+          ],
+        ),
+        const Spacer(),
+        _buildReferenceFilter(
+          'All',
+          activeOrders.length,
+          OrderTypeFilter.all,
+          const Color(0xffF04438),
+        ),
+        const SizedBox(width: 4),
+        _buildReferenceFilter(
+          'Dine-In',
+          _countActiveType(activeOrders, 'dine'),
+          OrderTypeFilter.dineIn,
+          const Color(0xffF79009),
+        ),
+        const SizedBox(width: 4),
+        _buildReferenceFilter(
+          'Takeaways',
+          _countActiveType(activeOrders, 'take'),
+          OrderTypeFilter.takeaway,
+          const Color(0xff175CD3),
+        ),
+        const SizedBox(width: 4),
+        _buildReferenceFilter(
+          'Online Orders',
+          _countActiveType(activeOrders, 'online'),
+          OrderTypeFilter.online,
+          const Color(0xff4D8F2F),
+        ),
+      ],
+    );
+  }
 
-                    // Right segment (Order Type Badge & Elapsed Time grouped next to each other)
+  int _countActiveType(List<Map<String, dynamic>> orders,
+      String value,) {
+    return orders.where((order) {
+      return order['type']?.toString().toLowerCase().contains(value) ??
+          false;
+    }).length;
+  }
+
+  Widget _buildReferenceFilter(String title,
+      int count,
+      OrderTypeFilter filter,
+      Color activeColor,) {
+    final selected = selectedFilter == filter;
+
+    return InkWell(
+      onTap: () {
+        setState(() {
+          selectedFilter = filter;
+        });
+      },
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 8,
+          vertical: 5,
+        ),
+        decoration: BoxDecoration(
+          color: selected
+              ? const Color(0xffFFFDFB)
+              : const Color(0xffF9FAFB),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: selected
+                ? const Color(0xffE4E7EC)
+                : const Color(0xffEAECF0),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              title,
+              style: GoogleFonts.montserrat(
+                fontSize: 12,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                color: const Color(0xff475467),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 4,
+                vertical: 2,
+              ),
+              decoration: BoxDecoration(
+                color: selected
+                    ? activeColor
+                    : const Color(0xffE4E7EC),
+                borderRadius: BorderRadius.circular(7),
+              ),
+              child: Text(
+                '$count',
+                style: GoogleFonts.montserrat(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: selected
+                      ? Colors.white
+                      : const Color(0xff667085),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // KOT CARD
+  // ---------------------------------------------------------------------------
+  Widget _buildReferenceKotCard(Map<String, dynamic> order,
+      OrderProvider provider,) {
+    final kotId = order['id']?.toString() ?? '';
+    final orderType = order['type']?.toString() ?? '';
+    final status = order['status']?.toString() ?? 'Pending';
+    final normalizedStatus = status.toLowerCase();
+    final type = orderType.toLowerCase();
+
+    final isDineIn = type.contains('dine');
+    final isTakeaway = type.contains('take');
+    final isOnline = type.contains('online');
+
+    final headerColor = isDineIn
+        ? const Color(0xffF15B24)
+        : isTakeaway
+        ? const Color(0xff0D477A)
+        : isOnline
+        ? const Color(0xff5B9638)
+        : const Color(0xff667085);
+
+    final table = order['tableName']?.toString() ??
+        order['tableNo']?.toString() ??
+        '';
+    final kotNo = order['kotNo']?.toString() ?? '';
+    final parentOrderId = order['parentOrderId']?.toString() ?? '';
+
+    final rawItems = _getOrderItems(order);
+    final List items = rawItems;
+
+    // Same key already used by the existing Ready/Running switches.
+    final switchKey = kotId.isNotEmpty
+        ? kotId
+        : '${kotNo}_$parentOrderId';
+
+    // Cancellation state is kept separately so the existing switch state
+    // and status flow are not changed.
+    final cancelSelections = _getCancelSelectionValues(
+      switchKey,
+      items.length,
+    );
+
+    final isCancelMode = selectedCancelItemKotId == switchKey;
+
+    final cancellableIndexes = <int>[];
+    for (int i = 0; i < items.length; i++) {
+      final raw = items[i];
+      if (raw is Map) {
+        final itemStatus =
+            raw['status']?.toString().trim().toLowerCase() ?? '';
+        if (itemStatus != 'cancelled' && itemStatus != 'cancel') {
+          cancellableIndexes.add(i);
+        }
+      }
+    }
+
+    final selectedCancelCount = cancellableIndexes
+        .where((index) => index < cancelSelections.length && cancelSelections[index])
+        .length;
+
+    final allItemsSelectedForCancel =
+        cancellableIndexes.isNotEmpty &&
+            selectedCancelCount == cancellableIndexes.length;
+    // ==========================================================
+// KOT NOTE
+// ==========================================================
+
+    String kotNote = '';
+
+    for (final rawItem in items) {
+      final note = _getItemNote(rawItem);
+
+      if (note.isNotEmpty) {
+        kotNote = note;
+        break;
+      }
+    }
+
+    debugPrint('========== KOT NOTE ==========');
+    debugPrint('KOT: $kotNo');
+    debugPrint('NOTE: $kotNote');
+    debugPrint('==============================');
+
+    final kotTime = _parseKotTime(order['kotTime']);
+    final time = DateFormat('HH:mm').format(kotTime);
+    final date = DateFormat('hh:mm a').format(kotTime);
+
+    final isNewTableKot = _isNewTableKot(order, normalizedStatus);
+
+    final switchValues = _getKotSwitchValues(
+      switchKey,
+      items,
+    );
+
+    while (switchValues.length < items.length) {
+      switchValues.add(false);
+    }
+
+    final allItemsOn = items.isNotEmpty &&
+        switchValues.length >= items.length &&
+        switchValues.take(items.length).every((value) => value);
+
+    final readyCount = switchValues
+        .take(items.length)
+        .where((value) => value)
+        .length;
+
+    final String buttonText;
+    final Color buttonColor;
+
+    if (allItemsOn || normalizedStatus == 'ready') {
+      buttonText = 'Ready';
+      buttonColor = const Color(0xff5B9638);
+    } else if (normalizedStatus == 'served' ||
+        normalizedStatus == 'completed') {
+      buttonText = 'Served';
+      buttonColor = const Color(0xff667085);
+    } else if (isNewTableKot) {
+      buttonText = 'Food Ready';
+      buttonColor = headerColor;
+    } else {
+      buttonText = 'Running';
+      buttonColor = headerColor;
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(
+          color: headerColor.withOpacity(.70),
+          width: 1,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          // =============================================================
+          // 1. HEADER — reference: about 32 px
+          // =============================================================
+          SizedBox(
+            height: 38,
+            child: Container(
+              color: headerColor,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 9,
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // ==========================================================
+                  // TABLE
+                  // ==========================================================
+                  if (table.isNotEmpty)
                     Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isCardZoomedOut ? 6 : 8,
-                        vertical: isCardZoomedOut ? 2 : 4,
+                      height: 18,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
                       ),
+                      alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        orderType.toUpperCase(),
+                        table,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: isCardZoomedOut ? 8 : 9,
-                          fontWeight: FontWeight.w700,
-                          color:
-                              isDineIn
-                                  ? const Color(0xffF26B3A)
-                                  : const Color(0xff3B73B9),
+                          color: headerColor,
+                          fontSize: 10,
+                          height: 1.0,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ),
-                    if (isZoomedOut) ...[
-                      const SizedBox(width: 12),
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            if (zoomedKotIds.contains(kotId)) {
-                              zoomedKotIds.remove(kotId);
-                            } else {
-                              zoomedKotIds.add(kotId);
-                            }
-                          });
-                        },
-                        child: Icon(
-                          zoomedKotIds.contains(kotId)
-                              ? Icons.close_fullscreen
-                              : Icons.open_in_full,
-                          color: Colors.white,
-                          size: 20,
+
+                  if (table.isNotEmpty)
+                    const SizedBox(width: 5),
+
+                  // ==========================================================
+                  // TIME
+                  // ==========================================================
+                  Container(
+                    height: 18,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                    ),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.access_time_rounded,
+                          size: 10,
+                          color: headerColor,
+                        ),
+
+                        const SizedBox(width: 3),
+
+                        Text(
+                          time,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: headerColor,
+                            fontSize: 10,
+                            height: 1.0,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const Spacer(),
+
+                  // ==========================================================
+                  // ORDER TYPE
+                  // ==========================================================
+                  Container(
+                    height: 18,
+                    constraints: const BoxConstraints(
+                      maxWidth: 100,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                    ),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      orderType.toUpperCase(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: headerColor,
+                        fontSize: 10,
+                        height: 1.0,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // =============================================================
+          // 2. KOT INFO — reference: about 41 px
+          // =============================================================
+          // =============================================================
+// 2. KOT INFO
+// =============================================================
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              10,
+              6,
+              10,
+              5,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+
+                // ==========================================================
+                // KOT NUMBER + READY COUNT
+                // ==========================================================
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+
+                    // KOT NUMBER
+                    Expanded(
+                      child: Text(
+                        'KOT #$kotNo',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.montserrat(
+                          fontSize: 16,
+                          height: 1.0,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xff344054),
                         ),
                       ),
-                    ],
+                    ),
+
+                    // READY COUNT
+                    Text(
+                      '$readyCount/${items.length}',
+                      style: GoogleFonts.montserrat(
+                        fontSize: 14,
+                        height: 1.0,
+                        fontWeight: FontWeight.w800,
+                        color: allItemsOn
+                            ? const Color(0xff5B9638)
+                            : headerColor,
+                      ),
+                    ),
                   ],
                 ),
+
+                const SizedBox(height: 5),
+
+                // ==========================================================
+                // CUSTOMER NAME + TIME
+                // IMPORTANT:
+                // DO NOT DISPLAY parentOrderId
+                // ==========================================================
+                // ==========================================================
+// CAPTAIN + TIME
+// ==========================================================
+                // ==========================================================
+// CAPTAIN + TIME
+// ==========================================================
+                // ==========================================================
+// CAPTAIN + TIME + ITEMS READY — SAME ROW
+// ==========================================================
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // ------------------------------------------------------
+                    // CAPTAIN ICON
+                    // ------------------------------------------------------
+                    const Icon(
+                      Icons.person_outline,
+                      size: 11,
+                      color: Color(0xff98A2B3),
+                    ),
+
+                    const SizedBox(width: 4),
+
+                    // ------------------------------------------------------
+                    // CAPTAIN NAME
+                    // ------------------------------------------------------
+                    Flexible(
+                      child: Text(
+                        order['captainName']?.toString().isNotEmpty == true
+                            ? order['captainName'].toString()
+                            : order['captain_name']?.toString().isNotEmpty == true
+                            ? order['captain_name'].toString()
+                            : 'Prashanth',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.montserrat(
+                          fontSize: 11,
+                          height: 1.0,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xff667085),
+                        ),
+                      ),
+                    ),
+
+                    // ------------------------------------------------------
+                    // GAP
+                    // ------------------------------------------------------
+                    const SizedBox(width: 8),
+
+                    // ------------------------------------------------------
+                    // TIME
+                    // ------------------------------------------------------
+                    Text(
+                      date,
+                      maxLines: 1,
+                      style: GoogleFonts.montserrat(
+                        fontSize: 11,
+                        height: 1.0,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xff667085),
+                      ),
+                    ),
+
+                    // ------------------------------------------------------
+                    // PUSH "ITEMS READY" TO RIGHT
+                    // ------------------------------------------------------
+                    const SizedBox(width: 200),
+
+                    // ------------------------------------------------------
+                    // ITEMS READY
+                    // ------------------------------------------------------
+                    Text(
+                      'Items Ready',
+                      style: GoogleFonts.montserrat(
+                        fontSize: 11,
+                        height: 1.0,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xff667085),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          const Divider(
+            height: 1,
+            thickness: .7,
+            color: Color(0xffEAECF0),
+          ),
+
+// =============================================================
+// KOT NOTE
+// =============================================================
+
+          if (kotNote.isNotEmpty)
+            Container(
+              margin: const EdgeInsets.fromLTRB(
+                10,
+                8,
+                10,
+                4,
               ),
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.all(isCardZoomedOut ? 8 : 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      /// KOT NO + TIME
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              "KOT #$kotNo",
-                              style: TextStyle(
-                                fontSize: isCardZoomedOut ? 15 : 18,
-                                fontWeight: FontWeight.w500,
-                                color: const Color(0xff333333),
-                              ),
-                            ),
-                          ),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 9,
+                vertical: 7,
+              ),
+              decoration: BoxDecoration(
+                color: const Color(0xffF2F2F2),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.note_alt_outlined,
+                    size: 14,
+                    color: Color(0xff667085),
+                  ),
 
-                          Text(
-                            (() {
-                              DateTime? kt;
-                              final rawTime = order['kotTime'];
-                              if (rawTime is DateTime) {
-                                kt = rawTime;
-                              } else if (rawTime is String) {
-                                kt = DateTime.tryParse(rawTime);
-                                if (kt == null) {
-                                  try {
-                                    kt = DateFormat('yyyy-MM-dd hh:mm a').parse(rawTime);
-                                  } catch (_) {}
+                  const SizedBox(width: 6),
+
+                  Expanded(
+                    child: Text(
+                      'Note: $kotNote',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.montserrat(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xff667085),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // =============================================================
+          // 3. ITEMS — compact, evenly spaced like reference
+          // =============================================================
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                10,
+                4,
+                8,
+                4,
+              ),
+              child: Column(
+                children: [
+                  Expanded(
+                    child: ListView.builder(
+                      // ==========================================================
+                      // ENABLE SCROLLING
+                      // ==========================================================
+                      physics: const AlwaysScrollableScrollPhysics(),
+
+                      padding: EdgeInsets.zero,
+
+                      // Allows the list to scroll smoothly
+                      shrinkWrap: false,
+
+                      itemCount: items.length,
+
+                      itemBuilder: (context, index) {
+                        final raw = items[index];
+
+                        if (raw is! Map) {
+                          return const SizedBox.shrink();
+                        }
+
+                        final item = Map<String, dynamic>.from(raw);
+                        final itemStatus =
+                            item['status']?.toString().trim().toLowerCase() ?? '';
+
+                        final cancelItemKey =
+                        _getCancelItemKey(item, index);
+
+                        final isCancelled =
+                            itemStatus == 'cancelled' ||
+                                itemStatus == 'cancel' ||
+                                locallyCancelledItemKeys.contains(cancelItemKey);
+
+                        final isSelectedForCancel =
+                            index < cancelSelections.length &&
+                                cancelSelections[index];
+
+                        // ==========================================================
+                        // ITEM NAME
+                        // ==========================================================
+                        final name = item['name']?.toString() ?? '';
+
+                        // ==========================================================
+                        // QUANTITY
+                        // ==========================================================
+                        final qty =
+                            item['qty'] ??
+                                item['quantity'] ??
+                                1;
+
+                        // ==========================================================
+                        // VEG / NON-VEG
+                        // ==========================================================
+                        final dynamic vegValue =
+                            item['is_veg'] ??
+                                item['isVeg'] ??
+                                item['is_vegetarian'] ??
+                                item['veg'];
+
+                        final bool isVeg =
+                            vegValue == true ||
+                                vegValue == 1 ||
+                                vegValue?.toString().trim().toLowerCase() == 'true' ||
+                                vegValue?.toString().trim() == '1';
+
+                        // ==========================================================
+                        // MODIFIERS
+                        // ==========================================================
+                        final List<String> modifiers =
+                        item['modifiers'] is List
+                            ? (item['modifiers'] as List)
+                            .map((e) {
+                          if (e is Map) {
+                            return e['name']?.toString() ??
+                                e['modifier_name']?.toString() ??
+                                '';
+                          }
+
+                          return e.toString();
+                        })
+                            .where((e) => e.isNotEmpty)
+                            .toList()
+                            : [];
+
+                        // ==========================================================
+                        // ADD-ONS
+                        // ==========================================================
+                        final dynamic rawAddOns =
+                            item['addOns'] ??
+                                item['addons'] ??
+                                item['add_ons'];
+
+                        final Map<String, dynamic> addOns =
+                        rawAddOns is Map
+                            ? Map<String, dynamic>.from(rawAddOns)
+                            : {};
+
+                        // ==========================================================
+                        // NOTE
+                        // ==========================================================
+                        final String note =
+                            item['note']?.toString() ??
+                                item['notes']?.toString() ??
+                                '';
+
+                        // ==========================================================
+                        // DEBUG
+                        // ==========================================================
+                        debugPrint('========== KDS ITEM ==========');
+                        debugPrint('NAME      : $name');
+                        debugPrint('IS VEG    : $vegValue');
+                        debugPrint('MODIFIERS : $modifiers');
+                        debugPrint('ADDONS    : $addOns');
+                        debugPrint('NOTE      : $note');
+                        debugPrint('==============================');
+
+                        // ==========================================================
+                        // SWITCH VALUE
+                        // ==========================================================
+                        final currentValue =
+                        index < switchValues.length
+                            ? switchValues[index]
+                            : false;
+
+                        return InkWell(
+                            onTap: isCancelMode && !isCancelled
+                                ? () {
+                              setState(() {
+                                if (index < cancelSelections.length) {
+                                  cancelSelections[index] =
+                                  !cancelSelections[index];
                                 }
-                              }
-                              kt ??= DateTime.now();
-                              return DateFormat("MMM dd, yyyy | hh:mm a").format(kt);
-                            })(),
-                            style: TextStyle(
-                              fontSize: isCardZoomedOut ? 10 : 12,
-                              color: Colors.grey.shade600,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
+                              });
+                            }
+                                : null,
+                            child: Container(
+                              color: isSelectedForCancel
+                                  ? const Color(0x14F04438)
+                                  : Colors.transparent,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 5),
 
-                      SizedBox(height: isCardZoomedOut ? 2 : 4),
-
-                      /// ORDER ID + ITEMS COUNT
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              "Order ID: #$orderId",
-                              style: TextStyle(
-                                color: const Color(0xffF26B3A),
-                                fontSize: isCardZoomedOut ? 10 : 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-
-                          Text(
-                            "${items.length} Items",
-                            style: TextStyle(
-                              fontSize: isCardZoomedOut ? 10 : 12,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xff333333),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      SizedBox(height: isCardZoomedOut ? 4 : 8),
-
-                      const Divider(height: 1),
-
-                      SizedBox(height: isCardZoomedOut ? 4 : 8),
-
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            "Qty × Items",
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
-                              fontWeight: FontWeight.bold,
-                              fontSize: isCardZoomedOut ? 11 : 13,
-                            ),
-                          ),
-                          if (selectedCancelItemKotId == kotId)
-                            Padding(
-                              padding: EdgeInsets.only(
-                                right: isCardZoomedOut ? 8 : 16,
-                              ),
-                              child: GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    final allSelected = selected.every(
-                                      (val) => val,
-                                    );
-                                    for (int i = 0; i < selected.length; i++) {
-                                      selected[i] = !allSelected;
-                                    }
-                                  });
-                                },
                                 child: Row(
-                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+
                                   children: [
-                                    Text(
-                                      "Select All",
-                                      style: TextStyle(
-                                        color: Colors.grey.shade600,
-                                        fontSize: isCardZoomedOut ? 9 : 11,
+
+                                    // ====================================================
+                                    // VEG / NON-VEG ICON
+                                    // ====================================================
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 2),
+                                      child: vegNonVegIcon(isVeg),
+                                    ),
+
+                                    const SizedBox(width: 10),
+
+                                    // ====================================================
+                                    // ITEM DETAILS
+                                    // ====================================================
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+
+                                        children: [
+
+                                          // ==================================================
+                                          // ITEM NAME + QUANTITY
+                                          // ==================================================
+                                          Row(
+                                            crossAxisAlignment:
+                                            CrossAxisAlignment.center,
+
+                                            children: [
+
+                                              // ITEM NAME
+                                              Expanded(
+                                                child: Text(
+                                                  name,
+                                                  maxLines: 1,
+                                                  overflow:
+                                                  TextOverflow.ellipsis,
+
+                                                  style:
+                                                  GoogleFonts.montserrat(
+                                                    fontSize: 14,
+                                                    height: 1.0,
+                                                    fontWeight:
+                                                    FontWeight.w500,
+                                                    color: isCancelled
+                                                        ? const Color(0xff98A2B3)
+                                                        : const Color(0xff475467),
+                                                    decoration: isCancelled
+                                                        ? TextDecoration.lineThrough
+                                                        : TextDecoration.none,
+                                                  ),
+                                                ),
+                                              ),
+
+                                              const SizedBox(width: 8),
+
+                                              // QUANTITY
+                                              SizedBox(
+                                                width: 22,
+                                                height: 22,
+
+                                                child: Container(
+                                                  alignment:
+                                                  Alignment.center,
+
+                                                  decoration:
+                                                  const BoxDecoration(
+                                                    color:
+                                                    Color(0xffF2F4F7),
+                                                    shape:
+                                                    BoxShape.circle,
+                                                  ),
+
+                                                  child: Text(
+                                                    '$qty',
+                                                    textAlign:
+                                                    TextAlign.center,
+
+                                                    style:
+                                                    GoogleFonts.montserrat(
+                                                      fontSize: 11,
+                                                      height: 1.0,
+                                                      fontWeight:
+                                                      FontWeight.w700,
+                                                      color: isCancelled
+                                                          ? const Color(0xff98A2B3)
+                                                          : const Color(0xff667085),
+                                                      decoration: isCancelled
+                                                          ? TextDecoration.lineThrough
+                                                          : TextDecoration.none,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+
+                                          // ==================================================
+                                          // MODIFIERS
+                                          // ==================================================
+                                          if (modifiers.isNotEmpty)
+                                            Padding(
+                                              padding:
+                                              const EdgeInsets.only(
+                                                top: 4,
+                                              ),
+
+                                              child: Text(
+                                                'Modifier: ${modifiers.join(', ')}',
+
+                                                maxLines: 2,
+                                                overflow:
+                                                TextOverflow.ellipsis,
+
+                                                style:
+                                                GoogleFonts.montserrat(
+                                                  fontSize: 10,
+                                                  height: 1.2,
+                                                  fontWeight:
+                                                  FontWeight.w500,
+                                                  color: isCancelled
+                                                      ? const Color(0xff98A2B3)
+                                                      : const Color(0xff667085),
+                                                  decoration: isCancelled
+                                                      ? TextDecoration.lineThrough
+                                                      : TextDecoration.none,
+                                                ),
+                                              ),
+                                            ),
+
+                                          // ==================================================
+                                          // ADD-ONS
+                                          // ==================================================
+                                          if (addOns.isNotEmpty)
+                                            Padding(
+                                              padding:
+                                              const EdgeInsets.only(
+                                                top: 2,
+                                              ),
+
+                                              child: Text(
+                                                'Add-on: ${formatAddOns(addOns)}',
+
+                                                maxLines: 2,
+                                                overflow:
+                                                TextOverflow.ellipsis,
+
+                                                style:
+                                                GoogleFonts.montserrat(
+                                                  fontSize: 10,
+                                                  height: 1.2,
+                                                  fontWeight:
+                                                  FontWeight.w500,
+                                                  color: isCancelled
+                                                      ? const Color(0xff98A2B3)
+                                                      : const Color(0xff667085),
+                                                  decoration: isCancelled
+                                                      ? TextDecoration.lineThrough
+                                                      : TextDecoration.none,
+                                                ),
+                                              ),
+                                            ),
+
+                                          // ==================================================
+                                          // NOTE
+                                          // ==================================================
+                                          if (note.trim().isNotEmpty)
+                                            Padding(
+                                              padding:
+                                              const EdgeInsets.only(
+                                                top: 2,
+                                              ),
+
+                                              child: Text(
+                                                'Note: $note',
+
+                                                maxLines: 2,
+                                                overflow:
+                                                TextOverflow.ellipsis,
+
+                                                style:
+                                                GoogleFonts.montserrat(
+                                                  fontSize: 10,
+                                                  height: 1.2,
+                                                  fontWeight:
+                                                  FontWeight.w600,
+                                                  color: isCancelled
+                                                      ? const Color(0xff98A2B3)
+                                                      : const Color(0xffF04438),
+                                                  decoration: isCancelled
+                                                      ? TextDecoration.lineThrough
+                                                      : TextDecoration.none,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
                                       ),
                                     ),
+
                                     const SizedBox(width: 8),
-                                    Icon(
-                                      selected.every((val) => val)
-                                          ? Icons.check_box
-                                          : Icons.check_box_outline_blank,
-                                      size: isCardZoomedOut ? 14 : 18,
-                                      color:
-                                          selected.every((val) => val)
-                                              ? Colors.red
-                                              : Colors.grey,
+
+                                    // ====================================================
+                                    // CANCEL CHECKBOX - only visible in Cancel mode
+                                    // ====================================================
+                                    if (isCancelMode)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 2),
+                                        child: Icon(
+                                          isSelectedForCancel
+                                              ? Icons.check_box
+                                              : Icons.check_box_outline_blank,
+                                          size: 18,
+                                          color: isSelectedForCancel
+                                              ? const Color(0xffF04438)
+                                              : const Color(0xff98A2B3),
+                                        ),
+                                      ),
+
+                                    if (isCancelMode) const SizedBox(width: 4),
+
+                                    // ====================================================
+                                    // TOGGLE - EXISTING READY/RUNNING FUNCTIONALITY
+                                    // ====================================================
+                                    Padding(
+                                      padding:
+                                      const EdgeInsets.only(top: 2),
+
+                                      child:
+                                      _buildCompactItemToggle(
+                                        value: currentValue,
+
+                                        activeColor:
+                                        headerColor,
+
+                                        onChanged: isCancelled
+                                            ? (_) {}
+                                            : (value) {
+                                          setState(() {
+                                            final values =
+                                            _getKotSwitchValues(
+                                              switchKey,
+                                              items,
+                                            );
+
+                                            while (
+                                            values.length <
+                                                items.length) {
+                                              values.add(false);
+                                            }
+
+                                            values[index] =
+                                                value;
+
+                                            selectedItemsMap[
+                                            switchKey] =
+                                                values;
+                                          });
+                                        },
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
-                            ),
-                        ],
-                      ),
+                            ));
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
 
-                      SizedBox(height: isCardZoomedOut ? 4 : 8),
+          // =============================================================
+          // ITEM CANCEL CONFIRMATION
+          // Existing KOT UI is unchanged when not in Cancel mode.
+          // =============================================================
+          if (isCancelMode && selectedCancelCount > 0 && !allItemsSelectedForCancel)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 4, 10, 0),
+              child: SizedBox(
+                width: double.infinity,
+                height: 28,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    final selectedForApi = <Map<String, dynamic>>[];
 
-                      Expanded(
-                        child: Scrollbar(
-                          child: ListView.builder(
-                            itemCount: items.length,
-                            itemBuilder: (context, index) {
-                              final item = items[index];
+                    for (final index in cancellableIndexes) {
+                      if (index < cancelSelections.length &&
+                          cancelSelections[index] &&
+                          items[index] is Map) {
+                        final selectedItem =
+                        Map<String, dynamic>.from(items[index] as Map);
 
-                              final String name = item['name']?.toString() ?? '';
-                              final int qty = item['qty'] ?? 1;
-                              final String status =
-                                  item['status']?.toString().toLowerCase() ?? '';
+                        // cancelItems() uses lineItemId. Some KOT payloads
+                        // provide the same value as id/line_item_id.
+                        selectedItem['lineItemId'] ??=
+                            selectedItem['line_item_id'] ??
+                                selectedItem['id'];
 
-                              final bool isCancelled =
-                                  status == 'cancelled' || status == 'cancel';
+                        selectedForApi.add(selectedItem);
+                      }
+                    }
 
-                              // Get modifiers & addons
-                              final List modifiers = item['modifiers'] ?? [];
-                              final List addons = item['addons'] ?? [];
+                    if (selectedForApi.isEmpty) return;
 
-                              return InkWell(
-                                onTap: () {
-                                  if (selectedCancelItemKotId == kotId) {
-                                    setState(() {
-                                      selected[index] = !selected[index];
-                                    });
-                                  }
-                                },
-                                child: Container(
-                                  color: selected[index]
-                                      ? Colors.red.withOpacity(.12)
-                                      : null,
-                                  padding: EdgeInsets.only(
-                                    top: isCardZoomedOut ? 2 : 4,
-                                    bottom: isCardZoomedOut ? 4 : 6,
-                                    right: isCardZoomedOut ? 8 : 16,
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
+                    final success = await provider.cancelItems(
+                      kotId,
+                      selectedForApi,
+                    );
 
-                                      /// Main Item
-                                      Row(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            "$qty × ",
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: isCardZoomedOut ? 12 : 14,
-                                              color: selected[index]
-                                                  ? Colors.red
-                                                  : const Color(0xff333333),
-                                            ),
-                                          ),
+                    if (success && mounted) {
+                      setState(() {
+                        // Keep the cancelled items struck through immediately.
+                        for (final index in cancellableIndexes) {
+                          if (index < cancelSelections.length &&
+                              cancelSelections[index] &&
+                              index < items.length) {
+                            locallyCancelledItemKeys.add(
+                              _getCancelItemKey(items[index], index),
+                            );
+                          }
+                        }
 
-                                          Expanded(
-                                            child:Text(
-                                              name,
-                                              style: TextStyle(
-                                                fontSize: isCardZoomedOut ? 12 : 14,
-                                                fontWeight: FontWeight.w500,
-                                                color: isCancelled
-                                                    ? Colors.red
-                                                    : selected[index]
-                                                    ? Colors.red
-                                                    : const Color(0xff333333),
-                                                decoration: isCancelled
-                                                    ? TextDecoration.lineThrough
-                                                    : TextDecoration.none,
-                                              ),
-                                            )
-                                          ),
-
-                                          if (selectedCancelItemKotId == kotId)
-                                            Icon(
-                                              selected[index]
-                                                  ? Icons.check_box
-                                                  : Icons.check_box_outline_blank,
-                                              size: isCardZoomedOut ? 14 : 18,
-                                              color: selected[index]
-                                                  ? Colors.red
-                                                  : Colors.grey,
-                                            ),
-                                        ],
-                                      ),
-
-                                      /// -------------------- MODIFIERS --------------------
-                                      /// Modifiers (Red)
-                                      if (modifiers.isNotEmpty)
-                                        Padding(
-                                          padding: const EdgeInsets.only(left: 24, top: 2),
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: modifiers.map<Widget>((modifier) {
-                                              return Text(
-                                                "• ${modifier.toString()}",
-                                                style: TextStyle(
-                                                  fontSize: isCardZoomedOut ? 10 : 12,
-                                                  color: Colors.red,
-                                                  fontWeight: FontWeight.w600,
-                                                  decoration: isCancelled
-                                                      ? TextDecoration.lineThrough
-                                                      : TextDecoration.none,
-                                                ),
-                                              );
-                                            }).toList(),
-                                          ),
-                                        ),
-
-                                      /// -------------------- ADDONS --------------------
-                                      /// Addons (Blue)
-                                      if (addons.isNotEmpty)
-                                        Padding(
-                                          padding: const EdgeInsets.only(left: 24, top: 2),
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: addons.map<Widget>((addon) {
-                                              return Text(
-                                                "+ ${addon.toString()}",
-                                                style: TextStyle(
-                                                  fontSize: isCardZoomedOut ? 10 : 12,
-                                                  color: Colors.blue,
-                                                  fontWeight: FontWeight.w600,
-                                                  decoration: isCancelled
-                                                      ? TextDecoration.lineThrough
-                                                      : TextDecoration.none,
-                                                ),
-                                              );
-                                            }).toList(),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-
-                      if (selectedCancelItemKotId == kotId &&
-                          selected.any((val) => val) &&
-                          !selected.every((val) => val))
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xffFA3633),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                padding: EdgeInsets.symmetric(
-                                  vertical: isCardZoomedOut ? 5 : 9,
-                                ),
-                              ),
-    onPressed: () async {
-    debugPrint("===== CONFIRM ITEM CANCEL CLICKED =====");
-
-    final selectedItems = <Map<String, dynamic>>[];
-
-    for (int i = 0; i < items.length; i++) {
-    if (selected[i]) {
-    selectedItems.add(items[i] as Map<String, dynamic>);
-    }
-    }
-
-    debugPrint("Selected Items: $selectedItems");
-
-    if (selectedItems.isNotEmpty) {
-    final success = await orderProvider.cancelItems(
-    kotId,
-    selectedItems,
-    );
-
-    debugPrint("Cancel Item Success: $success");
-
-    if (success) {
-    setState(() {
-    selectedCancelItemKotId = null;
-    zoomedKotIds.remove(kotId);
-    });
-    }
-    } else {
-    debugPrint("No items selected");
-    }
-    },
-                              child: Text(
-                                "Confirm Item Cancel",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: isCardZoomedOut ? 10 : 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-
-                      SizedBox(height: isCardZoomedOut ? 6 : 10),
-
-                      Row(
-                        children: [
-                          // Left button: Cancel or Revoke
-                          Expanded(
-                            child: SizedBox(
-                              height: isCardZoomedOut ? 30 : 38,
-                              child: OutlinedButton.icon(
-                                style: OutlinedButton.styleFrom(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: isCardZoomedOut ? 4 : 8,
-                                  ),
-                                  foregroundColor:
-                                      isDineIn
-                                          ? const Color(0xffF26B3A)
-                                          : const Color(0xff3B73B9),
-                                  side: BorderSide(
-                                    color:
-                                        isDineIn
-                                            ? const Color(0xffF26B3A)
-                                            : const Color(0xff3B73B9),
-                                    width: 1.5,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(5),
-                                  ),
-                                ),
-                                icon: Icon(
-                                  selectedCancelItemKotId == kotId
-                                      ? Icons.undo
-                                      : Icons.cancel_outlined,
-                                  size: isCardZoomedOut ? 12 : 16,
-                                ),
-                                label: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Text(
-                                    selectedCancelItemKotId == kotId
-                                        ? "Undo" //"Revoke"
-                                        : "Cancel",
-                                    style: TextStyle(
-                                      fontSize: isCardZoomedOut ? 11 : 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    if (selectedCancelItemKotId == kotId) {
-                                      // Revoke: uncheck all and exit cancel mode
-                                      for (
-                                        int i = 0;
-                                        i < selected.length;
-                                        i++
-                                      ) {
-                                        selected[i] = false;
-                                      }
-                                      selectedCancelItemKotId = null;
-                                      zoomedKotIds.remove(kotId);
-                                    } else {
-                                      // Cancel: enter cancel mode
-                                      if (selectedCancelItemKotId != null &&
-                                          selectedCancelItemKotId != kotId) {
-                                        zoomedKotIds.remove(
-                                          selectedCancelItemKotId,
-                                        );
-                                      }
-                                      selectedCancelItemKotId = kotId;
-                                      zoomedKotIds.add(kotId);
-                                    }
-                                  });
-                                },
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-
-                          // Right button: Start KOT or Cancel KOT
-                          Expanded(
-                            child: SizedBox(
-                              height: isCardZoomedOut ? 30 : 38,
-                              child: ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: isCardZoomedOut ? 4 : 8,
-                                  ),
-                                  backgroundColor:
-                                      selected.every((val) => val)
-                                          ? const Color(
-                                            0xffFA3633,
-                                          ) // Cancel KOT background
-                                          : (isDineIn
-                                              ? const Color(0xffF26B3A)
-                                              : const Color(
-                                                0xff3B73B9,
-                                              )), // Start KOT background
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(5),
-                                  ),
-                                ),
-                                icon: Icon(
-                                  selected.every((val) => val)
-                                      ? Icons.cancel_outlined
-                                      : Icons.play_arrow,
-                                  size: isCardZoomedOut ? 12 : 16,
-                                  color: Colors.white,
-                                ),
-                                label: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Text(
-                                    selected.every((val) => val)
-                                        ? "Cancel KOT"
-                                        : "Start KOT",
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: isCardZoomedOut ? 11 : 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                                onPressed: () async {
-                                  if (selected.every((val) => val)) {
-                                    // Cancel entire order
-                                    final success = await orderProvider
-                                        .cancelOrder(kotId);
-                                    if (success) {
-                                      setState(() {
-                                        selectedCancelItemKotId = null;
-                                        zoomedKotIds.remove(kotId);
-                                      });
-                                    }
-                                  } else {
-                                    // Start KOT with remaining items
-                                    // Selected items (to cancel)
-                                    final selectedItems = <Map<String, dynamic>>[];
-
-// Remaining items (to prepare)
-                                    final remainingItems = <Map<String, dynamic>>[];
-
-                                    for (int i = 0; i < items.length; i++) {
-                                      if (selected[i]) {
-                                        selectedItems.add(items[i] as Map<String, dynamic>);
-                                      } else {
-                                        remainingItems.add(items[i] as Map<String, dynamic>);
-                                      }
-                                    }
-
-// 1. Cancel selected items
-                                    if (selectedItems.isNotEmpty) {
-                                      await orderProvider.cancelItems(
-                                        kotId,
-                                        selectedItems,
-                                      );
-                                    }
-
-// 2. Start KOT with remaining items
-                                    await orderProvider.startOrder(
-                                      kotId,
-                                      remainingItems,
-                                    );
-
-                                    // Clear checkboxes and exit cancel mode after starting KOT
-                                    setState(() {
-                                      for (
-                                        int i = 0;
-                                        i < selected.length;
-                                        i++
-                                      ) {
-                                        selected[i] = false;
-                                      }
-                                      if (selectedCancelItemKotId == kotId) {
-                                        selectedCancelItemKotId = null;
-                                        zoomedKotIds.remove(kotId);
-                                      }
-                                    });
-                                  }
-                                },
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                        _clearCancelSelection(switchKey);
+                      });
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xffFA3633),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    padding: EdgeInsets.zero,
+                  ),
+                  child: const Text(
+                    'Confirm Item Cancel',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
-            ],
+            ),
+
+          // =============================================================
+          // 4. FOOTER — existing status flow preserved
+          // =============================================================
+          Container(
+            height: 39,
+            decoration: const BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: Color(0xffEAECF0),
+                  width: .7,
+                ),
+              ),
+            ),
+            padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 1,
+                  child: SizedBox(
+                    height: 28,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          if (isCancelMode) {
+                            for (int i = 0; i < cancelSelections.length; i++) {
+                              cancelSelections[i] = false;
+                            }
+                            _clearCancelSelection(switchKey);
+                          } else {
+                            if (selectedCancelItemKotId != null &&
+                                selectedCancelItemKotId != switchKey) {
+                              _clearCancelSelection(selectedCancelItemKotId!);
+                            }
+
+                            selectedCancelItemKotId = switchKey;
+
+                            for (int i = 0; i < cancelSelections.length; i++) {
+                              cancelSelections[i] = false;
+                            }
+                          }
+                        });
+                      },
+                      icon: Icon(
+                        isCancelMode
+                            ? Icons.undo
+                            : Icons.cancel_outlined,
+                        size: 14,
+                      ),
+                      label: Text(
+                        isCancelMode ? 'Undo' : 'Cancel',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: isCancelMode
+                            ? const Color(0xffF04438)
+                            : const Color(0xff98A2B3),
+                        side: BorderSide(
+                          color: isCancelMode
+                              ? const Color(0xffF04438)
+                              : const Color(0xffD0D5DD),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        padding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 10),
+
+                Expanded(
+                  flex: 2,
+                  child: SizedBox(
+                    height: 28,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        if (kotId.isEmpty) return;
+
+                        // -------------------------------------------------
+                        // Cancel mode: all items selected = Cancel KOT
+                        // -------------------------------------------------
+                        if (isCancelMode && allItemsSelectedForCancel) {
+                          final success = await provider.cancelOrder(kotId);
+
+                          if (success && mounted) {
+                            setState(() {
+                              _clearCancelSelection(switchKey);
+                              selectedItemsMap.remove(switchKey);
+                            });
+                          }
+                          return;
+                        }
+
+                        // -------------------------------------------------
+                        // Cancel mode + partial selection:
+                        // the dedicated Confirm Item Cancel button performs
+                        // the item cancellation. Do not start/prepare the
+                        // remaining items accidentally.
+                        // -------------------------------------------------
+                        if (isCancelMode) {
+                          return;
+                        }
+
+                        // -------------------------------------------------
+                        // EXISTING STATUS FLOW - unchanged
+                        // -------------------------------------------------
+                        if (buttonText == 'Ready') {
+                          await provider.updateOrderStatus(
+                            kotId,
+                            'Ready',
+                          );
+                        } else if (buttonText == 'Served') {
+                          await provider.updateOrderStatus(
+                            kotId,
+                            'Served',
+                          );
+                        } else {
+                          await provider.updateOrderStatus(
+                            kotId,
+                            'Preparing',
+                          );
+                        }
+
+                        if (mounted) {
+                          setState(() {});
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isCancelMode && allItemsSelectedForCancel
+                            ? const Color(0xffFA3633)
+                            : buttonColor,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        padding: EdgeInsets.zero,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (isCancelMode && allItemsSelectedForCancel)
+                            const Icon(
+                              Icons.cancel_outlined,
+                              size: 14,
+                              color: Colors.white,
+                            )
+                          else
+                            const SizedBox.shrink(),
+                          if (isCancelMode && allItemsSelectedForCancel)
+                            const SizedBox(width: 4),
+                          Text(
+                            isCancelMode && allItemsSelectedForCancel
+                                ? 'Cancel KOT'
+                                : buttonText,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // KOT FLOW HELPERS
+  // ---------------------------------------------------------------------------
+  // Determines whether this KOT belongs to a newly created table/order.
+  // We first respect an explicit flag from the backend. If the backend does
+  // not provide one, a Pending KOT is treated as a new KOT. Existing KOTs that
+  // are already Preparing/Ready/Served continue to show Running/Ready/Served.
+  bool _isNewTableKot(Map<String, dynamic> order,
+      String normalizedStatus,) {
+    final dynamic explicitValue =
+        order['isNewTable'] ??
+            order['is_new_table'] ??
+            order['newTable'] ??
+            order['new_table'];
+
+    if (explicitValue != null) {
+      if (explicitValue is bool) {
+        return explicitValue;
+      }
+
+      final value = explicitValue.toString().toLowerCase().trim();
+      if (value == 'true' || value == '1' || value == 'yes') {
+        return true;
+      }
+      if (value == 'false' || value == '0' || value == 'no') {
+        return false;
+      }
+    }
+
+    // A freshly printed KOT normally enters KDS as Pending.
+    // Once it has moved to Preparing, it is an existing/running KOT.
+    return normalizedStatus == 'pending' ||
+        normalizedStatus == 'processing';
+  }
+
+  // Returns the switch state for each item in a KOT.
+  // The state is kept by KOT id so rebuilding the dashboard does not reset
+  // switches that the kitchen has already turned on.
+  List<bool> _getKotSwitchValues(String switchKey,
+      List<dynamic> items,) {
+    final existing = selectedItemsMap[switchKey];
+
+    if (existing != null) {
+      // Grow the list if a new item was added to the KOT.
+      while (existing.length < items.length) {
+        existing.add(false);
+      }
+
+      // If the API has fewer items than the cached list, keep the cached
+      // values for future rebuilds but return only what the current KOT has.
+      return existing;
+    }
+
+    final values = <bool>[];
+
+    for (final rawItem in items) {
+      if (rawItem is Map) {
+        final itemStatus =
+            rawItem['status']?.toString().toLowerCase() ?? '';
+
+        values.add(
+          itemStatus == 'ready' ||
+              itemStatus == 'served' ||
+              itemStatus == 'completed',
+        );
+      } else {
+        values.add(false);
+      }
+    }
+
+    selectedItemsMap[switchKey] = values;
+    return values;
+  }
+
+  DateTime _parseKotTime(dynamic raw) {
+    if (raw is DateTime) return raw;
+
+    if (raw is String) {
+      final parsed = DateTime.tryParse(raw);
+      if (parsed != null) return parsed;
+
+      try {
+        return DateFormat('yyyy-MM-dd hh:mm a').parse(raw);
+      } catch (_) {}
+    }
+
+    return DateTime.now();
+  }
+
+  int _getReadyCount(List<dynamic> items,
+      String orderStatus,) {
+    final status = orderStatus.toLowerCase();
+
+    if (status == 'ready' ||
+        status == 'served' ||
+        status == 'completed') {
+      return items.length;
+    }
+
+    return items.where((raw) {
+      if (raw is! Map) return false;
+
+      final itemStatus =
+          raw['status']?.toString().toLowerCase() ?? '';
+
+      return itemStatus == 'ready' ||
+          itemStatus == 'served' ||
+          itemStatus == 'completed';
+    }).length;
+  }
+
+
+  // ---------------------------------------------------------------------------
+  // COMPACT ITEM TOGGLE
+  // Uses an exact 29 x 18 visual size instead of Flutter's default Switch
+  // minimum dimensions. This keeps name, quantity and toggle aligned exactly
+  // like the reference KDS card.
+  // ---------------------------------------------------------------------------
+  Widget _buildCompactItemToggle({
+    required bool value,
+    required Color activeColor,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return GestureDetector(
+      onTap: () => onChanged(!value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOut,
+        width: 29,
+        height: 18,
+        padding: const EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          color: value
+              ? activeColor.withOpacity(.18)
+              : const Color(0xffE4E7EC),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: value
+                ? activeColor
+                : const Color(0xffD0D5DD),
+            width: .7,
           ),
         ),
-      ],
+        child: AnimatedAlign(
+          duration: const Duration(milliseconds: 140),
+          curve: Curves.easeOut,
+          alignment:
+          value ? Alignment.centerRight : Alignment.centerLeft,
+          child: Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(
+              color: value
+                  ? activeColor
+                  : const Color(0xffC8D0DB),
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+  Widget vegNonVegIcon(bool isVeg) {
+    final color = isVeg
+        ? const Color(0xFF10B981) // Green
+        : const Color(0xFFEF4444); // Red
+
+    return Container(
+      width: 18,
+      height: 18,
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: color,
+          width: 1.2,
+        ),
+        borderRadius: BorderRadius.circular(2),
+      ),
+      alignment: Alignment.center,
+      child: Container(
+        width: 7,
+        height: 7,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoActiveKots() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.receipt_long_outlined,
+            size: 42,
+            color: Colors.grey.shade300,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'No active KOTs',
+            style: GoogleFonts.montserrat(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xff98A2B3),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
