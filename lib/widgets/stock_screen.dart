@@ -3,11 +3,12 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../kitchen_display_screen.dart';
+import '../models/Stock_model.dart';
+// import '../repositories/product_repository.dart';
+import '../services/STOCK PRODUCT _REPOSITIORY.dart';
 import '../top_bar.dart';
 import 'completed_orders.dart';
 import 'login_screen.dart';
-
-// import 'top_bar.dart';
 
 class StockScreen extends StatefulWidget {
   final String token;
@@ -25,220 +26,40 @@ class StockScreen extends StatefulWidget {
 
 class _StockScreenState extends State<StockScreen> {
   // ==========================================================
-  // SEARCH
+  // CONTROLLERS
   // ==========================================================
 
   final TextEditingController _searchController =
   TextEditingController();
+
   final GlobalKey<ScaffoldState> _scaffoldKey =
   GlobalKey<ScaffoldState>();
 
   // ==========================================================
-  // SELECTED CATEGORY
+  // CATEGORY
   // ==========================================================
 
-  String _selectedCategory = 'Soups';
+  String _selectedCategory = '';
 
   // ==========================================================
   // STOCK DATA
   // ==========================================================
 
-  final List<StockCategory> _stockCategories = [
-    StockCategory(
-      name: 'Soups',
-      items: [
-        StockItem(
-          name: 'Tomato Creamy Soup',
-          isVeg: true,
-          selected: true,
-        ),
-        StockItem(
-          name: 'Veg Clear Soup',
-          isVeg: true,
-          selected: true,
-        ),
-        StockItem(
-          name: 'Veg Manchow Soup',
-          isVeg: true,
-          selected: true,
-        ),
-        StockItem(
-          name: 'Veg Corn Soup',
-          isVeg: true,
-          selected: true,
-        ),
-        StockItem(
-          name: 'Chicken Corn Soup',
-          isVeg: false,
-          selected: true,
-        ),
-        StockItem(
-          name: 'Chicken Manchow Soup',
-          isVeg: false,
-          selected: true,
-        ),
-        StockItem(
-          name: 'Chicken Hot & Sour Soup',
-          isVeg: false,
-          selected: true,
-        ),
-        StockItem(
-          name: 'Chicken Clear Soup',
-          isVeg: false,
-          selected: false,
-        ),
-      ],
-    ),
+  List<StockCategory> _stockCategories = [];
 
-    StockCategory(
-      name: 'Starters',
-      items: [
-        StockItem(
-          name: 'Panner Tikka',
-          isVeg: true,
-          selected: true,
-        ),
-        StockItem(
-          name: 'Mushroom Bites',
-          isVeg: true,
-          selected: true,
-        ),
-        StockItem(
-          name: 'Baby Corn Ribs',
-          isVeg: true,
-          selected: true,
-        ),
-        StockItem(
-          name: 'Veg Manchuria',
-          isVeg: true,
-          selected: false,
-        ),
-        StockItem(
-          name: 'Dragon Chicken',
-          isVeg: false,
-          selected: false,
-        ),
-        StockItem(
-          name: 'Chicken Tikka',
-          isVeg: false,
-          selected: false,
-        ),
-        StockItem(
-          name: 'Fish Fingers',
-          isVeg: false,
-          selected: false,
-        ),
-        StockItem(
-          name: 'Prawn Pepper Fry',
-          isVeg: false,
-          selected: false,
-        ),
-      ],
-    ),
+  bool _isLoading = false;
+  String? _errorMessage;
 
-    StockCategory(
-      name: 'Main Course',
-      items: [
-        StockItem(
-          name: 'Chicken 65',
-          isVeg: false,
-          selected: true,
-        ),
-        StockItem(
-          name: 'Chicken Tikka',
-          isVeg: false,
-          selected: true,
-        ),
-        StockItem(
-          name: 'Paneer Tikka',
-          isVeg: true,
-          selected: true,
-        ),
-        StockItem(
-          name: 'Veg Biryani',
-          isVeg: true,
-          selected: true,
-        ),
-        StockItem(
-          name: 'Chicken Biryani',
-          isVeg: false,
-          selected: false,
-        ),
-        StockItem(
-          name: 'Butter Chicken',
-          isVeg: false,
-          selected: false,
-        ),
-        StockItem(
-          name: 'Paneer Butter Masala',
-          isVeg: true,
-          selected: false,
-        ),
-        StockItem(
-          name: 'Mutton Curry',
-          isVeg: false,
-          selected: false,
-        ),
-      ],
-    ),
+  // ==========================================================
+  // INIT
+  // ==========================================================
 
-    StockCategory(
-      name: 'Breads',
-      items: [
-        StockItem(
-          name: 'Butter Naan',
-          isVeg: true,
-          selected: true,
-        ),
-        StockItem(
-          name: 'Plain Naan',
-          isVeg: true,
-          selected: true,
-        ),
-        StockItem(
-          name: 'Garlic Naan',
-          isVeg: true,
-          selected: true,
-        ),
-        StockItem(
-          name: 'Tandoori Roti',
-          isVeg: true,
-          selected: false,
-        ),
-        StockItem(
-          name: 'Butter Roti',
-          isVeg: true,
-          selected: false,
-        ),
-      ],
-    ),
+  @override
+  void initState() {
+    super.initState();
 
-    StockCategory(
-      name: 'Desserts',
-      items: [
-        StockItem(
-          name: 'Gulab Jamun',
-          isVeg: true,
-          selected: true,
-        ),
-        StockItem(
-          name: 'Ice Cream',
-          isVeg: true,
-          selected: true,
-        ),
-        StockItem(
-          name: 'Brownie',
-          isVeg: true,
-          selected: false,
-        ),
-        StockItem(
-          name: 'Fruit Salad',
-          isVeg: true,
-          selected: false,
-        ),
-      ],
-    ),
-  ];
+    loadProducts();
+  }
 
   // ==========================================================
   // DISPOSE
@@ -251,29 +72,377 @@ class _StockScreenState extends State<StockScreen> {
   }
 
   // ==========================================================
-  // CURRENT CATEGORY
+  // LOAD PRODUCTS API
   // ==========================================================
 
-  StockCategory get _currentCategory {
-    return _stockCategories.firstWhere(
-          (category) =>
-      category.name == _selectedCategory,
+
+  Future<void> loadProducts() async {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final prefs =
+      await SharedPreferences.getInstance();
+
+      final baseUrl =
+          prefs.getString('store_base_url') ?? '';
+
+      debugPrint(
+        '======================================',
+      );
+      debugPrint('STOCK PRODUCT API');
+      debugPrint('BASE URL: $baseUrl');
+      debugPrint(
+        '======================================',
+      );
+
+      if (baseUrl.isEmpty) {
+        throw Exception(
+          'Store base URL not found',
+        );
+      }
+
+      final repository = ProductRepository(
+        baseUrl: baseUrl,
+        token: widget.token,
+      );
+
+
+      // ==========================================
+      // API CALL
+      // ==========================================
+
+      final response =
+      await repository.fetchProducts();
+
+      debugPrint(
+        'PRODUCT COUNT FROM API: ${response.length}',
+      );
+
+      // ==========================================
+      // CONVERT API RESPONSE TO MODEL
+      // ==========================================
+
+      final products = response
+          .map(
+            (json) => StockProduct.fromJson(json),
+      )
+          .toList();
+
+      // ==========================================
+      // DEBUG
+      // ==========================================
+
+      for (final product in products) {
+        debugPrint(
+          '--------------------------------------',
+        );
+
+        debugPrint(
+          'PRODUCT ID      : ${product.id}',
+        );
+
+        debugPrint(
+          'PRODUCT NAME    : ${product.name}',
+        );
+
+        debugPrint(
+          'CATEGORY        : ${product.categoryName}',
+        );
+
+        debugPrint(
+          'STOCK QUANTITY  : ${product.stockQuantity}',
+        );
+
+        debugPrint(
+          'STOCK STATUS    : ${product.stockStatus}',
+        );
+
+        debugPrint(
+          'ENABLED         : ${product.isEnabled}',
+        );
+      }
+
+      debugPrint(
+        '======================================',
+      );
+
+      // ==========================================
+      // CREATE CATEGORY + PRODUCT GROUPS
+      // ==========================================
+
+      _createCategories(products);
+
+    } catch (e, stackTrace) {
+      debugPrint(
+        '======================================',
+      );
+
+      debugPrint(
+        'STOCK API ERROR: $e',
+      );
+
+      debugPrint(
+        'STACK TRACE: $stackTrace',
+      );
+
+      debugPrint(
+        '======================================',
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _errorMessage = e.toString();
+      });
+    } finally {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+  Future<String?> showStockPinDialog() async {
+    final controller = TextEditingController();
+
+    final pin = await showDialog<String>(
+      context: context,
+
+      builder: (context) {
+        return AlertDialog(
+          title: const Text(
+            'Enter PIN',
+          ),
+
+          content: TextField(
+            controller: controller,
+
+            obscureText: true,
+
+            keyboardType:
+            TextInputType.number,
+
+            decoration:
+            const InputDecoration(
+              hintText: 'Enter PIN',
+            ),
+          ),
+
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+
+              child: const Text(
+                'Cancel',
+              ),
+            ),
+
+            ElevatedButton(
+              onPressed: () {
+                final pin =
+                controller.text.trim();
+
+                if (pin.isEmpty) {
+                  return;
+                }
+
+                Navigator.pop(
+                  context,
+                  pin,
+                );
+              },
+
+              child: const Text(
+                'Confirm',
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    controller.dispose();
+
+    return pin;
+  }
+  Future<void> updateProductStockStatus({
+    required StockItem item,
+    required String pin,
+  }) async {
+    try {
+      final prefs =
+      await SharedPreferences.getInstance();
+
+      final baseUrl =
+          prefs.getString('store_base_url') ?? '';
+
+      if (baseUrl.isEmpty) {
+        throw Exception('Store base URL not found');
+      }
+
+      final repository = ProductRepository(
+        baseUrl: baseUrl,
+        token: widget.token,
+      );
+
+      // ==========================================
+      // DETERMINE NEW STATUS
+      // ==========================================
+
+      final newStatus = item.isEnabled
+          ? 'outofstock'
+          : 'instock';
+
+      debugPrint('======================================');
+      debugPrint('UPDATING PRODUCT STOCK');
+      debugPrint('PRODUCT ID: ${item.id}');
+      debugPrint('PRODUCT NAME: ${item.name}');
+      debugPrint('NEW STATUS: $newStatus');
+      debugPrint('======================================');
+
+      // ==========================================
+      // CALL UPDATE API
+      // ==========================================
+
+      final success =
+      await repository.updateProductStatus(
+        productId: item.id,
+        status: newStatus,
+        pin: pin,
+      );
+
+      if (!success) {
+        throw Exception(
+          'Failed to update product status',
+        );
+      }
+
+      // ❌ REMOVE loadProducts() from here
+      // ❌ REMOVE SnackBar from here
+
+    } catch (e) {
+      debugPrint('UPDATE STOCK ERROR: $e');
+
+      rethrow;
+    }
+  }
+  // ==========================================================
+  // CREATE CATEGORIES
+  // ==========================================================
+
+  void _createCategories(
+      List<StockProduct> products,
+      ) {
+    final Map<String, List<StockItem>> grouped =
+    {};
+
+    for (final product in products) {
+      final categoryName =
+      product.categoryName
+          ?.trim()
+          .isNotEmpty ==
+          true
+          ? product.categoryName!.trim()
+          : 'Others';
+      final item = StockItem(
+        id: product.id,
+        name: product.name,
+        stockQuantity: product.stockQuantity,
+        stockStatus: product.stockStatus,
+        isEnabled: product.isEnabled,
+        isVeg: product.isVeg,
+        selected: product.isEnabled,
+      );
+
+      grouped.putIfAbsent(
+        categoryName,
+            () => [],
+      );
+
+      grouped[categoryName]!.add(item);
+    }
+
+    final categories =
+    grouped.entries.map(
+          (entry) {
+        return StockCategory(
+          name: entry.key,
+          items: entry.value,
+        );
+      },
+    ).toList();
+
+    if (!mounted) return;
+
+    setState(() {
+      _stockCategories = categories;
+
+      if (_stockCategories.isNotEmpty) {
+        final exists =
+        _stockCategories.any(
+              (category) =>
+          category.name ==
+              _selectedCategory,
+        );
+
+        if (!exists) {
+          _selectedCategory =
+              _stockCategories.first.name;
+        }
+      }
+    });
+
+    debugPrint(
+      'CATEGORY COUNT: '
+          '${_stockCategories.length}',
     );
   }
 
   // ==========================================================
-  // SEARCHED ITEMS
+  // CURRENT CATEGORY
+  // ==========================================================
+
+  StockCategory? get _currentCategory {
+    if (_stockCategories.isEmpty) {
+      return null;
+    }
+
+    return _stockCategories.firstWhere(
+          (category) =>
+      category.name ==
+          _selectedCategory,
+      orElse: () =>
+      _stockCategories.first,
+    );
+  }
+
+  // ==========================================================
+  // FILTERED ITEMS
   // ==========================================================
 
   List<StockItem> get _filteredItems {
-    final search =
-    _searchController.text.trim().toLowerCase();
+    final category = _currentCategory;
 
-    if (search.isEmpty) {
-      return _currentCategory.items;
+    if (category == null) {
+      return [];
     }
 
-    return _currentCategory.items.where((item) {
+    final search = _searchController.text
+        .trim()
+        .toLowerCase();
+
+    if (search.isEmpty) {
+      return category.items;
+    }
+
+    return category.items.where((item) {
       return item.name
           .toLowerCase()
           .contains(search);
@@ -302,7 +471,9 @@ class _StockScreenState extends State<StockScreen> {
           (total, category) =>
       total +
           category.items
-              .where((item) => item.selected)
+              .where(
+                (item) => item.selected,
+          )
               .length,
     );
   }
@@ -320,23 +491,41 @@ class _StockScreenState extends State<StockScreen> {
   // ==========================================================
 
   int get _currentSelectedCount {
-    return _currentCategory.items
-        .where((item) => item.selected)
+    final category = _currentCategory;
+
+    if (category == null) {
+      return 0;
+    }
+
+    return category.items
+        .where(
+          (item) => item.selected,
+    )
         .length;
   }
 
   // ==========================================================
-  // SELECT ALL CURRENT CATEGORY
+  // CURRENT CATEGORY SELECT ALL
   // ==========================================================
 
   bool get _isCurrentCategoryAllSelected {
-    final items = _currentCategory.items;
+    final category = _currentCategory;
 
-    if (items.isEmpty) {
+    if (category == null) {
       return false;
     }
 
-    return items.every(
+    final enabledItems = category.items
+        .where(
+          (item) => item.isEnabled,
+    )
+        .toList();
+
+    if (enabledItems.isEmpty) {
+      return false;
+    }
+
+    return enabledItems.every(
           (item) => item.selected,
     );
   }
@@ -348,9 +537,20 @@ class _StockScreenState extends State<StockScreen> {
   void _toggleSelectAllCurrentCategory(
       bool value,
       ) {
+    final category = _currentCategory;
+
+    if (category == null) {
+      return;
+    }
+
     setState(() {
-      for (final item in _currentCategory.items) {
-        item.selected = value;
+      for (final item in category.items) {
+        if (item.isEnabled) {
+          item.selected = value;
+        } else {
+          // Always keep disabled items unselected.
+          item.selected = false;
+        }
       }
     });
   }
@@ -361,9 +561,14 @@ class _StockScreenState extends State<StockScreen> {
 
   void _resetSelection() {
     setState(() {
-      for (final category in _stockCategories) {
+      for (final category
+      in _stockCategories) {
         for (final item in category.items) {
-          item.selected = false;
+          if (item.isEnabled) {
+            item.selected = false;
+          } else {
+            item.selected = false;
+          }
         }
       }
     });
@@ -374,60 +579,98 @@ class _StockScreenState extends State<StockScreen> {
   // ==========================================================
 
   Future<void> _saveAndUpdate() async {
-    final selectedItems = <String>[];
+    final changedItems = <StockItem>[];
+
+    // ==========================================
+    // FIND CHANGED ITEMS
+    // ==========================================
 
     for (final category in _stockCategories) {
       for (final item in category.items) {
-        if (item.selected) {
-          selectedItems.add(item.name);
+        if (item.selected != item.isEnabled) {
+          changedItems.add(item);
         }
       }
     }
 
-    debugPrint(
-      '======================================',
-    );
+    debugPrint('======================================');
+    debugPrint('STOCK SAVE & UPDATE');
+    debugPrint('CHANGED ITEMS: ${changedItems.length}');
 
-    debugPrint(
-      'STOCK SAVE & UPDATE',
-    );
-
-    debugPrint(
-      'TOTAL ITEMS: $_totalItems',
-    );
-
-    debugPrint(
-      'SELECTED ITEMS: ${selectedItems.length}',
-    );
-
-    debugPrint(
-      'UNSELECTED ITEMS: $_unselectedItems',
-    );
-
-    debugPrint(
-      'SELECTED ITEM NAMES:',
-    );
-
-    for (final item in selectedItems) {
-      debugPrint(item);
+    for (final item in changedItems) {
+      debugPrint(
+        '${item.name} | '
+            'Old: ${item.isEnabled} | '
+            'New: ${item.selected}',
+      );
     }
 
-    debugPrint(
-      '======================================',
-    );
+    debugPrint('======================================');
 
-    if (!mounted) return;
+    // ==========================================
+    // NO CHANGES
+    // ==========================================
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '${selectedItems.length} items updated successfully',
+    if (changedItems.isEmpty) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No changes to update'),
         ),
-        duration: const Duration(
-          seconds: 2,
+      );
+
+      return;
+    }
+
+    // ==========================================
+    // PIN ONLY HERE
+    // ==========================================
+
+    final pin = await showStockPinDialog();
+
+    if (pin == null || pin.isEmpty) {
+      return;
+    }
+
+    try {
+      // ==========================================
+      // UPDATE ALL CHANGED ITEMS
+      // ==========================================
+
+      for (final item in changedItems) {
+        await updateProductStockStatus(
+          item: item,
+          pin: pin,
+        );
+      }
+
+      // ==========================================
+      // ONLY ONE RELOAD
+      // ==========================================
+
+      await loadProducts();
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${changedItems.length} items updated successfully',
+          ),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Failed to update stock: $e',
+          ),
+        ),
+      );
+    }
   }
 
   // ==========================================================
@@ -435,37 +678,38 @@ class _StockScreenState extends State<StockScreen> {
   // ==========================================================
 
   @override
-  @override
-  Widget build(BuildContext context) {
+  Widget build(
+      BuildContext context,
+      ) {
     return Scaffold(
       key: _scaffoldKey,
 
-      backgroundColor: const Color(0xffF4F4F4),
+      backgroundColor:
+      const Color(0xffF4F4F4),
 
-      // ==========================================================
-      // KDS DRAWER
-      // ==========================================================
+      // ======================================================
+      // DRAWER
+      // ======================================================
 
       drawer: _buildKdsDrawer(),
 
       body: SafeArea(
         child: Column(
           children: [
-
-            // ======================================================
+            // =================================================
             // TOP BAR
-            // ======================================================
+            // =================================================
 
             TopBarWidget(
               token: widget.token,
-              restaurantId: widget.restaurantId,
+              restaurantId:
+              widget.restaurantId,
 
-              selectedView: KotView.active,
+              selectedView:
+              KotView.active,
 
-              onViewChanged: (view) {
-                // Do not Navigator.pop here.
-                // TopBar only changes view.
-              },
+              onViewChanged:
+                  (view) {},
 
               pendingCount: 0,
               activeCount: 0,
@@ -473,22 +717,21 @@ class _StockScreenState extends State<StockScreen> {
 
               onLogout: () {},
 
-              // ====================================================
-              // HAMBURGER MENU
-              // ====================================================
-
               onMenuTap: () {
-                _scaffoldKey.currentState?.openDrawer();
+                _scaffoldKey
+                    .currentState
+                    ?.openDrawer();
               },
             ),
 
-            // ======================================================
-            // STOCK CONTENT
-            // ======================================================
+            // =================================================
+            // CONTENT
+            // =================================================
 
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(
+                padding:
+                const EdgeInsets.fromLTRB(
                   12,
                   8,
                   12,
@@ -513,42 +756,51 @@ class _StockScreenState extends State<StockScreen> {
 
       decoration: BoxDecoration(
         color: Colors.white,
+
         borderRadius:
         BorderRadius.circular(10),
+
         border: Border.all(
-          color: const Color(0xffE4E7EC),
+          color:
+          const Color(0xffE4E7EC),
         ),
       ),
 
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding:
+        const EdgeInsets.all(14),
 
         child: Column(
           crossAxisAlignment:
           CrossAxisAlignment.start,
 
           children: [
-
-            // ==================================================
+            // =================================================
             // TITLE
-            // ==================================================
+            // =================================================
 
             Text(
               'STOCK',
-              style: GoogleFonts.montserrat(
-                fontSize: 15,
+
+              style:
+              GoogleFonts.montserrat(
+                fontSize: 18,
                 fontWeight:
                 FontWeight.w800,
                 color:
-                const Color(0xff172033),
+                const Color(
+                  0xff172033,
+                ),
               ),
             ),
 
-            const SizedBox(height: 10),
+            const SizedBox(
+              height: 10,
+            ),
 
-            // ==================================================
+            // =================================================
             // MAIN STOCK AREA
-            // ==================================================
+            // =================================================
 
             Expanded(
               child: Row(
@@ -556,23 +808,18 @@ class _StockScreenState extends State<StockScreen> {
                 CrossAxisAlignment.start,
 
                 children: [
-
-                  // =================================================
-                  // LEFT CATEGORY MENU
-                  // =================================================
-
+                  // LEFT CATEGORY
                   SizedBox(
-                    width: 110,
+                    width: 105,
                     child:
                     _buildCategorySidebar(),
                   ),
 
-                  const SizedBox(width: 14),
+                  const SizedBox(
+                    width: 14,
+                  ),
 
-                  // =================================================
-                  // RIGHT CONTENT
-                  // =================================================
-
+                  // RIGHT PRODUCTS
                   Expanded(
                     child:
                     _buildStockItemsArea(),
@@ -581,11 +828,13 @@ class _StockScreenState extends State<StockScreen> {
               ),
             ),
 
-            const SizedBox(height: 10),
+            const SizedBox(
+              height: 10,
+            ),
 
-            // ==================================================
-            // BOTTOM SUMMARY
-            // ==================================================
+            // =================================================
+            // SUMMARY
+            // =================================================
 
             _buildBottomSummary(),
           ],
@@ -599,98 +848,152 @@ class _StockScreenState extends State<StockScreen> {
   // ==========================================================
 
   Widget _buildCategorySidebar() {
-    return ListView.separated(
-      itemCount:
-      _stockCategories.length,
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
 
-      separatorBuilder:
-          (context, index) =>
-      const SizedBox(height: 8),
+    if (_stockCategories.isEmpty) {
+      return const Center(
+        child: Text('No Categories'),
+      );
+    }
 
-      itemBuilder: (context, index) {
-        final category =
-        _stockCategories[index];
+    return Container(
+      width: 100,
+      color: Colors.white,
 
-        final selected =
-            category.name ==
-                _selectedCategory;
+      child: Column(
+        crossAxisAlignment:
+        CrossAxisAlignment.start,
 
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              _selectedCategory =
-                  category.name;
-
-              _searchController.clear();
-            });
-          },
-
-          child: Container(
-            height: 65,
-
-            decoration: BoxDecoration(
-              color: selected
-                  ? const Color(0xff526887)
-                  : Colors.white,
-
-              borderRadius:
-              BorderRadius.circular(7),
-
-              border: Border.all(
-                color: selected
-                    ? const Color(
-                  0xff526887,
-                )
-                    : const Color(
-                  0xffDCE3EE,
-                ),
-              ),
-            ),
-
-            child: Column(
-              mainAxisAlignment:
-              MainAxisAlignment.center,
-
-              children: [
-
-                Icon(
-                  _categoryIcon(
-                    category.name,
-                  ),
-                  size: 20,
-
-                  color: selected
-                      ? Colors.white
-                      : _categoryColor(
-                    category.name,
-                  ),
-                ),
-
-                const SizedBox(height: 5),
-
-                Text(
-                  category.name,
-
-                  textAlign:
-                  TextAlign.center,
-
-                  style:
-                  GoogleFonts.montserrat(
-                    fontSize: 10,
-                    fontWeight:
-                    FontWeight.w600,
-                    color: selected
-                        ? Colors.white
-                        : const Color(
-                      0xff344054,
-                    ),
-                  ),
-                ),
-              ],
+        children: [
+          Text(
+            'CATEGORIES',
+            style: GoogleFonts.montserrat(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xff344054),
             ),
           ),
-        );
-      },
+
+          const SizedBox(height: 10),
+
+          Expanded(
+            child: ListView.separated(
+              itemCount:
+              _stockCategories.length,
+
+              separatorBuilder:
+                  (_, __) =>
+              const SizedBox(height: 8),
+
+              itemBuilder:
+                  (context, index) {
+                final category =
+                _stockCategories[index];
+
+                final isSelected =
+                    category.name ==
+                        _selectedCategory;
+
+                return InkWell(
+                  onTap: () {
+                    setState(() {
+                      _selectedCategory =
+                          category.name;
+
+                      _searchController.clear();
+                    });
+                  },
+
+                  borderRadius:
+                  BorderRadius.circular(6),
+
+                  child: Container(
+                    width: double.infinity,
+                    height: 58,
+
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? const Color(
+                        0xff526887,
+                      )
+                          : const Color(
+                        0xffF5F6F8,
+                      ),
+
+                      borderRadius:
+                      BorderRadius.circular(6),
+
+                      border: Border.all(
+                        color: isSelected
+                            ? const Color(
+                          0xff526887,
+                        )
+                            : const Color(
+                          0xffE4E7EC,
+                        ),
+                      ),
+                    ),
+
+                    child: Column(
+                      mainAxisAlignment:
+                      MainAxisAlignment.center,
+
+                      children: [
+                        Icon(
+                          _categoryIcon(
+                            category.name,
+                          ),
+
+                          size: 19,
+
+                          color: isSelected
+                              ? Colors.white
+                              : const Color(
+                            0xff526887,
+                          ),
+                        ),
+
+                        const SizedBox(
+                          height: 5,
+                        ),
+
+                        Text(
+                          category.name,
+
+                          textAlign:
+                          TextAlign.center,
+
+                          maxLines: 2,
+
+                          overflow:
+                          TextOverflow.ellipsis,
+
+                          style:
+                          GoogleFonts.montserrat(
+                            fontSize: 14,
+                            fontWeight:
+                            FontWeight.w600,
+
+                            color: isSelected
+                                ? Colors.white
+                                : const Color(
+                              0xff344054,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -701,25 +1004,35 @@ class _StockScreenState extends State<StockScreen> {
   IconData _categoryIcon(
       String category,
       ) {
-    switch (category) {
-      case 'Soups':
-        return Icons.soup_kitchen_outlined;
+    final value =
+    category.toLowerCase().trim();
 
-      case 'Starters':
-        return Icons.restaurant;
-
-      case 'Main Course':
-        return Icons.ramen_dining;
-
-      case 'Breads':
-        return Icons.bakery_dining;
-
-      case 'Desserts':
-        return Icons.cake_outlined;
-
-      default:
-        return Icons.restaurant;
+    if (value.contains('soup')) {
+      return Icons.soup_kitchen_outlined;
     }
+
+    if (value.contains('starter')) {
+      return Icons.restaurant;
+    }
+
+    if (value.contains('main')) {
+      return Icons.ramen_dining;
+    }
+
+    if (value.contains('bread')) {
+      return Icons.bakery_dining;
+    }
+
+    if (value.contains('dessert')) {
+      return Icons.cake_outlined;
+    }
+
+    if (value.contains('beverage') ||
+        value.contains('drink')) {
+      return Icons.local_drink_outlined;
+    }
+
+    return Icons.restaurant_menu;
   }
 
   // ==========================================================
@@ -729,373 +1042,136 @@ class _StockScreenState extends State<StockScreen> {
   Color _categoryColor(
       String category,
       ) {
-    switch (category) {
-      case 'Soups':
-        return const Color(0xff526887);
+    switch (category
+        .toLowerCase()) {
+      case 'soups':
+        return const Color(
+          0xff526887,
+        );
 
-      case 'Starters':
-        return const Color(0xff2357B8);
+      case 'starters':
+        return const Color(
+          0xff2357B8,
+        );
 
-      case 'Main Course':
-        return const Color(0xffF04438);
+      case 'main course':
+        return const Color(
+          0xffF04438,
+        );
 
-      case 'Breads':
-        return const Color(0xff2E9B91);
+      case 'breads':
+        return const Color(
+          0xff2E9B91,
+        );
 
-      case 'Desserts':
-        return const Color(0xffE83E8C);
+      case 'desserts':
+        return const Color(
+          0xffE83E8C,
+        );
 
       default:
-        return const Color(0xff526887);
+        return const Color(
+          0xff526887,
+        );
     }
   }
 
-  Widget _buildKdsDrawer() {
-    return Drawer(
-      width: 250,
-      backgroundColor: Colors.white,
-
-      child: SafeArea(
-        child: Column(
-          children: [
-
-            // HEADER
-            Container(
-              height: 65,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-              ),
-              decoration: const BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(
-                    color: Color(0xffE4E7EC),
-                  ),
-                ),
-              ),
-
-              child: Row(
-                children: [
-
-                  Expanded(
-                    child: Image.asset(
-                      'assets/pinaka.png',
-                      height: 42,
-                      fit: BoxFit.contain,
-                      alignment: Alignment.centerLeft,
-                    ),
-                  ),
-
-                  InkWell(
-                    onTap: () {
-                      Navigator.pop(context);
-                    },
-                    child: const Icon(
-                      Icons.chevron_left,
-                      size: 26,
-                      color: Color(0xff667085),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // MENU
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(10),
-                child: Column(
-                  children: [
-
-                    _buildDrawerMenuItem(
-                      title: 'KDS Dashboard',
-                      icon: Icons.grid_view_rounded,
-                      onTap: () {
-                        Navigator.pop(context);
-
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                KitchenDashboardScreen(
-                                  token: widget.token,
-                                  restaurantId:
-                                  widget.restaurantId,
-                                ),
-                          ),
-                        );
-                      },
-                    ),
-
-                    const SizedBox(height: 7),
-
-                    _buildDrawerMenuItem(
-                      title: 'Select Item / Category',
-                      icon: Icons.format_list_bulleted,
-                      onTap: () {
-                        Navigator.pop(context);
-
-                        // Navigate to Select Item screen
-                      },
-                    ),
-
-                    const SizedBox(height: 7),
-
-                    _buildDrawerMenuItem(
-                      title: 'Stock',
-                      icon: Icons.inventory_2_outlined,
-                      isSelected: true,
-                      onTap: () {
-                        Navigator.pop(context);
-                      },
-                    ),
-
-                    const SizedBox(height: 7),
-
-                    _buildDrawerMenuItem(
-                      title: 'Recall',
-                      icon: Icons.refresh,
-                      onTap: () {
-                        Navigator.pop(context);
-
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                CompletedOrdersScreen(
-                                  token: widget.token,
-                                  restaurantId:
-                                  widget.restaurantId,
-                                ),
-                          ),
-                        );
-                      },
-                    ),
-
-                    const SizedBox(height: 7),
-
-                    _buildDrawerMenuItem(
-                      title: 'Settings',
-                      icon: Icons.settings_outlined,
-                      onTap: () {
-                        Navigator.pop(context);
-
-                        // Settings navigation
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // LOGOUT
-            _buildDrawerLogout(),
-          ],
-        ),
-      ),
-    );
-  }
-  Widget _buildDrawerMenuItem({
-    required String title,
-    required IconData icon,
-    required VoidCallback onTap,
-    bool isSelected = false,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-
-      child: Container(
-        height: 44,
-        width: double.infinity,
-
-        padding: const EdgeInsets.symmetric(
-          horizontal: 12,
-        ),
-
-        decoration: BoxDecoration(
-          color: isSelected
-              ? const Color(0xffff5b4f)
-              : Colors.transparent,
-
-          borderRadius: BorderRadius.circular(8),
-        ),
-
-        child: Row(
-          children: [
-
-            Icon(
-              icon,
-              size: 20,
-              color: isSelected
-                  ? Colors.white
-                  : const Color(0xff667085),
-            ),
-
-            const SizedBox(width: 12),
-
-            Expanded(
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: isSelected
-                      ? Colors.white
-                      : const Color(0xff344054),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  Widget _buildDrawerLogout() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        10,
-        10,
-        10,
-        15,
-      ),
-      child: InkWell(
-        onTap: () async {
-          // ==================================================
-          // GET SHARED PREFERENCES
-          // ==================================================
-
-          final prefs =
-          await SharedPreferences.getInstance();
-
-          // ==================================================
-          // GET STORE DETAILS BEFORE CLEARING SESSION
-          // ==================================================
-
-          final storeBaseUrl =
-              prefs.getString('store_base_url') ?? '';
-
-          final storeName =
-              prefs.getString('store_name') ?? '';
-
-          final storeId =
-              prefs.getString('store_id') ?? '';
-
-          // ==================================================
-          // CLEAR LOGIN SESSION
-          // ==================================================
-
-          await prefs.remove('token');
-          await prefs.remove('auth_token');
-          await prefs.remove('user_id');
-          await prefs.remove('employee_name');
-          await prefs.remove('display_name');
-          await prefs.remove('role');
-          await prefs.remove('emp_login_pin');
-          await prefs.remove('emp_login_pin_str');
-
-          if (!mounted) return;
-
-          // ==================================================
-          // GO TO LOGIN SCREEN
-          // ==================================================
-
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(
-              builder: (context) => EmployeeLoginScreen(
-                storeBaseUrl: storeBaseUrl,
-                storeName: storeName,
-                storeId: storeId,
-
-                // ==================================================
-                // AFTER PIN LOGIN SUCCESS
-                // ==================================================
-
-                onLoginSuccess: (config) {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          KitchenDashboardScreen(
-                            token: config.apiToken,
-                            restaurantId:
-                            int.tryParse(
-                              config.restaurantId,
-                            ) ??
-                                0,
-                          ),
-                    ),
-                        (route) => false,
-                  );
-                },
-              ),
-            ),
-                (route) => false,
-          );
-        },
-
-        borderRadius: BorderRadius.circular(8),
-
-        child: Container(
-          height: 44,
-          width: double.infinity,
-
-          decoration: BoxDecoration(
-            color: const Color(0xffffefec),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: const Color(0xffffa69b),
-              width: 0.8,
-            ),
-          ),
-
-          child: const Row(
-            mainAxisAlignment:
-            MainAxisAlignment.center,
-
-            children: [
-
-              Icon(
-                Icons.logout,
-                size: 17,
-                color: Color(0xffff4f3d),
-              ),
-
-              SizedBox(width: 7),
-
-              Text(
-                'Logout',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight:
-                  FontWeight.w600,
-                  color:
-                  Color(0xffff4f3d),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
   // ==========================================================
-  // RIGHT CONTENT
+  // STOCK ITEMS AREA
   // ==========================================================
 
   Widget _buildStockItemsArea() {
-    final items = _filteredItems;
+    // ========================================================
+    // LOADING
+    // ========================================================
+
+    if (_isLoading) {
+      return const Center(
+        child:
+        CircularProgressIndicator(),
+      );
+    }
+
+    // ========================================================
+    // ERROR
+    // ========================================================
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisSize:
+          MainAxisSize.min,
+
+          children: [
+            const Icon(
+              Icons.error_outline,
+              color: Colors.red,
+              size: 30,
+            ),
+
+            const SizedBox(
+              height: 8,
+            ),
+
+            Text(
+              'Failed to load products',
+
+              style:
+              GoogleFonts.montserrat(
+                fontSize: 14,
+                fontWeight:
+                FontWeight.w600,
+              ),
+            ),
+
+            const SizedBox(
+              height: 8,
+            ),
+
+            Text(
+              _errorMessage!,
+              textAlign:
+              TextAlign.center,
+
+              style:
+              GoogleFonts.montserrat(
+                fontSize: 14,
+                color:
+                const Color(
+                  0xff667085,
+                ),
+              ),
+            ),
+
+            const SizedBox(
+              height: 10,
+            ),
+
+            ElevatedButton(
+              onPressed:
+              loadProducts,
+
+              child:
+              const Text(
+                'Retry',
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final items =
+        _filteredItems;
 
     return Column(
       children: [
-
-        // ==================================================
+        // ====================================================
         // SEARCH + RESET
-        // ==================================================
+        // ====================================================
 
         Row(
           children: [
-
             Expanded(
               child: SizedBox(
                 height: 36,
@@ -1115,7 +1191,7 @@ class _StockScreenState extends State<StockScreen> {
 
                     hintStyle:
                     GoogleFonts.montserrat(
-                      fontSize: 9,
+                      fontSize: 14,
                       color:
                       const Color(
                         0xff98A2B3,
@@ -1127,7 +1203,9 @@ class _StockScreenState extends State<StockScreen> {
                       Icons.search,
                       size: 17,
                       color:
-                      Color(0xff98A2B3),
+                      Color(
+                        0xff98A2B3,
+                      ),
                     ),
 
                     filled: true,
@@ -1145,7 +1223,9 @@ class _StockScreenState extends State<StockScreen> {
                     OutlineInputBorder(
                       borderRadius:
                       BorderRadius
-                          .circular(5),
+                          .circular(
+                        5,
+                      ),
 
                       borderSide:
                       const BorderSide(
@@ -1160,7 +1240,9 @@ class _StockScreenState extends State<StockScreen> {
                     OutlineInputBorder(
                       borderRadius:
                       BorderRadius
-                          .circular(5),
+                          .circular(
+                        5,
+                      ),
 
                       borderSide:
                       const BorderSide(
@@ -1175,7 +1257,9 @@ class _StockScreenState extends State<StockScreen> {
                     OutlineInputBorder(
                       borderRadius:
                       BorderRadius
-                          .circular(5),
+                          .circular(
+                        5,
+                      ),
 
                       borderSide:
                       const BorderSide(
@@ -1190,7 +1274,9 @@ class _StockScreenState extends State<StockScreen> {
               ),
             ),
 
-            const SizedBox(width: 10),
+            const SizedBox(
+              width: 10,
+            ),
 
             SizedBox(
               width: 118,
@@ -1205,7 +1291,9 @@ class _StockScreenState extends State<StockScreen> {
                   side:
                   const BorderSide(
                     color:
-                    Color(0xff98A2B3),
+                    Color(
+                      0xff98A2B3,
+                    ),
                   ),
 
                   shape:
@@ -1219,9 +1307,10 @@ class _StockScreenState extends State<StockScreen> {
 
                 child: Text(
                   'Reset',
+
                   style:
                   GoogleFonts.montserrat(
-                    fontSize: 11,
+                    fontSize: 14,
                     fontWeight:
                     FontWeight.w600,
                     color:
@@ -1235,20 +1324,23 @@ class _StockScreenState extends State<StockScreen> {
           ],
         ),
 
-        const SizedBox(height: 8),
+        const SizedBox(
+          height: 8,
+        ),
 
-        // ==================================================
-        // ITEMS
-        // ==================================================
+        // ====================================================
+        // PRODUCTS
+        // ====================================================
 
         Expanded(
           child: items.isEmpty
               ? Center(
             child: Text(
               'No items found',
+
               style:
               GoogleFonts.montserrat(
-                fontSize: 11,
+                fontSize: 14,
                 color:
                 const Color(
                   0xff98A2B3,
@@ -1263,10 +1355,9 @@ class _StockScreenState extends State<StockScreen> {
                   .start,
 
               children: [
-
-                // ==================================================
+                // ======================================
                 // CATEGORY HEADER
-                // ==================================================
+                // ======================================
 
                 _buildCategoryHeader(),
 
@@ -1274,9 +1365,9 @@ class _StockScreenState extends State<StockScreen> {
                   height: 8,
                 ),
 
-                // ==================================================
+                // ======================================
                 // ITEM GRID
-                // ==================================================
+                // ======================================
 
                 LayoutBuilder(
                   builder:
@@ -1290,12 +1381,13 @@ class _StockScreenState extends State<StockScreen> {
                     final width =
                         (constraints
                             .maxWidth -
-                            spacing *
-                                3) /
+                            spacing * 3) /
                             4;
 
                     return Wrap(
-                      spacing: spacing,
+                      spacing:
+                      spacing,
+
                       runSpacing:
                       9,
 
@@ -1303,7 +1395,8 @@ class _StockScreenState extends State<StockScreen> {
                       items.map(
                             (item) {
                           return SizedBox(
-                            width: width,
+                            width:
+                            width,
 
                             child:
                             _buildStockItem(
@@ -1328,39 +1421,57 @@ class _StockScreenState extends State<StockScreen> {
   // ==========================================================
 
   Widget _buildCategoryHeader() {
+    final category =
+        _currentCategory;
+
+    if (category == null) {
+      return const SizedBox.shrink();
+    }
+
     return Row(
       children: [
-
-        _buildVegIcon(
-          true,
+        const Icon(
+          Icons.category_outlined,
           size: 19,
+          color:
+          Color(0xff526887),
         ),
 
-        const SizedBox(width: 7),
+        const SizedBox(
+          width: 7,
+        ),
 
         Text(
-          _currentCategory.name,
+          category.name,
 
-          style: GoogleFonts.montserrat(
-            fontSize: 15,
+          style:
+          GoogleFonts.montserrat(
+            fontSize: 16,
             fontWeight:
             FontWeight.w600,
             color:
-            const Color(0xff172033),
+            const Color(
+              0xff172033,
+            ),
           ),
         ),
 
-        const SizedBox(width: 28),
+        const SizedBox(
+          width: 28,
+        ),
 
         Text(
-          '${_currentSelectedCount}/${_currentCategory.items.length} Selected',
+          '${_currentSelectedCount}/${category.items.length} Selected',
 
-          style: GoogleFonts.montserrat(
-            fontSize: 10,
+          style:
+          GoogleFonts.montserrat(
+            fontSize: 14,
             fontWeight:
             FontWeight.w500,
             color:
-            const Color(0xff174EA6),
+            const Color(
+              0xff174EA6,
+            ),
           ),
         ),
 
@@ -1371,27 +1482,38 @@ class _StockScreenState extends State<StockScreen> {
           _isCurrentCategoryAllSelected,
 
           activeColor:
-          const Color(0xff526887),
+          const Color(
+            0xff526887,
+          ),
 
           visualDensity:
           VisualDensity.compact,
 
-          onChanged: (value) {
+          onChanged:
+          category.items.any(
+                (item) =>
+            item.isEnabled,
+          )
+              ? (value) {
             _toggleSelectAllCurrentCategory(
               value ?? false,
             );
-          },
+          }
+              : null,
         ),
 
         Text(
           'Select All',
 
-          style: GoogleFonts.montserrat(
-            fontSize: 10,
+          style:
+          GoogleFonts.montserrat(
+            fontSize: 14,
             fontWeight:
             FontWeight.w600,
             color:
-            const Color(0xff172033),
+            const Color(
+              0xff172033,
+            ),
           ),
         ),
       ],
@@ -1402,62 +1524,52 @@ class _StockScreenState extends State<StockScreen> {
   // STOCK ITEM
   // ==========================================================
 
-  Widget _buildStockItem(
-      StockItem item,
-      ) {
-    final selected =
-        item.selected;
-
-    final isVeg =
-        item.isVeg;
+  Widget _buildStockItem(StockItem item) {
+    final selected = item.selected;
+    final enabled = item.isEnabled;
 
     return InkWell(
+      // ======================================================
+      // ALWAYS CLICKABLE
+      // ======================================================
+
       onTap: () {
         setState(() {
-          item.selected =
-          !item.selected;
+          item.selected = !item.selected;
         });
       },
 
-      borderRadius:
-      BorderRadius.circular(5),
+      borderRadius: BorderRadius.circular(5),
 
       child: Container(
         height: 56,
 
-        padding:
-        const EdgeInsets.symmetric(
+        padding: const EdgeInsets.symmetric(
           horizontal: 10,
           vertical: 7,
         ),
 
         decoration: BoxDecoration(
-          color: isVeg
-              ? const Color(
-            0xffF8FFF9,
-          )
-              : const Color(
-            0xfffff8f8,
-          ),
+          // ==================================================
+          // OUT OF STOCK = GREY
+          // IN STOCK     = WHITE
+          // ==================================================
 
-          borderRadius:
-          BorderRadius.circular(5),
+          color: enabled
+              ? Colors.white
+              : const Color(0xffE5E5E5),
+
+          borderRadius: BorderRadius.circular(5),
 
           border: Border.all(
-            color: isVeg
-                ? const Color(
-              0xffCDEBD4,
-            )
-                : const Color(
-              0xffffd4d8,
-            ),
+            color: enabled
+                ? const Color(0xffCDEBD4)
+                : const Color(0xffBDBDBD),
           ),
         ),
 
         child: Row(
-          crossAxisAlignment:
-          CrossAxisAlignment.center,
-
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
 
             // ==================================================
@@ -1469,33 +1581,32 @@ class _StockScreenState extends State<StockScreen> {
               height: 15,
 
               decoration: BoxDecoration(
+                // --------------------------------------------
+                // OUT OF STOCK + NOT SELECTED
+                // → WHITE EMPTY CHECKBOX
+                //
+                // SELECTED VEG
+                // → GREEN
+                //
+                // SELECTED NON VEG
+                // → RED
+                // --------------------------------------------
+
                 color: selected
-                    ? (isVeg
-                    ? const Color(
-                  0xff08A64A,
-                )
-                    : const Color(
-                  0xffF41446,
-                ))
-                    : Colors.transparent,
+                    ? (item.isVeg
+                    ? const Color(0xff08A64A)
+                    : const Color(0xffF04438))
+                    : Colors.white,
 
                 borderRadius:
-                BorderRadius.circular(
-                  2,
-                ),
+                BorderRadius.circular(2),
 
                 border: Border.all(
                   color: selected
-                      ? (isVeg
-                      ? const Color(
-                    0xff08A64A,
-                  )
-                      : const Color(
-                    0xffF41446,
-                  ))
-                      : const Color(
-                    0xff98A2B3,
-                  ),
+                      ? (item.isVeg
+                      ? const Color(0xff08A64A)
+                      : const Color(0xffF04438))
+                      : const Color(0xff98A2B3),
                 ),
               ),
 
@@ -1520,18 +1631,336 @@ class _StockScreenState extends State<StockScreen> {
 
                 maxLines: 2,
 
-                overflow:
-                TextOverflow.ellipsis,
+                overflow: TextOverflow.ellipsis,
+
+                style: GoogleFonts.montserrat(
+                  fontSize: 14,
+                  height: 1.15,
+                  fontWeight: FontWeight.w500,
+
+                  color: enabled
+                      ? const Color(0xff172033)
+                      : const Color(0xff777777),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  // ==========================================================
+  // KDS DRAWER
+  // ==========================================================
+
+  Widget _buildKdsDrawer() {
+    return Drawer(
+      width: 250,
+      backgroundColor:
+      Colors.white,
+
+      child: SafeArea(
+        child: Column(
+          children: [
+            // =================================================
+            // HEADER
+            // =================================================
+
+            Container(
+              height: 65,
+
+              padding:
+              const EdgeInsets.symmetric(
+                horizontal: 16,
+              ),
+
+              decoration:
+              const BoxDecoration(
+                border: Border(
+                  bottom:
+                  BorderSide(
+                    color:
+                    Color(
+                      0xffE4E7EC,
+                    ),
+                  ),
+                ),
+              ),
+
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Image.asset(
+                      'assets/pinaka.png',
+
+                      height: 42,
+
+                      fit: BoxFit.contain,
+
+                      alignment:
+                      Alignment.centerLeft,
+                    ),
+                  ),
+
+                  InkWell(
+                    onTap: () {
+                      Navigator.pop(
+                        context,
+                      );
+                    },
+
+                    child:
+                    const Icon(
+                      Icons.chevron_left,
+                      size: 26,
+                      color:
+                      Color(
+                        0xff667085,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // =================================================
+            // MENU
+            // =================================================
+
+            Expanded(
+              child:
+              SingleChildScrollView(
+                padding:
+                const EdgeInsets.all(
+                  10,
+                ),
+
+                child: Column(
+                  children: [
+                    // =========================================
+                    // KDS DASHBOARD
+                    // =========================================
+
+                    _buildDrawerMenuItem(
+                      title:
+                      'KDS Dashboard',
+
+                      icon:
+                      Icons.grid_view_rounded,
+
+                      onTap: () {
+                        Navigator.pop(
+                          context,
+                        );
+
+                        Navigator.pushReplacement(
+                          context,
+
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                KitchenDashboardScreen(
+                                  token:
+                                  widget.token,
+
+                                  restaurantId:
+                                  widget.restaurantId,
+                                ),
+                          ),
+                        );
+                      },
+                    ),
+
+                    const SizedBox(
+                      height: 7,
+                    ),
+
+                    // =========================================
+                    // SELECT ITEM
+                    // =========================================
+
+                    _buildDrawerMenuItem(
+                      title:
+                      'Select Item / Category',
+
+                      icon:
+                      Icons.format_list_bulleted,
+
+                      onTap: () {
+                        Navigator.pop(
+                          context,
+                        );
+                      },
+                    ),
+
+                    const SizedBox(
+                      height: 7,
+                    ),
+
+                    // =========================================
+                    // STOCK
+                    // =========================================
+
+                    _buildDrawerMenuItem(
+                      title: 'Stock',
+
+                      icon:
+                      Icons.inventory_2_outlined,
+
+                      isSelected: true,
+
+                      onTap: () {
+                        Navigator.pop(
+                          context,
+                        );
+                      },
+                    ),
+
+                    const SizedBox(
+                      height: 7,
+                    ),
+
+                    // =========================================
+                    // RECALL
+                    // =========================================
+
+                    _buildDrawerMenuItem(
+                      title: 'Recall',
+
+                      icon:
+                      Icons.refresh,
+
+                      onTap: () {
+                        Navigator.pop(
+                          context,
+                        );
+
+                        Navigator.push(
+                          context,
+
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                CompletedOrdersScreen(
+                                  token:
+                                  widget.token,
+
+                                  restaurantId:
+                                  widget.restaurantId,
+                                ),
+                          ),
+                        );
+                      },
+                    ),
+
+                    const SizedBox(
+                      height: 7,
+                    ),
+
+                    // =========================================
+                    // SETTINGS
+                    // =========================================
+
+                    _buildDrawerMenuItem(
+                      title: 'Settings',
+
+                      icon:
+                      Icons.settings_outlined,
+
+                      onTap: () {
+                        Navigator.pop(
+                          context,
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // =================================================
+            // LOGOUT
+            // =================================================
+
+            _buildDrawerLogout(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ==========================================================
+  // DRAWER MENU ITEM
+  // ==========================================================
+
+  Widget _buildDrawerMenuItem({
+    required String title,
+    required IconData icon,
+    required VoidCallback onTap,
+    bool isSelected = false,
+  }) {
+    return InkWell(
+      onTap: onTap,
+
+      borderRadius:
+      BorderRadius.circular(
+        8,
+      ),
+
+      child: Container(
+        height: 44,
+
+        width: double.infinity,
+
+        padding:
+        const EdgeInsets.symmetric(
+          horizontal: 12,
+        ),
+
+        decoration:
+        BoxDecoration(
+          color: isSelected
+              ? const Color(
+            0xffff5b4f,
+          )
+              : Colors.transparent,
+
+          borderRadius:
+          BorderRadius.circular(
+            8,
+          ),
+        ),
+
+        child: Row(
+          children: [
+            Icon(
+              icon,
+
+              size: 20,
+
+              color: isSelected
+                  ? Colors.white
+                  : const Color(
+                0xff667085,
+              ),
+            ),
+
+            const SizedBox(
+              width: 12,
+            ),
+
+            Expanded(
+              child: Text(
+                title,
 
                 style:
                 GoogleFonts.montserrat(
-                  fontSize: 10,
-                  height: 1.15,
+                  fontSize: 14,
                   fontWeight:
-                  FontWeight.w500,
-                  color:
-                  const Color(
-                    0xff172033,
+                  FontWeight.w600,
+
+                  color: isSelected
+                      ? Colors.white
+                      : const Color(
+                    0xff344054,
                   ),
                 ),
               ),
@@ -1543,39 +1972,189 @@ class _StockScreenState extends State<StockScreen> {
   }
 
   // ==========================================================
-  // VEG / NON VEG ICON
+  // LOGOUT
   // ==========================================================
 
-  Widget _buildVegIcon(
-      bool isVeg, {
-        double size = 14,
-      }) {
-    final color = isVeg
-        ? const Color(0xff12B76A)
-        : const Color(0xffF04438);
-
-    return Container(
-      width: size,
-      height: size,
-
-      decoration: BoxDecoration(
-        border: Border.all(
-          color: color,
-          width: 1,
-        ),
-
-        borderRadius:
-        BorderRadius.circular(3),
+  Widget _buildDrawerLogout() {
+    return Padding(
+      padding:
+      const EdgeInsets.fromLTRB(
+        10,
+        10,
+        10,
+        15,
       ),
 
-      child: Center(
-        child: Container(
-          width: size * .45,
-          height: size * .45,
+      child: InkWell(
+        onTap: () async {
+          final prefs =
+          await SharedPreferences
+              .getInstance();
 
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
+          final storeBaseUrl =
+              prefs.getString(
+                'store_base_url',
+              ) ??
+                  '';
+
+          final storeName =
+              prefs.getString(
+                'store_name',
+              ) ??
+                  '';
+
+          final storeId =
+              prefs.getString(
+                'store_id',
+              ) ??
+                  '';
+
+          await prefs.remove(
+            'token',
+          );
+
+          await prefs.remove(
+            'auth_token',
+          );
+
+          await prefs.remove(
+            'user_id',
+          );
+
+          await prefs.remove(
+            'employee_name',
+          );
+
+          await prefs.remove(
+            'display_name',
+          );
+
+          await prefs.remove(
+            'role',
+          );
+
+          await prefs.remove(
+            'emp_login_pin',
+          );
+
+          await prefs.remove(
+            'emp_login_pin_str',
+          );
+
+          if (!mounted) return;
+
+          Navigator.pushAndRemoveUntil(
+            context,
+
+            MaterialPageRoute(
+              builder: (context) =>
+                  EmployeeLoginScreen(
+                    storeBaseUrl:
+                    storeBaseUrl,
+
+                    storeName:
+                    storeName,
+
+                    storeId:
+                    storeId,
+
+                    onLoginSuccess:
+                        (config) {
+                      Navigator.pushAndRemoveUntil(
+                        context,
+
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              KitchenDashboardScreen(
+                                token:
+                                config.apiToken,
+
+                                restaurantId:
+                                int.tryParse(
+                                  config.restaurantId,
+                                ) ??
+                                    0,
+                              ),
+                        ),
+
+                            (route) => false,
+                      );
+                    },
+                  ),
+            ),
+
+                (route) => false,
+          );
+        },
+
+        borderRadius:
+        BorderRadius.circular(
+          8,
+        ),
+
+        child: Container(
+          height: 44,
+
+          width:
+          double.infinity,
+
+          decoration:
+          BoxDecoration(
+            color:
+            const Color(
+              0xffffefec,
+            ),
+
+            borderRadius:
+            BorderRadius.circular(
+              8,
+            ),
+
+            border: Border.all(
+              color:
+              const Color(
+                0xffffa69b,
+              ),
+
+              width: 0.8,
+            ),
+          ),
+
+          child: const Row(
+            mainAxisAlignment:
+            MainAxisAlignment.center,
+
+            children: [
+              Icon(
+                Icons.logout,
+
+                size: 17,
+
+                color:
+                Color(
+                  0xffff4f3d,
+                ),
+              ),
+
+              SizedBox(
+                width: 7,
+              ),
+
+              Text(
+                'Logout',
+
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight:
+                  FontWeight.w600,
+
+                  color:
+                  Color(
+                    0xffff4f3d,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1589,70 +2168,98 @@ class _StockScreenState extends State<StockScreen> {
   Widget _buildBottomSummary() {
     return Row(
       children: [
-
-        // ==================================================
+        // ====================================================
         // TOTAL
-        // ==================================================
+        // ====================================================
 
         _buildSummaryCard(
           title: 'Total Items',
+
           value:
           _totalItems.toString(),
+
           icon:
           Icons.inventory_2_outlined,
+
           background:
-          const Color(0xffEEF5FF),
+          const Color(
+            0xffEEF5FF,
+          ),
+
           iconColor:
-          const Color(0xff2563EB),
+          const Color(
+            0xff2563EB,
+          ),
         ),
 
-        const SizedBox(width: 12),
+        const SizedBox(
+          width: 12,
+        ),
 
-        // ==================================================
+        // ====================================================
         // SELECTED
-        // ==================================================
+        // ====================================================
 
         _buildSummaryCard(
           title: 'Selected',
+
           value:
           _selectedItems.toString(),
+
           icon:
           Icons.check_circle_outline,
+
           background:
-          const Color(0xffEDFFF3),
+          const Color(
+            0xffEDFFF3,
+          ),
+
           iconColor:
-          const Color(0xff12B76A),
+          const Color(
+            0xff12B76A,
+          ),
         ),
 
-        const SizedBox(width: 12),
+        const SizedBox(
+          width: 12,
+        ),
 
-        // ==================================================
+        // ====================================================
         // UNSELECTED
-        // ==================================================
+        // ====================================================
 
         _buildSummaryCard(
           title: 'Unselected',
+
           value:
           _unselectedItems.toString(),
+
           icon:
           Icons.cancel_outlined,
+
           background:
-          const Color(0xfffff5ea),
+          const Color(
+            0xfffff5ea,
+          ),
+
           iconColor:
-          const Color(0xffF04438),
+          const Color(
+            0xffF04438,
+          ),
         ),
 
         const Spacer(),
 
-        // ==================================================
+        // ====================================================
         // SAVE & UPDATE
-        // ==================================================
+        // ====================================================
 
         SizedBox(
-          width: 162,
+          width: 262,
           height: 34,
 
-          child: ElevatedButton(
+          child:
+          ElevatedButton(
             onPressed:
             _saveAndUpdate,
 
@@ -1682,7 +2289,7 @@ class _StockScreenState extends State<StockScreen> {
 
               style:
               GoogleFonts.montserrat(
-                fontSize: 10,
+                fontSize: 16,
                 fontWeight:
                 FontWeight.w700,
               ),
@@ -1712,11 +2319,14 @@ class _StockScreenState extends State<StockScreen> {
         horizontal: 9,
       ),
 
-      decoration: BoxDecoration(
+      decoration:
+      BoxDecoration(
         color: background,
 
         borderRadius:
-        BorderRadius.circular(6),
+        BorderRadius.circular(
+          6,
+        ),
 
         border: Border.all(
           color:
@@ -1731,13 +2341,14 @@ class _StockScreenState extends State<StockScreen> {
         MainAxisSize.min,
 
         children: [
-
           Container(
             width: 20,
             height: 20,
 
-            decoration: BoxDecoration(
+            decoration:
+            BoxDecoration(
               color: iconColor,
+
               borderRadius:
               BorderRadius.circular(
                 4,
@@ -1746,19 +2357,23 @@ class _StockScreenState extends State<StockScreen> {
 
             child: Icon(
               icon,
+
               size: 12,
+
               color: Colors.white,
             ),
           ),
 
-          const SizedBox(width: 6),
+          const SizedBox(
+            width: 6,
+          ),
 
           Text(
             title,
 
             style:
             GoogleFonts.montserrat(
-              fontSize: 9,
+              fontSize: 14,
               fontWeight:
               FontWeight.w600,
               color:
@@ -1768,14 +2383,16 @@ class _StockScreenState extends State<StockScreen> {
             ),
           ),
 
-          const SizedBox(width: 5),
+          const SizedBox(
+            width: 5,
+          ),
 
           Text(
             value,
 
             style:
             GoogleFonts.montserrat(
-              fontSize: 10,
+              fontSize: 14,
               fontWeight:
               FontWeight.w800,
               color: iconColor,
@@ -1806,13 +2423,28 @@ class StockCategory {
 // ============================================================
 
 class StockItem {
+  final int id;
   final String name;
+  final int? stockQuantity;
+  final String stockStatus;
+
+  final bool isEnabled;
+
+  // ADD THIS
   final bool isVeg;
+
   bool selected;
 
   StockItem({
+    required this.id,
     required this.name,
+    this.stockQuantity,
+    required this.stockStatus,
+    required this.isEnabled,
+
+    // ADD THIS
     required this.isVeg,
+
     required this.selected,
   });
 }

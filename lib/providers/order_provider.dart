@@ -836,6 +836,60 @@ class OrderProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> updateAllKotItemStatus(String orderId) async {
+    final order = _findOrder(orderId);
+
+    if (order == null) {
+      KdsDebugLog.error('Order not found: $orderId');
+      return false;
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token') ?? '';
+
+      // Get all item IDs
+      final itemIds = order.items
+          .map((item) => item.lineItemId)
+          .whereType<int>()
+          .toList();
+
+      debugPrint('========== UPDATE ALL KOT ITEMS ==========');
+      debugPrint('Parent ID: ${order.parentOrderId}');
+      debugPrint('Order ID: ${order.kotId}');
+      debugPrint('Restaurant ID: 1');
+      debugPrint('Zone ID: ${order.zoneId}');
+      debugPrint('Item IDs: $itemIds');
+
+      if (itemIds.isEmpty) {
+        KdsDebugLog.error(
+          'No line item IDs found for KOT ${order.id}',
+        );
+        return false;
+      }
+
+      await CancelItemRepository().updateCancelItemStatus(
+        token: token,
+        parentId: order.parentOrderId!,
+        orderId: order.kotId!,
+        restaurantId: 1,
+        orderType: order.type,
+        zoneId: order.zoneId,
+        itemIds: itemIds,
+      );
+
+      debugPrint('All KOT items API success');
+
+      return true;
+    } catch (e, stack) {
+      KdsDebugLog.error(
+        'updateAllKotItemStatus failed: $e\n$stack',
+      );
+
+      return false;
+    }
+  }
+
   Future<bool> updateOrderStatus(String orderId, String status) async {
     final order = _findOrder(orderId);
     if (order == null) return false;

@@ -500,6 +500,7 @@ class KitchenOrder {
   final DateTime? kotTime;
   final List<OrderItem> items;
   final String kotStatus;
+  final String kotOrderStatus;
 
   DateTime? servedAt;
 
@@ -516,6 +517,7 @@ class KitchenOrder {
     this.kotTime,
     required this.items,
     this.kotStatus = '',
+    this.kotOrderStatus = '',
     this.servedAt,
   });
 
@@ -849,42 +851,40 @@ class KitchenOrder {
             [];
 
     return KitchenOrder(
-      id:
-      json['kot_number']
-          ?.toString() ??
-          '',
+      id: json['kot_number']?.toString() ?? '',
 
       kotId:
-      (json['kot_id'] as num?)
-          ?.toInt(),
+      (json['kot_id'] as num?)?.toInt(),
 
       parentOrderId:
-      (json['order_id'] as num?)
-          ?.toInt(),
+      (json['order_id'] as num?)?.toInt(),
 
       zoneId:
-      (json['zone_id'] as num?)
-          ?.toInt(),
+      (json['zone_id'] as num?)?.toInt(),
 
       zoneName:
-      json['zone_name']
-          ?.toString(),
+      json['zone_name']?.toString(),
 
       type:
-      json['order_type']
-          ?.toString() ??
-          'Dine In',
+      json['order_type']?.toString() ?? 'Dine In',
 
       status: uiStatus,
 
+      // Preparing / Ready / Served
       kotStatus:
       json['kot_status']
           ?.toString() ??
           '',
 
+      // New / Running
+      kotOrderStatus:
+      json['kot_order_status']
+          ?.toString()
+          .trim() ??
+          '',
+
       tableName:
-      json['table_name']
-          ?.toString(),
+      json['table_name']?.toString(),
 
       kotTime:
       _parseKotTime(
@@ -930,6 +930,7 @@ class KitchenOrder {
     ).toList(),
 
     'kotStatus': kotStatus,
+    'kotOrderStatus': kotOrderStatus,
 
     'servedAt':
     servedAt?.toIso8601String(),
@@ -948,7 +949,15 @@ class KitchenOrder {
     'zoneId': zoneId,
     'zoneName': zoneName,
     'type': type,
+    // 'status': status,
+    // Overall UI status
     'status': status,
+
+    // KOT preparation status
+    'kot_status': kotStatus,
+
+    // KOT order status: New / Running
+    'kot_order_status': kotOrderStatus,
     'isCancelled': isCancelled,
     'tableName': tableName,
     'locationLabel': locationLabel,

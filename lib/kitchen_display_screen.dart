@@ -905,6 +905,47 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
         displayOrders.add(order);
       }
     }
+    // ==========================================================
+// SORT ACTIVE KOTS
+// 1. RUNNING first
+// 2. NEW second
+// 3. Within same status -> oldest KOT first
+// ==========================================================
+
+    displayOrders.sort((a, b) {
+      final aKotStatus =
+          a['kot_order_status']?.toString().trim().toLowerCase() ?? '';
+
+      final bKotStatus =
+          b['kot_order_status']?.toString().trim().toLowerCase() ?? '';
+
+      // Running gets higher priority
+      int getStatusPriority(String status) {
+        if (status == 'running') return 0;
+        if (status == 'new') return 1;
+
+        // Preparing can also be considered running
+        if (status == 'preparing' || status == 'processing') {
+          return 0;
+        }
+
+        return 2;
+      }
+
+      final aPriority = getStatusPriority(aKotStatus);
+      final bPriority = getStatusPriority(bKotStatus);
+
+      // First compare status priority
+      if (aPriority != bPriority) {
+        return aPriority.compareTo(bPriority);
+      }
+
+      // Same status -> compare KOT creation time
+      final aTime = _parseKotTime(a['kotTime']);
+      final bTime = _parseKotTime(b['kotTime']);
+
+      return aTime.compareTo(bTime);
+    });
 
     final filteredActiveOrders = displayOrders.where((order) {
       final type = order['type']?.toString().toLowerCase() ?? '';
@@ -1510,14 +1551,20 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
           continue;
         }
 
+        // ======================================================
+        // PRODUCT ID
+        // ======================================================
+
         final productId =
-            product['product_id']
-                ?.toString()
-                .trim() ??
-                product['productId']
-                    ?.toString()
-                    .trim() ??
-                '';
+            product['product_id'] ??
+                product['productId'];
+
+        final productIdString =
+            productId?.toString().trim() ?? '';
+
+        // ======================================================
+        // PRODUCT NAME
+        // ======================================================
 
         final productName =
             product['item_name']
@@ -1531,15 +1578,39 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                     .trim() ??
                 '';
 
-        if (productId.isNotEmpty) {
-          productCategoryMap[productId] = category;
+        // ======================================================
+        // PRODUCT ID → CATEGORY
+        // ======================================================
+
+        if (category.isNotEmpty &&
+            productIdString.isNotEmpty) {
+          productCategoryMap[
+          productIdString
+          ] = category;
         }
 
-        if (productName.isNotEmpty) {
+        // ======================================================
+        // PRODUCT NAME → CATEGORY
+        // IMPORTANT FOR VARIANTS
+        // ======================================================
+
+        if (category.isNotEmpty &&
+            productName.isNotEmpty) {
           productCategoryNameMap[
           _normalizeProductName(productName)
           ] = category;
         }
+
+        // ======================================================
+        // DEBUG
+        // ======================================================
+
+        debugPrint(
+          'CATEGORY MAP: '
+              'ID=$productIdString | '
+              'NAME=$productName | '
+              'CATEGORY=$category',
+        );
       }
     }
 
@@ -2148,6 +2219,20 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
     final orderType = order['type']?.toString() ?? '';
     final status = order['status']?.toString() ?? 'Pending';
     final normalizedStatus = status.toLowerCase();
+
+
+// KOT order status from backend
+    final kotOrderStatus =
+        order['kot_order_status']?.toString().trim().toLowerCase() ?? '';
+    debugPrint('================ KOT STATUS DEBUG ================');
+    debugPrint('KOT       : ${order['kotNo']}');
+    debugPrint('TABLE     : ${order['tableName']}');
+    debugPrint('ORDER ID  : ${order['parentOrderId']}');
+    debugPrint('STATUS    : ${order['status']}');
+    debugPrint('KOT STATUS: ${order['kot_status']}');
+    debugPrint('KOT ORDER : ${order['kot_order_status']}');
+    debugPrint('FINAL     : $kotOrderStatus');
+    debugPrint('====================================================');
     final type = orderType.toLowerCase();
 
     final isDineIn = type.contains('dine');
@@ -2228,7 +2313,8 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
     final time = DateFormat('HH:mm').format(kotTime);
     final date = DateFormat('hh:mm a').format(kotTime);
 
-    final isNewTableKot = _isNewTableKot(order, normalizedStatus);
+    final isNewKot = kotOrderStatus == 'new';
+    final isRunningKot = kotOrderStatus == 'running';
 
     final switchValues = _getKotSwitchValues(
       switchKey,
@@ -2258,14 +2344,16 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
         normalizedStatus == 'completed') {
       buttonText = 'Served';
       buttonColor = const Color(0xff667085);
-    } else if (isNewTableKot) {
-      buttonText = 'Food Ready';
-      buttonColor = headerColor;
-    } else {
+    } else if (isNewKot) {
+      buttonText = 'New';
+      buttonColor = const Color(0xff5B9638); // GREEN
+    } else if (isRunningKot) {
       buttonText = 'Running';
-      buttonColor = headerColor;
+      buttonColor = const Color(0xffF04438); // RED
+    } else {
+      buttonText = 'New';
+      buttonColor = const Color(0xff5B9638); // GREEN
     }
-
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -3185,48 +3273,70 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                       onPressed: () async {
                         if (kotId.isEmpty) return;
 
-                        // -------------------------------------------------
-                        // Cancel mode: all items selected = Cancel KOT
-                        // -------------------------------------------------
-                        if (isCancelMode && allItemsSelectedForCancel) {
-                          final success = await provider.cancelOrder(kotId);
-
-                          if (success && mounted) {
-                            setState(() {
-                              _clearCancelSelection(switchKey);
-                              selectedItemsMap.remove(switchKey);
-                            });
-                          }
-                          return;
-                        }
-
-                        // -------------------------------------------------
-                        // Cancel mode + partial selection:
-                        // the dedicated Confirm Item Cancel button performs
-                        // the item cancellation. Do not start/prepare the
-                        // remaining items accidentally.
-                        // -------------------------------------------------
                         if (isCancelMode) {
+                          if (allItemsSelectedForCancel) {
+                            final success = await provider.cancelOrder(kotId);
+
+                            if (success && mounted) {
+                              setState(() {
+                                _clearCancelSelection(switchKey);
+                                selectedItemsMap.remove(switchKey);
+                              });
+                            }
+                          }
+
                           return;
                         }
 
-                        // -------------------------------------------------
-                        // EXISTING STATUS FLOW - unchanged
-                        // -------------------------------------------------
-                        if (buttonText == 'Ready') {
-                          await provider.updateOrderStatus(
-                            kotId,
-                            'Ready',
-                          );
-                        } else if (buttonText == 'Served') {
+                        // ==========================================================
+                        // NEW / RUNNING
+                        // SERVE ALL ITEMS
+                        // ==========================================================
+
+                        if (buttonText == 'New' ||
+                            buttonText == 'Running') {
+
+                          // Turn ON all item toggles immediately
+                          setState(() {
+                            selectedItemsMap[switchKey] =
+                            List<bool>.filled(
+                              items.length,
+                              true,
+                            );
+                          });
+
+                          // Update complete KOT
                           await provider.updateOrderStatus(
                             kotId,
                             'Served',
                           );
-                        } else {
+
+                          if (mounted) {
+                            setState(() {});
+                          }
+
+                          return;
+                        }
+
+                        // ==========================================================
+                        // READY
+                        // ==========================================================
+
+                        if (buttonText == 'Ready') {
                           await provider.updateOrderStatus(
                             kotId,
-                            'Preparing',
+                            'served',
+                          );
+                        }
+
+                        // ==========================================================
+                        // SERVED
+                        // ==========================================================
+
+                        else if (buttonText == 'Served') {
+                          await provider.updateOrderStatus(
+                            kotId,
+                            'Served',
                           );
                         }
 

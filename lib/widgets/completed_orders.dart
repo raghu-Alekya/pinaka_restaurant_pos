@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:kds_app/widgets/stock_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -1010,60 +1011,43 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
                                               )
                                               : (order.canRecall
                                                   ? InkWell(
-                                                     onTap: () async {
-                                                       if (_recallingKotIds.contains(order.kotOrderId)) return;
+                                            onTap: () async {
+                                              if (_recallingKotIds.contains(order.kotOrderId)) return;
 
-                                                       setState(() {
-                                                         _recallingKotIds.add(order.kotOrderId);
-                                                       });
+                                              setState(() {
+                                                _recallingKotIds.add(order.kotOrderId);
+                                              });
 
-                                                       try {
-                                                         final success = await context
-                                                             .read<OrderProvider>()
-                                                             .recallOrderFromHistory(
-                                                               order: order,
-                                                               token: widget.token,
-                                                             );
+                                              try {
+                                                final success = await context
+                                                    .read<OrderProvider>()
+                                                    .recallOrderFromHistory(
+                                                  order: order,
+                                                  token: widget.token,
+                                                );
 
-                                                         if (!mounted) return;
+                                                if (!mounted) return;
 
-                                                         if (success) {
-                                                           if (widget.isEmbedded) {
-                                                             widget.onRecallSuccess
-                                                                 ?.call();
-                                                           } else {
-                                                             Navigator.pushReplacement(
-                                                               context,
-                                                               MaterialPageRoute(
-                                                                 builder:
-                                                                     (
-                                                                       _,
-                                                                     ) => ActiveOrdersScreen(
-                                                                       token:
-                                                                           widget
-                                                                               .token,
-                                                                       restaurantId:
-                                                                           widget
-                                                                               .restaurantId,
-                                                                     ),
-                                                               ),
-                                                             );
-                                                           }
-                                                         } else {
-                                                           ScaffoldMessenger.of(context).showSnackBar(
-                                                             const SnackBar(
-                                                               content: Text("Failed to recall KOT order. Please try again."),
-                                                             ),
-                                                           );
-                                                         }
-                                                       } finally {
-                                                         if (mounted) {
-                                                           setState(() {
-                                                             _recallingKotIds.remove(order.kotOrderId);
-                                                           });
-                                                         }
-                                                       }
-                                                     },
+                                                if (success) {
+                                                  // Stay on Recall screen
+                                                  await loadOrders();
+                                                } else {
+                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                    const SnackBar(
+                                                      content: Text(
+                                                        "Failed to recall KOT order. Please try again.",
+                                                      ),
+                                                    ),
+                                                  );
+                                                }
+                                              } finally {
+                                                if (mounted) {
+                                                  setState(() {
+                                                    _recallingKotIds.remove(order.kotOrderId);
+                                                  });
+                                                }
+                                              }
+                                            },
                                                      child: Container(
                                                        padding:
                                                            const EdgeInsets.symmetric(
@@ -1236,6 +1220,16 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
 
         onStock: () {
           Navigator.pop(context);
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => StockScreen(
+                token: widget.token,
+                restaurantId: widget.restaurantId,
+              ),
+            ),
+          );
         },
 
         onRecall: () {

@@ -261,6 +261,43 @@ class OrderApiService {
     KdsDebugLog.info('Response Body: ${response.body}');
     return jsonBody ?? {'success': true};
   }
+  String _normalizeProductName(String name) {
+    String normalized = name
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'\s+'), ' ');
+
+    // =====================================================
+    // REMOVE COMMON VARIANT / SIZE SUFFIXES
+    // =====================================================
+
+    normalized = normalized.replaceFirst(
+      RegExp(
+        r'\s*-\s*'
+        r'(single|family|jumbo|half|full|small|medium|large)$',
+        caseSensitive: false,
+      ),
+      '',
+    );
+
+    // =====================================================
+    // REMOVE ML / L / KG / G SIZE
+    // Examples:
+    // Budweiser - 750 ml -> budweiser
+    // Bira - 60 ml        -> bira
+    // Product - 1 kg     -> product
+    // =====================================================
+
+    normalized = normalized.replaceFirst(
+      RegExp(
+        r'\s*-\s*\d+(?:\.\d+)?\s*(ml|l|kg|g)$',
+        caseSensitive: false,
+      ),
+      '',
+    );
+
+    return normalized.trim();
+  }
   Future<List<dynamic>> getKitchenDisplayOrders() async {
     final token = await _requireToken();
 
@@ -308,8 +345,10 @@ class OrderApiService {
     // ==========================================================
 
     final Map<String, bool?> vegByProductId = {};
+
     final Map<String, String> productCategoryById = {};
 
+    final Map<String, String> productCategoryByName = {};
     // ==========================================================
     // CATEGORY PRODUCTS
     // ==========================================================
@@ -352,28 +391,69 @@ class OrderApiService {
             continue;
           }
 
+          // ======================================================
+          // PRODUCT ID
+          // ======================================================
+
           final productId =
               product['product_id'] ??
                   product['productId'];
 
-          if (productId == null) {
-            continue;
-          }
-
           final productIdString =
-          productId.toString();
+              productId?.toString().trim() ?? '';
 
           // ======================================================
-          // PRODUCT -> CATEGORY
+          // PRODUCT NAME
           // ======================================================
 
-          if (categoryName.isNotEmpty) {
+          final productName =
+              product['item_name']
+                  ?.toString()
+                  .trim() ??
+                  product['name']
+                      ?.toString()
+                      .trim() ??
+                  product['product_name']
+                      ?.toString()
+                      .trim() ??
+                  '';
+
+          // ======================================================
+          // PRODUCT ID → CATEGORY
+          // ======================================================
+
+          if (categoryName.isNotEmpty &&
+              productIdString.isNotEmpty) {
             productCategoryById[
-            productIdString] = categoryName;
+            productIdString
+            ] = categoryName;
           }
 
           // ======================================================
-          // PRODUCT -> VEG / NON VEG
+          // PRODUCT NAME → CATEGORY
+          // IMPORTANT FOR VARIANTS
+          // ======================================================
+//
+          if (categoryName.isNotEmpty &&
+              productName.isNotEmpty) {
+
+            final normalizedProductName =
+            _normalizeProductName(productName);
+
+            productCategoryByName[
+            normalizedProductName
+            ] = categoryName;
+
+            print(
+              'NAME CATEGORY MAP => '
+                  '$productName -> '
+                  '$normalizedProductName -> '
+                  '$categoryName',
+            );
+          }
+
+          // ======================================================
+          // VEG / NON VEG
           // ======================================================
 
           final dynamic rawIsVeg;
@@ -392,7 +472,10 @@ class OrderApiService {
             isVeg = null;
           } else {
             final normalized =
-            rawIsVeg.toString().trim().toLowerCase();
+            rawIsVeg
+                .toString()
+                .trim()
+                .toLowerCase();
 
             isVeg =
                 rawIsVeg == true ||
@@ -401,18 +484,14 @@ class OrderApiService {
                     normalized == '1';
           }
 
-          vegByProductId[productIdString] = isVeg;
-
-          // print(
-          //   'PRODUCT MAP: '
-          //       '$productIdString -> '
-          //       '$categoryName -> '
-          //       '$isVeg',
-          // );
+          vegByProductId[
+          productIdString
+          ] = isVeg;
 
           print(
             'PRODUCT MAP: '
                 '$productIdString -> '
+                '$productName -> '
                 '$categoryName -> '
                 '$isVeg',
           );
@@ -471,6 +550,18 @@ class OrderApiService {
       final order =
       Map<String, dynamic>.from(rawOrder);
 
+
+
+// KOT ORDER STATUS
+// ==========================================================
+
+    final kotOrderStatus =
+    order['kot_order_status']?.toString().trim() ?? '';
+
+    if (kotOrderStatus.isNotEmpty) {
+    order['kot_order_status'] = kotOrderStatus;
+    }
+
       // ========================================================
       // KOT ITEMS
       // ========================================================
@@ -509,26 +600,86 @@ class OrderApiService {
           // CATEGORY
           // ====================================================
 
-          final categoryName =
-              productCategoryById[
-              productIdString] ??
-                  item['category_name']
-                      ?.toString()
-                      .trim() ??
-                  item['categoryName']
-                      ?.toString()
-                      .trim() ??
-                  item['category']
-                      ?.toString()
-                      .trim() ??
-                  'OTHER';
+          // ====================================================
+// CATEGORY
+// ====================================================
 
-          item['category_name'] =
-              categoryName;
+          String categoryName = '';
 
-          item['categoryName'] =
-              categoryName;
+// ====================================================
+// 1. PRODUCT ID → CATEGORY
+// ====================================================
 
+          categoryName =
+              productCategoryById[productIdString] ??
+                  '';
+
+// ====================================================
+// 2. PRODUCT NAME → CATEGORY
+// IMPORTANT FOR VARIANTS
+// ====================================================
+
+          if (categoryName.isEmpty) {
+            final itemName =
+                item['name']?.toString().trim() ??
+                    item['item_name']?.toString().trim() ??
+                    item['product_name']?.toString().trim() ??
+                    '';
+
+            final normalizedName =
+            _normalizeProductName(itemName);
+
+            categoryName =
+                productCategoryByName[
+                normalizedName] ??
+                    '';
+
+            print(
+              'CATEGORY NAME LOOKUP => '
+                  'name=$itemName | '
+                  'normalized=$normalizedName | '
+                  'category=$categoryName',
+            );
+          }
+
+// ====================================================
+// 3. CATEGORY DIRECTLY FROM KOT ITEM
+// ====================================================
+
+          if (categoryName.isEmpty) {
+            categoryName =
+                item['category_name']
+                    ?.toString()
+                    .trim() ??
+                    '';
+          }
+
+          if (categoryName.isEmpty) {
+            categoryName =
+                item['categoryName']
+                    ?.toString()
+                    .trim() ??
+                    '';
+          }
+
+          if (categoryName.isEmpty) {
+            categoryName =
+                item['category']
+                    ?.toString()
+                    .trim() ??
+                    '';
+          }
+
+// ====================================================
+// 4. FINAL FALLBACK
+// ====================================================
+
+          if (categoryName.isEmpty) {
+            categoryName = 'OTHER';
+          }
+
+          item['category_name'] = categoryName;
+          item['categoryName'] = categoryName;
           // ====================================================
           // ITEM NAME
           // ====================================================
