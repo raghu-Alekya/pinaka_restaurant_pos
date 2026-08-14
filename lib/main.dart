@@ -18,6 +18,10 @@ import 'features/ merchant_login/merchant_login_data_layer/merchant_login_reposi
 import 'features/ merchant_login/merchant_login_domain/merchant_login_repository.dart';
 import 'features/ merchant_login/merchant_login_domain/merchant_login_usecase.dart';
 import 'features/ merchant_login/merchant_login_screen.dart';
+import 'features/addons/addons_data_layer/addon_remote_data_source.dart';
+import 'features/addons/addons_data_layer/addon_repository_impl.dart';
+import 'features/addons/addons_domin/addon_repository.dart';
+import 'features/addons/addons_domin/fetch_addons_usecase.dart';
 import 'features/bill_summary/bill_summary_bloc/bill_summary_bloc.dart';
 import 'features/bill_summary/bill_summary_data_layer/bill_summary_remote_data_source.dart';
 import 'features/bill_summary/bill_summary_data_layer/bill_summary_repository_impl.dart';
@@ -71,6 +75,10 @@ import 'features/search_products/search_products_data_layer/search_remote_data_s
 import 'features/search_products/search_products_data_layer/search_repository_impl.dart';
 import 'features/search_products/search_products_domain/search_repository.dart';
 import 'features/search_products/search_products_domain/search_usecase.dart';
+import 'features/variations/variations_data_layer/variation_remote_data_source.dart';
+import 'features/variations/variations_data_layer/variation_repository_impl.dart';
+import 'features/variations/variations_domain/fetch_variations_usecase.dart';
+import 'features/variations/variations_domain/variation_repository.dart';
 
 
 void main() {
@@ -341,6 +349,38 @@ class MyApp extends StatelessWidget {
         BlocProvider<SearchBloc>(
           create: (context) => SearchBloc(
             useCase: context.read<SearchUseCase>(),
+          ),
+        ),
+
+        Provider<AddOnRemoteDataSource>(
+          create: (_) => AddOnRemoteDataSourceImpl(),
+        ),
+        Provider<AddOnRepository>(
+          create: (context) => AddOnRepositoryImpl(
+            remoteDataSource: context.read<AddOnRemoteDataSource>(),
+            merchantStorage: context.read<MerchantLocalStorage>(),
+            captainStorage: context.read<CaptainLocalStorage>(),
+          ),
+        ),
+        Provider<FetchAddOnsUseCase>(
+          create: (context) => FetchAddOnsUseCase(
+            repository: context.read<AddOnRepository>(),
+          ),
+        ),
+
+        Provider<VariationRemoteDataSource>(
+          create: (_) => VariationRemoteDataSourceImpl(),
+        ),
+        Provider<VariationRepository>(
+          create: (context) => VariationRepositoryImpl(
+            remoteDataSource: context.read<VariationRemoteDataSource>(),
+            merchantStorage: context.read<MerchantLocalStorage>(),
+            captainStorage: context.read<CaptainLocalStorage>(),
+          ),
+        ),
+        Provider<FetchVariationsUseCase>(
+          create: (context) => FetchVariationsUseCase(
+            repository: context.read<VariationRepository>(),
           ),
         ),
 

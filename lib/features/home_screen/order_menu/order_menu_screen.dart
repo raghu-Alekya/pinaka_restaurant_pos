@@ -922,7 +922,11 @@ import 'package:restaurant_captain_app/features/home_screen/order_menu/widgets/p
 import '../../ captain_pin_login/captain_login_data_layer/captain_local_storage.dart';
 import '../../ merchant_login/merchant_login_data_layer/merchant_local_storage.dart';
 import '../../../constants/color_constants.dart';
+import '../../addons/addons_domin/addon_entity.dart';
+import '../../addons/addons_domin/fetch_addons_usecase.dart';
 import '../../search_products/search_screen.dart';
+import '../../variations/variations_domain/fetch_variations_usecase.dart';
+import '../../variations/variations_domain/variation_entity.dart';
 import '../cart_screen.dart';
 import '../create_order/create_order_data_layer/create_order_remote_data_source.dart';
 import 'bloc/category_bloc/category_bloc.dart';
@@ -985,12 +989,6 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
 
   final TextEditingController _searchController = TextEditingController();
 
-  final List<Map<String, dynamic>> _demoAddOns = const [
-    {'name': 'Extra Ghee', 'price': 1.0},
-    {'name': 'Extra Karam Podi', 'price': 1.0},
-    {'name': 'Extra chutney', 'price': 1.0},
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -1003,8 +1001,8 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
     super.dispose();
   }
 
-
-  void _addToCart(ProductEntity product) {
+  // ─── Direct add to cart (no add‑ons) ───
+  void _addToCartDirect(ProductEntity product) {
     setState(() {
       final key = '${product.id}_';
       final existing = _cartItems[key];
@@ -1028,7 +1026,7 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
       }
     });
   }
-
+  // ─── Add with add‑ons (called from bottom sheet) ───
   void _addVariantToCart(
       ProductEntity product,
       int quantity,
@@ -1052,6 +1050,545 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
     } else {
       debugPrint('[CART] Added "${product.name}" x$quantity (no add-ons)');
     }
+  }
+
+
+  Future<void> _showVariantAndAddOnSheet(ProductEntity product) async {
+    try {
+      final variationsFuture = context.read<FetchVariationsUseCase>()(product.id);
+      final addOnsFuture = context.read<FetchAddOnsUseCase>()(product.id);
+
+      final results = await Future.wait([variationsFuture, addOnsFuture]);
+      final variations = results[0] as List<VariationEntity>;
+      final addOns = results[1] as List<AddOnEntity>;
+
+      if (variations.isEmpty) {
+        if (addOns.isEmpty) {
+          _addToCartDirect(product);
+          return;
+        } else {
+          _showAddOnsOnlySheet(product, addOns);
+          return;
+        }
+      }
+
+      int quantity = 1;
+      VariationEntity? selectedVariation = variations.first;
+      final selectedAddOns = <AddOnEntity>{};
+      final nonVeg = isNonVegProduct(product);
+
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        builder: (sheetContext) {
+          return StatefulBuilder(
+            builder: (context, setSheetState) {
+              final basePrice = double.tryParse(selectedVariation?.price ?? '0') ?? 0;
+              final addOnsTotal = selectedAddOns.fold<double>(0, (sum, a) => sum + a.price);
+              final total = (basePrice + addOnsTotal) * quantity;
+
+              return Padding(
+                padding: EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  top: 16,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── Header: veg/non-veg dot + name + close ──
+                    Row(
+                      children: [
+                        Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: nonVeg ? Colors.red : Colors.green,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            product.name,
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => Navigator.pop(sheetContext),
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Color(0xFFFFEAEA),
+                            ),
+                            child: const Icon(Icons.close, size: 18, color: Colors.red),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // ── Variations — 2-column card grid ──
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: variations.length,
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 10,
+                        crossAxisSpacing: 10,
+                        childAspectRatio: 2.2,
+                      ),
+                      itemBuilder: (context, index) {
+                        final variant = variations[index];
+                        final isSelected = selectedVariation?.variationId == variant.variationId;
+
+                        return GestureDetector(
+                          onTap: () => setSheetState(() {
+                            selectedVariation = variant;
+                            if (!isSelected) quantity = 1;
+                          }),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? ColorConstants.primaryColor.withOpacity(0.06)
+                                  : Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: isSelected ? ColorConstants.primaryColor : Colors.grey.shade300,
+                                width: isSelected ? 1.4 : 1,
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  product.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 12, color: Colors.black87),
+                                ),
+                                Text(
+                                  variant.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      '\$${variant.price}',
+                                      style: const TextStyle(
+                                        color: ColorConstants.primaryColor,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    isSelected
+                                        ? _VariantStepper(
+                                      quantity: quantity,
+                                      onAdd: () => setSheetState(() => quantity++),
+                                      onRemove: () => setSheetState(() {
+                                        if (quantity > 1) quantity--;
+                                      }),
+                                    )
+                                        : GestureDetector(
+                                      onTap: () => setSheetState(() {
+                                        selectedVariation = variant;
+                                        quantity = 1;
+                                      }),
+                                      child: const Icon(
+                                        Icons.add_circle,
+                                        color: ColorConstants.primaryColor,
+                                        size: 22,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+
+                    // ── Modifiers ──
+                    if (addOns.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      Row(
+                        children: const [
+                          Text('Modifiers', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                          SizedBox(width: 8),
+                          Expanded(child: Divider()),
+                        ],
+                      ),
+                      ...addOns.map((addOn) {
+                        final isChecked = selectedAddOns.contains(addOn);
+                        return CheckboxListTile(
+                          contentPadding: EdgeInsets.zero,
+                          controlAffinity: ListTileControlAffinity.leading,
+                          value: isChecked,
+                          title: Text(addOn.name, style: const TextStyle(fontSize: 14)),
+                          secondary: Text('+ \$${addOn.price.toStringAsFixed(2)}'),
+                          onChanged: (checked) {
+                            setSheetState(() {
+                              if (checked == true) {
+                                selectedAddOns.add(addOn);
+                              } else {
+                                selectedAddOns.remove(addOn);
+                              }
+                            });
+                          },
+                        );
+                      }),
+                    ],
+
+                    const SizedBox(height: 8),
+
+                    // ── Add to Cart ──
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          final selectedProduct = ProductEntity(
+                            id: selectedVariation!.variationId,
+                            name: '${product.name} - ${selectedVariation?.name}',
+                            price: selectedVariation?.price,
+                            inStock: selectedVariation?.inStock == 'Yes',
+                          );
+                          final selectedList = selectedAddOns
+                              .map((a) => {'name': a.name, 'price': a.price})
+                              .toList();
+                          _addVariantToCart(selectedProduct, quantity, selectedList);
+                          Navigator.pop(sheetContext);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: ColorConstants.primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Add to Cart', style: TextStyle(fontWeight: FontWeight.bold)),
+                            Text('\$${total.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
+        },
+      );
+    } catch (e) {
+      _addToCartDirect(product);
+    }
+  }
+  
+// Helper: show only add-ons sheet (when no variations)
+  void _showAddOnsOnlySheet(ProductEntity product, List<AddOnEntity> addOns) {
+    int quantity = 1;
+    final selectedAddOns = <AddOnEntity>{};
+    final basePrice = double.tryParse(product.price ?? '0') ?? 0;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final addOnsTotal = selectedAddOns.fold<double>(0, (sum, a) => sum + a.price);
+            final total = (basePrice + addOnsTotal) * quantity;
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(product.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Text('\$${basePrice.toStringAsFixed(2)}', style: const TextStyle(fontSize: 16, color: Colors.grey)),
+                  const SizedBox(height: 16),
+                  const Text('Add Onssss', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Divider(),
+                  ...addOns.map((addOn) {
+                    final isChecked = selectedAddOns.contains(addOn);
+                    return CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      value: isChecked,
+                      title: Text(addOn.name),
+                      secondary: Text('+ \$${addOn.price.toStringAsFixed(2)}'),
+                      onChanged: (checked) {
+                        setSheetState(() {
+                          if (checked == true) {
+                            selectedAddOns.add(addOn);
+                          } else {
+                            selectedAddOns.remove(addOn);
+                          }
+                        });
+                      },
+                    );
+                  }),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Total Amount:', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                          Text(
+                            '\$${total.toStringAsFixed(2)}',
+                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: ColorConstants.primaryColor),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.remove_circle_outline),
+                            onPressed: quantity > 1 ? () => setSheetState(() => quantity--) : null,
+                          ),
+                          Text('$quantity', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          IconButton(
+                            icon: const Icon(Icons.add_circle, color: ColorConstants.primaryColor),
+                            onPressed: () => setSheetState(() => quantity++),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        final selectedList = selectedAddOns.map((a) {
+                          return {
+                            'name': a.name,
+                            'price': a.price,
+                          };
+                        }).toList();
+                        _addVariantToCart(product, quantity, selectedList);
+                        Navigator.pop(sheetContext);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: ColorConstants.primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Add to Cart', style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text('\$${total.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+  // ─── Unified add‑on sheet (called for both "+" and variant taps) ───
+  Future<void> _showAddOnsSheet(ProductEntity product) async {
+    final basePrice = double.tryParse(product.price ?? '0') ?? 0;
+    final nonVeg = isNonVegProduct(product);
+
+    List<AddOnEntity> addOns = [];
+    try {
+      addOns = await context.read<FetchAddOnsUseCase>()(product.id);
+    } catch (e) {
+      _addToCartDirect(product);
+      return;
+    }
+
+    if (addOns.isEmpty) {
+      _addToCartDirect(product);
+      return;
+    }
+
+    int quantity = 1;
+    final selectedAddOns = <AddOnEntity>{};
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final addOnsTotal = selectedAddOns.fold<double>(0, (sum, a) => sum + a.price);
+            final total = (basePrice + addOnsTotal) * quantity;
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 16,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Header: veg/non-veg dot + name + close ──
+                  Row(
+                    children: [
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: nonVeg ? Colors.red : Colors.green,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          product.name,
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(sheetContext),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Color(0xFFFFEAEA),
+                          ),
+                          child: const Icon(Icons.close, size: 18, color: Colors.red),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ── Price + quantity stepper ──
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '\$${(basePrice + addOnsTotal).toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: ColorConstants.primaryColor,
+                        ),
+                      ),
+                      _VariantStepper(
+                        quantity: quantity,
+                        onAdd: () => setSheetState(() => quantity++),
+                        onRemove: () => setSheetState(() {
+                          if (quantity > 1) quantity--;
+                        }),
+                      ),
+                    ],
+                  ),
+
+                  // ── Modifiers ──
+                  if (addOns.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Row(
+                      children: const [
+                        Text('Modifiers', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                        SizedBox(width: 8),
+                        Expanded(child: Divider()),
+                      ],
+                    ),
+                    ...addOns.map((addOn) {
+                      final isChecked = selectedAddOns.contains(addOn);
+                      return CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        dense: true,
+                        value: isChecked,
+                        title: Text(addOn.name, style: const TextStyle(fontSize: 14)),
+                        secondary: Text('+ \$${addOn.price.toStringAsFixed(2)}'),
+                        onChanged: (checked) {
+                          setSheetState(() {
+                            if (checked == true) {
+                              selectedAddOns.add(addOn);
+                            } else {
+                              selectedAddOns.remove(addOn);
+                            }
+                          });
+                        },
+                      );
+                    }),
+                  ],
+
+                  const SizedBox(height: 8),
+
+                  // ── Add to Cart ──
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        final selectedList = selectedAddOns
+                            .map((a) => {'name': a.name, 'price': a.price})
+                            .toList();
+                        _addVariantToCart(product, quantity, selectedList);
+                        Navigator.pop(sheetContext);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: ColorConstants.primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Add to Cart', style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text('\$${total.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   void _incrementCartItem(CartItem item) {
@@ -1081,11 +1618,10 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
   }
 
   int get _totalItems => _cartItems.values.fold(0, (sum, item) => sum + item.quantity);
-
   double get _totalPrice => _cartItems.values.fold(0.0, (sum, item) => sum + item.totalPrice);
+
   Future<void> _cancelOrder() async {
     setState(() => _isCancellingOrder = true);
-
     try {
       final merchantStorage = context.read<MerchantLocalStorage>();
       final captainStorage = context.read<CaptainLocalStorage>();
@@ -1110,22 +1646,17 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
       );
 
       if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Order cancelled successfully')),
       );
-
       Navigator.of(context).popUntil((route) => route.isFirst);
-
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to cancel order: ${e.toString()}')),
       );
     } finally {
-      if (mounted) {
-        setState(() => _isCancellingOrder = false);
-      }
+      if (mounted) setState(() => _isCancellingOrder = false);
     }
   }
 
@@ -1139,7 +1670,7 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
         elevation: 0.5,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios), // ✅ iOS style back icon
+          icon: const Icon(Icons.arrow_back_ios),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text('Create Order', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
@@ -1163,7 +1694,6 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
               return const SizedBox.shrink();
             },
           ),
-
           BlocBuilder<CategoryBloc, CategoryState>(
             builder: (context, state) {
               if (state is CategoryLoaded) {
@@ -1192,15 +1722,11 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
               return const SizedBox.shrink();
             },
           ),
-
           Expanded(
             child: BlocBuilder<CategoryBloc, CategoryState>(
               builder: (context, state) {
                 if (state is CategoryLoading) {
-                  // ✅ iOS style loading indicator
-                  return const Center(
-                    child: CupertinoActivityIndicator(radius: 14),
-                  );
+                  return const Center(child: CupertinoActivityIndicator(radius: 14));
                 } else if (state is CategoryLoaded) {
                   return ProductListView(
                     subcategories: state.subcategories,
@@ -1212,16 +1738,13 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                     selectedSubcategoryId: _selectedSubcategoryId,
                     vegOnly: _vegOnly,
                     nonVegOnly: _nonVegOnly,
-                    onAdd: _addToCart,
-                    onRemove: _removeFromCart,
-                    onVariantTap: _openVariantSheet,
+                    onAdd: _showAddOnsSheet,          // 👈 unified add‑on check
+                    onRemove: _removeFromCart,         // kept for reference, but you need to define it
+                    // onVariantTap: _showAddOnsSheet,    // 👈 variants also use the same sheet
+                    onVariantTap: _showVariantAndAddOnSheet,
                     onVisibleSubcategoryChanged: (subId) {
-                      // Only update if the user is not manually selecting via tap
-                      // and if the new subcategory is different
                       if (_selectedSubcategoryId != subId) {
-                        setState(() {
-                          _selectedSubcategoryId = subId;
-                        });
+                        setState(() => _selectedSubcategoryId = subId);
                       }
                     },
                   );
@@ -1341,7 +1864,7 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
           context,
           MaterialPageRoute(
             builder: (_) => SearchScreen(
-              onAddToCart: _addToCart,
+              onAddToCart: _showAddOnsSheet, // ✅ now uses the add‑on sheet
             ),
           ),
         );
@@ -1911,110 +2434,60 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
     );
   }
 
-  // ---------------------------------------------------------------------
-  // Variant bottom sheet — UNCHANGED
-  // ---------------------------------------------------------------------
-  void _openVariantSheet(ProductEntity product) {
-    final basePrice = double.tryParse(product.price ?? '0') ?? 0;
-    int quantity = 1;
-    final selected = <Map<String, dynamic>>{};
+}
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (sheetContext) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            final addOnsTotal = selected.fold<double>(0, (sum, a) => sum + (a['price'] as double));
-            final total = (basePrice + addOnsTotal) * quantity;
+class _VariantStepper extends StatelessWidget {
+  final int quantity;
+  final VoidCallback onAdd;
+  final VoidCallback onRemove;
 
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 20,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+  const _VariantStepper({
+    required this.quantity,
+    required this.onAdd,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 26,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: ColorConstants.primaryColor, width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GestureDetector(
+            onTap: onRemove,
+            child: const SizedBox(
+              width: 22,
+              child: Icon(Icons.remove, size: 14, color: ColorConstants.primaryColor),
+            ),
+          ),
+          SizedBox(
+            width: 18,
+            child: Text(
+              '$quantity',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: ColorConstants.primaryColor,
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(product.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '\$${(basePrice + addOnsTotal).toStringAsFixed(2)}',
-                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: ColorConstants.primaryColor),
-                      ),
-                      Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.remove_circle_outline),
-                            onPressed: quantity > 1 ? () => setSheetState(() => quantity--) : null,
-                          ),
-                          Text('$quantity', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                          IconButton(
-                            icon: const Icon(Icons.add_circle, color: ColorConstants.primaryColor),
-                            onPressed: () => setSheetState(() => quantity++),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  const Text('Add Ons', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                  const Divider(),
-                  ..._demoAddOns.map((addOn) {
-                    final isChecked = selected.any((a) => a['name'] == addOn['name']);
-                    return CheckboxListTile(
-                      contentPadding: EdgeInsets.zero,
-                      controlAffinity: ListTileControlAffinity.leading,
-                      value: isChecked,
-                      title: Text(addOn['name'] as String),
-                      secondary: Text('+ \$${(addOn['price'] as double).toStringAsFixed(2)}'),
-                      onChanged: (checked) {
-                        setSheetState(() {
-                          if (checked == true) {
-                            selected.add(addOn);
-                          } else {
-                            selected.removeWhere((a) => a['name'] == addOn['name']);
-                          }
-                        });
-                      },
-                    );
-                  }),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        _addVariantToCart(product, quantity, selected.toList());
-                        Navigator.pop(sheetContext);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: ColorConstants.primaryColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Add to Cart', style: TextStyle(fontWeight: FontWeight.bold)),
-                          Text('\$${total.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
+            ),
+          ),
+          GestureDetector(
+            onTap: onAdd,
+            child: const SizedBox(
+              width: 22,
+              child: Icon(Icons.add, size: 14, color: ColorConstants.primaryColor),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
+

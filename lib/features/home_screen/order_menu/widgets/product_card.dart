@@ -209,20 +209,10 @@ import '../../../../constants/color_constants.dart';
 import '../entities/product_entity.dart';
 
 bool isNonVegProduct(ProductEntity product) {
-  const nonVegKeywords = [
-    'chicken',
-    'mutton',
-    'egg',
-    'kheema',
-    'fish',
-    'prawn',
-    'beef',
-    'pork',
-    'meat',
-  ];
-
-  final name = product.name.toLowerCase();
-  return nonVegKeywords.any((k) => name.contains(k));
+  // Uses the real flag from your API instead of guessing from the name.
+  // Rename `product.isVeg` below to whatever field your ProductEntity
+  // actually has (e.g. product.veg, product.foodType, product.isVegetarian).
+  return product.isVeg == false;
 }
 
 class ProductCard extends StatelessWidget {
@@ -533,6 +523,62 @@ class _CompactStepper extends StatelessWidget {
                   color: ColorConstants.primaryColor,
                 ),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+class _VariantStepper extends StatelessWidget {
+  final int quantity;
+  final VoidCallback onAdd;
+  final VoidCallback onRemove;
+
+  const _VariantStepper({
+    required this.quantity,
+    required this.onAdd,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 26,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: ColorConstants.primaryColor, width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GestureDetector(
+            onTap: onRemove,
+            child: const SizedBox(
+              width: 22,
+              child: Icon(Icons.remove, size: 14, color: ColorConstants.primaryColor),
+            ),
+          ),
+          SizedBox(
+            width: 18,
+            child: Text(
+              '$quantity',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: ColorConstants.primaryColor,
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: onAdd,
+            child: const SizedBox(
+              width: 22,
+              child: Icon(Icons.add, size: 14, color: ColorConstants.primaryColor),
             ),
           ),
         ],
