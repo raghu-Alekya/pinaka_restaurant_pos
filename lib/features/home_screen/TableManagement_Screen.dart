@@ -676,6 +676,26 @@ class _TableManagementScreenState extends State<TableManagementScreen>
     if (mounted) setState(() => _isSyncing = false);
   }
 
+  Future<void> _onSyncDataFromDrawer() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const _SyncingOverlay(),
+    );
+
+    _selectedZoneId = null;
+    if (_tablesScrollController.hasClients) {
+      _tablesScrollController.jumpTo(0);
+    }
+
+    context.read<ZoneBloc>().add(FetchZones());
+    context.read<AllTablesBloc>().add(FetchAllTables());
+
+    await Future.delayed(const Duration(milliseconds: 900));
+
+    if (mounted) Navigator.of(context, rootNavigator: true).pop();
+  }
+
   @override
   void dispose() {
     _tablesScrollController.dispose();
@@ -695,6 +715,8 @@ class _TableManagementScreenState extends State<TableManagementScreen>
         onLogout: _handleLogout,
         storeLogo: _storeLogo,
         storeName: _storeName,
+        onSyncData: _onSyncDataFromDrawer,   // new
+
       ),
       appBar: AppBar(
         elevation: 0.5,
@@ -918,6 +940,57 @@ class _TableManagementScreenState extends State<TableManagementScreen>
   }
 }
 
+class _SyncingOverlay extends StatelessWidget {
+  const _SyncingOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: const BoxDecoration(
+                color: ColorConstants.primaryColor,
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: SizedBox(
+                  width: 26,
+                  height: 26,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Syncing Data',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _StatusLegendBar extends StatelessWidget {
   const _StatusLegendBar();
 
@@ -992,13 +1065,13 @@ class _LegendDot extends StatelessWidget {
   }
 }
 
-// ─── Updated Drawer with Store Logo and Name ───
 class _AppDrawer extends StatelessWidget {
   final String captainName;
   final String captainRole;
   final VoidCallback onLogout;
   final String storeLogo;
   final String storeName;
+  final VoidCallback onSyncData;   // new
 
   const _AppDrawer({
     required this.captainName,
@@ -1006,6 +1079,7 @@ class _AppDrawer extends StatelessWidget {
     required this.onLogout,
     required this.storeLogo,
     required this.storeName,
+    required this.onSyncData,   // new
   });
 
   @override
@@ -1091,10 +1165,9 @@ class _AppDrawer extends StatelessWidget {
                 label: 'Sync Data',
                 onTap: () {
                   Navigator.of(context).pop();
-
+                  onSyncData();
                 },
               ),
-
               _DrawerItem(
                 icon: Icons.receipt_outlined,
                 label: 'Update Menu',
@@ -1102,13 +1175,7 @@ class _AppDrawer extends StatelessWidget {
                   Navigator.of(context).pop();
                 },
               ),
-              _DrawerItem(
-                icon: Icons.wifi_outlined,
-                label: 'Find server IP',
-                onTap: () {
-                  Navigator.of(context).pop();
-                },
-              ),
+
               _DrawerItem(
                 icon: Icons.settings_outlined,
                 label: 'Settings',

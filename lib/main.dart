@@ -75,6 +75,10 @@ import 'features/search_products/search_products_data_layer/search_remote_data_s
 import 'features/search_products/search_products_data_layer/search_repository_impl.dart';
 import 'features/search_products/search_products_domain/search_repository.dart';
 import 'features/search_products/search_products_domain/search_usecase.dart';
+import 'features/transfer_kot/transfer_kot_data_layer/transfer_kot_remote_data_source.dart';
+import 'features/transfer_kot/transfer_kot_data_layer/transfer_kot_repository_impl.dar.dart';
+import 'features/transfer_kot/transfer_kot_domani/transfer_kot_repository.dart';
+import 'features/transfer_kot/transfer_kot_domani/transfer_kot_usecase.dart';
 import 'features/variations/variations_data_layer/variation_remote_data_source.dart';
 import 'features/variations/variations_data_layer/variation_repository_impl.dart';
 import 'features/variations/variations_domain/fetch_variations_usecase.dart';
@@ -381,6 +385,21 @@ class MyApp extends StatelessWidget {
         Provider<FetchVariationsUseCase>(
           create: (context) => FetchVariationsUseCase(
             repository: context.read<VariationRepository>(),
+          ),
+        ),
+        Provider<TransferKotRemoteDataSource>(
+          create: (_) => TransferKotRemoteDataSourceImpl(),
+        ),
+        Provider<TransferKotRepository>(
+          create: (context) => TransferKotRepositoryImpl(
+            remoteDataSource: context.read<TransferKotRemoteDataSource>(),
+            merchantStorage: context.read<MerchantLocalStorage>(),
+            captainStorage: context.read<CaptainLocalStorage>(),
+          ),
+        ),
+        Provider<TransferKotUseCase>(
+          create: (context) => TransferKotUseCase(
+            repository: context.read<TransferKotRepository>(),
           ),
         ),
 

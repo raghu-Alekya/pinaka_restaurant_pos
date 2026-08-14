@@ -258,7 +258,7 @@ class _AddOnBottomSheetState extends State<AddOnBottomSheet> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Add to Cart', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const Text('Addddd to Cart', style: TextStyle(fontWeight: FontWeight.bold)),
                       Text('\$${totalPrice.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
                     ],
                   ),

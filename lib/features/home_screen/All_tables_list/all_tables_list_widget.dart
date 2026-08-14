@@ -6,6 +6,7 @@ import '../../ captain_pin_login/captain_login_data_layer/captain_local_storage.
 import '../../../constants/color_constants.dart';
 import '../../bill_summary/bill_summary_domain/bill_summary_usecase.dart';
 import '../../printer/printer_service.dart';
+import '../../transfer_kot/transfer_kot_bottom_sheet.dart';
 import '../Zones/Zones_bloc/zone_state.dart';
 import '../Zones/Zones_bloc/zones_bloc.dart';
 import '../create_order/guest_count_bottom_sheet.dart';
@@ -138,7 +139,7 @@ class _AllTablesListWidgetState extends State<AllTablesListWidget> {
                 key: _viewportKey,
                 child: ListView.builder(
                   controller: widget.scrollController,
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                   itemCount: zonesWithTables.length,
                   itemBuilder: (context, index) {
                     final zone = zonesWithTables[index];
@@ -604,7 +605,7 @@ class _TableCard extends StatelessWidget {
                       color: const Color(0xFF3B7DDB),
                       onTap: () {
                         Navigator.of(sheetContext).pop();
-                        // TODO: implement transfer KOT
+                        _showTransferKotSheet(context);
                       },
                     ),
                   ),
@@ -778,6 +779,54 @@ class _TableCard extends StatelessWidget {
         zoneName: zoneName,
         restaurantId: restaurantId,
         restaurantName: restaurantName,
+      ),
+    );
+  }
+
+  Future<void> _showTransferKotSheet(BuildContext context) async {
+    int? activeOrderId = orderId;
+
+    if (activeOrderId == null || activeOrderId == 0) {
+      try {
+        final orderUseCase = context.read<GetOrderByTableUseCase>();
+        final orderData = await orderUseCase(
+          restaurantId: restaurantId,
+          tableId: tableId,
+          zoneId: zoneId,
+        );
+        activeOrderId = orderData.orderId;
+      } catch (e) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to fetch order details: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    }
+
+    if (activeOrderId == null || activeOrderId == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No active order found for this table.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => TransferKotBottomSheet(
+        orderId: activeOrderId!,
+        fromTableId: tableId,
+        restaurantId: restaurantId,
+        zoneId: zoneId,
+        onSuccess: onOrderAction,
       ),
     );
   }

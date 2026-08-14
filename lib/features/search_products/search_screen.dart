@@ -40,39 +40,18 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0.5,
-        title: Container(
-          height: 40,
-          decoration: BoxDecoration(
-            color: Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: TextField(
-            controller: _controller,
-            focusNode: _focusNode,
-            decoration: InputDecoration(
-              hintText: 'Search for Category/item',
-              hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
-              prefixIcon: const Icon(Icons.search, color: Colors.grey, size: 20),
-              suffixIcon: _controller.text.isNotEmpty
-                  ? IconButton(
-                icon: const Icon(Icons.close, size: 18),
-                onPressed: () {
-                  _controller.clear();
-                  context.read<SearchBloc>().add(ClearSearch());
-                },
-              )
-                  : null,
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(vertical: 8),
-            ),
-            onChanged: (value) {
-              context.read<SearchBloc>().add(SearchQueryChanged(query: value));
-            },
+        centerTitle: true,
+        title: const Text(
+          'Search',
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
           ),
         ),
         leading: IconButton(
@@ -80,158 +59,257 @@ class _SearchScreenState extends State<SearchScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: BlocConsumer<SearchBloc, SearchState>(
-        listener: (context, state) {
-          if (state is SearchError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: Colors.red,
-                duration: const Duration(seconds: 3),
+      body: Column(
+        children: [
+          // ── Search input row, separate from the AppBar ──
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: Container(
+              height: 40,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(10),
               ),
-            );
-          }
-        },
-        builder: (context, state) {
-          if (state is SearchLoading) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          } else if (state is SearchLoaded) {
-            if (state.results.isEmpty) {
-              return const Center(
-                child: Text(
-                  'No results found',
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
-                ),
-              );
-            }
-            return ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: state.results.length,
-              itemBuilder: (context, index) {
-                final item = state.results[index];
-                return _SearchResultCard(
-                  item: item,
-                  onTap: () {
-                    final product = ProductEntity(
-                      id: item.id,
-                      name: item.name,
-                      price: item.price,
-                      inStock: item.inStock == 'Yes',
-                    );
-                    widget.onAddToCart(product);
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Added ${item.name} to cart'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
-                  },
-                );
-              },
-            );
-          } else if (state is SearchError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.error_outline, size: 64, color: Colors.red.shade300),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Search failed',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32),
-                    child: Text(
-                      state.message,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey.shade700),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
+              child: TextField(
+                controller: _controller,
+                focusNode: _focusNode,
+                decoration: InputDecoration(
+                  hintText: 'Search for Category/item',
+                  hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+                  prefixIcon: const Icon(Icons.search, color: Colors.grey, size: 20),
+                  suffixIcon: _controller.text.isNotEmpty
+                      ? IconButton(
+                    icon: const Icon(Icons.close, size: 18),
                     onPressed: () {
-                      // Retry the current search
-                      final query = _controller.text.trim();
-                      if (query.isNotEmpty) {
-                        context.read<SearchBloc>().add(SearchQueryChanged(query: query));
-                      }
+                      _controller.clear();
+                      context.read<SearchBloc>().add(ClearSearch());
+                      setState(() {});
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: ColorConstants.primaryColor,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('Retry'),
-                  ),
-                ],
+                  )
+                      : null,
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                ),
+                onChanged: (value) {
+                  setState(() {}); // toggles the clear (×) icon
+                  context.read<SearchBloc>().add(SearchQueryChanged(query: value));
+                },
               ),
-            );
-          }
-          return const Center(
-            child: Text(
-              'Search for items',
-              style: TextStyle(fontSize: 16, color: Colors.grey),
             ),
-          );
-        },
+          ),
+
+          // ── Results / empty state ──
+          Expanded(
+            child: BlocConsumer<SearchBloc, SearchState>(
+              listener: (context, state) {
+                if (state is SearchError) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(state.message),
+                      backgroundColor: Colors.red,
+                      duration: const Duration(milliseconds:2),
+                    ),
+                  );
+                }
+              },
+              builder: (context, state) {
+                if (state is SearchLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                } else if (state is SearchLoaded) {
+                  if (state.results.isEmpty) {
+                    return const _SearchEmptyState(message: 'No results found');
+                  }
+                  return ListView.separated(
+                    padding: EdgeInsets.zero,
+                    itemCount: state.results.length,
+                    separatorBuilder: (_, __) => Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: Colors.grey.shade200,
+                      indent: 16,
+                      endIndent: 16,
+                    ),
+                    itemBuilder: (context, index) {
+                      final item = state.results[index];
+                      final bool isInStock = item.inStock == 'Yes';
+                      return _SearchResultRow(
+                        item: item,
+                        isInStock: isInStock,
+                        onTap: () {
+                          if (!isInStock) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('This item is out of stock'),
+                                backgroundColor: Colors.orange,
+                              ),
+                            );
+                            return;
+                          }
+                          final product = ProductEntity(
+                            id: item.id,
+                            name: item.name,
+                            price: item.price,
+                            inStock: true,
+                          );
+                          widget.onAddToCart(product);
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Added ${item.name} to cart'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  );
+                } else if (state is SearchError) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.error_outline, size: 64, color: Colors.red.shade300),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Search failed',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 32),
+                          child: Text(
+                            state.message,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.grey.shade700),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton(
+                          onPressed: () {
+                            final query = _controller.text.trim();
+                            if (query.isNotEmpty) {
+                              context.read<SearchBloc>().add(SearchQueryChanged(query: query));
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: ColorConstants.primaryColor,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                // Initial state — nothing typed yet.
+                return const _SearchEmptyState();
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-// ─── Search Result Card ───
-class _SearchResultCard extends StatelessWidget {
+// ─── Search Result Row (plain list style, matches design) ───
+class _SearchResultRow extends StatelessWidget {
   final SearchResultItem item;
+  final bool isInStock;
   final VoidCallback onTap;
 
-  const _SearchResultCard({
+  const _SearchResultRow({
     required this.item,
+    required this.isInStock,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      elevation: 0.5,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: isInStock ? Colors.black87 : Colors.grey.shade400,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    // NOTE: assumes SearchResultItem has a `category` field —
+                    // rename this if your entity calls it something else.
+                    'Price: ${item.price}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: isInStock ? ColorConstants.primaryColor : Colors.grey.shade400,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              Icons.north_west_rounded,
+              size: 16,
+              color: isInStock ? Colors.grey.shade400 : Colors.grey.shade300,
+            ),
+          ],
+        ),
       ),
-      child: ListTile(
-        onTap: onTap,
-        leading: CircleAvatar(
-          backgroundColor: ColorConstants.primaryColor.withOpacity(0.1),
-          child: Icon(
-            Icons.fastfood,
-            color: ColorConstants.primaryColor,
-            size: 20,
-          ),
-        ),
-        title: Text(
-          item.name,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Text(
-          '\$${item.price}',
-          style: TextStyle(color: Colors.grey.shade600),
-        ),
-        trailing: item.inStock != 'Yes'
-            ? const Chip(
-          label: Text(
-            'Out of Stock',
-            style: TextStyle(fontSize: 10, color: Colors.white),
-          ),
-          backgroundColor: Colors.red,
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          visualDensity: VisualDensity.compact,
-        )
-            : const Icon(
-          Icons.add_circle,
-          color: ColorConstants.primaryColor,
+    );
+  }
+}
+
+// ─── Empty state (no query yet, or no results) ───
+class _SearchEmptyState extends StatelessWidget {
+  final String? message;
+
+  const _SearchEmptyState({this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              // TODO: point this at your actual illustration asset path,
+              // and make sure it's declared under `flutter: assets:` in
+              // pubspec.yaml.
+              'assets/images/search_empty.png',
+              width: 220,
+              errorBuilder: (context, error, stackTrace) => Icon(
+                Icons.search_off_rounded,
+                size: 96,
+                color: Colors.grey.shade300,
+              ),
+            ),
+            if (message != null) ...[
+              const SizedBox(height: 16),
+              Text(
+                message!,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
+              ),
+            ],
+          ],
         ),
       ),
     );
