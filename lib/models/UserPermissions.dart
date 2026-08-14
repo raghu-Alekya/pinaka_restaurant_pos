@@ -28,7 +28,7 @@ class UserPermissions {
   final bool canViewTips;
   final bool canViewVendors;
   final bool canCreateShiftAttendance;
-
+  final bool canUpdateInventoryStatus;
   UserPermissions({
     required this.userId,
     required this.canAccessDashboard,
@@ -59,6 +59,7 @@ class UserPermissions {
     required this.canViewTips,
     required this.canViewVendors,
     required this.canCreateShiftAttendance,
+    required this.canUpdateInventoryStatus,
   });
 
   factory UserPermissions.fromJson(Map<String, dynamic> json) {
@@ -92,6 +93,8 @@ class UserPermissions {
       avatar: json['avatar'],
       canViewTips: json['canViewTips'] ?? false,
       canViewVendors: json['canViewVendors'] ?? false,
+      canUpdateInventoryStatus:
+      json['canUpdateInventoryStatus'] ?? false,
     );
   }
 
@@ -126,6 +129,8 @@ class UserPermissions {
       'avatar':avatar,
       'canViewTips': canViewTips,
       'canViewVendors': canViewVendors,
+      'canUpdateInventoryStatus':
+      canUpdateInventoryStatus,
     };
   }
 }

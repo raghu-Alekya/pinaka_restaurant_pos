@@ -2988,6 +2988,7 @@ class _OrderPanelState extends State<OrderPanel> {
                                                                 e.modifiers
                                                                     .toList(),
                                                             "addons": e.addOns,
+                                                            "note": e.note,
                                                           },
                                                         )
                                                         .toList(),

@@ -1091,15 +1091,18 @@ import '../../blocs/Bloc Logic/order_bloc.dart';
 import '../../blocs/Bloc Logic/subcategory_bloc.dart';
 import '../../blocs/Bloc State/subcategory_states.dart';
 import '../../constants/constants.dart';
+import '../../models/Product_Status_model.dart';
 import '../../models/UserPermissions.dart';
 import '../../models/category/items_model.dart';
 import '../../models/category/minisubcategory_model.dart';
 import '../../models/order/modifier_model.dart';
 import '../../models/order/order_items.dart';
 import '../../models/sidebar/category_model_.dart';
+import '../../repositories/auth_repository.dart';
 import '../../repositories/minisubcategory_repository.dart';
 import '../../repositories/modifier_repository.dart';
 import '../../repositories/order_repository.dart';
+import '../../repositories/product_status_repository.dart';
 import '../../repositories/variant_repository.dart';
 import '../../utils/SessionManager.dart';
 import '../widgets/variant_popup.dart';
@@ -1291,12 +1294,16 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
   // can never clobber what's currently on screen.
   int _subCategoryReqId = 0;
   int _folderReqId = 0;
+  final AuthRepository _authRepository = AuthRepository();
 
+  // final ProductStatusRepository _productStatusRepository =
+  // ProductStatusRepository();
   static final Map<int, List<Modifier>> _modifierCache = {};
   static final Map<int, List<Variant>> _variantCache = {};
   static final Map<int, List<Product>> _productCache = {};
   static final Set<int> _inFlightPrefetch = {};
-
+  static final Map<int, bool> _stockStatusCache = {};
+  late final ProductStatusRepository _productStatusRepository;
   late OrderRepository orderRepository;
   bool _isCreatingTakeAwayOrder = false;
   final List<Color> tileColors = [
@@ -1313,6 +1320,9 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
     currentSubCategories = widget.subCategories;
     orderRepository = OrderRepository(baseUrl: AppConstants.baseDomain);
     _loadCurrency();
+    _productStatusRepository = ProductStatusRepository(
+      token: widget.token,
+    );
     _prefetchAllSubCategoryProducts(widget.subCategories);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -1576,12 +1586,50 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
     }).toList();
   }
 
-  bool _sameProductIds(List<Product> a, List<Product> b) {
-    final idsA = a.map((e) => e.id).toSet();
-    final idsB = b.map((e) => e.id).toSet();
-    return idsA.length == idsB.length && idsA.containsAll(idsB);
-  }
+  // bool _sameProductIds(List<Product> a, List<Product> b) {
+  //   final idsA = a.map((e) => e.id).toSet();
+  //   final idsB = b.map((e) => e.id).toSet();
+  //   return idsA.length == idsB.length && idsA.containsAll(idsB);
+  // }
+  bool _sameProducts(List<Product> a, List<Product> b) {
+    if (a.length != b.length) return false;
 
+    final mapA = {
+      for (final p in a) p.id: p,
+    };
+
+    final mapB = {
+      for (final p in b) p.id: p,
+    };
+
+    if (mapA.length != mapB.length) return false;
+
+    for (final id in mapA.keys) {
+      final productA = mapA[id];
+      final productB = mapB[id];
+
+      if (productB == null) return false;
+
+      if (productA!.inStock != productB.inStock) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+  List<Product> _applyStockOverrides(List<Product> products) {
+    return products.map((product) {
+      final stockStatus = _stockStatusCache[product.id];
+
+      if (stockStatus == null) {
+        return product;
+      }
+
+      return product.copyWith(
+        inStock: stockStatus,
+      );
+    }).toList();
+  }
   /// Warms the image disk-cache so tiles render instantly (and stay
   /// available offline) — same approach as the Home screen carousel/logo.
   void _precacheProductImages(List<Product> products) {
@@ -1626,17 +1674,34 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       widget
           .fetchProducts(category.id)
           .then((products) {
-            _inFlightPrefetch.remove(category.id);
-            if (mounted) {
-              final updated =
-                  category.isFolder
-                      ? _applyVegTagging(category.name, products)
-                      : products;
-              _productCache[category.id] = updated;
-              _precacheProductImages(updated);
-              _prefetchModifiersAndVariants(updated);
-            }
-          })
+        _inFlightPrefetch.remove(category.id);
+        if (mounted) {
+          final updated = _applyStockOverrides(
+            category.isFolder
+                ? _applyVegTagging(category.name, products)
+                : products,
+          );
+
+          _productCache[category.id] = updated;
+
+          _precacheProductImages(updated);
+          _prefetchModifiersAndVariants(updated);
+        }
+      })
+      // widget
+      //     .fetchProducts(category.id)
+      //     .then((products) {
+      //       _inFlightPrefetch.remove(category.id);
+      //       if (mounted) {
+      //         final updated =
+      //             category.isFolder
+      //                 ? _applyVegTagging(category.name, products)
+      //                 : products;
+      //         _productCache[category.id] = updated;
+      //         _precacheProductImages(updated);
+      //         _prefetchModifiersAndVariants(updated);
+      //       }
+      //     })
           .catchError((e) {
             _inFlightPrefetch.remove(category.id);
             debugPrint(
@@ -1662,18 +1727,34 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
             if (!_productCache.containsKey(folder.id) &&
                 !_inFlightPrefetch.contains(folder.id)) {
               _inFlightPrefetch.add(folder.id);
+              // widget
+              //     .fetchProducts(folder.id)
+              //     .then((products) {
+              //       _inFlightPrefetch.remove(folder.id);
+              //       final updated =
+              //           folder.isFolder
+              //               ? _applyVegTagging(folder.name, products)
+              //               : products;
+              //       _productCache[folder.id] = updated;
+              //       _precacheProductImages(updated);
+              //       _prefetchModifiersAndVariants(updated);
+              //     })
               widget
                   .fetchProducts(folder.id)
                   .then((products) {
-                    _inFlightPrefetch.remove(folder.id);
-                    final updated =
-                        folder.isFolder
-                            ? _applyVegTagging(folder.name, products)
-                            : products;
-                    _productCache[folder.id] = updated;
-                    _precacheProductImages(updated);
-                    _prefetchModifiersAndVariants(updated);
-                  })
+                _inFlightPrefetch.remove(folder.id);
+
+                final updated = _applyStockOverrides(
+                  folder.isFolder
+                      ? _applyVegTagging(folder.name, products)
+                      : products,
+                );
+
+                _productCache[folder.id] = updated;
+
+                _precacheProductImages(updated);
+                _prefetchModifiersAndVariants(updated);
+              })
                   .catchError((_) {
                     _inFlightPrefetch.remove(folder.id);
                   });
@@ -1730,9 +1811,15 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
 
     if (folders.isNotEmpty) {
       final first = folders.first;
-      final resolved =
-          first.products.isNotEmpty ? first.products : _productCache[first.id];
 
+      // final resolved =
+      //     first.products.isNotEmpty ? first.products : _productCache[first.id];
+      final List<Product>? resolved =
+      first.products.isNotEmpty
+          ? _applyStockOverrides(first.products)
+          : _productCache[first.id] != null
+          ? _applyStockOverrides(_productCache[first.id]!)
+          : null;
       if (resolved != null) {
         // Instant — nothing to wait for.
         _productCache[first.id] = resolved;
@@ -1825,7 +1912,10 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       if (!mounted || reqId != _subCategoryReqId)
         return; // stale — user moved on
 
-      final updated = _applyVegTagging(folder.name, products);
+      // final updated = _applyVegTagging(folder.name, products);
+      final updated = _applyStockOverrides(
+        _applyVegTagging(folder.name, products),
+      );
       _productCache[folder.id] = updated;
       final newFolder = folder.copyWith(
         products: updated,
@@ -1854,12 +1944,15 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       final products = await widget.fetchProducts(folder.id);
       if (!mounted || reqId != _subCategoryReqId) return;
 
-      final updated = _applyVegTagging(folder.name, products);
+
+      final updated = _applyStockOverrides(
+        _applyVegTagging(folder.name, products),
+      );
       final cached = _productCache[folder.id];
       final changed =
           cached == null ||
           cached.length != updated.length ||
-          !_sameProductIds(cached, updated);
+          !_sameProducts(cached, updated);
 
       _productCache[folder.id] = updated;
       _precacheProductImages(updated);
@@ -1893,7 +1986,10 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       final products = await widget.fetchProducts(subCategoryId);
       if (!mounted || reqId != _subCategoryReqId) return;
 
-      _productCache[subCategoryId] = products;
+      // _productCache[subCategoryId] = products;
+      final updated = _applyStockOverrides(products);
+
+      _productCache[subCategoryId] = updated;
       setState(() {
         currentSubCategories = [
           MiniSubCategory(
@@ -1920,14 +2016,18 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
     try {
       final products = await widget.fetchProducts(subCategoryId);
       if (!mounted || reqId != _subCategoryReqId) return;
-
+      final updated = _applyStockOverrides(products);
       final cached = _productCache[subCategoryId];
+      // final changed =
+      //     cached == null ||
+      //     cached.length != products.length ||
+      //     !_sameProductIds(cached, products);
       final changed =
           cached == null ||
-          cached.length != products.length ||
-          !_sameProductIds(cached, products);
-
-      _productCache[subCategoryId] = products;
+              cached.length != updated.length ||
+              !_sameProducts(cached, updated);
+      // _productCache[subCategoryId] = products;
+      _productCache[subCategoryId] = updated;
       _precacheProductImages(products);
       _prefetchModifiersAndVariants(products);
 
@@ -1939,7 +2039,8 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
               name: "Direct Items",
               isFolder: false,
               products: products,
-              count: products.length,
+              // count: products.length,
+              count: updated.length,
             ),
           ];
         });
@@ -1961,9 +2062,11 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
     if (!mounted) return;
 
     final myReqId = ++_folderReqId;
+    // final resolved =
+    //     folder.products.isNotEmpty ? folder.products : _productCache[folder.id];
     final resolved =
-        folder.products.isNotEmpty ? folder.products : _productCache[folder.id];
-
+        _productCache[folder.id] ??
+            (folder.products.isNotEmpty ? folder.products : null);
     if (resolved != null) {
       // Instant swap — no spinner, no flicker.
       _productCache[folder.id] = resolved;
@@ -1999,9 +2102,15 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
   Future<void> _loadFolderTapSilently(MiniSubCategory folder, int reqId) async {
     try {
       final products = await widget.fetchProducts(folder.id);
-      if (!mounted || reqId != _folderReqId) return; // user tapped elsewhere
 
-      final updated = _applyVegTagging(folder.name, products);
+      // IMPORTANT: keep this
+      // Prevents an old API response from updating the current folder.
+      if (!mounted || reqId != _folderReqId) return;
+
+      final updated = _applyStockOverrides(
+        _applyVegTagging(folder.name, products),
+      );
+
       _productCache[folder.id] = updated;
       final newFolder = folder.copyWith(
         products: updated,
@@ -2030,12 +2139,15 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       final products = await widget.fetchProducts(folder.id);
       if (!mounted || reqId != _folderReqId) return;
 
-      final updated = _applyVegTagging(folder.name, products);
+      // final updated = _applyVegTagging(folder.name, products);
+      final updated = _applyStockOverrides(
+        _applyVegTagging(folder.name, products),
+      );
       final cached = _productCache[folder.id];
       final changed =
           cached == null ||
           cached.length != updated.length ||
-          !_sameProductIds(cached, updated);
+          !_sameProducts(cached, updated);
 
       _productCache[folder.id] = updated;
       _precacheProductImages(updated);
@@ -2189,13 +2301,16 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
   Future<void> _onProductLongPress(Product item) async {
     if (!mounted) return;
 
-    // -----------------------------------------
+    // ============================================================
     // 1. MAKE SURE PERMISSIONS ARE LOADED
-    // -----------------------------------------
+    // ============================================================
+
     UserPermissions? permissions = _userPermissions;
 
     if (permissions == null) {
-      debugPrint('⚠️ _userPermissions is null. Loading from SessionManager...');
+      debugPrint(
+        '⚠️ _userPermissions is null. Loading from SessionManager...',
+      );
 
       permissions = await SessionManager.loadPermissions();
 
@@ -2208,42 +2323,97 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       }
     }
 
-    // -----------------------------------------
-    // 2. DEBUG
-    // -----------------------------------------
-    final String rawRole = permissions?.role ?? '';
-    final String role = rawRole.toLowerCase().trim();
-
-    debugPrint('════════════════════════════════════');
-    debugPrint('🔐 PRODUCT LONG PRESS');
-    debugPrint('👤 Raw role: "$rawRole"');
-    debugPrint('👤 Normalized role: "$role"');
-    debugPrint('📋 User permissions: $permissions');
-    debugPrint('🏷️ Product: ${item.name}');
-    debugPrint('🆔 Product ID: ${item.id}');
-    debugPrint('📦 Current stock: ${item.inStock}');
-    debugPrint('════════════════════════════════════');
-
-    // -----------------------------------------
-    // 3. ROLE CHECK
-    // -----------------------------------------
-    final bool canChangeStock =
-        role == 'administrator' ||
-        role == 'admin' ||
-        role == 'manager' ||
-        role == 'merchant';
-
-    debugPrint('🔑 Can change stock: $canChangeStock');
-
-    if (!canChangeStock) {
-      debugPrint('❌ Stock change BLOCKED for role: "$role"');
+    if (permissions == null) {
+      debugPrint(
+        '❌ Unable to load user permissions',
+      );
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Only administrators, managers, and merchants can change stock status',
+            'Unable to load user permissions.',
           ),
-          duration: Duration(seconds: 1),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      return;
+    }
+
+    // ============================================================
+    // 2. ROLE CHECK
+    // ============================================================
+    //
+    // final String rawRole = permissions.role;
+    // final String role = rawRole.toLowerCase().trim();
+    //
+    // debugPrint('════════════════════════════════════');
+    // debugPrint('🔐 PRODUCT LONG PRESS');
+    // debugPrint('👤 Raw role: "$rawRole"');
+    // debugPrint('👤 Normalized role: "$role"');
+    // debugPrint('📋 User: ${permissions.displayName}');
+    // debugPrint('🆔 User ID: ${permissions.userId}');
+    // debugPrint('🏷️ Product: ${item.name}');
+    // debugPrint('🆔 Product ID: ${item.id}');
+    // debugPrint('📦 Current stock: ${item.inStock}');
+    // debugPrint('════════════════════════════════════');
+    //
+    // final bool canChangeStock =
+    //     role == 'administrator' ||
+    //         role == 'admin' ||
+    //         role == 'manager' ||
+    //         role == 'merchant';
+    //
+    // debugPrint(
+    //   '🔑 Can change stock: $canChangeStock',
+    // );
+    //
+    // if (!canChangeStock) {
+    //   debugPrint(
+    //     '❌ Stock change BLOCKED for role: "$role"',
+    //   );
+    //
+    //   ScaffoldMessenger.of(context).showSnackBar(
+    //     const SnackBar(
+    //       content: Text(
+    //         'Only administrators, managers, and merchants can change stock status',
+    //       ),
+    //       duration: Duration(seconds: 1),
+    //       backgroundColor: Colors.red,
+    //     ),
+    //   );
+    //
+    //   return;
+    // }
+    //
+    // debugPrint(
+    //   '✅ Stock change AUTHORIZED for role: "$role"',
+    // );
+    final bool canChangeStock =
+        permissions.canUpdateInventoryStatus;
+
+    debugPrint(
+      '🔐 canUpdateInventory: '
+          '${permissions.canUpdateInventory}',
+    );
+
+    debugPrint(
+      '🔐 canUpdateInventoryStatus: '
+          '${permissions.canUpdateInventoryStatus}',
+    );
+
+    if (!canChangeStock) {
+      debugPrint(
+        '❌ Stock status change BLOCKED',
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'You do not have permission to change product stock status.',
+          ),
+          duration: Duration(seconds: 2),
           backgroundColor: Colors.red,
         ),
       );
@@ -2251,98 +2421,289 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       return;
     }
 
-    debugPrint('✅ Stock change AUTHORIZED for role: "$role"');
+    debugPrint(
+      '✅ Stock status change AUTHORIZED',
+    );
+    // ============================================================
+    // 3. GET SAVED LOGIN
+    // ============================================================
 
-    // -----------------------------------------
-    // 4. TOGGLE STOCK
-    // -----------------------------------------
-    final newStockStatus = !item.inStock;
+    final savedLogin = await _authRepository.getSavedLogin();
+
+    if (!mounted) return;
+
+    if (savedLogin == null) {
+      debugPrint(
+        '❌ No saved login found',
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Session expired. Please login again.',
+          ),
+          duration: Duration(seconds: 2),
+          backgroundColor: Colors.red,
+        ),
+      );
+
+      return;
+    }
+
+    // ============================================================
+    // 4. GET PIN AND TOKEN
+    // ============================================================
+
+    final String pin =
+        savedLogin['pin']?.toString() ?? '';
+
+    final String token =
+        savedLogin['token']?.toString() ?? '';
 
     debugPrint(
-      '🔄 Stock changing: '
-      '${item.inStock} → $newStockStatus',
+      '🔐 Saved PIN available: ${pin.isNotEmpty}',
     );
 
-    setState(() {
-      // Update every cached occurrence
-      _productCache.forEach((key, products) {
-        _productCache[key] =
-            products.map((product) {
-              if (product.id == item.id) {
-                return product.copyWith(inStock: newStockStatus);
-              }
+    debugPrint(
+      '🔑 Saved token available: ${token.isNotEmpty}',
+    );
 
-              return product;
-            }).toList();
-      });
+    if (pin.isEmpty) {
+      debugPrint(
+        '❌ Login PIN is empty',
+      );
 
-      // Update selected folder
-      if (selectedFolder != null) {
-        final updatedProducts =
-            selectedFolder!.products.map((product) {
-              if (product.id == item.id) {
-                return product.copyWith(inStock: newStockStatus);
-              }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Unable to retrieve login PIN. Please login again.',
+          ),
+          duration: Duration(seconds: 2),
+          backgroundColor: Colors.red,
+        ),
+      );
 
-              return product;
-            }).toList();
+      return;
+    }
 
-        selectedFolder = selectedFolder!.copyWith(
-          products: updatedProducts,
-          count: updatedProducts.length,
-        );
+    if (token.isEmpty) {
+      debugPrint(
+        '❌ Authentication token is empty',
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Authentication expired. Please login again.',
+          ),
+          duration: Duration(seconds: 2),
+          backgroundColor: Colors.red,
+        ),
+      );
+
+      return;
+    }
+
+    // ============================================================
+    // 5. CALCULATE NEW STOCK STATUS
+    // ============================================================
+
+    final bool newStockStatus = !item.inStock;
+
+    final String newStatus =
+    newStockStatus
+        ? 'instock'
+        : 'outofstock';
+
+    debugPrint(
+      '🔄 Stock changing:',
+    );
+
+    debugPrint(
+      '   Product ID: ${item.id}',
+    );
+
+    debugPrint(
+      '   Old status: '
+          '${item.inStock ? "instock" : "outofstock"}',
+    );
+
+    debugPrint(
+      '   New status: $newStatus',
+    );
+
+    // ============================================================
+    // 6. CREATE API REQUEST
+    // ============================================================
+
+    final request = ProductStatusRequest(
+      productId: item.id,
+      status: newStatus,
+      pin: pin,
+    );
+
+    debugPrint(
+      '📡 Sending product status request...',
+    );
+
+    // ============================================================
+    // 7. CALL API
+    // ============================================================
+
+    try {
+      final result =
+      await _productStatusRepository.updateProductStatus(
+        request,
+      );
+
+      debugPrint(
+        '✅ Product status API SUCCESS',
+      );
+
+      debugPrint(
+        '📦 API RESULT: $result',
+      );
+
+      debugPrint(
+        '📦 API RESULT: $result',
+      );
+
+      if (!mounted) return;
+
+// Remember the successful stock status.
+// This prevents later category/folder fetches
+// from restoring the old status.
+      _stockStatusCache[item.id] = newStockStatus;
+
+      // ============================================================
+      // 8. ONLY UPDATE LOCAL UI AFTER API SUCCESS
+      // ============================================================
+
+      setState(() {
+        // ----------------------------------------------------------
+        // Update every cached occurrence
+        // ----------------------------------------------------------
+
+        _productCache.forEach((key, products) {
+          _productCache[key] =
+              products.map((product) {
+                if (product.id == item.id) {
+                  return product.copyWith(
+                    inStock: newStockStatus,
+                  );
+                }
+
+                return product;
+              }).toList();
+        });
+
+        // ----------------------------------------------------------
+        // Update selected folder
+        // ----------------------------------------------------------
+
+        if (selectedFolder != null) {
+          final updatedProducts =
+          selectedFolder!.products.map((product) {
+            if (product.id == item.id) {
+              return product.copyWith(
+                inStock: newStockStatus,
+              );
+            }
+
+            return product;
+          }).toList();
+
+          selectedFolder =
+              selectedFolder!.copyWith(
+                products: updatedProducts,
+                count: updatedProducts.length,
+              );
+
+          currentSubCategories =
+              currentSubCategories.map((sub) {
+                if (sub.id == selectedFolder!.id) {
+                  return selectedFolder!;
+                }
+
+                return sub;
+              }).toList();
+        }
+
+        // ----------------------------------------------------------
+        // Update direct products
+        // ----------------------------------------------------------
 
         currentSubCategories =
             currentSubCategories.map((sub) {
-              if (sub.id == selectedFolder!.id) {
-                return selectedFolder!;
-              }
+              final updatedProducts =
+              sub.products.map((product) {
+                if (product.id == item.id) {
+                  return product.copyWith(
+                    inStock: newStockStatus,
+                  );
+                }
 
-              return sub;
+                return product;
+              }).toList();
+
+              return sub.copyWith(
+                products: updatedProducts,
+                count: updatedProducts.length,
+              );
             }).toList();
-      }
+      });
 
-      // Update direct products
-      currentSubCategories =
-          currentSubCategories.map((sub) {
-            final updatedProducts =
-                sub.products.map((product) {
-                  if (product.id == item.id) {
-                    return product.copyWith(inStock: newStockStatus);
-                  }
+      // ============================================================
+      // 9. SUCCESS MESSAGE
+      // ============================================================
 
-                  return product;
-                }).toList();
-
-            return sub.copyWith(
-              products: updatedProducts,
-              count: updatedProducts.length,
-            );
-          }).toList();
-    });
-
-    debugPrint(
-      '✅ Stock successfully changed: '
-      '${item.name} → '
-      '${newStockStatus ? "IN STOCK" : "OUT OF STOCK"}',
-    );
-
-    // -----------------------------------------
-    // 5. RESULT
-    // -----------------------------------------
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            newStockStatus
+                ? '${item.name} - In Stock'
+                : '${item.name} - Out of Stock',
+          ),
+          duration: const Duration(seconds: 1),
+          backgroundColor:
           newStockStatus
-              ? '${item.name} - In Stock'
-              : '${item.name} - Out of Stock',
+              ? Colors.green
+              : Colors.red,
         ),
-        duration: const Duration(seconds: 1),
-        backgroundColor: newStockStatus ? Colors.green : Colors.red,
-      ),
-    );
+      );
+
+      debugPrint(
+        '✅ Local product state updated successfully',
+      );
+    } catch (e, stackTrace) {
+      // ============================================================
+      // 10. API FAILED - DO NOT CHANGE LOCAL STATE
+      // ============================================================
+
+      debugPrint(
+        '❌ Product status API FAILED',
+      );
+
+      debugPrint(
+        '❌ Error: $e',
+      );
+
+      debugPrintStack(
+        stackTrace: stackTrace,
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Failed to update ${item.name}. Please try again.',
+          ),
+          duration: const Duration(seconds: 2),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _showVariantPopup(

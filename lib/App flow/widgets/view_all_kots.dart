@@ -19,6 +19,7 @@ import '../../blocs/Bloc Logic/order_bloc.dart';
 import '../../blocs/Bloc State/order_list_state.dart';
 import '../../blocs/Bloc State/order_state.dart';
 import '../../blocs/Bloc State/void_item_state.dart';
+import '../../models/UserPermissions.dart';
 import '../../models/order/KOT_model.dart';
 import '../../models/order/void_kot_items.dart';
 import '../../repositories/auth_repository.dart';
@@ -71,7 +72,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
   bool _expanded = true;
   final Map<String, bool> _kotExpanded = {};
   int _previousOrderItemCount = 0;
-
+  UserPermissions? _permissions;
   // 🔴 FIX: local mirror of the KOT list, kept in sync with the bloc's
   // latest state so cancel/void status updates show up automatically,
   // without waiting for the parent to pass a new `widget.kots`.
@@ -89,6 +90,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
     _kots = widget.kots; // seed with whatever the parent gave us initially
     _fetchKots();
     _loadCurrency();
+    _loadPermissions();
     _startAutoRefresh(); // 🔴 FIX
     // ✅ NEW: report initial expansion state to the parent on first build
     // so the parent's _showKotList stays in sync from the start.
@@ -128,7 +130,15 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
       ),
     );
   }
+  Future<void> _loadPermissions() async {
+    final savedPermissions = await SessionManager.loadPermissions();
 
+    if (savedPermissions != null && mounted) {
+      setState(() {
+        _permissions = savedPermissions;
+      });
+    }
+  }
   @override
   void didUpdateWidget(covariant ViewAllKOTDropdown oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -1124,7 +1134,8 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                       token:
                                                                           widget
                                                                               .token,
-
+                                                                      storedPinNumber: widget.pin,
+                                                                      role: _permissions?.role ?? '', // ✅
                                                                       parentOrderId:
                                                                           context
                                                                               .read<

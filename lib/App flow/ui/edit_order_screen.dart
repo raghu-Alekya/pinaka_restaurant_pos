@@ -577,7 +577,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
           );
           if (!_netPayableInitialized) {
             _fixedTotalTax = order.totalTax?.toDouble() ?? 0.0; //  LOCK TAX
-            _dynamicNetPayable = order.netPayable?.toDouble() ?? 0.0;
+            _dynamicNetPayable = order.orderPrevTotal?.toDouble() ?? 0.0;
             _netPayableInitialized = true;
           }
 

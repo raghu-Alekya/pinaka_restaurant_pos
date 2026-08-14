@@ -294,6 +294,7 @@ class OrderRepository {
     // Build line_item
     final Map<String, dynamic> lineItem = {
       "quantity": item.quantity,
+      "is_veg": item.isVeg,
       "meta_data": metaData,
     };
 

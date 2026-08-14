@@ -984,6 +984,8 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
               restaurantId: response.restaurantId,
               zoneId: response.zoneId,
               token: widget.token,
+              storedPinNumber: widget.pin,
+              role: _userPermissions?.role ?? '',
               parentOrderId: parentOrderId,
               item: kotOrder,
               onRemark: (_) {},
