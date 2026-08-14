@@ -133,4 +133,10 @@ class CaptainLocalStorageImpl implements CaptainLocalStorage {
     return data?.data?.token;
   }
 
+  @override
+  Future<String?> getCurrencySymbol() async {
+    final data = await getCaptainData();
+    return data?.data?.currencySymbol;
+  }
+
 }

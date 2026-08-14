@@ -293,7 +293,7 @@ class _SearchEmptyState extends StatelessWidget {
               // TODO: point this at your actual illustration asset path,
               // and make sure it's declared under `flutter: assets:` in
               // pubspec.yaml.
-              'assets/images/search_empty.png',
+              'assets/images/search_em`pty.png',
               width: 220,
               errorBuilder: (context, error, stackTrace) => Icon(
                 Icons.search_off_rounded,

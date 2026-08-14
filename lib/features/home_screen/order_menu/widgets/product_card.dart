@@ -1,11 +1,8 @@
-
-
 import 'package:flutter/material.dart';
 import '../../../../constants/color_constants.dart';
 import '../entities/product_entity.dart';
 
 bool isNonVegProduct(ProductEntity product) {
-
   return product.isVeg == false;
 }
 
@@ -14,6 +11,7 @@ class ProductCard extends StatelessWidget {
   final int quantity;
   final VoidCallback onAdd;
   final VoidCallback onRemove;
+  final String currencySymbol; // 👈 new parameter
 
   /// Non-null only for variant products (is_variant == "Yes").
   final VoidCallback? onVariantTap;
@@ -24,6 +22,7 @@ class ProductCard extends StatelessWidget {
     required this.quantity,
     required this.onAdd,
     required this.onRemove,
+    required this.currencySymbol, // 👈 required
     this.onVariantTap,
   }) : super(key: key);
 
@@ -34,16 +33,11 @@ class ProductCard extends StatelessWidget {
     final screenWidth = media.size.width;
     final screenHeight = media.size.height;
 
-    // Reference design size
     const referenceWidth = 375.0;
     const referenceHeight = 812.0;
 
-    // Responsive scale
     final widthScale = screenWidth / referenceWidth;
     final heightScale = screenHeight / referenceHeight;
-
-    // Use width primarily for horizontal/card dimensions.
-    // Use a balanced scale for things that should not become too large.
     final scale = widthScale < heightScale ? widthScale : heightScale;
 
     double w(double value) => value * widthScale;
@@ -87,14 +81,12 @@ class ProductCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Full-height responsive veg/non-veg indicator
               Container(
                 width: w(4),
                 decoration: BoxDecoration(
                   color: nonVeg ? Colors.red : Colors.green,
                 ),
               ),
-
               Expanded(
                 child: Padding(
                   padding: EdgeInsets.all(s(12)),
@@ -105,35 +97,26 @@ class ProductCard extends StatelessWidget {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Responsive veg/non-veg icon
                           Container(
                             width: s(14),
                             height: s(14),
-                            margin: EdgeInsets.only(
-                              top: s(2),
-                            ),
+                            margin: EdgeInsets.only(top: s(2)),
                             padding: EdgeInsets.all(s(2)),
                             decoration: BoxDecoration(
                               border: Border.all(
-                                color: nonVeg
-                                    ? Colors.red
-                                    : Colors.green,
+                                color: nonVeg ? Colors.red : Colors.green,
                                 width: s(1.2),
                               ),
                               borderRadius: BorderRadius.circular(s(3)),
                             ),
                             child: Container(
                               decoration: BoxDecoration(
-                                color: nonVeg
-                                    ? Colors.red
-                                    : Colors.green,
+                                color: nonVeg ? Colors.red : Colors.green,
                                 shape: BoxShape.circle,
                               ),
                             ),
                           ),
-
                           SizedBox(width: s(6)),
-
                           Expanded(
                             child: Text(
                               product.name,
@@ -147,18 +130,14 @@ class ProductCard extends StatelessWidget {
                           ),
                         ],
                       ),
-
                       SizedBox(height: s(8)),
-
                       Row(
-                        mainAxisAlignment:
-                        MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          // Price
                           Flexible(
                             child: Text(
-                              '\$${product.price ?? '0.00'}',
+                              '$currencySymbol${product.price ?? '0.00'}', // 👈 dynamic symbol
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -168,9 +147,7 @@ class ProductCard extends StatelessWidget {
                               ),
                             ),
                           ),
-
                           SizedBox(width: s(8)),
-
                           if (outOfStock)
                             Chip(
                               label: Text(
@@ -193,8 +170,7 @@ class ProductCard extends StatelessWidget {
                             quantity == 0
                                 ? Icon(
                               Icons.add_circle,
-                              color:
-                              ColorConstants.primaryColor,
+                              color: ColorConstants.primaryColor,
                               size: s(24),
                             )
                                 : Container(
@@ -203,10 +179,8 @@ class ProductCard extends StatelessWidget {
                                 vertical: s(3),
                               ),
                               decoration: BoxDecoration(
-                                color:
-                                ColorConstants.primaryColor,
-                                borderRadius:
-                                BorderRadius.circular(s(6)),
+                                color: ColorConstants.primaryColor,
+                                borderRadius: BorderRadius.circular(s(6)),
                               ),
                               child: Text(
                                 '$quantity',
@@ -290,7 +264,6 @@ class _CompactStepper extends StatelessWidget {
               ),
             ),
           ),
-
           SizedBox(
             width: s(18),
             child: Text(
@@ -303,7 +276,6 @@ class _CompactStepper extends StatelessWidget {
               ),
             ),
           ),
-
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: onAdd,
@@ -317,62 +289,6 @@ class _CompactStepper extends StatelessWidget {
                   color: ColorConstants.primaryColor,
                 ),
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-
-class _VariantStepper extends StatelessWidget {
-  final int quantity;
-  final VoidCallback onAdd;
-  final VoidCallback onRemove;
-
-  const _VariantStepper({
-    required this.quantity,
-    required this.onAdd,
-    required this.onRemove,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 26,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: ColorConstants.primaryColor, width: 1),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          GestureDetector(
-            onTap: onRemove,
-            child: const SizedBox(
-              width: 22,
-              child: Icon(Icons.remove, size: 14, color: ColorConstants.primaryColor),
-            ),
-          ),
-          SizedBox(
-            width: 18,
-            child: Text(
-              '$quantity',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: ColorConstants.primaryColor,
-              ),
-            ),
-          ),
-          GestureDetector(
-            onTap: onAdd,
-            child: const SizedBox(
-              width: 22,
-              child: Icon(Icons.add, size: 14, color: ColorConstants.primaryColor),
             ),
           ),
         ],

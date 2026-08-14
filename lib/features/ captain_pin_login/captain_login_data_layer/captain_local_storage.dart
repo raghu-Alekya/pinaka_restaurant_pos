@@ -5,5 +5,6 @@ abstract class CaptainLocalStorage {
   Future<CaptainLoginEntity?> getCaptainData();
   Future<void> clearCaptainData();
   Future<String?> getToken(); // <-- NEW
+  Future<String?> getCurrencySymbol(); // new
 
 }

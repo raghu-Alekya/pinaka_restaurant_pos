@@ -11,7 +11,6 @@ class ProductListView extends StatefulWidget {
   final Map<int, int> cartQuantitiesByProductId;
 
   final String? selectedLanguage;
-  // Used only for highlighting – does NOT filter the list
   final int? selectedSubcategoryId;
   final bool vegOnly;
   final bool nonVegOnly;
@@ -23,6 +22,9 @@ class ProductListView extends StatefulWidget {
   /// Called when the visible subcategory changes during scrolling.
   /// Only called when selectedSubcategoryId == null (i.e., "All" is active).
   final ValueChanged<int?> onVisibleSubcategoryChanged;
+
+  /// Currency symbol from captain login (e.g., ₹, $)
+  final String currencySymbol; // 👈 new
 
   const ProductListView({
     Key? key,
@@ -37,6 +39,7 @@ class ProductListView extends StatefulWidget {
     required this.onRemove,
     required this.onVariantTap,
     required this.onVisibleSubcategoryChanged,
+    required this.currencySymbol, // 👈 required
     this.vegOnly = false,
     this.nonVegOnly = false,
   }) : super(key: key);
@@ -85,7 +88,6 @@ class _ProductListViewState extends State<ProductListView> {
   }
 
   void _detectVisibleSection() {
-    // Only detect when "All" is active (no selected chip)
     if (widget.selectedSubcategoryId != null) {
       if (_lastNotifiedId != null) {
         _lastNotifiedId = null;
@@ -146,14 +148,12 @@ class _ProductListViewState extends State<ProductListView> {
 
     final List<Widget> children = [];
 
-    // ─── Always show direct products ───
     final directFiltered = _filter(widget.directProducts);
     if (directFiltered.isNotEmpty) {
       children.add(_buildGrid(directFiltered));
       children.add(const SizedBox(height: 16));
     }
 
-    // ─── Always show all subcategories ───
     for (final sub in widget.subcategories) {
       if (!_sectionKeys.containsKey(sub.id)) {
         _sectionKeys[sub.id] = GlobalKey();
@@ -243,6 +243,7 @@ class _ProductListViewState extends State<ProductListView> {
           onAdd: () => widget.onAdd(product),
           onRemove: () => widget.onRemove(product),
           onVariantTap: isVariant ? () => widget.onVariantTap(product) : null,
+          currencySymbol: widget.currencySymbol, // 👈 pass the symbol
         );
       },
     );

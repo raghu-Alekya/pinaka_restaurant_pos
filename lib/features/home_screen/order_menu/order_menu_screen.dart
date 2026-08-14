@@ -73,11 +73,28 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
   bool _showAllSubcategories = false;
 
   final TextEditingController _searchController = TextEditingController();
+  String _currencySymbol = '';
+  final ValueNotifier<String> _currencySymbolNotifier = ValueNotifier<String>('');
 
   @override
   void initState() {
     super.initState();
     context.read<CategoryBloc>().add(LoadCategories());
+    _loadCurrencySymbol();
+  }
+
+  Future<void> _loadCurrencySymbol() async {
+    try {
+      final symbol = await context.read<CaptainLocalStorage>().getCurrencySymbol();
+      if (symbol != null && mounted) {
+        print('🪙 Currency symbol loaded: $symbol');
+        _currencySymbolNotifier.value = symbol; // 👈 update notifier
+      } else {
+        print('🪙 Currency symbol not found, using default: ');
+      }
+    } catch (e) {
+      print('🪙 Error loading currency symbol: $e');
+    }
   }
 
   @override
@@ -138,6 +155,578 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
   }
 
 
+//   Future<void> _showVariantAndAddOnSheet(ProductEntity product) async {
+//     try {
+//       final variationsFuture = context.read<FetchVariationsUseCase>()(product.id);
+//       final addOnsFuture = context.read<FetchAddOnsUseCase>()(product.id);
+//
+//       final results = await Future.wait([variationsFuture, addOnsFuture]);
+//       final variations = results[0] as List<VariationEntity>;
+//       final addOns = results[1] as List<AddOnEntity>;
+//
+//       if (variations.isEmpty) {
+//         if (addOns.isEmpty) {
+//           _addToCartDirect(product);
+//           return;
+//         } else {
+//           _showAddOnsOnlySheet(product, addOns);
+//           return;
+//         }
+//       }
+//
+//       int quantity = 1;
+//       VariationEntity? selectedVariation = variations.first;
+//       final selectedAddOns = <AddOnEntity>{};
+//       final nonVeg = isNonVegProduct(product);
+//
+//       showModalBottomSheet(
+//         context: context,
+//         isScrollControlled: true,
+//         shape: const RoundedRectangleBorder(
+//           borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+//         ),
+//         builder: (sheetContext) {
+//           return StatefulBuilder(
+//             builder: (context, setSheetState) {
+//               // ── Responsive scale (same reference size as ProductCard) ──
+//               final media = MediaQuery.of(context);
+//               const referenceWidth = 375.0;
+//               const referenceHeight = 812.0;
+//               final widthScale = media.size.width / referenceWidth;
+//               final heightScale = media.size.height / referenceHeight;
+//               final scale = widthScale < heightScale ? widthScale : heightScale;
+//               double s(double v) => v * scale;
+//
+//               final basePrice = double.tryParse(selectedVariation?.price ?? '0') ?? 0;
+//               final addOnsTotal = selectedAddOns.fold<double>(0, (sum, a) => sum + a.price);
+//               final total = (basePrice + addOnsTotal) * quantity;
+//
+//               return SingleChildScrollView(
+//                 padding: EdgeInsets.only(
+//                   left: s(20),
+//                   right: s(20),
+//                   top: s(16),
+//                   bottom: media.viewInsets.bottom + s(24),
+//                 ),
+//                 child: Column(
+//                   mainAxisSize: MainAxisSize.min,
+//                   crossAxisAlignment: CrossAxisAlignment.start,
+//                   children: [
+//                     // ── Header: veg/non-veg dot + name + close ──
+//                     Row(
+//                       crossAxisAlignment: CrossAxisAlignment.center,
+//                       children: [
+//                         Container(
+//                           width: s(10),
+//                           height: s(10),
+//                           decoration: BoxDecoration(
+//                             shape: BoxShape.circle,
+//                             color: nonVeg ? Colors.red : Colors.green,
+//                           ),
+//                         ),
+//                         SizedBox(width: s(8)),
+//                         Expanded(
+//                           child: Text(
+//                             product.name,
+//                             style: TextStyle(fontSize: s(18), fontWeight: FontWeight.bold),
+//                             maxLines: 1,
+//                             overflow: TextOverflow.ellipsis,
+//                           ),
+//                         ),
+//                         GestureDetector(
+//                           onTap: () => Navigator.pop(sheetContext),
+//                           child: Container(
+//                             padding: EdgeInsets.all(s(4)),
+//                             decoration: const BoxDecoration(
+//                               shape: BoxShape.circle,
+//                               color: Color(0xFFFFEAEA),
+//                             ),
+//                             child: Icon(Icons.close, size: s(18), color: Colors.red),
+//                           ),
+//                         ),
+//                       ],
+//                     ),
+//                     SizedBox(height: s(16)),
+//
+//                     // ── Variations — 2-column card grid ──
+//                     GridView.builder(
+//                       shrinkWrap: true,
+//                       physics: const NeverScrollableScrollPhysics(),
+//                       itemCount: variations.length,
+//                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+//                         crossAxisCount: 2,
+//                         mainAxisSpacing: s(10),
+//                         crossAxisSpacing: s(10),
+//                         // Slightly taller on narrow screens so the price row
+//                         // and stepper never get squeezed/overflow.
+//                         childAspectRatio: media.size.width < 340 ? 1.8 : 2.2,
+//                       ),
+//                       itemBuilder: (context, index) {
+//                         final variant = variations[index];
+//                         final isSelected = selectedVariation?.variationId == variant.variationId;
+//
+//                         return GestureDetector(
+//                           onTap: () => setSheetState(() {
+//                             selectedVariation = variant;
+//                             if (!isSelected) quantity = 1;
+//                           }),
+//                           child: Container(
+//                             padding: EdgeInsets.symmetric(horizontal: s(12), vertical: s(10)),
+//                             decoration: BoxDecoration(
+//                               color: isSelected
+//                                   ? ColorConstants.primaryColor.withOpacity(0.06)
+//                                   : Colors.white,
+//                               borderRadius: BorderRadius.circular(s(10)),
+//                               border: Border.all(
+//                                 color: isSelected ? ColorConstants.primaryColor : Colors.grey.shade300,
+//                                 width: isSelected ? s(1.4) : s(1),
+//                               ),
+//                             ),
+//                             child: Column(
+//                               crossAxisAlignment: CrossAxisAlignment.start,
+//                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//                               children: [
+//                                 Text(
+//                                   product.name,
+//                                   maxLines: 1,
+//                                   overflow: TextOverflow.ellipsis,
+//                                   style: TextStyle(fontSize: s(12), color: Colors.black87),
+//                                 ),
+//                                 Text(
+//                                   variant.name,
+//                                   maxLines: 1,
+//                                   overflow: TextOverflow.ellipsis,
+//                                   style: TextStyle(fontSize: s(13), fontWeight: FontWeight.w600),
+//                                 ),
+//                                 SizedBox(height: s(4)),
+//                                 Row(
+//                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//                                   crossAxisAlignment: CrossAxisAlignment.center,
+//                                   children: [
+//                                     Flexible(
+//                                       child: Text(
+//                                         '\$${variant.price}',
+//                                         maxLines: 1,
+//                                         overflow: TextOverflow.ellipsis,
+//                                         style: TextStyle(
+//                                           color: ColorConstants.primaryColor,
+//                                           fontWeight: FontWeight.bold,
+//                                           fontSize: s(14),
+//                                         ),
+//                                       ),
+//                                     ),
+//                                     SizedBox(width: s(6)),
+//                                     isSelected
+//                                         ? _VariantStepper(
+//                                       quantity: quantity,
+//                                       scale: scale,
+//                                       onAdd: () => setSheetState(() => quantity++),
+//                                       onRemove: () => setSheetState(() {
+//                                         if (quantity > 1) quantity--;
+//                                       }),
+//                                     )
+//                                         : GestureDetector(
+//                                       behavior: HitTestBehavior.opaque,
+//                                       onTap: () => setSheetState(() {
+//                                         selectedVariation = variant;
+//                                         quantity = 1;
+//                                       }),
+//                                       child: Padding(
+//                                         // Extra invisible padding = bigger tap target
+//                                         // without visually enlarging the icon.
+//                                         padding: EdgeInsets.all(s(2)),
+//                                         child: Icon(
+//                                           Icons.add_circle,
+//                                           color: ColorConstants.primaryColor,
+//                                           size: s(22),
+//                                         ),
+//                                       ),
+//                                     ),
+//                                   ],
+//                                 ),
+//                               ],
+//                             ),
+//                           ),
+//                         );
+//                       },
+//                     ),
+//
+//                     // ── Modifiers ──
+//                     if (addOns.isNotEmpty) ...[
+//                       SizedBox(height: s(16)),
+//                       Row(
+//                         children: [
+//                           Text(
+//                             'Modifiers',
+//                             style: TextStyle(fontWeight: FontWeight.w600, fontSize: s(14)),
+//                           ),
+//                           SizedBox(width: s(8)),
+//                           const Expanded(child: Divider()),
+//                         ],
+//                       ),
+//                       ...addOns.map((addOn) {
+//                         final isChecked = selectedAddOns.contains(addOn);
+//                         return CheckboxListTile(
+//                           contentPadding: EdgeInsets.zero,
+//                           controlAffinity: ListTileControlAffinity.leading,
+//                           value: isChecked,
+//                           title: Text(addOn.name, style: TextStyle(fontSize: s(14))),
+//                           secondary: Text('+ \$${addOn.price.toStringAsFixed(2)}'),
+//                           onChanged: (checked) {
+//                             setSheetState(() {
+//                               if (checked == true) {
+//                                 selectedAddOns.add(addOn);
+//                               } else {
+//                                 selectedAddOns.remove(addOn);
+//                               }
+//                             });
+//                           },
+//                         );
+//                       }),
+//                     ],
+//
+//                     SizedBox(height: s(8)),
+//
+//                     // ── Add to Cart ──
+//                     SizedBox(
+//                       width: double.infinity,
+//                       child: ElevatedButton(
+//                         onPressed: () {
+//                           final selectedProduct = ProductEntity(
+//                             id: selectedVariation!.variationId,
+//                             name: '${product.name} - ${selectedVariation?.name}',
+//                             price: selectedVariation?.price,
+//                             inStock: selectedVariation?.inStock == 'Yes',
+//                           );
+//                           final selectedList = selectedAddOns
+//                               .map((a) => {'name': a.name, 'price': a.price})
+//                               .toList();
+//                           _addVariantToCart(selectedProduct, quantity, selectedList);
+//                           Navigator.pop(sheetContext);
+//                         },
+//                         style: ElevatedButton.styleFrom(
+//                           backgroundColor: ColorConstants.primaryColor,
+//                           foregroundColor: Colors.white,
+//                           padding: EdgeInsets.symmetric(vertical: s(14)),
+//                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(s(8))),
+//                         ),
+//                         child: Row(
+//                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//                           children: [
+//                             Text(
+//                               'Add to Cart',
+//                               style: TextStyle(fontWeight: FontWeight.bold, fontSize: s(15)),
+//                             ),
+//                             Text(
+//                               '\$${total.toStringAsFixed(2)}',
+//                               style: TextStyle(fontWeight: FontWeight.bold, fontSize: s(15)),
+//                             ),
+//                           ],
+//                         ),
+//                       ),
+//                     ),
+//                   ],
+//                 ),
+//               );
+//             },
+//           );
+//         },
+//       );
+//     } catch (e) {
+//       _addToCartDirect(product);
+//     }
+//   }
+//
+// // Helper: show only add-ons sheet (when no variations)
+//   void _showAddOnsOnlySheet(ProductEntity product, List<AddOnEntity> addOns) {
+//     int quantity = 1;
+//     final selectedAddOns = <AddOnEntity>{};
+//     final basePrice = double.tryParse(product.price ?? '0') ?? 0;
+//
+//     showModalBottomSheet(
+//       context: context,
+//       isScrollControlled: true,
+//       shape: const RoundedRectangleBorder(
+//         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+//       ),
+//       builder: (sheetContext) {
+//         return StatefulBuilder(
+//           builder: (context, setSheetState) {
+//             final addOnsTotal = selectedAddOns.fold<double>(0, (sum, a) => sum + a.price);
+//             final total = (basePrice + addOnsTotal) * quantity;
+//
+//             return Padding(
+//               padding: EdgeInsets.only(
+//                 left: 20,
+//                 right: 20,
+//                 top: 20,
+//                 bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+//               ),
+//               child: Column(
+//                 mainAxisSize: MainAxisSize.min,
+//                 crossAxisAlignment: CrossAxisAlignment.start,
+//                 children: [
+//                   Text(product.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+//                   const SizedBox(height: 8),
+//                   Text('\$${basePrice.toStringAsFixed(2)}', style: const TextStyle(fontSize: 16, color: Colors.grey)),
+//                   const SizedBox(height: 16),
+//                   const Text('Add Onssss', style: TextStyle(fontWeight: FontWeight.bold)),
+//                   const Divider(),
+//                   ...addOns.map((addOn) {
+//                     final isChecked = selectedAddOns.contains(addOn);
+//                     return CheckboxListTile(
+//                       contentPadding: EdgeInsets.zero,
+//                       controlAffinity: ListTileControlAffinity.leading,
+//                       value: isChecked,
+//                       title: Text(addOn.name),
+//                       secondary: Text('+ \$${addOn.price.toStringAsFixed(2)}'),
+//                       onChanged: (checked) {
+//                         setSheetState(() {
+//                           if (checked == true) {
+//                             selectedAddOns.add(addOn);
+//                           } else {
+//                             selectedAddOns.remove(addOn);
+//                           }
+//                         });
+//                       },
+//                     );
+//                   }),
+//                   const SizedBox(height: 8),
+//                   Row(
+//                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//                     children: [
+//                       Column(
+//                         crossAxisAlignment: CrossAxisAlignment.start,
+//                         children: [
+//                           const Text('Total Amount:', style: TextStyle(color: Colors.grey, fontSize: 12)),
+//                           Text(
+//                             '\$${total.toStringAsFixed(2)}',
+//                             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: ColorConstants.primaryColor),
+//                           ),
+//                         ],
+//                       ),
+//                       Row(
+//                         children: [
+//                           IconButton(
+//                             icon: const Icon(Icons.remove_circle_outline),
+//                             onPressed: quantity > 1 ? () => setSheetState(() => quantity--) : null,
+//                           ),
+//                           Text('$quantity', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+//                           IconButton(
+//                             icon: const Icon(Icons.add_circle, color: ColorConstants.primaryColor),
+//                             onPressed: () => setSheetState(() => quantity++),
+//                           ),
+//                         ],
+//                       ),
+//                     ],
+//                   ),
+//                   const SizedBox(height: 12),
+//                   SizedBox(
+//                     width: double.infinity,
+//                     child: ElevatedButton(
+//                       onPressed: () {
+//                         final selectedList = selectedAddOns.map((a) {
+//                           return {
+//                             'name': a.name,
+//                             'price': a.price,
+//                           };
+//                         }).toList();
+//                         _addVariantToCart(product, quantity, selectedList);
+//                         Navigator.pop(sheetContext);
+//                       },
+//                       style: ElevatedButton.styleFrom(
+//                         backgroundColor: ColorConstants.primaryColor,
+//                         foregroundColor: Colors.white,
+//                         padding: const EdgeInsets.symmetric(vertical: 14),
+//                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+//                       ),
+//                       child: Row(
+//                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//                         children: [
+//                           const Text('Add to Cart', style: TextStyle(fontWeight: FontWeight.bold)),
+//                           Text('\$${total.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+//                         ],
+//                       ),
+//                     ),
+//                   ),
+//                 ],
+//               ),
+//             );
+//           },
+//         );
+//       },
+//     );
+//   }
+//   // ─── Unified add‑on sheet (called for both "+" and variant taps) ───
+//   Future<void> _showAddOnsSheet(ProductEntity product) async {
+//     final basePrice = double.tryParse(product.price ?? '0') ?? 0;
+//     final nonVeg = isNonVegProduct(product);
+//
+//     List<AddOnEntity> addOns = [];
+//     try {
+//       addOns = await context.read<FetchAddOnsUseCase>()(product.id);
+//     } catch (e) {
+//       _addToCartDirect(product);
+//       return;
+//     }
+//
+//     if (addOns.isEmpty) {
+//       _addToCartDirect(product);
+//       return;
+//     }
+//
+//     int quantity = 1;
+//     final selectedAddOns = <AddOnEntity>{};
+//
+//     showModalBottomSheet(
+//       context: context,
+//       isScrollControlled: true,
+//       shape: const RoundedRectangleBorder(
+//         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+//       ),
+//       builder: (sheetContext) {
+//         return StatefulBuilder(
+//           builder: (context, setSheetState) {
+//             final addOnsTotal = selectedAddOns.fold<double>(0, (sum, a) => sum + a.price);
+//             final total = (basePrice + addOnsTotal) * quantity;
+//
+//             return SingleChildScrollView(
+//               padding: EdgeInsets.only(
+//                 left: 20,
+//                 right: 20,
+//                 top: 16,
+//                 bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+//               ),
+//               child: Column(
+//                 mainAxisSize: MainAxisSize.min,
+//                 crossAxisAlignment: CrossAxisAlignment.start,
+//                 children: [
+//                   // ── Header ──
+//                   Row(
+//                     children: [
+//                       Container(
+//                         width: 10,
+//                         height: 10,
+//                         decoration: BoxDecoration(
+//                           shape: BoxShape.circle,
+//                           color: nonVeg ? Colors.red : Colors.green,
+//                         ),
+//                       ),
+//                       const SizedBox(width: 8),
+//                       Expanded(
+//                         child: Text(
+//                           product.name,
+//                           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+//                           maxLines: 1,
+//                           overflow: TextOverflow.ellipsis,
+//                         ),
+//                       ),
+//                       GestureDetector(
+//                         onTap: () => Navigator.pop(sheetContext),
+//                         child: Container(
+//                           padding: const EdgeInsets.all(4),
+//                           decoration: const BoxDecoration(
+//                             shape: BoxShape.circle,
+//                             color: Color(0xFFFFEAEA),
+//                           ),
+//                           child: const Icon(Icons.close, size: 18, color: Colors.red),
+//                         ),
+//                       ),
+//                     ],
+//                   ),
+//                   const SizedBox(height: 16),
+//
+//                   // ── Price & Stepper ──
+//                   Row(
+//                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//                     children: [
+//                       Text(
+//                         '\$${(basePrice + addOnsTotal).toStringAsFixed(2)}',
+//                         style: const TextStyle(
+//                           fontSize: 22,
+//                           fontWeight: FontWeight.bold,
+//                           color: ColorConstants.primaryColor,
+//                         ),
+//                       ),
+//                       _VariantStepper(
+//                         quantity: quantity,
+//                         onAdd: () => setSheetState(() => quantity++),
+//                         onRemove: () => setSheetState(() {
+//                           if (quantity > 1) quantity--;
+//                         }),
+//                       ),
+//                     ],
+//                   ),
+//
+//                   // ── Modifiers ──
+//                   if (addOns.isNotEmpty) ...[
+//                     const SizedBox(height: 16),
+//                     Row(
+//                       children: const [
+//                         Text('Modifiers', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+//                         SizedBox(width: 8),
+//                         Expanded(child: Divider()),
+//                       ],
+//                     ),
+//                     ...addOns.map((addOn) {
+//                       final isChecked = selectedAddOns.contains(addOn);
+//                       return CheckboxListTile(
+//                         contentPadding: EdgeInsets.zero,
+//                         controlAffinity: ListTileControlAffinity.leading,
+//                         dense: true,
+//                         value: isChecked,
+//                         title: Text(addOn.name, style: const TextStyle(fontSize: 14)),
+//                         secondary: Text('+ \$${addOn.price.toStringAsFixed(2)}'),
+//                         onChanged: (checked) {
+//                           setSheetState(() {
+//                             if (checked == true) {
+//                               selectedAddOns.add(addOn);
+//                             } else {
+//                               selectedAddOns.remove(addOn);
+//                             }
+//                           });
+//                         },
+//                       );
+//                     }),
+//                   ],
+//
+//                   const SizedBox(height: 8),
+//
+//                   // ── Add to Cart ──
+//                   SizedBox(
+//                     width: double.infinity,
+//                     child: ElevatedButton(
+//                       onPressed: () {
+//                         final selectedList = selectedAddOns
+//                             .map((a) => {'name': a.name, 'price': a.price})
+//                             .toList();
+//                         _addVariantToCart(product, quantity, selectedList);
+//                         Navigator.pop(sheetContext);
+//                       },
+//                       style: ElevatedButton.styleFrom(
+//                         backgroundColor: ColorConstants.primaryColor,
+//                         foregroundColor: Colors.white,
+//                         padding: const EdgeInsets.symmetric(vertical: 14),
+//                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+//                       ),
+//                       child: Row(
+//                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//                         children: [
+//                           const Text('Add to Cart', style: TextStyle(fontWeight: FontWeight.bold)),
+//                           Text('\$${total.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+//                         ],
+//                       ),
+//                     ),
+//                   ),
+//                 ],
+//               ),
+//             );
+//           },
+//         );
+//       },
+//     );
+//   }
+
   Future<void> _showVariantAndAddOnSheet(ProductEntity product) async {
     try {
       final variationsFuture = context.read<FetchVariationsUseCase>()(product.id);
@@ -161,6 +750,7 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
       VariationEntity? selectedVariation = variations.first;
       final selectedAddOns = <AddOnEntity>{};
       final nonVeg = isNonVegProduct(product);
+      final currencySymbol = _currencySymbolNotifier.value; // 👈 get symbol
 
       showModalBottomSheet(
         context: context,
@@ -171,7 +761,6 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
         builder: (sheetContext) {
           return StatefulBuilder(
             builder: (context, setSheetState) {
-              // ── Responsive scale (same reference size as ProductCard) ──
               final media = MediaQuery.of(context);
               const referenceWidth = 375.0;
               const referenceHeight = 812.0;
@@ -195,7 +784,7 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ── Header: veg/non-veg dot + name + close ──
+                    // ── Header ──
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
@@ -231,7 +820,7 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                     ),
                     SizedBox(height: s(16)),
 
-                    // ── Variations — 2-column card grid ──
+                    // ── Variations ──
                     GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -240,8 +829,6 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                         crossAxisCount: 2,
                         mainAxisSpacing: s(10),
                         crossAxisSpacing: s(10),
-                        // Slightly taller on narrow screens so the price row
-                        // and stepper never get squeezed/overflow.
                         childAspectRatio: media.size.width < 340 ? 1.8 : 2.2,
                       ),
                       itemBuilder: (context, index) {
@@ -288,7 +875,7 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                                   children: [
                                     Flexible(
                                       child: Text(
-                                        '\$${variant.price}',
+                                        '$currencySymbol${variant.price}', // 👈 dynamic symbol
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: TextStyle(
@@ -315,8 +902,6 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                                         quantity = 1;
                                       }),
                                       child: Padding(
-                                        // Extra invisible padding = bigger tap target
-                                        // without visually enlarging the icon.
                                         padding: EdgeInsets.all(s(2)),
                                         child: Icon(
                                           Icons.add_circle,
@@ -354,7 +939,9 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                           controlAffinity: ListTileControlAffinity.leading,
                           value: isChecked,
                           title: Text(addOn.name, style: TextStyle(fontSize: s(14))),
-                          secondary: Text('+ \$${addOn.price.toStringAsFixed(2)}'),
+                          secondary: Text(
+                            '+ $currencySymbol${addOn.price.toStringAsFixed(2)}', // 👈 dynamic
+                          ),
                           onChanged: (checked) {
                             setSheetState(() {
                               if (checked == true) {
@@ -401,7 +988,7 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                               style: TextStyle(fontWeight: FontWeight.bold, fontSize: s(15)),
                             ),
                             Text(
-                              '\$${total.toStringAsFixed(2)}',
+                              '$currencySymbol${total.toStringAsFixed(2)}', // 👈 dynamic
                               style: TextStyle(fontWeight: FontWeight.bold, fontSize: s(15)),
                             ),
                           ],
@@ -420,11 +1007,11 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
     }
   }
 
-// Helper: show only add-ons sheet (when no variations)
   void _showAddOnsOnlySheet(ProductEntity product, List<AddOnEntity> addOns) {
     int quantity = 1;
     final selectedAddOns = <AddOnEntity>{};
     final basePrice = double.tryParse(product.price ?? '0') ?? 0;
+    final currencySymbol = _currencySymbolNotifier.value; // 👈 get symbol
 
     showModalBottomSheet(
       context: context,
@@ -451,9 +1038,12 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                 children: [
                   Text(product.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  Text('\$${basePrice.toStringAsFixed(2)}', style: const TextStyle(fontSize: 16, color: Colors.grey)),
+                  Text(
+                    '$currencySymbol${basePrice.toStringAsFixed(2)}', // 👈 dynamic
+                    style: const TextStyle(fontSize: 16, color: Colors.grey),
+                  ),
                   const SizedBox(height: 16),
-                  const Text('Add Onssss', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text('Add Ons', style: TextStyle(fontWeight: FontWeight.bold)),
                   const Divider(),
                   ...addOns.map((addOn) {
                     final isChecked = selectedAddOns.contains(addOn);
@@ -462,7 +1052,9 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                       controlAffinity: ListTileControlAffinity.leading,
                       value: isChecked,
                       title: Text(addOn.name),
-                      secondary: Text('+ \$${addOn.price.toStringAsFixed(2)}'),
+                      secondary: Text(
+                        '+ $currencySymbol${addOn.price.toStringAsFixed(2)}', // 👈 dynamic
+                      ),
                       onChanged: (checked) {
                         setSheetState(() {
                           if (checked == true) {
@@ -483,7 +1075,7 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                         children: [
                           const Text('Total Amount:', style: TextStyle(color: Colors.grey, fontSize: 12)),
                           Text(
-                            '\$${total.toStringAsFixed(2)}',
+                            '$currencySymbol${total.toStringAsFixed(2)}', // 👈 dynamic
                             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: ColorConstants.primaryColor),
                           ),
                         ],
@@ -527,7 +1119,10 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           const Text('Add to Cart', style: TextStyle(fontWeight: FontWeight.bold)),
-                          Text('\$${total.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          Text(
+                            '$currencySymbol${total.toStringAsFixed(2)}', // 👈 dynamic
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
                         ],
                       ),
                     ),
@@ -540,10 +1135,10 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
       },
     );
   }
-  // ─── Unified add‑on sheet (called for both "+" and variant taps) ───
   Future<void> _showAddOnsSheet(ProductEntity product) async {
     final basePrice = double.tryParse(product.price ?? '0') ?? 0;
     final nonVeg = isNonVegProduct(product);
+    final currencySymbol = _currencySymbolNotifier.value; // 👈 get symbol
 
     List<AddOnEntity> addOns = [];
     try {
@@ -624,7 +1219,7 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '\$${(basePrice + addOnsTotal).toStringAsFixed(2)}',
+                        '$currencySymbol${(basePrice + addOnsTotal).toStringAsFixed(2)}', // 👈 dynamic
                         style: const TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
@@ -659,7 +1254,9 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                         dense: true,
                         value: isChecked,
                         title: Text(addOn.name, style: const TextStyle(fontSize: 14)),
-                        secondary: Text('+ \$${addOn.price.toStringAsFixed(2)}'),
+                        secondary: Text(
+                          '+ $currencySymbol${addOn.price.toStringAsFixed(2)}', // 👈 dynamic
+                        ),
                         onChanged: (checked) {
                           setSheetState(() {
                             if (checked == true) {
@@ -696,7 +1293,10 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           const Text('Add to Cart', style: TextStyle(fontWeight: FontWeight.bold)),
-                          Text('\$${total.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          Text(
+                            '$currencySymbol${total.toStringAsFixed(2)}', // 👈 dynamic
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
                         ],
                       ),
                     ),
@@ -709,6 +1309,7 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
       },
     );
   }
+
   void _incrementCartItem(CartItem item) {
     setState(() => item.quantity++);
   }
@@ -846,24 +1447,29 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                 if (state is CategoryLoading) {
                   return const Center(child: CupertinoActivityIndicator(radius: 14));
                 } else if (state is CategoryLoaded) {
-                  return ProductListView(
-                    subcategories: state.subcategories,
-                    directProducts: state.directProducts,
-                    subcategoryProducts: state.subcategoryProducts,
-                    miniSubcategoriesMap: state.miniSubcategoriesMap,
-                    cartQuantitiesByProductId: _cartQuantitiesByProductId,
-                    selectedLanguage: _language,
-                    selectedSubcategoryId: _selectedSubcategoryId,
-                    vegOnly: _vegOnly,
-                    nonVegOnly: _nonVegOnly,
-                    onAdd: _showAddOnsSheet,          // 👈 unified add‑on check
-                    onRemove: _removeFromCart,         // kept for reference, but you need to define it
-                    // onVariantTap: _showAddOnsSheet,    // 👈 variants also use the same sheet
-                    onVariantTap: _showVariantAndAddOnSheet,
-                    onVisibleSubcategoryChanged: (subId) {
-                      if (_selectedSubcategoryId != subId) {
-                        setState(() => _selectedSubcategoryId = subId);
-                      }
+                  return ValueListenableBuilder<String>(
+                    valueListenable: _currencySymbolNotifier,
+                    builder: (context, symbol, _) {
+                      return ProductListView(
+                        subcategories: state.subcategories,
+                        directProducts: state.directProducts,
+                        subcategoryProducts: state.subcategoryProducts,
+                        miniSubcategoriesMap: state.miniSubcategoriesMap,
+                        cartQuantitiesByProductId: _cartQuantitiesByProductId,
+                        selectedLanguage: _language,
+                        selectedSubcategoryId: _selectedSubcategoryId,
+                        vegOnly: _vegOnly,
+                        nonVegOnly: _nonVegOnly,
+                        onAdd: _showAddOnsSheet,
+                        onRemove: _removeFromCart,
+                        onVariantTap: _showVariantAndAddOnSheet,
+                        onVisibleSubcategoryChanged: (subId) {
+                          if (_selectedSubcategoryId != subId) {
+                            setState(() => _selectedSubcategoryId = subId);
+                          }
+                        },
+                        currencySymbol: symbol, // 👈 use symbol from notifier
+                      );
                     },
                   );
                 } else if (state is CategoryError) {
@@ -1367,7 +1973,7 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
       ),
     );
   }
-  
+
   Widget _buildCartBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1392,7 +1998,7 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                 style: TextStyle(color: Colors.grey[600], fontSize: 12),
               ),
               Text(
-                '\$${_totalPrice.toStringAsFixed(2)}',
+                '${_currencySymbolNotifier.value}${_totalPrice.toStringAsFixed(2)}',
                 style: const TextStyle(
                   color: ColorConstants.primaryColor,
                   fontWeight: FontWeight.bold,

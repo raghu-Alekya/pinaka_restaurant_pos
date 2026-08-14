@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../ captain_pin_login/captain_login_data_layer/captain_local_storage.dart';
 import '../../../../constants/color_constants.dart';
 import '../home_screen/All_tables_list/All_tables_list_data_layer/order_by_table_model.dart';
 import 'kots_list_bloc/kots_list_bloc.dart';
@@ -25,9 +26,12 @@ class KotsListWidget extends StatefulWidget {
 }
 
 class _KotsListWidgetState extends State<KotsListWidget> {
+  String _currencySymbol = '\$';
+
   @override
   void initState() {
     super.initState();
+    _loadCurrencySymbol();
     // Safety: if for any reason data is missing, request it once
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final state = context.read<KotsListBloc>().state;
@@ -43,6 +47,18 @@ class _KotsListWidgetState extends State<KotsListWidget> {
     });
   }
 
+  Future<void> _loadCurrencySymbol() async {
+    try {
+      final symbol = await context.read<CaptainLocalStorage>().getCurrencySymbol();
+      if (symbol != null && mounted) {
+        setState(() {
+          _currencySymbol = symbol;
+        });
+        print('🪙 KotsListWidget currency symbol: $symbol');
+      }
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<KotsListBloc, KotsListState>(
@@ -52,7 +68,6 @@ class _KotsListWidgetState extends State<KotsListWidget> {
         }
       },
       builder: (context, state) {
-        // ---------- Already have data → show immediately (no flicker) ----------
         if (state is KotsListLoaded) {
           final kots = state.kots;
 
@@ -70,14 +85,16 @@ class _KotsListWidgetState extends State<KotsListWidget> {
               children: [
                 for (int i = 0; i < kots.length; i++) ...[
                   if (i > 0) Divider(height: 1, color: Colors.grey.shade200),
-                  _KotExpansionTile(kot: kots[i]),
+                  _KotExpansionTile(
+                    kot: kots[i],
+                    currencySymbol: _currencySymbol, // 👈 pass symbol
+                  ),
                 ],
               ],
             ),
           );
         }
 
-        // ---------- Error ----------
         if (state is KotsListError) {
           return Container(
             width: double.infinity,
@@ -109,8 +126,6 @@ class _KotsListWidgetState extends State<KotsListWidget> {
           );
         }
 
-        // ---------- Loading / Initial → show nothing (or a tiny placeholder) ----------
-        // Because we pre-fetch in CartScreen, this state is almost never seen.
         return const SizedBox.shrink();
       },
     );
@@ -136,8 +151,12 @@ class _KotsListWidgetState extends State<KotsListWidget> {
 // ---------- Expandable KOT (header + item cards) ----------
 class _KotExpansionTile extends StatefulWidget {
   final KotOrder kot;
+  final String currencySymbol;
 
-  const _KotExpansionTile({required this.kot});
+  const _KotExpansionTile({
+    required this.kot,
+    required this.currencySymbol,
+  });
 
   @override
   State<_KotExpansionTile> createState() => _KotExpansionTileState();
@@ -198,12 +217,12 @@ class _KotExpansionTileState extends State<_KotExpansionTile> {
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
               child: ListView.separated(
                 shrinkWrap: true,
-                physics: const BouncingScrollPhysics(), // ✅ enables scrolling
+                physics: const BouncingScrollPhysics(),
                 itemCount: kot.lineItems.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 8),
                 itemBuilder: (context, index) {
                   final item = kot.lineItems[index];
-                  return _buildItemCard(item);
+                  return _buildItemCard(item, widget.currencySymbol);
                 },
               ),
             ),
@@ -212,10 +231,8 @@ class _KotExpansionTileState extends State<_KotExpansionTile> {
     );
   }
 
-  // ---------- Item card matching the screenshot ----------
-  Widget _buildItemCard(LineItem item) {
-    // final isCancelled = item.isCancelled.toLowerCase() == 'yes';
-
+  // ---------- Item card with currency symbol ----------
+  Widget _buildItemCard(LineItem item, String currencySymbol) {
     // Build modifier / combo subtitle
     String subtitle = '';
     if (item.modifiers.isNotEmpty) {
@@ -238,7 +255,7 @@ class _KotExpansionTileState extends State<_KotExpansionTile> {
       ),
       child: Row(
         children: [
-          // Food image (placeholder – replace with real image if available)
+          // Food image (placeholder)
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: Container(
@@ -246,9 +263,6 @@ class _KotExpansionTileState extends State<_KotExpansionTile> {
               height: 52,
               color: Colors.grey.shade200,
               child: Icon(Icons.restaurant, size: 24, color: Colors.grey.shade400),
-              // If your LineItem / product has image URL later:
-              // child: Image.network(item.imageUrl, fit: BoxFit.cover,
-              //   errorBuilder: (_, __, ___) => Icon(...)),
             ),
           ),
           const SizedBox(width: 12),
@@ -260,11 +274,9 @@ class _KotExpansionTileState extends State<_KotExpansionTile> {
               children: [
                 Text(
                   item.itemName,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    // decoration: isCancelled ? TextDecoration.lineThrough : null,
-                    // color: isCancelled ? Colors.grey : Colors.black87,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -284,23 +296,21 @@ class _KotExpansionTileState extends State<_KotExpansionTile> {
                 const SizedBox(height: 4),
                 Text(
                   '${item.quantity} ×',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    // color: isCancelled ? Colors.grey : Colors.black87,
                   ),
                 ),
               ],
             ),
           ),
 
-          // Price
+          // Price with currency symbol
           Text(
-            '\$${item.amount.toStringAsFixed(2)}',
-            style: TextStyle(
+            '$currencySymbol${item.amount.toStringAsFixed(2)}',
+            style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
-              // color: isCancelled ? Colors.grey : Colors.black87,
             ),
           ),
         ],

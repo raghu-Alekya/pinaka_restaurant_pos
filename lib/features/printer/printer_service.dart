@@ -132,12 +132,12 @@ class Printer {
       final printerSettings = PrinterSettings();
       await printerSettings.loadPrinter();
 
-      if (printerSettings.selectedPrinter == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No printer selected'), backgroundColor: Colors.red),
-        );
-        return;
-      }
+      // if (printerSettings.selectedPrinter == null) {
+      //   ScaffoldMessenger.of(context).showSnackBar(
+      //     const SnackBar(content: Text('No printer selected'), backgroundColor: Colors.red),
+      //   );
+      //   return;
+      // }
 
       await printerSettings.printTicket(bytes, generator);
     } catch (e) {
@@ -363,19 +363,19 @@ class Printer {
       final printerSettings = PrinterSettings();
       await printerSettings.loadPrinter();
 
-      if (printerSettings.selectedPrinter == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("No printer selected"), backgroundColor: Colors.red),
-        );
-        return;
-      }
+      // if (printerSettings.selectedPrinter == null) {
+      //   ScaffoldMessenger.of(context).showSnackBar(
+      //     const SnackBar(content: Text("No printer selected"), backgroundColor: Colors.red),
+      //   );
+      //   return;
+      // }
 
       await printerSettings.printTicket(bytes, generator);
     } catch (e) {
       debugPrint("Print Bill Error: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Print error: $e"), backgroundColor: Colors.red),
-      );
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   SnackBar(content: Text("Print error: $e"), backgroundColor: Colors.red),
+      // );
     }
   }
 }
