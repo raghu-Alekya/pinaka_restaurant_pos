@@ -203,7 +203,6 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
       barrierDismissible: true,
       barrierLabel: 'Modification History',
       barrierColor: Colors.black.withOpacity(0.25),
-
       transitionDuration: const Duration(milliseconds: 300),
 
       pageBuilder: (
@@ -237,7 +236,8 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
             child: Material(
               color: Colors.transparent,
               child: SizedBox(
-                width: 355,
+                // IMPORTANT
+                width: 420,
                 height: MediaQuery.of(context).size.height,
                 child: _buildModificationHistoryPanel(),
               ),
@@ -3061,279 +3061,20 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // ✅ Only show summary if updated
+
+                          // ==========================================
+                          // MODIFICATION SUMMARY
+                          // ONLY SHOW AFTER AN UPDATE
+                          // ==========================================
                           if (orderModel.isUpdated?.toLowerCase() == 'yes')
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(12),
-                              margin: const EdgeInsets.only(bottom: 12),
-                              decoration: BoxDecoration(
-                                color: theme.cardColor,
-                                borderRadius: BorderRadius.circular(8),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.grey.withOpacity(0.2),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Expanded(
-                                        child: Row(
-                                          children: [
-                                            const Text(
-                                              " Original Net Payable-    ",
-                                              style: TextStyle(fontSize: 14),
-                                            ),
-                                            Text(
-                                              "$_currency${orderModel.orderPrevTotal?.toStringAsFixed(2) ?? '0.00'}",
-                                              style: const TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      // Container(
-                                      //   width: 1,
-                                      //   color: Colors.grey[300],
-                                      //   margin: const EdgeInsets.symmetric(horizontal: 8),
-                                      // ),
+                            _buildModificationSummary(orderModel),
 
-                                      // Reason
-                                      Expanded(
-                                        child: Row(
-                                          children: [
-                                            const Text(
-                                              "Reason for edit-   ",
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Color(0xFF7A7A7A),
-                                              ),
-                                            ),
-                                            Expanded(
-                                              child: Text(
-                                                orderModel
-                                                            .updated_remarks
-                                                            ?.isNotEmpty ==
-                                                        true
-                                                    ? orderModel
-                                                        .updated_remarks!
-                                                    : '-',
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: const TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      // const Text(
-                                      //   "Old payment Details",
-                                      //   style: TextStyle(fontSize: 12),
-                                      // ),
+                          const SizedBox(height: 12),
 
-                                      // UPDATED PILL
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 4,
-                                        ),
-                                        decoration: ShapeDecoration(
-                                          color: const Color(0xFFFFF1C2),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              15,
-                                            ),
-                                          ),
-                                        ),
-                                        child: Row(
-                                          children: const [
-                                            // Icon(
-                                            //   Icons.refresh,
-                                            //   size: 12,
-                                            //   color: Colors.orange,
-                                            // ),
-                                            SizedBox(width: 4),
-                                            Text(
-                                              "Updated",
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w600,
-                                                color: Color(0xFFA78307),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-
-                                  // const SizedBox(height: 8),
-                                  // IntrinsicHeight(
-                                  //   child: Row(
-                                  //     children: [
-                                  //       // Net Payable
-                                  //       Expanded(
-                                  //         child: Row(
-                                  //           children: [
-                                  //             const Text(
-                                  //               "Net Payable Amount-    ",
-                                  //               style: TextStyle(fontSize: 14),
-                                  //             ),
-                                  //             Text(
-                                  //               "₹${orderModel.orderPrevTotal?.toStringAsFixed(2) ?? '0.00'}",
-                                  //               style: const TextStyle(
-                                  //                 fontSize: 14,
-                                  //                 fontWeight: FontWeight.w500,
-                                  //               ),
-                                  //             ),
-                                  //           ],
-                                  //         ),
-                                  //       ),
-                                  //
-                                  //       Container(
-                                  //         width: 1,
-                                  //         color: Colors.grey[300],
-                                  //         margin: const EdgeInsets.symmetric(horizontal: 8),
-                                  //       ),
-                                  //
-                                  //       // Reason
-                                  //       Expanded(
-                                  //         child: Row(
-                                  //           children: [
-                                  //             const Text(
-                                  //               "Reason for edit-   ",
-                                  //               style: TextStyle(
-                                  //                 fontSize: 12,
-                                  //                 color: Color(0xFF7A7A7A),
-                                  //               ),
-                                  //             ),
-                                  //             Expanded(
-                                  //               child: Text(
-                                  //                 orderModel.updated_remarks?.isNotEmpty == true
-                                  //                     ? orderModel.updated_remarks!
-                                  //                     : '-',
-                                  //                 maxLines: 1,
-                                  //                 overflow: TextOverflow.ellipsis,
-                                  //                 style: const TextStyle(
-                                  //                   fontSize: 14,
-                                  //                   fontWeight: FontWeight.w500,
-                                  //                 ),
-                                  //               ),
-                                  //             ),
-                                  //           ],
-                                  //         ),
-                                  //       ),
-                                  //     ],
-                                  //   ),
-                                  // ),
-                                ],
-                              ),
-                            ),
-
-                          //  KOT TABLE
+                          // KOT TABLE
                           Expanded(
                             child: buildSelectedKotCard(order, orderModel),
                           ),
-
-                          // const SizedBox(height: 10,),
-                          // Align(
-                          //   alignment: Alignment.centerRight,
-                          //   child: SizedBox(
-                          //     width: 180,
-                          //     height: 36,
-                          //     child: ElevatedButton(
-                          //       style: ElevatedButton.styleFrom(
-                          //         backgroundColor: const Color(0xFFF7C127),
-                          //         shape: RoundedRectangleBorder(
-                          //           borderRadius: BorderRadius.circular(10),
-                          //         ),
-                          //         padding: const EdgeInsets.symmetric(horizontal: 12),
-                          //       ),
-                          //       onPressed: () async {
-                          //         try {
-                          //           Map<String, Map<String, dynamic>> consolidated = {};
-                          //           if (orderModel.kotOrders != null) {
-                          //             for (var kot in orderModel.kotOrders!) {
-                          //               if (kot.lineItems != null) {
-                          //                 for (var lineItem in kot.lineItems!) {
-                          //                   final name = lineItem.name ?? '';
-                          //                   final modifiers = lineItem.modifiers ?? [];
-                          //                   final key = "$name-${modifiers.join(',')}";
-                          //                   if (consolidated.containsKey(key)) {
-                          //                     final existing = consolidated[key]!;
-                          //                     final currentQty = int.tryParse(existing['qty'].toString()) ?? 0;
-                          //                     final addedQty = lineItem.quantity ?? 0;
-                          //                     final newQty = currentQty + addedQty;
-                          //                     existing['qty'] = newQty;
-                          //                     existing['amount'] = (double.tryParse(existing['price'].toString()) ?? 0.0) * newQty;
-                          //                   } else {
-                          //                     consolidated[key] = {
-                          //                       "name": name,
-                          //                       "qty": lineItem.quantity ?? 0,
-                          //                       "price": lineItem.itemPrice ?? 0.0,
-                          //                       "amount": lineItem.amount ?? 0.0,
-                          //                       "modifiers": modifiers,
-                          //                     };
-                          //                   }
-                          //                 }
-                          //               }
-                          //             }
-                          //           }
-                          //
-                          //           await Printer.printBill(
-                          //             context: context,
-                          //             orderId: orderModel.orderId.toString(),
-                          //             tableName: orderModel.tableName ?? "",
-                          //             cashierName: widget.userPermissions?.displayName ?? 'Admin',
-                          //             items: consolidated.values.toList(),
-                          //             grossTotal: (orderModel.grossTotal ?? 0).toDouble(),
-                          //             couponDiscount: (orderModel.discount ?? 0).toDouble(),
-                          //             merchantDiscount: (orderModel.merchantDiscount ?? 0).toDouble(),
-                          //             tipAmount: (orderModel.tipAmount ?? 0).toDouble(),
-                          //             taxAmount: (orderModel.totalTax ?? 0).toDouble(),
-                          //             serviceCharge: (orderModel.serviceChargeValue ?? 0).toDouble(),
-                          //             netPayable: (orderModel.netPayable ?? orderModel.netTotal ?? 0).toDouble(),
-                          //             isCopy: true,
-                          //           );
-                          //         } catch (e) {
-                          //           debugPrint("Print Bill Error: $e");
-                          //         }
-                          //       },
-                          //       child: const Row(
-                          //         mainAxisAlignment: MainAxisAlignment.center,
-                          //         children: [
-                          //           Icon(
-                          //             Icons.print,
-                          //             color: Colors.white,
-                          //             size: 18,
-                          //           ),
-                          //           SizedBox(width: 8),
-                          //           Text(
-                          //             "Print Bill",
-                          //             style: TextStyle(
-                          //               fontSize: 16,
-                          //               fontWeight: FontWeight.bold,
-                          //               color: Colors.white,
-                          //             ),
-                          //           ),
-                          //         ],
-                          //       ),
-                          //     ),
-                          //   ),
-                          // ),
                         ],
                       ),
                     ),
@@ -3364,7 +3105,291 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
       // ),
     );
   }
+  Widget _buildModificationSummary(
+      OrderlistModel orderModel,
+      ) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
+    final previousTotal = orderModel.orderPrevTotal ?? 0;
+
+    // Current amount after modification
+    final currentTotal = orderModel.netPayable ?? 0;
+
+    final difference = currentTotal - previousTotal;
+
+    final refundDue = difference < 0 ? difference.abs() : 0;
+    final additionalDue = difference > 0 ? difference : 0;
+
+    final modifiedBy =
+    orderModel.placedByName?.trim().isNotEmpty == true
+        ? orderModel.placedByName!
+        : orderModel.completedByUserId?.trim().isNotEmpty == true
+        ? orderModel.completedByUserId!
+        : '-';
+
+    final modifiedOn = orderModel.date?.trim().isNotEmpty == true
+        ? orderModel.date!
+        : '-';
+
+    final reason =
+    orderModel.updated_remarks?.trim().isNotEmpty == true
+        ? orderModel.updated_remarks!
+        : '-';
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+      decoration: BoxDecoration(
+        color: isDark
+            ? const Color(0xFF332A17)
+            : const Color(0xFFFFFBEB),
+        border: Border.all(
+          color: const Color(0xFFF59E0B),
+          width: 2,
+        ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+
+          // =========================================================
+          // HEADER
+          // =========================================================
+          _buildModificationHeader(orderModel),
+
+          const SizedBox(height: 14),
+
+          // =========================================================
+          // ALL INFORMATION IN ONE ROW
+          // =========================================================
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+
+                  // Modified by
+                  Expanded(
+                    flex: 2,
+                    child: _buildModificationInfo(
+                      label: 'Modified by',
+                      value: modifiedBy,
+                    ),
+                  ),
+
+                  const SizedBox(width: 30),
+
+                  // Modified on
+                  Expanded(
+                    flex: 2,
+                    child: _buildModificationInfo(
+                      label: 'Modified on',
+                      value: modifiedOn,
+                    ),
+                  ),
+
+                  const SizedBox(width: 30),
+
+                  // Reason
+                  Expanded(
+                    flex: 3,
+                    child: _buildModificationInfo(
+                      label: 'Reason',
+                      value: reason,
+                    ),
+                  ),
+
+                  const SizedBox(width: 30),
+
+                  // Amount
+                  Expanded(
+                    flex: 2,
+                    child: _buildAmountSection(
+                      previousTotal: previousTotal,
+                      currentTotal: currentTotal,
+                      difference: difference,
+                      refundDue: refundDue,
+                      additionalDue: additionalDue,
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+  Widget _buildModificationInfo({
+    required String label,
+    required String value,
+  }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: isDark
+                ? Colors.white54
+                : const Color(0xFF94A3B8),
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+
+        const SizedBox(height: 3),
+
+        Text(
+          value,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: isDark
+                ? Colors.white
+                : const Color(0xFF1E293B),
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+  Widget _buildAmountSection({
+    required num previousTotal,
+    required num currentTotal,
+    required num difference,
+    required num refundDue,
+    required num additionalDue,
+  }) {
+    final isRefund = refundDue > 0;
+
+    return Container(
+      constraints: const BoxConstraints(
+        minWidth: 210,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            isRefund
+                ? 'Refund Due $_currency${refundDue.toStringAsFixed(2)}'
+                : additionalDue > 0
+                ? 'Additional Due $_currency${additionalDue.toStringAsFixed(2)}'
+                : 'No Amount Change',
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              color: isRefund
+                  ? const Color(0xFFDC2626)
+                  : const Color(0xFF16A34A),
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+
+          const SizedBox(height: 5),
+
+          Text(
+            '$_currency${previousTotal.toStringAsFixed(2)}'
+                ' → '
+                '$_currency${currentTotal.toStringAsFixed(2)}',
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              color: Color(0xFF94A3B8),
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  Widget _buildModificationHeader(
+      OrderlistModel orderModel,
+      ) {
+    return Row(
+      children: [
+        const Expanded(
+          child: Text(
+            'MODIFICATION SUMMARY',
+            style: TextStyle(
+              color: Color(0xFFB45309),
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.8,
+            ),
+          ),
+        ),
+
+        Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 5,
+          ),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFEF3C7),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: const Text(
+            '✏️ Modified',
+            style: TextStyle(
+              color: Color(0xFFB45309),
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+  Widget _modificationInfo(
+      String label,
+      String value,
+      ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFF94A3B8),
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+
+        const SizedBox(height: 4),
+
+        Text(
+          value,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Color(0xFF1E293B),
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+  Widget _verticalDivider() {
+    return Container(
+      width: 1,
+      height: 42,
+      margin: const EdgeInsets.symmetric(
+        horizontal: 20,
+      ),
+      color: const Color(0xFFE5E7EB),
+    );
+  }
   Widget buildSelectedKotCard(
     Map<String, dynamic> order,
     OrderlistModel orderModel,

@@ -34,7 +34,7 @@ class OrderlistModel {
 
   String? status;
   bool? isParent;
-
+  String? placedByName;
   List<KotOrder>? kotOrders;
   num? serviceChargeValue;
   num? serviceChargePercentage;
@@ -75,6 +75,7 @@ class OrderlistModel {
     this.serviceChargePercentage,
     this.tipAmount,
     this.couponDetails,
+    this.placedByName,
   });
 
   factory OrderlistModel.fromJson(Map<String, dynamic> json) {
@@ -87,7 +88,7 @@ class OrderlistModel {
       customerPhone: json['customer_phone'],
       paymentType: json['payment_type'],
       kotOrderId: json['kot_order_id'],
-
+      placedByName: json['placed_by_name']?.toString(),
       grossTotal: num.tryParse(json['gross_total']?.toString() ?? "0") ?? 0,
       subTotal: num.tryParse(json['sub_total']?.toString() ?? "0") ?? 0,
       totalTax: num.tryParse(json['total_tax']?.toString() ?? "0") ?? 0,

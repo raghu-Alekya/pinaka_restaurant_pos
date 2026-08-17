@@ -637,161 +637,343 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
           }
 
           return Padding(
-            padding: const EdgeInsets.all(0),
-            child: Container(
-              // decoration: BoxDecoration(
-              //   color: const Color(0xFFE5EFFF),
-              //   borderRadius: BorderRadius.circular(14),
-              // ),
-              child: Padding(
-                padding: const EdgeInsets.all(10),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF202433) : Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: isDark ? Colors.black45 : Colors.black12,
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
+            padding: const EdgeInsets.all(10),
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const SizedBox(width: 10),
+                      SizedBox(
+                        width: 110, // button width
+                        child:GestureDetector(
+                          onTap: () {
+                            Navigator.pop(context, _kotUpdated);
+                          },
+                          child: Container(
+                            width: 110,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            decoration: ShapeDecoration(
+                              color: const Color(0xFF3B4259),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              shadows: const [
+                                BoxShadow(
+                                  color: Color(0x19000000),
+                                  blurRadius: 4,
+                                  offset: Offset(0, 1),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                Icon(
+                                  Icons.arrow_back,
+                                  size: 20,
+                                  color: Colors.white,
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  "Edit Order",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
+
+                      const SizedBox(width: 16),
+
+                      // 🧾 Order ID label
+                      Text(
+                        "Order ID :",
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color:
+                          isDark
+                              ? Colors.white70
+                              : const Color(0xFF7A7A7A),
+                        ),
+                      ),
+
+                      const SizedBox(width: 6),
+
+                      //  Order ID value
+                      Text(
+                        "${widget.orderId}",
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color:
+                          isDark
+                              ? Colors.white
+                              : const Color(0xFF4C5F7D),
+                        ),
+                      ),
+                      const Spacer(),
+                      if (kots.isNotEmpty)
+                        Container(
+                          height: 40,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                          ),
+                          decoration: BoxDecoration(
+                            color:
+                            isDark
+                                ? const Color(0xFF2A2F3D)
+                                : const Color(0xFF125BCE),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<int>(
+                              value: _selectedKotId,
+                              icon: Icon(
+                                Icons.keyboard_arrow_down,
+                                color: Colors.white,
+                              ),
+                              dropdownColor:
+                              isDark
+                                  ? const Color(0xFF2A2F3D)
+                                  : const Color(0xFF125BCE),
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: Colors.white,
+                              ),
+                              items:
+                              kots.map((kot) {
+                                return DropdownMenuItem<int>(
+                                  value: kot.kotOrderId,
+                                  child: Text(
+                                    "KOT ${kot.kotOrderId}",
+                                    style: theme.textTheme.bodyMedium
+                                        ?.copyWith(color: Colors.white),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                if (value != null)
+                                  _onKotSelected(value, kots);
+                              },
+                            ),
+                          ),
+                        ),
+                      const SizedBox(width: 12),
                     ],
                   ),
-                  padding: const EdgeInsets.all(14),
+                // ============================
+                // BACK BUTTON - OUTSIDE CARD
+                // ============================
+          //       GestureDetector(
+          //       onTap: () {
+          // Navigator.pop(context, _kotUpdated);
+          // },
+          //   child: Container(
+          //     width: 110,
+          //     padding: const EdgeInsets.symmetric(
+          //       horizontal: 12,
+          //       vertical: 10,
+          //     ),
+          //     decoration: ShapeDecoration(
+          //       color: const Color(0xFF3B4259),
+          //       shape: RoundedRectangleBorder(
+          //         borderRadius: BorderRadius.circular(10),
+          //       ),
+          //       shadows: const [
+          //         BoxShadow(
+          //           color: Color(0x19000000),
+          //           blurRadius: 4,
+          //           offset: Offset(0, 1),
+          //         ),
+          //       ],
+          //     ),
+          //     child: Row(
+          //       mainAxisSize: MainAxisSize.min,
+          //       mainAxisAlignment: MainAxisAlignment.center,
+          //       children: const [
+          //         Icon(
+          //           Icons.arrow_back,
+          //           size: 20,
+          //           color: Colors.white,
+          //         ),
+          //         SizedBox(width: 8),
+          //         Text(
+          //           "Edit Order",
+          //           style: TextStyle(
+          //             color: Colors.white,
+          //             fontSize: 12,
+          //             fontWeight: FontWeight.w600,
+          //           ),
+          //         ),
+          //       ],
+          //     ),
+          //   ),
+          // ),
+
+          const SizedBox(height: 10),
+
+          Expanded(
+          child: Container(
+          decoration: BoxDecoration(
+          color: isDark
+          ? const Color(0xFF202433)
+              : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+          BoxShadow(
+          color: isDark
+          ? Colors.black45
+              : Colors.black12,
+          blurRadius: 4,
+          offset: const Offset(0, 2),
+          ),
+          ],
+          ),
+          padding: const EdgeInsets.all(14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(width: 42),
-                      Row(
-                        children: [
-                          const SizedBox(width: 10),
-                          SizedBox(
-                            width: 110, // button width
-                            child:GestureDetector(
-                              onTap: () {
-                                Navigator.pop(context, _kotUpdated);
-                              },
-                              child: Container(
-                                width: 110,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
-                                decoration: ShapeDecoration(
-                                  color: const Color(0xFF3B4259),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  shadows: const [
-                                    BoxShadow(
-                                      color: Color(0x19000000),
-                                      blurRadius: 4,
-                                      offset: Offset(0, 1),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: const [
-                                    Icon(
-                                      Icons.arrow_back,
-                                      size: 20,
-                                      color: Colors.white,
-                                    ),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      "Edit Order",
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(width: 16),
-
-                          // 🧾 Order ID label
-                          Text(
-                            "Order ID :",
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color:
-                                  isDark
-                                      ? Colors.white70
-                                      : const Color(0xFF7A7A7A),
-                            ),
-                          ),
-
-                          const SizedBox(width: 6),
-
-                          //  Order ID value
-                          Text(
-                            "${widget.orderId}",
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color:
-                                  isDark
-                                      ? Colors.white
-                                      : const Color(0xFF4C5F7D),
-                            ),
-                          ),
-                          const Spacer(),
-                          if (kots.isNotEmpty)
-                            Container(
-                              height: 40,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              decoration: BoxDecoration(
-                                color:
-                                    isDark
-                                        ? const Color(0xFF2A2F3D)
-                                        : const Color(0xFF125BCE),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<int>(
-                                  value: _selectedKotId,
-                                  icon: Icon(
-                                    Icons.keyboard_arrow_down,
-                                    color: Colors.white,
-                                  ),
-                                  dropdownColor:
-                                      isDark
-                                          ? const Color(0xFF2A2F3D)
-                                          : const Color(0xFF125BCE),
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: Colors.white,
-                                  ),
-                                  items:
-                                      kots.map((kot) {
-                                        return DropdownMenuItem<int>(
-                                          value: kot.kotOrderId,
-                                          child: Text(
-                                            "KOT ${kot.kotOrderId}",
-                                            style: theme.textTheme.bodyMedium
-                                                ?.copyWith(color: Colors.white),
-                                          ),
-                                        );
-                                      }).toList(),
-                                  onChanged: (value) {
-                                    if (value != null)
-                                      _onKotSelected(value, kots);
-                                  },
-                                ),
-                              ),
-                            ),
-                          const SizedBox(width: 12),
-                        ],
-                      ),
+                      // Row(
+                      //   children: [
+                      //     const SizedBox(width: 10),
+                      //     SizedBox(
+                      //       width: 110, // button width
+                      //       child:GestureDetector(
+                      //         onTap: () {
+                      //           Navigator.pop(context, _kotUpdated);
+                      //         },
+                      //         child: Container(
+                      //           width: 110,
+                      //           padding: const EdgeInsets.symmetric(
+                      //             horizontal: 12,
+                      //             vertical: 10,
+                      //           ),
+                      //           decoration: ShapeDecoration(
+                      //             color: const Color(0xFF3B4259),
+                      //             shape: RoundedRectangleBorder(
+                      //               borderRadius: BorderRadius.circular(10),
+                      //             ),
+                      //             shadows: const [
+                      //               BoxShadow(
+                      //                 color: Color(0x19000000),
+                      //                 blurRadius: 4,
+                      //                 offset: Offset(0, 1),
+                      //               ),
+                      //             ],
+                      //           ),
+                      //           child: Row(
+                      //             mainAxisSize: MainAxisSize.min,
+                      //             mainAxisAlignment: MainAxisAlignment.center,
+                      //             children: const [
+                      //               Icon(
+                      //                 Icons.arrow_back,
+                      //                 size: 20,
+                      //                 color: Colors.white,
+                      //               ),
+                      //               SizedBox(width: 8),
+                      //               Text(
+                      //                 "Edit Order",
+                      //                 style: TextStyle(
+                      //                   color: Colors.white,
+                      //                   fontSize: 12,
+                      //                   fontWeight: FontWeight.w600,
+                      //                 ),
+                      //               ),
+                      //             ],
+                      //           ),
+                      //         ),
+                      //       ),
+                      //     ),
+                      //
+                      //     const SizedBox(width: 16),
+                      //
+                      //     // 🧾 Order ID label
+                      //     Text(
+                      //       "Order ID :",
+                      //       style: theme.textTheme.bodyMedium?.copyWith(
+                      //         fontSize: 14,
+                      //         fontWeight: FontWeight.w600,
+                      //         color:
+                      //             isDark
+                      //                 ? Colors.white70
+                      //                 : const Color(0xFF7A7A7A),
+                      //       ),
+                      //     ),
+                      //
+                      //     const SizedBox(width: 6),
+                      //
+                      //     //  Order ID value
+                      //     Text(
+                      //       "${widget.orderId}",
+                      //       style: theme.textTheme.bodyLarge?.copyWith(
+                      //         fontSize: 16,
+                      //         fontWeight: FontWeight.bold,
+                      //         color:
+                      //             isDark
+                      //                 ? Colors.white
+                      //                 : const Color(0xFF4C5F7D),
+                      //       ),
+                      //     ),
+                      //     const Spacer(),
+                      //     if (kots.isNotEmpty)
+                      //       Container(
+                      //         height: 40,
+                      //         padding: const EdgeInsets.symmetric(
+                      //           horizontal: 16,
+                      //         ),
+                      //         decoration: BoxDecoration(
+                      //           color:
+                      //               isDark
+                      //                   ? const Color(0xFF2A2F3D)
+                      //                   : const Color(0xFF125BCE),
+                      //           borderRadius: BorderRadius.circular(8),
+                      //         ),
+                      //         child: DropdownButtonHideUnderline(
+                      //           child: DropdownButton<int>(
+                      //             value: _selectedKotId,
+                      //             icon: Icon(
+                      //               Icons.keyboard_arrow_down,
+                      //               color: Colors.white,
+                      //             ),
+                      //             dropdownColor:
+                      //                 isDark
+                      //                     ? const Color(0xFF2A2F3D)
+                      //                     : const Color(0xFF125BCE),
+                      //             style: theme.textTheme.bodyMedium?.copyWith(
+                      //               color: Colors.white,
+                      //             ),
+                      //             items:
+                      //                 kots.map((kot) {
+                      //                   return DropdownMenuItem<int>(
+                      //                     value: kot.kotOrderId,
+                      //                     child: Text(
+                      //                       "KOT ${kot.kotOrderId}",
+                      //                       style: theme.textTheme.bodyMedium
+                      //                           ?.copyWith(color: Colors.white),
+                      //                     ),
+                      //                   );
+                      //                 }).toList(),
+                      //             onChanged: (value) {
+                      //               if (value != null)
+                      //                 _onKotSelected(value, kots);
+                      //             },
+                      //           ),
+                      //         ),
+                      //       ),
+                      //     const SizedBox(width: 12),
+                      //   ],
+                      // ),
 
                       const SizedBox(height: 0),
 
@@ -803,13 +985,13 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                               flex: 1,
                               child: Container(
                                 margin: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color:
-                                      isDark
-                                          ? const Color(0xFF2A2F3D)
-                                          : const Color(0xFFF6F6F6),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
+                                // decoration: BoxDecoration(
+                                //   color:
+                                //       isDark
+                                //           ? const Color(0xFF2A2F3D)
+                                //           : const Color(0xFFF6F6F6),
+                                //   borderRadius: BorderRadius.circular(12),
+                                // ),
                                 child: Stack(
                                   children: [
                                     // Left panel content
@@ -847,8 +1029,8 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                                     // Overlay summary inside the container
                                     if (_selectedKot != null)
                                       Positioned(
-                                        left: 0,
-                                        right: 0,
+                                        left: 8,
+                                        right: 8,
                                         bottom: 0,
                                         child: Container(
                                           padding: const EdgeInsets.symmetric(
@@ -873,18 +1055,18 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                               ),
                             ),
 
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 6),
                             Flexible(
                               flex: 1,
                               child: Container(
                                 margin: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color:
-                                      isDark
-                                          ? const Color(0xFF2A2F3D)
-                                          : const Color(0xFFF6F6F6),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
+                                // decoration: BoxDecoration(
+                                //   color:
+                                //       isDark
+                                //           ? const Color(0xFF2A2F3D)
+                                //           : const Color(0xFFF6F6F6),
+                                //   borderRadius: BorderRadius.circular(12),
+                                // ),
                                 child: Stack(
                                   children: [
                                     // KOT Card content
@@ -909,8 +1091,8 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                                     // Overlay summary row inside the container
                                     if (_selectedKot != null)
                                       Positioned(
-                                        left: 0,
-                                        right: 0,
+                                        left: 8,
+                                        right: 8,
                                         bottom: 0, // stays inside the container
                                         child: Container(
                                           padding: const EdgeInsets.symmetric(
@@ -951,243 +1133,477 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                       //   "₹${order.netPayable ?? 0}",
                       //   bold: true,
                       // ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const SizedBox(width: 15),
-
-                          Expanded(
-                            child: _infoRow(
-                              "Order Net Payable",
-                              "$_currency${(order.orderPrevTotal ?? 0).toStringAsFixed(2)}",
-                              bold: true,
-                              labelFontWeight: FontWeight.w600,
-                              valueFontWeight: FontWeight.w600,
-                            ),
+                      // ============================================================
+// BOTTOM SUMMARY / ACTION BAR
+// ============================================================
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF1E3A5F)
+                              : const Color(0xFF1E3A5F),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: const Color(0xFFE2E8F0),
+                            width: 0.8,
                           ),
-                          const SizedBox(width: 34),
+                        ),
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final isSmall = constraints.maxWidth < 900;
 
-                          Expanded(
-                            child: _infoRow(
-                              "Order Updated Net Payable",
-                              "$_currency${_dynamicNetPayable.toStringAsFixed(2)}",
-                              bold: true,
-                              labelFontWeight: FontWeight.w700,
-                              valueFontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          //  Enter Reason
-                          if (kot_remarks.isNotEmpty) ...[
-                            const SizedBox(width: 10),
-                            Container(
-                              padding: const EdgeInsets.fromLTRB(24, 8, 8, 8),
-                              decoration: BoxDecoration(
-                                color:
-                                    isDark
-                                        ? const Color(0xFF2A2F3D)
-                                        : const Color(0xFFE5EFFF),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color:
-                                      isDark
-                                          ? theme.dividerColor
-                                          : const Color(0xFFE5EFFF),
-                                ),
-                              ),
-                              child: Row(
+                            // --------------------------------------------------------
+                            // SMALL SCREEN
+                            // --------------------------------------------------------
+                            if (isSmall) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
-                                  Text(
-                                    "Enter Reason:",
-                                    style: theme.textTheme.bodyLarge?.copyWith(
+                                  // Previous + Updated Total
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _bottomAmountItem(
+                                          title: "PREVIOUS TOTAL",
+                                          amount:
+                                          "$_currency${(order.orderPrevTotal ?? 0).toStringAsFixed(2)}",
+                                          amountColor: Colors.white,
+                                        ),
+                                      ),
+
+                                      const Padding(
+                                        padding: EdgeInsets.symmetric(horizontal: 12),
+                                        child: Text(
+                                          "→",
+                                          style: TextStyle(
+                                            color: Color(0xFF7F8EA3),
+                                            fontSize: 28,
+                                          ),
+                                        ),
+                                      ),
+
+                                      Expanded(
+                                        child: _bottomAmountItem(
+                                          title: "UPDATED TOTAL",
+                                          amount:
+                                          "$_currency${_dynamicNetPayable.toStringAsFixed(2)}",
+                                          amountColor: const Color(0xFF86EFAC),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+
+                                  const SizedBox(height: 14),
+
+                                  // Reason
+                                  if (kot_remarks.isNotEmpty)
+                                    _reasonDropdown(),
+
+                                  if (kot_remarks.isNotEmpty)
+                                    const SizedBox(height: 14),
+
+                                  // Success message
+                                  if (_isUpdatingKot || _updateMessage != null)
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 14),
+                                      child: _updateStatus(),
+                                    ),
+
+                                  // Buttons
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _resetButton(),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: _updateButton(),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              );
+                            }
+
+                            // --------------------------------------------------------
+                            // LARGE SCREEN
+                            // --------------------------------------------------------
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                // =====================================================
+                                // PREVIOUS TOTAL
+                                // =====================================================
+                                _bottomAmountItem(
+                                  title: "PREVIOUS TOTAL",
+                                  amount:
+                                  "$_currency${(order.orderPrevTotal ?? 0).toStringAsFixed(2)}",
+                                  amountColor: Colors.white,
+                                ),
+
+                                const SizedBox(width: 25),
+
+                                // =====================================================
+                                // ARROW
+                                // =====================================================
+                                const Text(
+                                  "→",
+                                  style: TextStyle(
+                                    color: Color(0xFF7F8EA3),
+                                    fontSize: 30,
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                ),
+
+                                const SizedBox(width: 45),
+
+                                // =====================================================
+                                // UPDATED TOTAL
+                                // =====================================================
+                                _bottomAmountItem(
+                                  title: "UPDATED TOTAL",
+                                  amount:
+                                  "$_currency${_dynamicNetPayable.toStringAsFixed(2)}",
+                                  amountColor: const Color(0xFF86EFAC),
+                                ),
+
+                                const SizedBox(width: 15),
+
+                                // =====================================================
+                                // CHANGE COUNT
+                                // =====================================================
+                                Container(
+                                  height: 40,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 18,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF2D4E75),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    "1 change",
+                                    style: const TextStyle(
+                                      color: Color(0xFF94A3B8),
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
-                                      color:
-                                          isDark
-                                              ? Colors.white
-                                              : const Color(0xFF393A3B),
                                     ),
                                   ),
-                                  const SizedBox(width: 20),
+                                ),
 
-                                  SizedBox(
-                                    width: 430,
-                                    height: 30,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: theme.cardColor,
-                                        borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(
-                                          color: theme.dividerColor,
-                                        ),
-                                      ),
-                                      child: DropdownButtonHideUnderline(
-                                        child: DropdownButton<String>(
-                                          value: selectedReason,
-                                          isExpanded: true,
-                                          dropdownColor: theme.cardColor,
-                                          icon: Icon(
-                                            Icons.keyboard_arrow_down,
-                                            color: theme.iconTheme.color,
-                                          ),
-                                          hint: Text(
-                                            "Select Reason",
-                                            style: theme.textTheme.bodySmall
-                                                ?.copyWith(
-                                                  fontSize: 12,
-                                                  color:
-                                                      isDark
-                                                          ? Colors.white54
-                                                          : const Color(
-                                                            0xFF9E9E9E,
-                                                          ),
-                                                ),
-                                          ),
-                                          style: theme.textTheme.bodySmall
-                                              ?.copyWith(
-                                                fontSize: 12,
-                                                color:
-                                                    isDark
-                                                        ? Colors.white
-                                                        : const Color(
-                                                          0xFF212121,
-                                                        ),
-                                              ),
-                                          items:
-                                              kot_remarks.map((reason) {
-                                                return DropdownMenuItem<String>(
-                                                  value: reason,
-                                                  child: Text(
-                                                    reason,
-                                                    style: theme
-                                                        .textTheme
-                                                        .bodySmall
-                                                        ?.copyWith(
-                                                          fontSize: 12,
-                                                          color:
-                                                              isDark
-                                                                  ? Colors.white
-                                                                  : const Color(
-                                                                    0xFF212121,
-                                                                  ),
-                                                        ),
-                                                  ),
-                                                );
-                                              }).toList(),
-                                          onChanged: (value) {
-                                            setState(() {
-                                              selectedReason = value;
-                                            });
-                                          },
-                                        ),
-                                      ),
-                                    ),
+                                const SizedBox(width: 10),
+
+                                // =====================================================
+                                // REASON
+                                // =====================================================
+                                if (kot_remarks.isNotEmpty)
+                                  Expanded(
+                                    child: _reasonDropdown(),
                                   ),
-                                ],
-                              ),
-                            ),
-                          ],
 
-                          //  Spacer only if no success message
-                          if (_updateMessage == null) const Spacer(),
+                                const SizedBox(width: 20),
 
-                          // Success message (Flexible)
-                          if (_isUpdatingKot || _updateMessage != null) ...[
-                            const SizedBox(width: 12),
-
-                            Flexible(
-                              child: Row(
-                                children: [
-                                  if (_isUpdatingKot)
-                                    const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  else
-                                    Image.asset(
-                                      "assets/success_tick.png",
-                                      width: 20,
-                                      height: 20,
-                                    ),
-
-                                  const SizedBox(width: 6),
-
+                                // =====================================================
+                                // SUCCESS / UPDATING MESSAGE
+                                // =====================================================
+                                if (_isUpdatingKot || _updateMessage != null)
                                   Flexible(
-                                    child: Text(
-                                      _isUpdatingKot
-                                          ? "Updating KOT, please wait..."
-                                          : _updateMessage!,
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.bodyMedium?.copyWith(
-                                        color:
-                                            _isUpdatingKot
-                                                ? Colors.orange
-                                                : Colors.green,
+                                    child: _updateStatus(),
+                                  ),
+
+                                const SizedBox(width: 60),
+
+                                // =====================================================
+                                // RESET
+                                // =====================================================
+                                SizedBox(
+                                  height: 40,
+                                  child: OutlinedButton(
+                                    onPressed: _isUpdatingKot
+                                        ? null
+                                        : () {
+                                      setState(() {
+                                        selectedReason = null;
+                                      });
+                                    },
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: const Color(0xFFCBD5E1),
+                                      side: const BorderSide(
+                                        color: Color(0xFF8BA3C4),
+                                        width: 1.6,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 24,
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      "Reset",
+                                      style: TextStyle(
+                                        fontSize: 16,
                                         fontWeight: FontWeight.w600,
                                       ),
-                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                ],
-                              ),
-                            ),
+                                ),
 
-                            const SizedBox(width: 12),
-                          ],
+                                const SizedBox(width: 10),
 
-                          //  Update KOT button
-                          ElevatedButton(
-                            onPressed: _isUpdatingKot ? null : _updateKot,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF4C5F7D),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 26,
-                                vertical: 18,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child:
-                                _isUpdatingKot
-                                    ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                    : const Text(
-                                      "Update KOT",
-                                      style: TextStyle(
-                                        fontSize: 14, //  SAME font size
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                          ),
-
-                          const SizedBox(width: 10),
-                        ],
+                                // =====================================================
+                                // UPDATE KOT
+                                // =====================================================
+                                _updateButton(),
+                              ],
+                            );
+                          },
+                        ),
                       ),
+                      //
+                      // Row(
+                      //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      //   children: [
+                      //     const SizedBox(width: 15),
+                      //
+                      //     Expanded(
+                      //       child: _infoRow(
+                      //         "Order Net Payable",
+                      //         "$_currency${(order.orderPrevTotal ?? 0).toStringAsFixed(2)}",
+                      //         bold: true,
+                      //         labelFontWeight: FontWeight.w600,
+                      //         valueFontWeight: FontWeight.w600,
+                      //       ),
+                      //     ),
+                      //     const SizedBox(width: 34),
+                      //
+                      //     Expanded(
+                      //       child: _infoRow(
+                      //         "Order Updated Net Payable",
+                      //         "$_currency${_dynamicNetPayable.toStringAsFixed(2)}",
+                      //         bold: true,
+                      //         labelFontWeight: FontWeight.w700,
+                      //         valueFontWeight: FontWeight.w700,
+                      //       ),
+                      //     ),
+                      //   ],
+                      // ),
+                      //
+                      // Row(
+                      //   crossAxisAlignment: CrossAxisAlignment.center,
+                      //   children: [
+                      //     //  Enter Reason
+                      //     if (kot_remarks.isNotEmpty) ...[
+                      //       const SizedBox(width: 10),
+                      //       Container(
+                      //         padding: const EdgeInsets.fromLTRB(24, 8, 8, 8),
+                      //         decoration: BoxDecoration(
+                      //           color:
+                      //               isDark
+                      //                   ? const Color(0xFF2A2F3D)
+                      //                   : const Color(0xFFE5EFFF),
+                      //           borderRadius: BorderRadius.circular(8),
+                      //           border: Border.all(
+                      //             color:
+                      //                 isDark
+                      //                     ? theme.dividerColor
+                      //                     : const Color(0xFFE5EFFF),
+                      //           ),
+                      //         ),
+                      //         child: Row(
+                      //           children: [
+                      //             Text(
+                      //               "Enter Reason:",
+                      //               style: theme.textTheme.bodyLarge?.copyWith(
+                      //                 fontSize: 16,
+                      //                 fontWeight: FontWeight.w600,
+                      //                 color:
+                      //                     isDark
+                      //                         ? Colors.white
+                      //                         : const Color(0xFF393A3B),
+                      //               ),
+                      //             ),
+                      //             const SizedBox(width: 20),
+                      //
+                      //             SizedBox(
+                      //               width: 430,
+                      //               height: 30,
+                      //               child: Container(
+                      //                 padding: const EdgeInsets.symmetric(
+                      //                   horizontal: 12,
+                      //                 ),
+                      //                 decoration: BoxDecoration(
+                      //                   color: theme.cardColor,
+                      //                   borderRadius: BorderRadius.circular(6),
+                      //                   border: Border.all(
+                      //                     color: theme.dividerColor,
+                      //                   ),
+                      //                 ),
+                      //                 child: DropdownButtonHideUnderline(
+                      //                   child: DropdownButton<String>(
+                      //                     value: selectedReason,
+                      //                     isExpanded: true,
+                      //                     dropdownColor: theme.cardColor,
+                      //                     icon: Icon(
+                      //                       Icons.keyboard_arrow_down,
+                      //                       color: theme.iconTheme.color,
+                      //                     ),
+                      //                     hint: Text(
+                      //                       "Select Reason",
+                      //                       style: theme.textTheme.bodySmall
+                      //                           ?.copyWith(
+                      //                             fontSize: 12,
+                      //                             color:
+                      //                                 isDark
+                      //                                     ? Colors.white54
+                      //                                     : const Color(
+                      //                                       0xFF9E9E9E,
+                      //                                     ),
+                      //                           ),
+                      //                     ),
+                      //                     style: theme.textTheme.bodySmall
+                      //                         ?.copyWith(
+                      //                           fontSize: 12,
+                      //                           color:
+                      //                               isDark
+                      //                                   ? Colors.white
+                      //                                   : const Color(
+                      //                                     0xFF212121,
+                      //                                   ),
+                      //                         ),
+                      //                     items:
+                      //                         kot_remarks.map((reason) {
+                      //                           return DropdownMenuItem<String>(
+                      //                             value: reason,
+                      //                             child: Text(
+                      //                               reason,
+                      //                               style: theme
+                      //                                   .textTheme
+                      //                                   .bodySmall
+                      //                                   ?.copyWith(
+                      //                                     fontSize: 12,
+                      //                                     color:
+                      //                                         isDark
+                      //                                             ? Colors.white
+                      //                                             : const Color(
+                      //                                               0xFF212121,
+                      //                                             ),
+                      //                                   ),
+                      //                             ),
+                      //                           );
+                      //                         }).toList(),
+                      //                     onChanged: (value) {
+                      //                       setState(() {
+                      //                         selectedReason = value;
+                      //                       });
+                      //                     },
+                      //                   ),
+                      //                 ),
+                      //               ),
+                      //             ),
+                      //           ],
+                      //         ),
+                      //       ),
+                      //     ],
+                      //
+                      //     //  Spacer only if no success message
+                      //     if (_updateMessage == null) const Spacer(),
+                      //
+                      //     // Success message (Flexible)
+                      //     if (_isUpdatingKot || _updateMessage != null) ...[
+                      //       const SizedBox(width: 12),
+                      //
+                      //       Flexible(
+                      //         child: Row(
+                      //           children: [
+                      //             if (_isUpdatingKot)
+                      //               const SizedBox(
+                      //                 width: 18,
+                      //                 height: 18,
+                      //                 child: CircularProgressIndicator(
+                      //                   strokeWidth: 2,
+                      //                 ),
+                      //               )
+                      //             else
+                      //               Image.asset(
+                      //                 "assets/success_tick.png",
+                      //                 width: 20,
+                      //                 height: 20,
+                      //               ),
+                      //
+                      //             const SizedBox(width: 6),
+                      //
+                      //             Flexible(
+                      //               child: Text(
+                      //                 _isUpdatingKot
+                      //                     ? "Updating KOT, please wait..."
+                      //                     : _updateMessage!,
+                      //                 style: Theme.of(
+                      //                   context,
+                      //                 ).textTheme.bodyMedium?.copyWith(
+                      //                   color:
+                      //                       _isUpdatingKot
+                      //                           ? Colors.orange
+                      //                           : Colors.green,
+                      //                   fontWeight: FontWeight.w600,
+                      //                 ),
+                      //                 overflow: TextOverflow.ellipsis,
+                      //               ),
+                      //             ),
+                      //           ],
+                      //         ),
+                      //       ),
+                      //
+                      //       const SizedBox(width: 12),
+                      //     ],
+                      //
+                      //     //  Update KOT button
+                      //     ElevatedButton(
+                      //       onPressed: _isUpdatingKot ? null : _updateKot,
+                      //       style: ElevatedButton.styleFrom(
+                      //         backgroundColor: const Color(0xFF4C5F7D),
+                      //         padding: const EdgeInsets.symmetric(
+                      //           horizontal: 26,
+                      //           vertical: 18,
+                      //         ),
+                      //         shape: RoundedRectangleBorder(
+                      //           borderRadius: BorderRadius.circular(8),
+                      //         ),
+                      //       ),
+                      //       child:
+                      //           _isUpdatingKot
+                      //               ? const SizedBox(
+                      //                 width: 18,
+                      //                 height: 18,
+                      //                 child: CircularProgressIndicator(
+                      //                   strokeWidth: 2,
+                      //                   color: Colors.white,
+                      //                 ),
+                      //               )
+                      //               : const Text(
+                      //                 "Update KOT",
+                      //                 style: TextStyle(
+                      //                   fontSize: 14, //  SAME font size
+                      //                   fontWeight: FontWeight.w600,
+                      //                   color: Colors.white,
+                      //                 ),
+                      //               ),
+                      //     ),
+                      //
+                      //     const SizedBox(width: 10),
+                      //   ],
+                      // ),
                     ],
                   ),
                 ),
               ),
-            ),
+            ]),
           );
         },
       ),
@@ -1211,7 +1627,239 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       // ),
     );
   }
+  Widget _bottomAmountItem({
+    required String title,
+    required String amount,
+    required Color amountColor,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            color: Color(0xFF94A3B8),
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.66,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          amount,
+          style: TextStyle(
+            color: amountColor,
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    );
+  }
+  Widget _reasonDropdown() {
+    return Container(
+      height: 40,
+      padding: const EdgeInsets.only(
+        left: 20,
+        right: 8,
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE5EFFF),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          const Text(
+            "Reason for modification",
+            style: TextStyle(
+              color: Color(0xFF39393A),
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
 
+          const SizedBox(width: 20),
+
+          Expanded(
+            child: Container(
+              height: 36,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: const Color(0xFFD1D5DB),
+                ),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: selectedReason,
+                  isExpanded: true,
+                  dropdownColor: Colors.white,
+
+                  hint: const Text(
+                    "Select Reason",
+                    style: TextStyle(
+                      color: Color(0xFF9E9E9E),
+                      fontSize: 13,
+                    ),
+                  ),
+
+                  icon: const Icon(
+                    Icons.keyboard_arrow_down,
+                    color: Color(0xFF64748B),
+                  ),
+
+                  style: const TextStyle(
+                    color: Color(0xFF212121),
+                    fontSize: 13,
+                  ),
+
+                  items: kot_remarks.map((reason) {
+                    return DropdownMenuItem<String>(
+                      value: reason,
+                      child: Text(
+                        reason,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    );
+                  }).toList(),
+
+                  onChanged: (value) {
+                    setState(() {
+                      selectedReason = value;
+                    });
+                  },
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  Widget _updateStatus() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (_isUpdatingKot)
+          const SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Colors.orange,
+            ),
+          )
+        else
+          Image.asset(
+            "assets/success_tick.png",
+            width: 20,
+            height: 20,
+          ),
+
+        const SizedBox(width: 7),
+
+        Flexible(
+          child: Text(
+            _isUpdatingKot
+                ? "Updating KOT, please wait..."
+                : _updateMessage!,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: _isUpdatingKot
+                  ? Colors.orange
+                  : Colors.green,
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+  Widget _updateButton() {
+    return SizedBox(
+      height: 40,
+      child: ElevatedButton(
+        onPressed: _isUpdatingKot ? null : _updateKot,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF3B6FD4),
+          disabledBackgroundColor: const Color(0xFF3B6FD4),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        child: _isUpdatingKot
+            ? const SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: Colors.white,
+          ),
+        )
+            : const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              "Update KOT",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            SizedBox(width: 12),
+            Text(
+              "→",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  Widget _resetButton() {
+    return OutlinedButton(
+      onPressed: _isUpdatingKot
+          ? null
+          : () {
+        setState(() {
+          selectedReason = null;
+        });
+      },
+      style: OutlinedButton.styleFrom(
+        foregroundColor: const Color(0xFFCBD5E1),
+        side: const BorderSide(
+          color: Color(0xFF8BA3C4),
+          width: 1.6,
+        ),
+        minimumSize: const Size(
+          double.infinity,
+          48,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+      child: const Text(
+        "Reset",
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
   // =========================================================
   // LEFT PANEL (Order info + KOT selector) - STATIC VIEW
   // =========================================================
@@ -1226,223 +1874,167 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       });
     }
 
-    //  DEFINE LISTS HERE (IMPORTANT)
     final allItems = kot?.lineItems ?? [];
 
-    // normal (not deleted)
     final normalItems =
-        allItems.where((item) {
-          return _getVoidedItemByItemId(item.itemId) == null;
-        }).toList();
+    allItems.where((item) {
+      return _getVoidedItemByItemId(item.itemId) == null;
+    }).toList();
 
-    // deleted (from API)
     final voidedItems = _currentVoidedItems;
 
-    // backgroundColor: const Color(0xFFF6F6F6),
     return Container(
       margin: const EdgeInsets.all(8),
-      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF2A2F3D) : const Color(0xFFF6F6F6),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF202433) : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: isDark ? Colors.black45 : Colors.black12,
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
+        color: isDark ? const Color(0xFF202433) : Colors.white,
+        border: Border.all(
+          color: isDark
+              ? const Color(0xFF3A4050)
+              : const Color(0xFFD8DEE8),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        borderRadius: BorderRadius.circular(5),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ================= HEADER =================
+          Container(
+            height: 28,
+            padding: const EdgeInsets.symmetric(horizontal: 9),
+            color: isDark
+                ? const Color(0xFF202433)
+                : const Color(0xFFF8FAFC),
+            child: Row(
               children: [
                 Text(
-                  "KOT ID: ${kot?.kotOrderId ?? '-'}",
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
+                  "ORIGINAL ORDER",
+                  style: TextStyle(
                     fontSize: 14,
-                    color: isDark ? Colors.white : Colors.black87,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: .2,
+                    color: isDark
+                        ? Colors.white70
+                        : const Color(0xFF526174),
                   ),
                 ),
-                Expanded(
-                  child: Text(
-                    "All ordered items are listed here KOT wise",
-                    textAlign: TextAlign.right,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontSize: 14,
-                      color: isDark ? Colors.white70 : const Color(0xFF092044),
-                    ),
+                const Spacer(),
+                Text(
+                  "KOT: #${kot?.kotOrderId ?? '-'} · Current order before changes",
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark
+                        ? Colors.white38
+                        : const Color(0xFF9AA8BA),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 4),
+          ),
 
-            // Table Header
-            Container(
-              decoration: BoxDecoration(
-                color:
-                    isDark ? const Color(0xFF3A3F4B) : const Color(0xFF999393),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(8),
-                  topRight: Radius.circular(8),
+          // ================= TABLE HEADER =================
+          Container(
+            height: 30,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            color: isDark
+                ? const Color(0xFF374151)
+                : const Color(0xFF344054),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 28,
+                  child: _leftHeaderText("#"),
                 ),
-              ),
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
-              child: const Row(
-                children: [
-                  Expanded(
-                    flex: 1,
-                    child: Text(
-                      "#",
-                      style: TextStyle(
-                        fontWeight: FontWeight.w400,
-                        color: Color(0xFFF5F5F5),
-                      ),
-                    ),
+                Expanded(
+                  flex: 4,
+                  child: _leftHeaderText("Item Name"),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: _leftHeaderText(
+                    "Quantity",
+                    center: true,
                   ),
-                  Expanded(
-                    flex: 3,
-                    child: Text(
-                      "Item",
-                      style: TextStyle(
-                        fontWeight: FontWeight.w400,
-                        color: Color(0xFFF5F5F5),
-                      ),
-                    ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: _leftHeaderText(
+                    "Amount",
+                    right: true,
                   ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      "Quantity",
-                      style: TextStyle(
-                        fontWeight: FontWeight.w400,
-                        color: Color(0xFFF5F5F5),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 1,
-                    child: Text(
-                      "Amount",
-                      style: TextStyle(
-                        fontWeight: FontWeight.w400,
-                        color: Color(0xFFF5F5F5),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
+          ),
 
-            // Items List (STATIC)
-            Expanded(
-              child: ListView.builder(
-                padding: EdgeInsets.zero,
-                itemCount: normalItems.length + voidedItems.length,
-                itemBuilder: (context, index) {
-                  final bool isNormal = index < normalItems.length;
-                  final bool isLast =
-                      index == (normalItems.length + voidedItems.length - 1);
+          // ================= ITEMS =================
+          Expanded(
+            child: ListView.builder(
+              padding: EdgeInsets.zero,
+              itemCount: normalItems.length + voidedItems.length,
+              itemBuilder: (context, index) {
+                final bool isNormal = index < normalItems.length;
 
-                  // Loading state for voided items
-                  if (_isVoidedLoading && !isNormal) {
-                    return const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: Center(
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                return Container(
+                  padding: isNormal
+                      ? const EdgeInsets.symmetric(
+                    vertical: 4,
+                    horizontal: 8,
+                  )
+                      : const EdgeInsets.symmetric(
+                    vertical: 2,
+                    horizontal: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isNormal
+                        ? (isDark
+                        ? const Color(0xFF202433)
+                        : Colors.white)
+                        : (isDark
+                        ? const Color(0xFF3A2A2A)
+                        : const Color(0xFFF2F2F2)),
+                    border: Border(
+                      bottom: BorderSide(
+                        color: isDark
+                            ? const Color(0xFF303644)
+                            : const Color(0xFFEDF0F4),
+                        width: .7,
                       ),
-                    );
-                  }
-
-                  return Container(
-                    padding:
-                        isNormal
-                            ? const EdgeInsets.symmetric(
-                              vertical: 8,
-                              horizontal: 16,
-                            )
-                            : const EdgeInsets.symmetric(
-                              vertical: 2,
-                              horizontal: 16,
-                            ),
-                    decoration: BoxDecoration(
-                      color:
-                          isNormal
-                              ? (isDark
-                                  ? const Color(0xFF2A2F3D)
-                                  : const Color(0xFFFBFBFC))
-                              : (isDark
-                                  ? const Color(0xFF3A2A2A)
-                                  : const Color(0xFFF2F2F2)),
-                      border: Border(
-                        bottom: BorderSide(color: theme.dividerColor),
-                      ),
-                      borderRadius:
-                          isLast
-                              ? const BorderRadius.only(
-                                bottomLeft: Radius.circular(0),
-                                bottomRight: Radius.circular(0),
-                              )
-                              : BorderRadius.zero,
                     ),
-                    child:
-                        isNormal
-                            ? _buildNormalRowUI(normalItems[index], index)
-                            : _buildVoidedRowUI(
-                              voidedItems[index - normalItems.length],
-                              index,
-                            ),
-                  );
-                },
-              ),
+                  ),
+                  child: isNormal
+                      ? _buildNormalRowUI(
+                    normalItems[index],
+                    index,
+                  )
+                      : _buildVoidedRowUI(
+                    voidedItems[index - normalItems.length],
+                    index,
+                  ),
+                );
+              },
             ),
-
-            // const SizedBox(height: 12),
-            //
-            // // Summary Row: Updated Net Payable
-            // Row(
-            //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            //   children: [
-            //     _summaryRow(
-            //       "KOT #${_selectedKot?.kotOrderId ?? '-'} - Amount",
-            //       "₹${_leftPanelItems.fold<double>(0.0, (sum, i) => sum + (i.amount ?? 0)).toStringAsFixed(2)}",
-            //       bold: true,
-            //     ),
-            //
-            //
-            //     // Update KOT Button
-            //     // ElevatedButton(
-            //     //   onPressed: _updateKot, // uses updated _leftPanelItems
-            //     //   style: ElevatedButton.styleFrom(
-            //     //     backgroundColor: const Color(0xFF125BCE),
-            //     //     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            //     //     shape: RoundedRectangleBorder(
-            //     //       borderRadius: BorderRadius.circular(8),
-            //     //     ),
-            //     //   ),
-            //     //   child: const Text(
-            //     //     "Update KOT",
-            //     //     style: TextStyle(
-            //     //       fontSize: 14,
-            //     //       fontWeight: FontWeight.w600,
-            //     //       color: Colors.white,
-            //     //     ),
-            //     //   ),
-            //     // ),
-            //   ],
-            // ),
-          ],
-        ),
+          ),
+        ],
+      ),
+    );
+  }
+  Widget _leftHeaderText(
+      String text, {
+        bool center = false,
+        bool right = false,
+      }) {
+    return Text(
+      text,
+      textAlign: right
+          ? TextAlign.right
+          : center
+          ? TextAlign.center
+          : TextAlign.left,
+      style: const TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: Colors.white,
       ),
     );
   }
@@ -1453,59 +2045,90 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
     final modifiers = parseModifiers(item.modifiers);
 
-    return Row(
-      children: [
-        Expanded(
-          flex: 1,
-          child: Text(
-            "${index + 1}",
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: isDark ? Colors.white : Colors.black,
+    return SizedBox(
+      height: modifiers.isNotEmpty ? 36 : 25,
+      child: Row(
+        children: [
+          // #
+          SizedBox(
+            width: 28,
+            child: Text(
+              "${index + 1}",
+              style: TextStyle(
+                fontSize: 12,
+                color: isDark
+                    ? Colors.white54
+                    : const Color(0xFF7C8796),
+              ),
             ),
           ),
-        ),
-        Expanded(
-          flex: 3,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                item.name ?? "-",
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.white : Colors.black,
-                ),
-              ),
-              if (modifiers.isNotEmpty)
+
+          // ITEM NAME
+          Expanded(
+            flex: 4,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Text(
-                  modifiers.join(", "),
-                  style: theme.textTheme.bodySmall?.copyWith(
+                  item.name ?? "-",
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
                     fontSize: 12,
-                    color: isDark ? Colors.white70 : Colors.grey,
+                    fontWeight: FontWeight.w500,
+                    color: isDark
+                        ? Colors.white
+                        : const Color(0xFF263238),
                   ),
                 ),
-            ],
-          ),
-        ),
-        Expanded(
-          flex: 2,
-          child: Text(
-            "${item.quantity ?? 0}",
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: isDark ? Colors.white : Colors.black,
+
+                if (modifiers.isNotEmpty)
+                  Text(
+                    modifiers.join(", "),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      color: Color(0xFF5276C7),
+                    ),
+                  ),
+              ],
             ),
           ),
-        ),
-        Expanded(
-          flex: 1,
-          child: Text(
-            "$_currency${(item.totalWoTax ?? 0).toStringAsFixed(2)}",
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: isDark ? Colors.white : Colors.black,
+
+          // QUANTITY
+          Expanded(
+            flex: 2,
+            child: Text(
+              "${item.quantity ?? 0} × ${(item.unitPrice ?? 0).toStringAsFixed(0)}",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                color: isDark
+                    ? Colors.white70
+                    : const Color(0xFF596575),
+              ),
             ),
           ),
-        ),
-      ],
+
+          // AMOUNT
+          Expanded(
+            flex: 2,
+            child: Text(
+              "$_currency${(item.totalWoTax ?? 0).toStringAsFixed(2)}",
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: isDark
+                    ? Colors.white
+                    : const Color(0xFF1F2937),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1627,88 +2250,127 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
     return StatefulBuilder(
       builder: (context, setInnerState) {
         return Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.fromLTRB(
+            0, // left
+            10, // top
+            0, // right
+            10, // bottom
+          ),
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF202433) : Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: const [
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isDark
+                  ? const Color(0xFF343A49)
+                  : const Color(0xFFE2E6ED),
+            ),
+            boxShadow: [
               BoxShadow(
-                color: Colors.black12,
+                color: Colors.black.withOpacity(0.04),
                 blurRadius: 4,
-                offset: Offset(0, 2),
+                offset: const Offset(0, 1),
               ),
             ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Center(
-                child: Text(
-                  "To edit an item, adjust quantity or add/remove items as needed.",
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontSize: 14,
-                    color: isDark ? Colors.white : const Color(0xFF092044),
+              // ----------------------------------------------------------
+              // TOP TITLE
+              // ----------------------------------------------------------
+              Row(
+                children: [
+                  const SizedBox(width:  9),
+                  Text(
+                    "PROPOSED CHANGES",
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.3,
+                      color: isDark
+                          ? const Color(0xFF6FA0FF)
+                          : const Color(0xFF3B6FD4),
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 10),
 
-              // Header
-              Container(
-                decoration: BoxDecoration(
-                  color:
-                      isDark
-                          ? const Color(0xFF3A3F4B)
-                          : const Color(0xFF999393),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(8),
-                    topRight: Radius.circular(8),
+                  const Spacer(),
+
+                  Text(
+                    "Changes you are making",
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w400,
+                      color: isDark
+                          ? Colors.white54
+                          : const Color(0xFF8A9AB5),
+                    ),
                   ),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  vertical: 8,
-                  horizontal: 12,
+                  const SizedBox(width:  9),
+                ],
+              ),
+
+              const SizedBox(height: 9),
+
+              // ----------------------------------------------------------
+              // TABLE HEADER
+              // ----------------------------------------------------------
+              Container(
+                height: 31,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF30394A),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(2),
+                    topRight: Radius.circular(2),
+                  ),
                 ),
                 child: const Row(
                   children: [
-                    Expanded(
-                      flex: 1,
+                    SizedBox(
+                      width: 22,
                       child: Text(
                         "#",
                         style: TextStyle(
-                          fontWeight: FontWeight.w400,
-                          color: Color(0xFFF5F5F5),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
                         ),
                       ),
                     ),
+
                     Expanded(
-                      flex: 3,
+                      flex: 5,
                       child: Text(
                         "Item",
                         style: TextStyle(
-                          fontWeight: FontWeight.w400,
-                          color: Color(0xFFF5F5F5),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
                         ),
                       ),
                     ),
+
                     Expanded(
-                      flex: 2,
+                      flex: 3,
                       child: Text(
                         "Quantity",
                         style: TextStyle(
-                          fontWeight: FontWeight.w400,
-                          color: Color(0xFFF5F5F5),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
                         ),
                       ),
                     ),
-                    Expanded(
-                      flex: 1,
+
+                    SizedBox(
+                      width: 55,
                       child: Text(
                         "Amount",
+                        textAlign: TextAlign.right,
                         style: TextStyle(
-                          fontWeight: FontWeight.w400,
-                          color: Color(0xFFF5F5F5),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
                         ),
                       ),
                     ),
@@ -1716,94 +2378,143 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                 ),
               ),
 
-              // Items List
+              // ----------------------------------------------------------
+              // YOUR EXISTING LIST
+              // ----------------------------------------------------------
               Expanded(
                 child: ListView.builder(
+                  padding: EdgeInsets.zero,
                   itemCount: items.length,
                   itemBuilder: (context, index) {
                     final item = items[index];
                     final modifiers = parseModifiers(item.modifiers);
 
-                    // Check if this item is voided
                     final voidedItem = _getVoidedItemByItemId(item.itemId);
                     final isVoided = voidedItem != null;
+                    final isRemoved = !isVoided && (item.quantity ?? 0) == 0;
+
+                    // If you have a reduced quantity condition,
+                    // use it here.
+                    final isReduced = !isVoided &&
+                        (item.quantity ?? 0) < (item.maxQty ?? 0);
+
+
+                    final isReducedkot = !isVoided &&
+                        (item.quantity ?? 0) > 0 &&
+                        (item.quantity ?? 0) < (item.maxQty ?? 0);
 
                     return Container(
+                      constraints: const BoxConstraints(
+                        minHeight: 37,
+                      ),
                       padding: const EdgeInsets.symmetric(
-                        vertical: 8,
-                        horizontal: 12,
+                        horizontal: 8,
+                        vertical: 5,
                       ),
                       decoration: BoxDecoration(
-                        color:
-                            isVoided
-                                ? (isDark
-                                    ? const Color(0xFF4A2A2A)
-                                    : const Color(0xFFFFEEEE))
-                                : (isDark
-                                    ? const Color(0xFF2A2F3D)
-                                    : const Color(0xFFFBFBFC)),
+                        color: isVoided
+                            ? (isDark
+                            ? const Color(0xFF4A2528)
+                            : const Color(0xFFFFEEEE))
+                            : isReduced
+                            ? (isDark
+                            ? const Color(0xFF403B25)
+                            : const Color(0xFFFFF9E7))
+                            : (isDark
+                            ? const Color(0xFF252A36)
+                            : const Color(0xFFFBFCFD)),
                         border: Border(
                           bottom: BorderSide(
-                            color:
-                                isVoided
-                                    ? Colors.red.shade300
-                                    : theme.dividerColor,
+                            color: isVoided
+                                ? const Color(0xFFFFB0B0)
+                                : const Color(0xFFE9ECF1),
+                            width: 0.6,
                           ),
                         ),
                       ),
                       child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Expanded(flex: 1, child: Text("${index + 1}")),
+                          // ------------------------------------------------
+                          // NUMBER
+                          // ------------------------------------------------
+                          SizedBox(
+                            width: 22,
+                            child: Text(
+                              "${index + 1}",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDark
+                                    ? Colors.white54
+                                    : const Color(0xFF7C8798),
+                              ),
+                            ),
+                          ),
 
+                          // ------------------------------------------------
+                          // ITEM NAME
+                          // ------------------------------------------------
                           Expanded(
-                            flex: 3,
+                            flex: 5,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Text(
                                   item.name ?? "-",
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color:
-                                        isVoided
-                                            ? Colors.red
-                                            : (isDark
-                                                ? Colors.white
-                                                : Colors.black),
-                                    decoration:
-                                        isVoided
-                                            ? TextDecoration.lineThrough
-                                            : null,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: isVoided
+                                        ? Colors.red
+                                        : (isDark
+                                        ? Colors.white
+                                        : const Color(0xFF172033)),
+                                    decoration: isVoided
+                                        ? TextDecoration.lineThrough
+                                        : null,
                                   ),
                                 ),
 
                                 if (modifiers.isNotEmpty)
                                   Padding(
-                                    padding: const EdgeInsets.only(top: 2),
+                                    padding: const EdgeInsets.only(top: 1),
                                     child: Text(
                                       modifiers.join(", "),
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.bodySmall?.copyWith(
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
                                         fontSize: 12,
-                                        color:
-                                            isDark
-                                                ? Colors.white70
-                                                : Colors.grey,
+                                        color: isDark
+                                            ? Colors.white54
+                                            : const Color(0xFF8993A4),
                                       ),
                                     ),
                                   ),
 
-                                if (isVoided)
-                                  const Padding(
-                                    padding: EdgeInsets.only(top: 2),
+                                if (isVoided || isRemoved)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 1),
                                     child: Text(
-                                      "Item Deleted",
-                                      style: TextStyle(
-                                        fontSize: 11,
+                                      isVoided ? "Item Deleted" : "Removed",
+                                      style: const TextStyle(
+                                        fontSize: 8.5,
                                         color: Colors.red,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+
+                                if (isReducedkot)
+                                  const Padding(
+                                    padding: EdgeInsets.only(top: 1),
+                                    child: Text(
+                                      "Reduced",
+                                      style: TextStyle(
+                                        fontSize: 8.5,
+                                        color: Color(0xFFE6A700),
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
@@ -1812,80 +2523,135 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                             ),
                           ),
 
+                          // ------------------------------------------------
+                          // QUANTITY
+                          // ------------------------------------------------
                           Expanded(
-                            flex: 2,
+                            flex: 3,
                             child: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                // Decrement button (disabled for voided items)
-                                _qtyButton(
-                                  Icons.remove,
-                                  onTap:
-                                      !isVoided && (item.quantity ?? 0) > 0
+                                // MINUS
+                                SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: Material(
+                                    color: isVoided
+                                        ? Colors.transparent
+                                        : const Color(0xFFFFE4E4),
+                                    borderRadius: BorderRadius.circular(3),
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(3),
+                                      onTap: !isVoided &&
+                                          (item.quantity ?? 0) > 0
                                           ? () {
-                                            setInnerState(() {
-                                              item.quantity =
-                                                  (item.quantity ?? 0) - 1;
-                                              item.totalWoTax =
-                                                  item.unitPrice! *
+                                        setInnerState(() {
+                                          item.quantity =
+                                              (item.quantity ?? 0) - 1;
+
+                                          item.totalWoTax =
+                                              item.unitPrice! *
                                                   item.quantity!;
-                                            });
-                                            setState(() {
-                                              _dynamicNetPayable -=
-                                                  item.unitPrice!;
-                                            });
-                                          }
+                                        });
+
+                                        setState(() {
+                                          _dynamicNetPayable -=
+                                          item.unitPrice!;
+                                        });
+                                      }
                                           : null,
+                                      child: Icon(
+                                        Icons.remove,
+                                        size: 9,
+                                        color: isVoided
+                                            ? Colors.grey
+                                            : const Color(0xFFFF6B6B),
+                                      ),
+                                    ),
+                                  ),
                                 ),
 
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                  ),
+                                const SizedBox(width: 6),
+
+                                SizedBox(
+                                  width: 13,
                                   child: Text(
                                     "${isVoided ? 0 : item.quantity ?? 0}",
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.w500,
+                                      color: isDark
+                                          ? Colors.white
+                                          : const Color(0xFF202633),
+                                    ),
                                   ),
                                 ),
 
-                                // Increment button (disabled for voided items)
-                                _qtyButton(
-                                  Icons.add,
-                                  onTap:
-                                      !isVoided &&
-                                              (item.quantity ?? 0) <
-                                                  (item.maxQty ?? 0)
+                                const SizedBox(width: 6),
+
+                                // PLUS
+                                SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: Material(
+                                    color: isVoided
+                                        ? Colors.transparent
+                                        : const Color(0xFFE2F7EA),
+                                    borderRadius: BorderRadius.circular(3),
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(3),
+                                      onTap: !isVoided &&
+                                          (item.quantity ?? 0) <
+                                              (item.maxQty ?? 0)
                                           ? () {
-                                            setInnerState(() {
-                                              item.quantity =
-                                                  (item.quantity ?? 0) + 1;
-                                              item.totalWoTax =
-                                                  item.unitPrice! *
+                                        setInnerState(() {
+                                          item.quantity =
+                                              (item.quantity ?? 0) + 1;
+
+                                          item.totalWoTax =
+                                              item.unitPrice! *
                                                   item.quantity!;
-                                            });
-                                            setState(() {
-                                              _dynamicNetPayable +=
-                                                  item.unitPrice!;
-                                            });
-                                          }
+                                        });
+
+                                        setState(() {
+                                          _dynamicNetPayable +=
+                                          item.unitPrice!;
+                                        });
+                                      }
                                           : null,
+                                      child: Icon(
+                                        Icons.add,
+                                        size: 9,
+                                        color: isVoided
+                                            ? Colors.grey
+                                            : const Color(0xFF35B96B),
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
                           ),
 
-                          Expanded(
-                            flex: 1,
+                          // ------------------------------------------------
+                          // AMOUNT
+                          // ------------------------------------------------
+                          SizedBox(
+                            width: 55,
                             child: Text(
                               isVoided
                                   ? "${_currency}0.00"
                                   : "${_currency}${(item.totalWoTax ?? 0).toStringAsFixed(2)}",
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color:
-                                    isVoided
-                                        ? Colors.red
-                                        : (isDark
-                                            ? Colors.white
-                                            : Colors.black),
-                                fontWeight: FontWeight.w500,
+                              textAlign: TextAlign.right,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: isVoided
+                                    ? Colors.red
+                                    : (isDark
+                                    ? Colors.white
+                                    : const Color(0xFF172033)),
                               ),
                             ),
                           ),
@@ -1901,61 +2667,212 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       },
     );
   }
+  Widget _orderModifiedPopup(BuildContext context) {
+    return Container(
+      width: 480,
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x38000000),
+            blurRadius: 60,
+            offset: Offset(0, 24),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Success icon
+          Container(
+            width: 52,
+            height: 52,
+            decoration: const BoxDecoration(
+              color: Color(0xFFDCFCE7),
+              shape: BoxShape.circle,
+            ),
+            child: const Center(
+              child: Text(
+                '✓',
+                style: TextStyle(
+                  color: Color(0xFF16A34A),
+                  fontSize: 22,
+                ),
+              ),
+            ),
+          ),
 
-  // Summary Row Helper
+          const SizedBox(height: 14),
+
+          const Text(
+            'Order Modified Successfully',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFF16A34A),
+              fontSize: 19,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+
+          const SizedBox(height: 4),
+
+          const Text(
+            'Order #21450 · Revision 2',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFF64748B),
+              fontSize: 13,
+            ),
+          ),
+
+          const SizedBox(height: 18),
+
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _popupInfo('Updated Total', '₹1250.00'),
+                const SizedBox(height: 12),
+                _popupInfo('Refund Due', '₹200.00'),
+                const SizedBox(height: 12),
+                _popupInfo('Modified By', 'Manager · EMP102'),
+                const SizedBox(height: 12),
+                _popupInfo(
+                  'Modified At',
+                  '11 Aug 2026 · 10:25 AM',
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 18),
+
+          SizedBox(
+            width: double.infinity,
+            height: 47,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+
+                // Navigate to updated order here
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1E3A5F),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text(
+                'View Updated Order →',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _popupInfo(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFF94A3B8),
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Color(0xFF1E293B),
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
   Widget _summaryRow(
-    String label,
-    String value, {
-    bool bold = false,
-    Color? labelColor,
-    Color? valueColor,
-  }) {
+      String label,
+      String value, {
+        bool bold = false,
+        Color? labelColor,
+        Color? valueColor,
+      }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
     return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: ShapeDecoration(
-        color: isDark ? const Color(0xFF2A2F3D) : const Color(0xFFECECEC),
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.only(
-            bottomLeft: Radius.circular(14),
-            bottomRight: Radius.circular(14),
+      width: double.infinity,
+      height: 50,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: isDark
+            ? const Color(0xFF252B38)
+            : const Color(0xFFF8FAFC),
+
+        // Bottom line + bottom curves
+        border: Border(
+          bottom: BorderSide(
+            color: isDark
+                ? const Color(0xFF3A4150)
+                : const Color(0xFFE2E8F0),
+            width: 1,
           ),
         ),
-        shadows: [
-          BoxShadow(
-            color: isDark ? Colors.black26 : const Color(0x3F000000),
-            blurRadius: 6,
-            offset: const Offset(0, -4),
-            spreadRadius: 0,
-          ),
-        ],
+
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(14),
+          bottomRight: Radius.circular(14),
+        ),
       ),
-      padding: const EdgeInsets.fromLTRB(30, 12, 50, 8),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
             label,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: bold ? FontWeight.w500 : FontWeight.normal,
-              fontSize: 12,
+            style: TextStyle(
+              color: labelColor ??
+                  (isDark
+                      ? Colors.white70
+                      : const Color(0xFF475569)),
+              fontSize: 13,
               fontFamily: 'Inter',
-              color:
-                  labelColor ??
-                  (isDark ? Colors.white70 : const Color(0xFF252525)),
+              fontWeight: FontWeight.w700,
+              height: 1.0,
             ),
           ),
-          const Spacer(),
+
           Text(
             value,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: bold ? FontWeight.w500 : FontWeight.normal,
+            style: TextStyle(
+              color: valueColor ??
+                  (isDark
+                      ? Colors.white
+                      : const Color(0xFF1E3A5F)),
               fontSize: 14,
               fontFamily: 'Inter',
-              color:
-                  valueColor ??
-                  (isDark ? Colors.white : const Color(0xFF373535)),
+              fontWeight: FontWeight.w800,
+              height: 1.0,
             ),
           ),
         ],
