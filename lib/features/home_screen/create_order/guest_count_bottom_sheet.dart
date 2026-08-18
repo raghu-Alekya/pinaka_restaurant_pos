@@ -244,10 +244,64 @@ class _GuestCountBottomSheetState extends State<GuestCountBottomSheet> {
               const SizedBox(height: 28),
 
               // ── Continue button: grey when invalid, orange when valid ──
+              // BlocConsumer<CreateOrderBloc, CreateOrderState>(
+              //   listener: (context, state) {
+              //     if (state is CreateOrderSuccess) {
+              //       Navigator.of(context).pop(); // close bottom sheet
+              //       Navigator.of(context).push(
+              //         MaterialPageRoute(
+              //           builder: (_) => OrderMenuScreen(
+              //             orderId: state.response.orderId,
+              //             tableName: state.response.tableName,
+              //             orderType: state.response.orderType,
+              //             restaurantId: state.response.restaurantId,
+              //             zoneId: state.response.zoneId,
+              //           ),
+              //         ),
+              //       );
+              //     } else if (state is CreateOrderError) {
+              //       ScaffoldMessenger.of(context).showSnackBar(
+              //         SnackBar(
+              //           content: Text(state.message),
+              //           backgroundColor: ColorConstants.errorColor,
+              //         ),
+              //       );
+              //     }
+              //   },
+              //   builder: (context, state) {
+              //     if (state is CreateOrderLoading) {
+              //       return const SizedBox(
+              //         height: 48,
+              //         child: Center(child: CircularProgressIndicator()),
+              //       );
+              //     }
+              //     return ElevatedButton(
+              //       onPressed: _isValidGuestCount ? () => _onContinue(context) : null,
+              //       style: ElevatedButton.styleFrom(
+              //         backgroundColor: ColorConstants.primaryColor,
+              //         foregroundColor: Colors.white,
+              //         disabledBackgroundColor: Colors.grey.shade300,
+              //         disabledForegroundColor: Colors.grey.shade600,
+              //         padding: const EdgeInsets.symmetric(vertical: 15),
+              //         shape: RoundedRectangleBorder(
+              //           borderRadius: BorderRadius.circular(10),
+              //         ),
+              //         elevation: 0,
+              //       ),
+              //       child: const Text(
+              //         'Continue',
+              //         style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              //       ),
+              //     );
+              //   },
+              // ),
+
               BlocConsumer<CreateOrderBloc, CreateOrderState>(
                 listener: (context, state) {
                   if (state is CreateOrderSuccess) {
-                    Navigator.of(context).pop(); // close bottom sheet
+                    // Close the sheet
+                    Navigator.of(context).pop();
+                    // Navigate to OrderMenuScreen
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => OrderMenuScreen(
@@ -260,6 +314,7 @@ class _GuestCountBottomSheetState extends State<GuestCountBottomSheet> {
                       ),
                     );
                   } else if (state is CreateOrderError) {
+                    // Show error snackbar (no navigation)
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(state.message),
@@ -268,33 +323,33 @@ class _GuestCountBottomSheetState extends State<GuestCountBottomSheet> {
                     );
                   }
                 },
-                builder: (context, state) {
-                  if (state is CreateOrderLoading) {
-                    return const SizedBox(
-                      height: 48,
-                      child: Center(child: CircularProgressIndicator()),
-                    );
-                  }
-                  return ElevatedButton(
-                    onPressed: _isValidGuestCount ? () => _onContinue(context) : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: ColorConstants.primaryColor,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: Colors.grey.shade300,
-                      disabledForegroundColor: Colors.grey.shade600,
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                  builder: (context, state) {
+                    if (state is CreateOrderLoading) {
+                      return const SizedBox(
+                        height: 48,
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    return ElevatedButton(
+                      onPressed: _isValidGuestCount ? () => _onContinue(context) : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: ColorConstants.primaryColor,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.grey.shade300,
+                        disabledForegroundColor: Colors.grey.shade600,
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        elevation: 0,
                       ),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'Continue',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                    ),
-                  );
-                },
-              ),
+                      child: const Text(
+                        'Continue',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
+                    );
+                  },
+                ),
             ],
           ),
         ),

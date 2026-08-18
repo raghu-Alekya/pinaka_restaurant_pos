@@ -20,7 +20,6 @@ class SearchRemoteDataSourceImpl implements SearchRemoteDataSource {
     required String query,
   }) async {
     try {
-      // Encode the query to handle spaces and special characters
       final encodedQuery = Uri.encodeComponent(query);
       final url = '$baseUrl/wp-json/pinaka-restaurant-pos/v1/products-by-category/get-products?search=$encodedQuery';
 
@@ -40,7 +39,15 @@ class SearchRemoteDataSourceImpl implements SearchRemoteDataSource {
 
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
-        return SearchResponse.fromJson(jsonData);
+        final searchResponse = SearchResponse.fromJson(jsonData);
+
+        // ─── Print parent names for debugging ──────────────────
+        print('📦 Search Results with parent names:');
+        for (final item in searchResponse.data) {
+          print('   - ${item.name} → parent: "${item.parentName}"');
+        }
+
+        return searchResponse;
       } else if (response.statusCode == 401) {
         throw Exception('Authentication failed. Please login again.');
       } else if (response.statusCode == 404) {

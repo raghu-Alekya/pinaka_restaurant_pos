@@ -1,17 +1,24 @@
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:restaurant_captain_app/features/home_screen/order_menu/widgets/category_tabs.dart';
 import 'package:restaurant_captain_app/features/home_screen/order_menu/widgets/product_list_view.dart';
-
 import '../../ captain_pin_login/captain_login_data_layer/captain_local_storage.dart';
 import '../../ merchant_login/merchant_login_data_layer/merchant_local_storage.dart';
 import '../../../constants/color_constants.dart';
 import '../../addons/addons_domin/addon_entity.dart';
 import '../../addons/addons_domin/fetch_addons_usecase.dart';
+import '../../kots_list/kots_list_bloc/kots_list_bloc.dart';
+import '../../kots_list/kots_list_bloc/kots_list_event.dart';
+import '../../kots_list/kots_list_bloc/kots_list_state.dart';
 import '../../search_products/search_screen.dart';
 import '../../variations/variations_domain/fetch_variations_usecase.dart';
 import '../../variations/variations_domain/variation_entity.dart';
+import '../All_tables_list/All_tables_list_bloc/all_tables_list_bloc.dart';
+import '../All_tables_list/All_tables_list_bloc/all_tables_list_event.dart';
+import '../Zones/Zones_bloc/zone_event.dart';
+import '../Zones/Zones_bloc/zones_bloc.dart';
 import '../cart_screen.dart';
 import '../create_order/create_order_data_layer/create_order_remote_data_source.dart';
 import 'bloc/category_bloc/category_bloc.dart';
@@ -71,6 +78,8 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
   int? _selectedSubcategoryId;
   int? _lastCategoryIdForFilters;
   bool _showAllSubcategories = false;
+  bool _hasKots = false;
+  late final StreamSubscription<KotsListState> _kotsSubscription;
 
   final TextEditingController _searchController = TextEditingController();
   String _currencySymbol = '';
@@ -79,8 +88,34 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
   @override
   void initState() {
     super.initState();
-    context.read<CategoryBloc>().add(LoadCategories());
+    final bloc = context.read<CategoryBloc>();
+    if (bloc.state is CategoryInitial) {
+      bloc.add(LoadCategories());
+    }
     _loadCurrencySymbol();
+
+    final kotsBloc = context.read<KotsListBloc>();
+    // initial check
+    if (kotsBloc.state is KotsListLoaded && (kotsBloc.state as KotsListLoaded).kots.isNotEmpty) {
+      _hasKots = true;
+    }
+    _kotsSubscription = kotsBloc.stream.listen((state) {
+      if (state is KotsListLoaded && mounted) {
+        setState(() {
+          _hasKots = state.kots.isNotEmpty;
+        });
+      }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      kotsBloc.add(
+        FetchKotsList(
+          parentOrderId: widget.orderId,
+          restaurantId: widget.restaurantId,
+          zoneId: widget.zoneId,
+        ),
+      );
+    });
   }
 
   Future<void> _loadCurrencySymbol() async {
@@ -88,7 +123,7 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
       final symbol = await context.read<CaptainLocalStorage>().getCurrencySymbol();
       if (symbol != null && mounted) {
         print('🪙 Currency symbol loaded: $symbol');
-        _currencySymbolNotifier.value = symbol; // 👈 update notifier
+        _currencySymbolNotifier.value = symbol;
       } else {
         print('🪙 Currency symbol not found, using default: ');
       }
@@ -101,9 +136,9 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+    _kotsSubscription.cancel(); // ← NEW
   }
 
-  // ─── Direct add to cart (no add‑ons) ───
   void _addToCartDirect(ProductEntity product) {
     setState(() {
       final key = '${product.id}_';
@@ -128,7 +163,7 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
       }
     });
   }
-  // ─── Add with add‑ons (called from bottom sheet) ───
+
   void _addVariantToCart(
       ProductEntity product,
       int quantity,
@@ -769,6 +804,14 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
               final scale = widthScale < heightScale ? widthScale : heightScale;
               double s(double v) => v * scale;
 
+              // Width of one grid cell, used so FittedBox knows how much
+              // horizontal room the card content actually has.
+              final gridHorizontalPadding = s(20) * 2;
+              final cellSpacing = s(10);
+              final cardOuterWidth =
+                  (media.size.width - gridHorizontalPadding - cellSpacing) / 2;
+              final cardContentWidth = cardOuterWidth - (s(12) * 2); // minus card's own horizontal padding
+
               final basePrice = double.tryParse(selectedVariation?.price ?? '0') ?? 0;
               final addOnsTotal = selectedAddOns.fold<double>(0, (sum, a) => sum + a.price);
               final total = (basePrice + addOnsTotal) * quantity;
@@ -780,101 +823,139 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                   top: s(16),
                   bottom: media.viewInsets.bottom + s(24),
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ── Header ──
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: s(10),
-                          height: s(10),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: nonVeg ? Colors.red : Colors.green,
-                          ),
-                        ),
-                        SizedBox(width: s(8)),
-                        Expanded(
-                          child: Text(
-                            product.name,
-                            style: TextStyle(fontSize: s(18), fontWeight: FontWeight.bold),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => Navigator.pop(sheetContext),
-                          child: Container(
-                            padding: EdgeInsets.all(s(4)),
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Color(0xFFFFEAEA),
-                            ),
-                            child: Icon(Icons.close, size: s(18), color: Colors.red),
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: s(16)),
-
-                    // ── Variations ──
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: variations.length,
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        mainAxisSpacing: s(10),
-                        crossAxisSpacing: s(10),
-                        childAspectRatio: media.size.width < 340 ? 1.8 : 2.2,
-                      ),
-                      itemBuilder: (context, index) {
-                        final variant = variations[index];
-                        final isSelected = selectedVariation?.variationId == variant.variationId;
-
-                        return GestureDetector(
-                          onTap: () => setSheetState(() {
-                            selectedVariation = variant;
-                            if (!isSelected) quantity = 1;
-                          }),
-                          child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: s(12), vertical: s(10)),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: media.size.height * 0.55, // 👈 increased sheet height
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: s(10),
+                            height: s(10),
                             decoration: BoxDecoration(
-                              color: isSelected
-                                  ? ColorConstants.primaryColor.withOpacity(0.06)
-                                  : Colors.white,
-                              borderRadius: BorderRadius.circular(s(10)),
-                              border: Border.all(
-                                color: isSelected ? ColorConstants.primaryColor : Colors.grey.shade300,
-                                width: isSelected ? s(1.4) : s(1),
-                              ),
+                              shape: BoxShape.circle,
+                              color: nonVeg ? Colors.red : Colors.green,
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  product.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(fontSize: s(12), color: Colors.black87),
+                          ),
+                          SizedBox(width: s(8)),
+                          Expanded(
+                            child: Text(
+                              product.name,
+                              style: TextStyle(fontSize: s(18), fontWeight: FontWeight.bold),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () => Navigator.pop(sheetContext),
+                            child: Container(
+                              padding: EdgeInsets.all(s(4)),
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Color(0xFFFFEAEA),
+                              ),
+                              child: Icon(Icons.close, size: s(18), color: Colors.red),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: s(16)),
+
+                      // ── Variations ──
+                      GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: variations.length,
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: s(10),
+                          crossAxisSpacing: s(10),
+                          mainAxisExtent: s(118), // 👈 fixed card height — never overflows
+                        ),
+                        itemBuilder: (context, index) {
+                          final variant = variations[index];
+                          final isSelected = selectedVariation?.variationId == variant.variationId;
+
+                          return GestureDetector(
+                            onTap: () => setSheetState(() {
+                              selectedVariation = variant;
+                              if (!isSelected) quantity = 1;
+                            }),
+                            child: Container(
+                              padding: EdgeInsets.symmetric(horizontal: s(12), vertical: s(8)),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? ColorConstants.primaryColor.withOpacity(0.06)
+                                    : Colors.white,
+                                borderRadius: BorderRadius.circular(s(10)),
+                                border: Border.all(
+                                  color: isSelected ? ColorConstants.primaryColor : Colors.grey.shade300,
+                                  width: isSelected ? s(1.4) : s(1),
                                 ),
-                                Text(
-                                  variant.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(fontSize: s(13), fontWeight: FontWeight.w600),
-                                ),
-                                SizedBox(height: s(4)),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Flexible(
-                                      child: Text(
+                              ),
+                              // 👇 auto-shrinks content instead of overflowing,
+                              // no matter how large the device's font/text-scale is.
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.topLeft,
+                                child: SizedBox(
+                                  width: cardContentWidth,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        product.name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(fontSize: s(11), color: Colors.grey.shade600),
+                                      ),
+                                      SizedBox(height: s(4)),
+                                      Row(
+                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              variant.name,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(fontSize: s(13), fontWeight: FontWeight.w600),
+                                            ),
+                                          ),
+                                          SizedBox(width: s(6)),
+                                          isSelected
+                                              ? _VariantStepper(
+                                            quantity: quantity,
+                                            scale: scale,
+                                            onAdd: () => setSheetState(() => quantity++),
+                                            onRemove: () => setSheetState(() {
+                                              if (quantity > 1) quantity--;
+                                            }),
+                                          )
+                                              : GestureDetector(
+                                            behavior: HitTestBehavior.opaque,
+                                            onTap: () => setSheetState(() {
+                                              selectedVariation = variant;
+                                              quantity = 1;
+                                            }),
+                                            child: Padding(
+                                              padding: EdgeInsets.all(s(2)),
+                                              child: Icon(
+                                                Icons.add_circle,
+                                                color: ColorConstants.primaryColor,
+                                                size: s(22),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      SizedBox(height: s(6)),
+                                      Text(
                                         '$currencySymbol${variant.price}', // 👈 dynamic symbol
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
@@ -884,118 +965,96 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                                           fontSize: s(14),
                                         ),
                                       ),
-                                    ),
-                                    SizedBox(width: s(6)),
-                                    isSelected
-                                        ? _VariantStepper(
-                                      quantity: quantity,
-                                      scale: scale,
-                                      onAdd: () => setSheetState(() => quantity++),
-                                      onRemove: () => setSheetState(() {
-                                        if (quantity > 1) quantity--;
-                                      }),
-                                    )
-                                        : GestureDetector(
-                                      behavior: HitTestBehavior.opaque,
-                                      onTap: () => setSheetState(() {
-                                        selectedVariation = variant;
-                                        quantity = 1;
-                                      }),
-                                      child: Padding(
-                                        padding: EdgeInsets.all(s(2)),
-                                        child: Icon(
-                                          Icons.add_circle,
-                                          color: ColorConstants.primaryColor,
-                                          size: s(22),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ],
+                              ),
                             ),
-                          ),
-                        );
-                      },
-                    ),
-
-                    // ── Modifiers ──
-                    if (addOns.isNotEmpty) ...[
-                      SizedBox(height: s(16)),
-                      Row(
-                        children: [
-                          Text(
-                            'Modifiers',
-                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: s(14)),
-                          ),
-                          SizedBox(width: s(8)),
-                          const Expanded(child: Divider()),
-                        ],
-                      ),
-                      ...addOns.map((addOn) {
-                        final isChecked = selectedAddOns.contains(addOn);
-                        return CheckboxListTile(
-                          contentPadding: EdgeInsets.zero,
-                          controlAffinity: ListTileControlAffinity.leading,
-                          value: isChecked,
-                          title: Text(addOn.name, style: TextStyle(fontSize: s(14))),
-                          secondary: Text(
-                            '+ $currencySymbol${addOn.price.toStringAsFixed(2)}', // 👈 dynamic
-                          ),
-                          onChanged: (checked) {
-                            setSheetState(() {
-                              if (checked == true) {
-                                selectedAddOns.add(addOn);
-                              } else {
-                                selectedAddOns.remove(addOn);
-                              }
-                            });
-                          },
-                        );
-                      }),
-                    ],
-
-                    SizedBox(height: s(8)),
-
-                    // ── Add to Cart ──
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          final selectedProduct = ProductEntity(
-                            id: selectedVariation!.variationId,
-                            name: '${product.name} - ${selectedVariation?.name}',
-                            price: selectedVariation?.price,
-                            inStock: selectedVariation?.inStock == 'Yes',
                           );
-                          final selectedList = selectedAddOns
-                              .map((a) => {'name': a.name, 'price': a.price})
-                              .toList();
-                          _addVariantToCart(selectedProduct, quantity, selectedList);
-                          Navigator.pop(sheetContext);
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: ColorConstants.primaryColor,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: s(14)),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(s(8))),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      ),
+
+                      // ── Modifiers ──
+                      if (addOns.isNotEmpty) ...[
+                        SizedBox(height: s(16)),
+                        Row(
                           children: [
                             Text(
-                              'Add to Cart',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: s(15)),
+                              'Modifiers',
+                              style: TextStyle(fontWeight: FontWeight.w600, fontSize: s(14)),
                             ),
-                            Text(
-                              '$currencySymbol${total.toStringAsFixed(2)}', // 👈 dynamic
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: s(15)),
-                            ),
+                            SizedBox(width: s(8)),
+                            const Expanded(child: Divider()),
                           ],
                         ),
+                        ...addOns.map((addOn) {
+                          final isChecked = selectedAddOns.contains(addOn);
+                          return CheckboxListTile(
+                            contentPadding: EdgeInsets.zero,
+                            controlAffinity: ListTileControlAffinity.leading,
+                            value: isChecked,
+                            title: Text(addOn.name, style: TextStyle(fontSize: s(14))),
+                            secondary: Text(
+                              '+ $currencySymbol${addOn.price.toStringAsFixed(2)}', // 👈 dynamic
+                            ),
+                            onChanged: (checked) {
+                              setSheetState(() {
+                                if (checked == true) {
+                                  selectedAddOns.add(addOn);
+                                } else {
+                                  selectedAddOns.remove(addOn);
+                                }
+                              });
+                            },
+                          );
+                        }),
+                      ],
+
+                      SizedBox(height: s(8)),
+
+                      // ── Add to Cart ──
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            final selectedProduct = ProductEntity(
+                              id: selectedVariation!.variationId,
+                              name: '${product.name} - ${selectedVariation?.name}',
+                              price: selectedVariation?.price,
+                              inStock: selectedVariation?.inStock == 'Yes',
+                            );
+                            final selectedList = selectedAddOns
+                                .map((a) => {'name': a.name, 'price': a.price})
+                                .toList();
+                            _addVariantToCart(selectedProduct, quantity, selectedList);
+                            Navigator.pop(sheetContext);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: ColorConstants.primaryColor,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: s(14)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(s(30))), // 👈 pill
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center, // 👈 centered
+                            children: [
+                              Text(
+                                'Add to Cart',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: s(15)),
+                              ),
+                              SizedBox(width: s(12)),
+                              Container(width: s(1), height: s(18), color: Colors.white54), // 👈 divider
+                              SizedBox(width: s(12)),
+                              Text(
+                                '$currencySymbol${total.toStringAsFixed(2)}', // 👈 dynamic
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: s(15)),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               );
             },
@@ -1011,7 +1070,7 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
     int quantity = 1;
     final selectedAddOns = <AddOnEntity>{};
     final basePrice = double.tryParse(product.price ?? '0') ?? 0;
-    final currencySymbol = _currencySymbolNotifier.value; // 👈 get symbol
+    final currencySymbol = _currencySymbolNotifier.value;
 
     showModalBottomSheet(
       context: context,
@@ -1113,12 +1172,15 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                         backgroundColor: ColorConstants.primaryColor,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)), // 👈 pill
                       ),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment: MainAxisAlignment.center, // 👈 centered
                         children: [
                           const Text('Add to Cart', style: TextStyle(fontWeight: FontWeight.bold)),
+                          const SizedBox(width: 12),
+                          Container(width: 1, height: 18, color: Colors.white54), // 👈 divider
+                          const SizedBox(width: 12),
                           Text(
                             '$currencySymbol${total.toStringAsFixed(2)}', // 👈 dynamic
                             style: const TextStyle(fontWeight: FontWeight.bold),
@@ -1135,10 +1197,11 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
       },
     );
   }
+
   Future<void> _showAddOnsSheet(ProductEntity product) async {
     final basePrice = double.tryParse(product.price ?? '0') ?? 0;
     final nonVeg = isNonVegProduct(product);
-    final currencySymbol = _currencySymbolNotifier.value; // 👈 get symbol
+    final currencySymbol = _currencySymbolNotifier.value;
 
     List<AddOnEntity> addOns = [];
     try {
@@ -1287,12 +1350,15 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                         backgroundColor: ColorConstants.primaryColor,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)), // 👈 pill
                       ),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment: MainAxisAlignment.center, // 👈 centered
                         children: [
                           const Text('Add to Cart', style: TextStyle(fontWeight: FontWeight.bold)),
+                          const SizedBox(width: 12),
+                          Container(width: 1, height: 18, color: Colors.white54), // 👈 divider
+                          const SizedBox(width: 12),
                           Text(
                             '$currencySymbol${total.toStringAsFixed(2)}', // 👈 dynamic
                             style: const TextStyle(fontWeight: FontWeight.bold),
@@ -1339,6 +1405,46 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
   int get _totalItems => _cartItems.values.fold(0, (sum, item) => sum + item.quantity);
   double get _totalPrice => _cartItems.values.fold(0.0, (sum, item) => sum + item.totalPrice);
 
+  // Future<void> _cancelOrder() async {
+  //   setState(() => _isCancellingOrder = true);
+  //   try {
+  //     final merchantStorage = context.read<MerchantLocalStorage>();
+  //     final captainStorage = context.read<CaptainLocalStorage>();
+  //
+  //     final baseUrl = await merchantStorage.getStoreBaseUrl();
+  //     if (baseUrl == null || baseUrl.isEmpty) {
+  //       throw Exception('Store base URL not found. Please login again.');
+  //     }
+  //
+  //     final captainData = await captainStorage.getCaptainData();
+  //     final token = captainData?.data?.token;
+  //     if (token == null || token.isEmpty) {
+  //       throw Exception('Captain token not found. Please login again.');
+  //     }
+  //
+  //     final result = await _orderDataSource.cancelOrder(
+  //       baseUrl: baseUrl,
+  //       token: token,
+  //       parentOrderId: widget.orderId,
+  //       restaurantId: widget.restaurantId,
+  //       zoneId: widget.zoneId,
+  //     );
+  //
+  //     if (!mounted) return;
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(content: Text('Order cancelled successfully')),
+  //     );
+  //     Navigator.of(context).popUntil((route) => route.isFirst);
+  //   } catch (e) {
+  //     if (!mounted) return;
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text('Failed to cancel order: ${e.toString()}')),
+  //     );
+  //   } finally {
+  //     if (mounted) setState(() => _isCancellingOrder = false);
+  //   }
+  // }
+
   Future<void> _cancelOrder() async {
     setState(() => _isCancellingOrder = true);
     try {
@@ -1365,10 +1471,18 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
       );
 
       if (!mounted) return;
+
+      // ─── ✅ Refresh tables & zones instantly ──────────────
+      context.read<AllTablesBloc>().add(FetchAllTables());
+      context.read<ZoneBloc>().add(FetchZones());
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Order cancelled successfully')),
       );
+
+      // Go back to the table management screen
       Navigator.of(context).popUntil((route) => route.isFirst);
+
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1554,23 +1668,33 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
   }
 
   Widget _cancelOrderChip() {
+
+    final bool canCancel = !_hasKots && !_isCancellingOrder;
     return GestureDetector(
-      onTap: () => _showCancelDialog(context),
+      onTap: canCancel ? () => _showCancelDialog(context) : null,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.red),
+          border: Border.all(color: canCancel ? Colors.red : Colors.grey),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          children: const [
-            Icon(Icons.delete_outline, size: 14, color: Colors.red),
-            SizedBox(width: 4),
+          children: [
+            Icon(
+              Icons.delete_outline,
+              size: 14,
+              color: canCancel ? Colors.red : Colors.grey,
+            ),
+            const SizedBox(width: 4),
             Text(
               'Cancel Order',
-              style: TextStyle(fontSize: 12, color: Colors.red, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                fontSize: 12,
+                color: canCancel ? Colors.red : Colors.grey,
+                fontWeight: FontWeight.w600,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               softWrap: false,
@@ -1582,36 +1706,53 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
   }
 
   Widget _buildSearchBar() {
+    final size = MediaQuery.of(context).size;
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => SearchScreen(
-              onAddToCart: _showAddOnsSheet, // ✅ now uses the add‑on sheet
+              onAddToCart: _showAddOnsSheet,
             ),
           ),
         );
       },
       child: Container(
         color: Colors.white,
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        padding: EdgeInsets.fromLTRB(
+          size.width * 0.034,   // left
+          size.height * 0.001,  // top
+          size.width * 0.034,   // right
+          size.height * 0.008,  // bottom
+        ),
         child: Container(
-          height: 40,
+          width: double.infinity,
+          height: size.height * 0.045,
           decoration: BoxDecoration(
-            color: Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(10),
+            color: const Color(0xFFF5F5F5),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Colors.grey.shade300,
+              width: 1,
+            ),
           ),
-          child: const Row(
+          child: Row(
             children: [
-              SizedBox(width: 12),
-              Icon(Icons.search, color: Colors.grey, size: 20),
-              SizedBox(width: 8),
+              SizedBox(width: size.width * 0.035),
+              Icon(
+                Icons.search,
+                color: const Color(0xFF9E9E9E),
+                size: size.width * 0.055,
+              ),
+              SizedBox(width: size.width * 0.025),
               Text(
-                'Search for Category/item',
+                'Search...',
                 style: TextStyle(
-                  color: Colors.grey,
-                  fontSize: 14,
+                  color: const Color(0xFF9E9E9E),
+                  fontSize: size.width * 0.038,
+                  fontWeight: FontWeight.w400,
                 ),
               ),
             ],
@@ -1718,14 +1859,7 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
 
   static const double _maxVisibleSubcategoryChips = 3.5;
 
-// ---------------------------------------------------------------------
-  // Subcategory chips row — ALL chips in one row, horizontally scrollable.
-  // No more "More" button / bottom sheet — user just scrolls sideways.
-  // ---------------------------------------------------------------------
 
-// ---------------------------------------------------------------------
-// Subcategory chips row — with "More" / "Less" toggling
-// ---------------------------------------------------------------------
   Widget _buildSubcategoryChipsRow(List<SubcategoryEntity> subcategories) {
     final validSubs = subcategories.where((s) => s.name.trim().isNotEmpty).toList();
     final hasOverflow = validSubs.length > _maxVisibleSubcategoryChips;
@@ -1753,7 +1887,6 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // "All" chip always visible
             _subcategoryChip(
               label: 'All',
               selected: _selectedSubcategoryId == null,
@@ -1773,7 +1906,7 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                 onTap: () => setState(() => _selectedSubcategoryId = sub.id),
               ),
             ],
-            // "More" or "Less" chip
+
             if (showMoreChip) ...[
               const SizedBox(width: 8),
               _toggleChip(

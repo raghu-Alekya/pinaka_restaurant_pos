@@ -18,98 +18,116 @@ class CategoryTabs extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Responsive values based on screen width
         final screenWidth = constraints.maxWidth;
-
-        // Base scale: 375 is a typical mobile width.
         final scale = (screenWidth / 375).clamp(0.85, 1.25);
 
         final horizontalPadding = 16 * scale;
-        final itemSpacing = 8 * scale;
+        final itemSpacing = 10 * scale;
 
-        final imageSize = 46 * scale;
-        final textWidth = 60 * scale;
-        final textSize = 10.5 * scale;
-        final iconSize = 20 * scale;
-        final borderRadius = 10 * scale;
-        final textSpacing = 3 * scale;
+        // Card size (unchanged)
+        final cardWidth = 68 * scale;
+        final cardHeight = 76 * scale;
+        final borderRadius = 12 * scale;
+        final textSize = 11 * scale;
+        final iconSize = 22 * scale;
+        final labelBarHeight = 24 * scale;
 
-        final tabHeight =
-            imageSize +
-                textSpacing +
-                (textSize * 1.3);
+        // 👇 Image size (smaller than the card)
+        final imageSize = 38 * scale;
 
         return SizedBox(
-          height: tabHeight,
+          height: cardHeight,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            padding: EdgeInsets.symmetric(
-              horizontal: horizontalPadding,
-            ),
+            padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
             itemCount: categories.length,
-            separatorBuilder: (_, __) => SizedBox(
-              width: itemSpacing,
-            ),
+            separatorBuilder: (_, __) => SizedBox(width: itemSpacing),
             itemBuilder: (context, index) {
               final category = categories[index];
               final isSelected = category.id == selectedId;
 
               return GestureDetector(
                 onTap: () => onTabSelected(category.id),
-                child: SizedBox(
-                  width: textWidth,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: imageSize,
-                        height: imageSize,
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? ColorConstants.primaryColor
-                              : Colors.grey.shade200,
-                          borderRadius: BorderRadius.circular(
-                            borderRadius,
-                          ),
-                          image: category.imagePath != null
-                              ? DecorationImage(
-                            image: NetworkImage(
-                              category.imagePath!,
-                            ),
-                            fit: BoxFit.cover,
-                          )
-                              : null,
-                        ),
-                        child: category.imagePath == null
-                            ? Icon(
-                          Icons.restaurant_menu,
-                          color: isSelected
-                              ? Colors.white
-                              : Colors.grey.shade600,
-                          size: iconSize,
-                        )
-                            : null,
-                      ),
-
-                      SizedBox(height: textSpacing),
-
-                      Text(
-                        category.name,
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: textSize,
-                          height: 1.2,
-                          fontWeight: isSelected
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                          color: isSelected
-                              ? ColorConstants.primaryColor
-                              : Colors.black54,
-                        ),
+                child: Container(
+                  width: cardWidth,
+                  height: cardHeight,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(borderRadius),
+                    border: Border.all(
+                      color: isSelected
+                          ? ColorConstants.primaryColor
+                          : Colors.grey.shade300,
+                      width: isSelected ? 1.6 : 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.04),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
                       ),
                     ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(borderRadius - 1),
+                    child: Column(
+                      children: [
+                        // ── Image area (smaller image, centered) ──
+                        Expanded(
+                          child: Container(
+                            color: isSelected
+                                ? ColorConstants.primaryColor.withOpacity(0.12)
+                                : Colors.grey.shade50,
+                            child: Center(
+                              child: category.imagePath != null
+                                  ? Image.network(
+                                category.imagePath!,
+                                width: imageSize,
+                                height: imageSize,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) => Icon(
+                                  Icons.restaurant_menu,
+                                  color: Colors.grey.shade500,
+                                  size: iconSize,
+                                ),
+                              )
+                                  : Icon(
+                                Icons.restaurant_menu,
+                                color: Colors.grey.shade500,
+                                size: iconSize,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        // ── Bottom label bar ──
+                        Container(
+                          width: double.infinity,
+                          height: labelBarHeight,
+                          alignment: Alignment.center,
+                          padding: EdgeInsets.symmetric(horizontal: 4 * scale),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? ColorConstants.primaryColor
+                                : Colors.white,
+                          ),
+                          child: Text(
+                            category.name,
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: textSize,
+                              height: 1.2,
+                              fontWeight: isSelected
+                                  ? FontWeight.w700
+                                  : FontWeight.w600,
+                              color: isSelected ? Colors.white : Colors.black87,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );

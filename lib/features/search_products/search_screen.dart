@@ -49,7 +49,7 @@ class _SearchScreenState extends State<SearchScreen> {
         title: const Text(
           'Search',
           style: TextStyle(
-            fontSize: 17,
+            fontSize: 20,
             fontWeight: FontWeight.bold,
             color: Colors.black87,
           ),
@@ -61,25 +61,27 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
       body: Column(
         children: [
-          // ── Search input row, separate from the AppBar ──
+          // ── Search input row ──
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             child: Container(
-              height: 40,
+              height: 48,
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(10),
+                color: Colors.white,
+                border: Border.all(color: Colors.grey.shade300, width: 1.2),
+                borderRadius: BorderRadius.circular(24),
               ),
               child: TextField(
                 controller: _controller,
                 focusNode: _focusNode,
+                style: const TextStyle(fontSize: 16, color: Colors.black87),
                 decoration: InputDecoration(
                   hintText: 'Search for Category/item',
-                  hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
-                  prefixIcon: const Icon(Icons.search, color: Colors.grey, size: 20),
+                  hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 15),
+                  prefixIcon: Icon(Icons.search, color: Colors.grey.shade600, size: 22),
                   suffixIcon: _controller.text.isNotEmpty
                       ? IconButton(
-                    icon: const Icon(Icons.close, size: 18),
+                    icon: Icon(Icons.close, size: 20, color: Colors.grey.shade600),
                     onPressed: () {
                       _controller.clear();
                       context.read<SearchBloc>().add(ClearSearch());
@@ -88,17 +90,17 @@ class _SearchScreenState extends State<SearchScreen> {
                   )
                       : null,
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
                 ),
                 onChanged: (value) {
-                  setState(() {}); // toggles the clear (×) icon
+                  setState(() {});
                   context.read<SearchBloc>().add(SearchQueryChanged(query: value));
                 },
               ),
             ),
           ),
 
-          // ── Results / empty state ──
+          // ── Results ──
           Expanded(
             child: BlocConsumer<SearchBloc, SearchState>(
               listener: (context, state) {
@@ -107,7 +109,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     SnackBar(
                       content: Text(state.message),
                       backgroundColor: Colors.red,
-                      duration: const Duration(milliseconds:2),
+                      duration: const Duration(milliseconds: 2000),
                     ),
                   );
                 }
@@ -126,8 +128,6 @@ class _SearchScreenState extends State<SearchScreen> {
                       height: 1,
                       thickness: 1,
                       color: Colors.grey.shade200,
-                      indent: 16,
-                      endIndent: 16,
                     ),
                     itemBuilder: (context, index) {
                       final item = state.results[index];
@@ -153,12 +153,7 @@ class _SearchScreenState extends State<SearchScreen> {
                           );
                           widget.onAddToCart(product);
                           Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Added ${item.name} to cart'),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
+                          // Snackbar on successful add removed as requested.
                         },
                       );
                     },
@@ -201,7 +196,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     ),
                   );
                 }
-                // Initial state — nothing typed yet.
+                // Initial state
                 return const _SearchEmptyState();
               },
             ),
@@ -212,7 +207,7 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 }
 
-// ─── Search Result Row (plain list style, matches design) ───
+// ─── Search Result Row ──────────────────────────────────────────────
 class _SearchResultRow extends StatelessWidget {
   final SearchResultItem item;
   final bool isInStock;
@@ -226,47 +221,57 @@ class _SearchResultRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Build the "In <Category>" label shown under the item name.
+    final String categoryLabel = item.parentName.isNotEmpty
+        ? (item.parentName.trim().toLowerCase().startsWith('in ')
+        ? item.parentName
+        : 'In ${item.parentName}')
+        : '';
+
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Row(
           children: [
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // ── Product name ──
                   Text(
                     item.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 17,
                       fontWeight: FontWeight.w600,
                       color: isInStock ? Colors.black87 : Colors.grey.shade400,
                     ),
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    // NOTE: assumes SearchResultItem has a `category` field —
-                    // rename this if your entity calls it something else.
-                    'Price: ${item.price}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: isInStock ? ColorConstants.primaryColor : Colors.grey.shade400,
+                  const SizedBox(height: 4),
+                  // ── Category label (only if available) ──
+                  if (categoryLabel.isNotEmpty)
+                    Text(
+                      categoryLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: isInStock
+                            ? const Color(0xFFD98831) // warm orange to match design
+                            : Colors.grey.shade400,
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 12),
             Icon(
               Icons.north_west_rounded,
-              size: 16,
-              color: isInStock ? Colors.grey.shade400 : Colors.grey.shade300,
+              size: 20,
+              color: isInStock ? Colors.black87 : Colors.grey.shade300,
             ),
           ],
         ),
@@ -275,7 +280,7 @@ class _SearchResultRow extends StatelessWidget {
   }
 }
 
-// ─── Empty state (no query yet, or no results) ───
+// ─── Empty state ──────────────────────────────────────────────────────
 class _SearchEmptyState extends StatelessWidget {
   final String? message;
 
@@ -290,16 +295,17 @@ class _SearchEmptyState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Image.asset(
-              // TODO: point this at your actual illustration asset path,
-              // and make sure it's declared under `flutter: assets:` in
-              // pubspec.yaml.
-              'assets/images/search_em`pty.png',
+              'assets/images/search_empty.png',
               width: 220,
-              errorBuilder: (context, error, stackTrace) => Icon(
-                Icons.search_off_rounded,
-                size: 96,
-                color: Colors.grey.shade300,
-              ),
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) {
+                debugPrint('Image load error: $error');
+                return Icon(
+                  Icons.search_off_rounded,
+                  size: 96,
+                  color: Colors.grey.shade300,
+                );
+              },
             ),
             if (message != null) ...[
               const SizedBox(height: 16),

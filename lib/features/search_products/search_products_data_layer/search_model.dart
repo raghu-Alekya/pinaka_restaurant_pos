@@ -21,6 +21,7 @@ class SearchResponse {
         name: e['name'] ?? '',
         inStock: e['in_stock'] ?? 'No',
         price: e['price'] ?? '0',
+        parentName: e['parent_name'] as String? ?? '', // 👈 new
       ))
           .toList() ??
           [],
