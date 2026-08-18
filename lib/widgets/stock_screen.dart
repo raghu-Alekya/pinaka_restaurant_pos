@@ -344,13 +344,16 @@ class _StockScreenState extends State<StockScreen> {
     {};
 
     for (final product in products) {
-      final categoryName =
-      product.categoryName
-          ?.trim()
-          .isNotEmpty ==
-          true
-          ? product.categoryName!.trim()
-          : 'Others';
+      final categoryName = product.categoryName?.trim();
+
+      // Hide Uncategorized / Others / empty categories
+      if (categoryName == null ||
+          categoryName.isEmpty ||
+          categoryName.toLowerCase() == 'uncategorized' ||
+          categoryName.toLowerCase() == 'others') {
+        continue;
+      }
+
       final item = StockItem(
         id: product.id,
         name: product.name,
@@ -913,7 +916,7 @@ class _StockScreenState extends State<StockScreen> {
 
                   child: Container(
                     width: double.infinity,
-                    height: 58,
+                    height: 68,
 
                     decoration: BoxDecoration(
                       color: isSelected

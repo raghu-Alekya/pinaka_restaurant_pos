@@ -128,26 +128,53 @@ class KdsMqttService {
 
   void _subscribeAndListen() {
     if (_client == null) {
-      KdsDebugLog.error('_subscribeAndListen: client is null');
+      KdsDebugLog.error(
+        '_subscribeAndListen: client is null',
+      );
       return;
     }
 
-    KdsDebugLog.info('Subscribing to topic: $ordersTopic');
-    _client!.subscribe(ordersTopic, MqttQos.atLeastOnce);
+    KdsDebugLog.info(
+      'Subscribing to orders topic: $ordersTopic',
+    );
+
+    _client!.subscribe(
+      ordersTopic,
+      MqttQos.atLeastOnce,
+    );
+
+    KdsDebugLog.info(
+      'Subscribing to status topic: $statusTopic',
+    );
+
+    _client!.subscribe(
+      statusTopic,
+      MqttQos.atLeastOnce,
+    );
 
     if (_listenerAttached) return;
 
     if (_client!.updates == null) {
-      KdsDebugLog.error('client.updates stream is NULL!');
+      KdsDebugLog.error(
+        'client.updates stream is NULL!',
+      );
       return;
     }
 
     _subscription = _client!.updates!.listen(
       _onMessages,
-      onError: (e) => KdsDebugLog.error('updates stream error: $e'),
+      onError: (e) {
+        KdsDebugLog.error(
+          'updates stream error: $e',
+        );
+      },
     );
+
     _listenerAttached = true;
-    KdsDebugLog.info('Message listener attached');
+
+    KdsDebugLog.info(
+      'Message listener attached',
+    );
   }
 
   void _onMessages(List<MqttReceivedMessage<MqttMessage>> messages) {

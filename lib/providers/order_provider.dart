@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/complete_order_model.dart';
@@ -12,6 +13,7 @@ import '../services/api_services.dart';
 import '../services/cancel_item_repository.dart';
 import '../services/kds_localstorage.dart';
 import '../services/kds_mqtt_service.dart';
+import '../utils/AppConstant.dart';
 import '../utils/kds_logger.dart';
 
 class OrderProvider extends ChangeNotifier {
@@ -109,49 +111,222 @@ class OrderProvider extends ChangeNotifier {
     await _storage.saveOrders(_orders);
   }
 
+  // void _handleMessage(Map<String, dynamic> message) {
+  //   if (message['event'] != 'kot_created') return;
+  //
+  //   try {
+  //     // IMPORTANT: MQTT payloads do not contain the category_products
+  //     // section that the initial API response contains. Before parsing the
+  //     // MQTT KOT, enrich its item maps using the category maps learned from
+  //     // the API. This makes a newly-created KOT behave exactly like an
+  //     // existing KOT without requiring a KDS restart.
+  //     final enrichedMessage = _enrichMqttMessageWithCategories(message);
+  //
+  //     final order = KitchenOrder.fromMqttPayload(enrichedMessage);
+  //
+  //     debugPrint(
+  //       'MQTT KOT RECEIVED: ${order.id} | '
+  //           'items=${order.items.length}',
+  //     );
+  //
+  //     _addOrder(order);
+  //
+  //     // The POS may need a short moment to persist the newly-created KOT
+  //     // before the kitchen-display API can return it. Refresh once after
+  //     // MQTT so category_products is applied immediately instead of waiting
+  //     // for the dashboard's normal 5-second refresh cycle.
+  //     unawaited(_refreshAfterMqtt());
+  //   } catch (e, stack) {
+  //     KdsDebugLog.error('Failed to parse order: $e\n$stack');
+  //   }
+  // }
+
   void _handleMessage(Map<String, dynamic> message) {
-    if (message['event'] != 'kot_created') return;
+    final event = message['event']?.toString();
 
-    try {
-      // IMPORTANT: MQTT payloads do not contain the category_products
-      // section that the initial API response contains. Before parsing the
-      // MQTT KOT, enrich its item maps using the category maps learned from
-      // the API. This makes a newly-created KOT behave exactly like an
-      // existing KOT without requiring a KDS restart.
-      final enrichedMessage = _enrichMqttMessageWithCategories(message);
+    debugPrint('========== MQTT EVENT ==========');
+    debugPrint('EVENT: $event');
+    debugPrint('MESSAGE: $message');
+    debugPrint('================================');
 
-      final order = KitchenOrder.fromMqttPayload(enrichedMessage);
+    // ==========================================================
+    // NEW KOT CREATED
+    // ==========================================================
+    if (event == 'kot_created') {
+      try {
+        final enrichedMessage =
+        _enrichMqttMessageWithCategories(message);
 
+        final order =
+        KitchenOrder.fromMqttPayload(enrichedMessage);
+
+        // ======================================================
+        // NORMALIZE NEW MQTT KOT STATUS
+        // ======================================================
+
+        final mqttStatus =
+        order.status.trim().toLowerCase();
+
+        if (mqttStatus == 'created' ||
+            mqttStatus == 'new' ||
+            mqttStatus == 'yet to prepare' ||
+            mqttStatus == 'yet_to_prepare' ||
+            mqttStatus == 'pending') {
+          order.status = 'Pending';
+        }
+
+        debugPrint(
+            '========== MQTT KOT CREATED =========='
+        );
+
+        debugPrint(
+          'KOT ID: ${order.id}',
+        );
+
+        debugPrint(
+          'KOT TYPE: ${order.type}',
+        );
+
+        debugPrint(
+          'ORIGINAL STATUS: $mqttStatus',
+        );
+
+        debugPrint(
+          'FINAL STATUS: ${order.status}',
+        );
+
+        debugPrint(
+          'KOT STATUS: ${order.kotStatus}',
+        );
+
+        debugPrint(
+          'KOT ITEMS: ${order.items.length}',
+        );
+
+        // ======================================================
+        // ADD IMMEDIATELY TO PROVIDER
+        // ======================================================
+
+        _addOrder(order);
+
+        debugPrint(
+          'KOT ADDED TO PROVIDER IMMEDIATELY',
+        );
+
+        debugPrint(
+          'TOTAL ORDERS NOW: ${_orders.length}',
+        );
+
+        debugPrint(
+          'PENDING ORDERS NOW: ${pendingOrders.length}',
+        );
+
+        debugPrint(
+          '======================================',
+        );
+
+        // DO NOT call loadExistingOrders() here.
+      } catch (e, stack) {
+        KdsDebugLog.error(
+          'Failed to parse created KOT: $e\n$stack',
+        );
+      }
+
+      return;
+    }
+
+    // ==========================================================
+    // KOT STATUS UPDATED
+    // ==========================================================
+
+    if (event == 'kot_status_updated') {
+      _handleKotStatusUpdate(message);
+      return;
+    }
+
+    debugPrint(
+      'Ignoring MQTT event: $event',
+    );
+  }
+  void _handleKotStatusUpdate(Map<String, dynamic> message) {
+    final kotId = message['kot_id']?.toString();
+    final kotNumber = message['kot_number']?.toString();
+    final status = message['status']?.toString();
+
+    debugPrint('========== KOT STATUS UPDATE ==========');
+    debugPrint('KOT ID     : $kotId');
+    debugPrint('KOT NUMBER : $kotNumber');
+    debugPrint('STATUS     : $status');
+    debugPrint('=======================================');
+
+    if (status == null || status.isEmpty) {
+      return;
+    }
+
+    KitchenOrder? order;
+
+    // Find using kot_id first
+    if (kotId != null && kotId.isNotEmpty) {
+      order = _orders.cast<KitchenOrder?>().firstWhere(
+            (o) => o?.kotId?.toString() == kotId,
+        orElse: () => null,
+      );
+    }
+
+    // Fallback to KOT number
+    order ??= _orders.cast<KitchenOrder?>().firstWhere(
+          (o) => o?.id.toString() == kotNumber,
+      orElse: () => null,
+    );
+
+    if (order == null) {
       debugPrint(
-        'MQTT KOT RECEIVED: ${order.id} | '
-            'items=${order.items.length}',
+        'KOT not found in local KDS list. '
+            'kotId=$kotId kotNumber=$kotNumber',
       );
-
-      _addOrder(order);
-
-      // The POS may need a short moment to persist the newly-created KOT
-      // before the kitchen-display API can return it. Refresh once after
-      // MQTT so category_products is applied immediately instead of waiting
-      // for the dashboard's normal 5-second refresh cycle.
-      unawaited(_refreshAfterMqtt());
-    } catch (e, stack) {
-      KdsDebugLog.error('Failed to parse order: $e\n$stack');
+      return;
     }
-  }
 
-  Future<void> _refreshAfterMqtt() async {
-    try {
-      await Future<void>.delayed(
-        const Duration(milliseconds: 800),
-      );
+    final normalizedStatus = status.toLowerCase();
 
-      await loadExistingOrders();
-    } catch (e, stack) {
-      KdsDebugLog.error(
-        'MQTT refresh failed: $e\n$stack',
-      );
-    }
+    _updateAndSave(() {
+      if (normalizedStatus == 'completed' ||
+          normalizedStatus == 'served') {
+        order!.status = 'Served';
+        order.servedAt = DateTime.now();
+      } else if (normalizedStatus == 'preparing' ||
+          normalizedStatus == 'processing' ||
+          normalizedStatus == 'running') {
+        order!.status = 'Preparing';
+        order.servedAt = null;
+      } else if (normalizedStatus == 'ready') {
+        order!.status = 'Ready';
+        order.servedAt = null;
+      } else if (normalizedStatus == 'pending' ||
+          normalizedStatus == 'new') {
+        order!.status = 'Pending';
+        order.servedAt = null;
+      }
+    });
+
+    debugPrint(
+      'KDS LOCAL STATUS UPDATED → '
+          '${order.id} = ${order.status}',
+    );
   }
+  // Future<void> _refreshAfterMqtt() async {
+  //   try {
+  //     await Future<void>.delayed(
+  //       const Duration(milliseconds: 800),
+  //     );
+  //
+  //     await loadExistingOrders();
+  //   } catch (e, stack) {
+  //     KdsDebugLog.error(
+  //       'MQTT refresh failed: $e\n$stack',
+  //     );
+  //   }
+  // }
 
   Map<String, dynamic> _enrichMqttMessageWithCategories(
       Map<String, dynamic> message) {
@@ -890,7 +1065,167 @@ class OrderProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> updateOrderStatus(String orderId, String status) async {
+
+  Future<bool> updateKotItemStatus({
+    required String token,
+    required int parentId,
+    required int orderId,
+    required int restaurantId,
+    required int zoneId,
+    required List<int> items,
+  }) async {
+    try {
+      final url = Uri.parse(
+        '${AppConstants.baseDomain}'
+            '/wp-json/pinaka-restaurant-pos/v1/kot/update-kot-item-status',
+      );
+
+      debugPrint('========== UPDATE KOT ITEM STATUS ==========');
+      debugPrint('Parent ID: $parentId');
+      debugPrint('Order ID: $orderId');
+      debugPrint('Restaurant ID: $restaurantId');
+      debugPrint('Zone ID: $zoneId');
+      debugPrint('Items: $items');
+
+      final response = await http.put(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'parent_id': parentId,
+          'order_id': orderId,
+          'restaurant_id': restaurantId,
+          'zone_id': zoneId,
+          'items': items,
+        }),
+      );
+
+      debugPrint(
+        'UPDATE ITEM STATUS RESPONSE: '
+            '${response.statusCode}',
+      );
+
+      debugPrint(
+        'UPDATE ITEM STATUS BODY: '
+            '${response.body}',
+      );
+
+      // ======================================================
+      // API FAILED
+      // ======================================================
+
+      if (response.statusCode < 200 ||
+          response.statusCode >= 300) {
+        debugPrint(
+          '❌ Update item status API failed',
+        );
+
+        return false;
+      }
+
+      // ======================================================
+      // API SUCCESS
+      // ======================================================
+
+      debugPrint(
+        '✅ Update item status API success',
+      );
+
+      // Find the KOT in local list.
+      final orderIndex = _orders.indexWhere(
+            (order) =>
+        order.parentOrderId == parentId &&
+            order.kotId == orderId,
+      );
+
+      if (orderIndex == -1) {
+        debugPrint(
+          '⚠️ Local KOT not found '
+              'parentId=$parentId orderId=$orderId',
+        );
+
+        // API succeeded, so still return true.
+        return true;
+      }
+
+      final order = _orders[orderIndex];
+
+      // ======================================================
+      // MARK SELECTED ITEMS AS COMPLETED
+      // ======================================================
+
+      for (final item in order.items) {
+        final lineItemId = item.lineItemId;
+
+        if (lineItemId != null &&
+            items.contains(lineItemId)) {
+          item.status = 'completed';
+
+          debugPrint(
+            'Item completed → '
+                '${item.name} '
+                'lineItemId=$lineItemId',
+          );
+        }
+      }
+
+      // ======================================================
+      // REMOVE COMPLETED ITEMS FROM LOCAL KOT
+      // ======================================================
+
+      order.items.removeWhere(
+            (item) =>
+        item.lineItemId != null &&
+            items.contains(item.lineItemId),
+      );
+
+      debugPrint(
+        'Remaining items in KOT: '
+            '${order.items.length}',
+      );
+
+      // ======================================================
+      // IF NO ITEMS LEFT, REMOVE WHOLE KOT
+      // ======================================================
+
+      if (order.items.isEmpty) {
+        _orders.removeAt(orderIndex);
+
+        debugPrint(
+          'All items completed → KOT removed',
+        );
+      }
+
+      // Save + immediately rebuild KDS
+      await _persist();
+
+      notifyListeners();
+
+      debugPrint(
+        '✅ Item removed from Item Queue immediately',
+      );
+
+      debugPrint(
+        '============================================',
+      );
+
+      return true;
+    } catch (e, stack) {
+      debugPrint(
+        '❌ updateKotItemStatus error: $e',
+      );
+
+      debugPrintStack(
+        stackTrace: stack,
+      );
+
+      return false;
+    }
+  }
+
+Future<bool> updateOrderStatus(String orderId, String status) async {
     final order = _findOrder(orderId);
     if (order == null) return false;
 
@@ -946,3 +1281,4 @@ class _OptimisticStatus {
   final DateTime timestamp;
   _OptimisticStatus(this.status, this.timestamp);
 }
+

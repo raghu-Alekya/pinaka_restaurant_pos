@@ -2,10 +2,12 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:kds_app/providers/order_provider.dart';
 import 'package:kds_app/top_bar.dart';
 import 'package:kds_app/widgets/completed_orders.dart';
 import 'package:kds_app/widgets/login_screen.dart';
 import 'package:kds_app/widgets/repeated_item.dart';
+import 'package:kds_app/widgets/settings_screen.dart';
 import 'package:kds_app/widgets/stock_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -73,6 +75,51 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
       // Load existing KOTs once. New KOTs should arrive through MQTT via OrderProvider.
       await orderProvider.loadExistingOrders();
     });
+  }
+  bool _isKotFullyServed(Map<String, dynamic> order) {
+    final items = _getOrderItems(order);
+
+    if (items.isEmpty) {
+      return false;
+    }
+
+    final kotId = order['id']?.toString() ?? '';
+    final kotNo = order['kotNo']?.toString() ?? '';
+    final parentOrderId =
+        (order['parentOrderId'] ??
+            order['parent_order_id'])
+            ?.toString() ??
+            '';
+
+    final switchKey = kotId.isNotEmpty
+        ? kotId
+        : '${kotNo}_$parentOrderId';
+
+    final switchValues = selectedItemsMap[switchKey];
+
+    if (switchValues == null) {
+      return false;
+    }
+
+    // Make sure we have a toggle value for every item.
+    if (switchValues.length < items.length) {
+      return false;
+    }
+
+    // KOT is fully served only when ALL item toggles are ON.
+    final allServed = switchValues
+        .take(items.length)
+        .every((value) => value);
+
+    debugPrint(
+      'KOT FULLY SERVED CHECK: '
+          'KOT=$switchKey | '
+          'ITEMS=${items.length} | '
+          'TOGGLES=${switchValues.take(items.length).toList()} | '
+          'ALL SERVED=$allServed',
+    );
+
+    return allServed;
   }
   bool itemStatusIsCancelled(dynamic rawItem) {
     if (rawItem is! Map) return false;
@@ -378,27 +425,23 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                 });
               },
 
-              onLogout: widget.onOpenSettings,
+              // This is for LOGOUT only
+              onLogout: () {
+                // Your logout logic
+              },
 
-              pendingCount:
-              orderProvider.pendingOrders.length,
+              pendingCount: orderProvider.pendingOrders.length,
 
               activeCount:
               orderProvider.preparingOrders.length +
                   orderProvider.readyOrders.length,
 
-              repeatedCount:
-              summaryItemsCount,
-
-              // ====================================================
-              // HAMBURGER MENU CLICK
-              // ====================================================
+              repeatedCount: summaryItemsCount,
 
               onMenuTap: () {
                 _scaffoldKey.currentState?.openDrawer();
               },
             ),
-
             // ======================================================
             // EXISTING KDS BODY
             // ======================================================
@@ -602,15 +645,21 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                     // ==================================================
                     // SETTINGS
                     // ==================================================
-
                     _buildDrawerMenuItem(
                       title: 'Settings',
                       icon: Icons.settings_outlined,
-
                       onTap: () {
+                        // Close drawer
                         Navigator.of(context).pop();
 
-                        widget.onOpenSettings?.call();
+                        // Open Settings Screen
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                            const KitchenDisplaySettingsScreen(),
+                          ),
+                        );
                       },
                     ),
                   ],
@@ -888,7 +937,26 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
 
     for (final order in allKots) {
       final kotId = order['id']?.toString() ?? '';
-      final status = order['status']?.toString().toLowerCase() ?? '';
+      final status =
+          order['status']?.toString().toLowerCase() ?? '';
+
+      // ==========================================================
+      // REMOVE KOT WHEN ALL ITEMS ARE SERVED
+      // ==========================================================
+
+      if (_isKotFullyServed(order)) {
+        debugPrint(
+          'REMOVING KOT FROM ACTIVE: '
+              'KOT=${kotId.isNotEmpty ? kotId : order['kotNo']} '
+              'because all items are served',
+        );
+
+        continue;
+      }
+
+      // ==========================================================
+      // REMOVE ALREADY COMPLETED / CANCELLED KOTS
+      // ==========================================================
 
       if (status == 'cancelled' ||
           status == 'cancel' ||
@@ -1086,6 +1154,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
       orders,
       productCategoryMap,
       productCategoryNameMap,
+      selectedItemsMap,
     );
 
     final entries = groups.entries.toList();
@@ -1107,12 +1176,36 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
         continue;
       }
 
-      for (final rawItem in rawItems) {
+      for (int index = 0; index < rawItems.length; index++) {
+        final rawItem = rawItems[index];
+
         if (rawItem is! Map) {
           continue;
         }
 
         final item = Map<String, dynamic>.from(rawItem);
+        // ==========================================================
+// HIDE ITEM FROM QUEUE WHEN TOGGLE IS ON
+// API status is the source of truth, selectedItemsMap
+// provides immediate UI update until provider refreshes.
+// ==========================================================
+
+        final kotId = order['id']?.toString() ?? '';
+        final kotNo = order['kotNo']?.toString() ?? '';
+        final parentOrderId =
+            order['parentOrderId']?.toString() ?? '';
+
+        final switchKey = kotId.isNotEmpty
+            ? kotId
+            : '${kotNo}_$parentOrderId';
+
+        final switchValues = selectedItemsMap[switchKey];
+
+        if (switchValues != null &&
+            index < switchValues.length &&
+            switchValues[index] == true) {
+          continue;
+        }
 
         final name =
         item['item_name']?.toString().trim().isNotEmpty == true
@@ -1636,7 +1729,8 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
       List<Map<String, dynamic>> orders,
       Map<String, String> productCategoryMap,
       Map<String, String> productCategoryNameMap,
-      ) {
+      Map<String, List<bool>> selectedItemsMap,
+      ){
     final result = <String, Map<String, int>>{};
 
     for (final order in orders) {
@@ -1653,13 +1747,44 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
         continue;
       }
 
-      for (final rawItem in rawItems) {
+      for (int index = 0; index < rawItems.length; index++) {
+        final rawItem = rawItems[index];
+
         if (rawItem is! Map) {
           continue;
         }
 
-        final item =
-        Map<String, dynamic>.from(rawItem);
+        final item = Map<String, dynamic>.from(rawItem);
+
+        // ==========================================================
+        // HIDE ITEM WHEN TOGGLE IS ON
+        // ==========================================================
+
+        final kotId = order['id']?.toString() ?? '';
+        final kotNo = order['kotNo']?.toString() ?? '';
+        final parentOrderId =
+            (order['parentOrderId'] ??
+                order['parent_order_id'])
+                ?.toString() ??
+                '';
+
+        final switchKey = kotId.isNotEmpty
+            ? kotId
+            : '${kotNo}_$parentOrderId';
+
+        final switchValues = selectedItemsMap[switchKey];
+
+        if (switchValues != null &&
+            index < switchValues.length &&
+            switchValues[index] == true) {
+          debugPrint(
+            'ITEM QUEUE HIDDEN: '
+                '${item['item_name'] ?? item['name']} '
+                'KOT=$switchKey INDEX=$index',
+          );
+
+          continue;
+        }
 
         // ==========================================================
         // STATUS
@@ -2220,7 +2345,14 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
     final status = order['status']?.toString() ?? 'Pending';
     final normalizedStatus = status.toLowerCase();
 
+// KOT ordered by
+    final kotOrderBy = order['kot_order_by']?.toString().trim() ?? '';
 
+    debugPrint('========== KOT ORDER BY DEBUG ==========');
+    debugPrint('KOT       : ${order['kotNo']}');
+    debugPrint('KOT ORDER BY: $kotOrderBy');
+    debugPrint('FULL ORDER: $order');
+    debugPrint('========================================');
 // KOT order status from backend
     final kotOrderStatus =
         order['kot_order_status']?.toString().trim().toLowerCase() ?? '';
@@ -2573,11 +2705,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                     // ------------------------------------------------------
                     Flexible(
                       child: Text(
-                        order['captainName']?.toString().isNotEmpty == true
-                            ? order['captainName'].toString()
-                            : order['captain_name']?.toString().isNotEmpty == true
-                            ? order['captain_name'].toString()
-                            : 'Prashanth',
+                        order['kot_order_by']?.toString().trim() ?? '',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.montserrat(
@@ -3066,40 +3194,116 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                     // ====================================================
                                     // TOGGLE - EXISTING READY/RUNNING FUNCTIONALITY
                                     // ====================================================
-                                    Padding(
-                                      padding:
-                                      const EdgeInsets.only(top: 2),
+                                    if (!isCancelMode)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 2),
+                                        child: _buildCompactItemToggle(
+                                          value: currentValue,
+                                          activeColor: headerColor,
+                                          onChanged: isCancelled
+                                              ? (_) {}
+                                              : (value) async {
+                                            setState(() {
+                                              final values = _getKotSwitchValues(
+                                                switchKey,
+                                                items,
+                                              );
 
-                                      child:
-                                      _buildCompactItemToggle(
-                                        value: currentValue,
+                                              while (values.length < items.length) {
+                                                values.add(false);
+                                              }
 
-                                        activeColor:
-                                        headerColor,
+                                              values[index] = value;
 
-                                        onChanged: isCancelled
-                                            ? (_) {}
-                                            : (value) {
-                                          setState(() {
-                                            final values =
-                                            _getKotSwitchValues(
-                                              switchKey,
-                                              items,
-                                            );
+                                              selectedItemsMap[switchKey] = values;
+                                            });
 
-                                            while (
-                                            values.length <
-                                                items.length) {
-                                              values.add(false);
+                                            if (!value) {
+                                              return;
                                             }
+                                          final item = items[index];
 
-                                            values[index] =
-                                                value;
+                                          final dynamic rawItemId =
+                                              item['id'] ??
+                                                  item['lineItemId'] ??
+                                                  item['line_item_id'];
 
-                                            selectedItemsMap[
-                                            switchKey] =
-                                                values;
-                                          });
+                                          final itemId =
+                                          int.tryParse(
+                                            rawItemId?.toString() ?? '',
+                                          );
+
+                                          if (itemId == null) {
+                                            debugPrint(
+                                              '❌ Item ID not found: $item',
+                                            );
+                                            return;
+                                          }
+
+                                          final parentId =
+                                          int.tryParse(
+                                            (order['parentOrderId'] ??
+                                                order['parent_order_id'])
+                                                .toString(),
+                                          );
+
+                                          final orderId =
+                                          int.tryParse(
+                                            (order['orderId'] ??
+                                                order['order_id'] ??
+                                                order['id'])
+                                                .toString(),
+                                          );
+
+                                          final zoneId =
+                                          int.tryParse(
+                                            (order['zoneId'] ??
+                                                order['zone_id'])
+                                                .toString(),
+                                          );
+
+                                          final restaurantId =
+                                          int.tryParse(
+                                            widget.restaurantId
+                                                .toString(),
+                                          );
+
+                                          if (parentId == null ||
+                                              orderId == null ||
+                                              zoneId == null ||
+                                              restaurantId == null) {
+                                            debugPrint(
+                                              '❌ Missing order information',
+                                            );
+                                            return;
+                                          }
+                                          final success =
+                                          await context
+                                              .read<OrderProvider>()
+                                              .updateKotItemStatus(
+                                            token: widget.token,
+                                            parentId: parentId,
+                                            orderId: orderId,
+                                            restaurantId: restaurantId,
+                                            zoneId: zoneId,
+                                            items: [itemId],
+                                          );
+                                          if (!success && mounted) {
+                                            setState(() {
+                                              final values =
+                                              _getKotSwitchValues(
+                                                switchKey,
+                                                items,
+                                              );
+
+                                              if (index < values.length) {
+                                                values[index] = false;
+                                              }
+
+                                              selectedItemsMap[
+                                              switchKey] = values;
+                                            });
+                                          }
                                         },
                                       ),
                                     ),

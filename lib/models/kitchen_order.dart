@@ -501,6 +501,7 @@ class KitchenOrder {
   final List<OrderItem> items;
   final String kotStatus;
   final String kotOrderStatus;
+  final String kotOrderBy;
 
   DateTime? servedAt;
 
@@ -518,6 +519,7 @@ class KitchenOrder {
     required this.items,
     this.kotStatus = '',
     this.kotOrderStatus = '',
+    this.kotOrderBy = '',
     this.servedAt,
   });
 
@@ -882,6 +884,11 @@ class KitchenOrder {
           ?.toString()
           .trim() ??
           '',
+      kotOrderBy:
+      json['kot_order_by']
+          ?.toString()
+          .trim() ??
+          '',
 
       tableName:
       json['table_name']?.toString(),
@@ -931,6 +938,7 @@ class KitchenOrder {
 
     'kotStatus': kotStatus,
     'kotOrderStatus': kotOrderStatus,
+    'kot_order_by': kotOrderBy,
 
     'servedAt':
     servedAt?.toIso8601String(),
@@ -958,6 +966,9 @@ class KitchenOrder {
 
     // KOT order status: New / Running
     'kot_order_status': kotOrderStatus,
+    // KOT ordered by / captain name
+    'kot_order_by': kotOrderBy,
+
     'isCancelled': isCancelled,
     'tableName': tableName,
     'locationLabel': locationLabel,
