@@ -206,12 +206,27 @@ class KdsMqttService {
           KdsDebugLog.warn('Decoded JSON is not a Map: ${decoded.runtimeType}');
           continue;
         }
-
         final map = Map<String, dynamic>.from(decoded);
+
         messagesReceived++;
+
+        final event = map['event']?.toString() ?? '';
+
         KdsDebugLog.info(
-          'Parsed event="${map['event']}" kot=${map['kot']?['kot_number']} total=$messagesReceived',
+          'Parsed event="$event" '
+              'kot=${map['kot']?['kot_number']} '
+              'parentOrderId=${map['parent_order_id']} '
+              'status=${map['status']} '
+              'total=$messagesReceived',
         );
+
+        if (event == 'takeaway_completed') {
+          KdsDebugLog.info(
+            '🚨 TAKEAWAY COMPLETED EVENT RECEIVED '
+                'parentOrderId=${map['parent_order_id']}',
+          );
+        }
+
         _incomingController.add(map);
       } catch (e) {
         KdsDebugLog.error('JSON parse error: $e');

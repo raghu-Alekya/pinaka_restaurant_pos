@@ -1448,7 +1448,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.montserrat(
-                    fontSize: 13,
+                    fontSize: 16,
                     fontWeight: FontWeight.w800,
                     color: categoryColor,
                   ),
@@ -1544,7 +1544,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.montserrat(
-                          fontSize: 12,
+                          fontSize: 14,
                           height: 1.0,
                           fontWeight: FontWeight.w500,
                           color: const Color(0xff344054),
@@ -2372,12 +2372,12 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
     final isOnline = type.contains('online');
 
     final headerColor = isDineIn
-        ? const Color(0xffF15B24)
+        ? const Color(0xffFFBE8B)
         : isTakeaway
-        ? const Color(0xff0D477A)
+        ? const Color(0xffA6BBD6)
         : isOnline
-        ? const Color(0xff5B9638)
-        : const Color(0xff667085);
+        ? const Color(0xffA7C79B)
+        : const Color(0xffA2B39B);
 
     final table = order['tableName']?.toString() ??
         order['tableNo']?.toString() ??
@@ -2478,13 +2478,13 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
       buttonColor = const Color(0xff667085);
     } else if (isNewKot) {
       buttonText = 'New';
-      buttonColor = const Color(0xff5B9638); // GREEN
+      buttonColor = const Color(0xff3B923F); // GREEN
     } else if (isRunningKot) {
       buttonText = 'Running';
-      buttonColor = const Color(0xffF04438); // RED
+      buttonColor = const Color(0xffC01F33); // RED
     } else {
       buttonText = 'New';
-      buttonColor = const Color(0xff5B9638); // GREEN
+      buttonColor = const Color(0xff3B923F); // GREEN
     }
     return Container(
       decoration: BoxDecoration(
@@ -2629,15 +2629,15 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
               10,
               5,
             ),
-            child: Column(
+            child:Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
 
                 // ==========================================================
-                // KOT NUMBER + READY COUNT
+                // TOP ROW: KOT + ITEMS READY
                 // ==========================================================
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
 
                     // KOT NUMBER
@@ -2655,61 +2655,56 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                       ),
                     ),
 
-                    // READY COUNT
-                    Text(
-                      '$readyCount/${items.length}',
-                      style: GoogleFonts.montserrat(
-                        fontSize: 14,
-                        height: 1.0,
-                        fontWeight: FontWeight.w800,
-                        color: allItemsOn
-                            ? const Color(0xff5B9638)
-                            : headerColor,
-                      ),
+                    // ITEMS READY + COUNT
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Items Ready',
+                          style: GoogleFonts.montserrat(
+                            fontSize: 11,
+                            height: 1.0,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xff667085),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$readyCount/${items.length}',
+                          style: GoogleFonts.montserrat(
+                            fontSize: 14,
+                            height: 1.0,
+                            fontWeight: FontWeight.w800,
+                            color: allItemsOn
+                                ? const Color(0xff5B9638)
+                                : headerColor,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
 
-                const SizedBox(height: 5),
+                const SizedBox(height: 4),
 
                 // ==========================================================
-                // CUSTOMER NAME + TIME
-                // IMPORTANT:
-                // DO NOT DISPLAY parentOrderId
+                // SECOND ROW: ORDER ID + CAPTAIN + TIME
                 // ==========================================================
                 // ==========================================================
-// CAPTAIN + TIME
-// ==========================================================
-                // ==========================================================
-// CAPTAIN + TIME
-// ==========================================================
-                // ==========================================================
-// CAPTAIN + TIME + ITEMS READY — SAME ROW
+// SECOND ROW: ORDER ID + CAPTAIN + TIME
 // ==========================================================
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // ------------------------------------------------------
-                    // CAPTAIN ICON
-                    // ------------------------------------------------------
-                    const Icon(
-                      Icons.person_outline,
-                      size: 11,
-                      color: Color(0xff98A2B3),
-                    ),
 
-                    const SizedBox(width: 4),
-
-                    // ------------------------------------------------------
-                    // CAPTAIN NAME
-                    // ------------------------------------------------------
-                    Flexible(
+                    // ORDER ID - LEFT
+                    Expanded(
                       child: Text(
-                        order['kot_order_by']?.toString().trim() ?? '',
+                        'Order: #${order['parentOrderId']?.toString() ?? ''}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.montserrat(
-                          fontSize: 11,
+                          fontSize: 10,
                           height: 1.0,
                           fontWeight: FontWeight.w500,
                           color: const Color(0xff667085),
@@ -2717,46 +2712,53 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                       ),
                     ),
 
-                    // ------------------------------------------------------
-                    // GAP
-                    // ------------------------------------------------------
-                    const SizedBox(width: 8),
+                    // CAPTAIN + TIME - RIGHT MOST
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
 
-                    // ------------------------------------------------------
-                    // TIME
-                    // ------------------------------------------------------
-                    Text(
-                      date,
-                      maxLines: 1,
-                      style: GoogleFonts.montserrat(
-                        fontSize: 11,
-                        height: 1.0,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xff667085),
-                      ),
-                    ),
+                        // Captain
+                        Text(
+                          order['kot_order_by']?.toString().trim() ?? '',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.montserrat(
+                            fontSize: 11,
+                            height: 1.0,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xff667085),
+                          ),
+                        ),
 
-                    // ------------------------------------------------------
-                    // PUSH "ITEMS READY" TO RIGHT
-                    // ------------------------------------------------------
-                    const SizedBox(width: 200),
+                        const SizedBox(width: 8),
 
-                    // ------------------------------------------------------
-                    // ITEMS READY
-                    // ------------------------------------------------------
-                    Text(
-                      'Items Ready',
-                      style: GoogleFonts.montserrat(
-                        fontSize: 11,
-                        height: 1.0,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xff667085),
-                      ),
+                        // Time icon
+                        const Icon(
+                          Icons.access_time_outlined,
+                          size: 11,
+                          color: Color(0xff98A2B3),
+                        ),
+
+                        const SizedBox(width: 3),
+
+                        // Time
+                        Text(
+                          date,
+                          maxLines: 1,
+                          style: GoogleFonts.montserrat(
+                            fontSize: 11,
+                            height: 1.0,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xff667085),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ],
-            ),
+            )
           ),
 
           const Divider(
@@ -3093,7 +3095,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                                   FontWeight.w500,
                                                   color: isCancelled
                                                       ? const Color(0xff98A2B3)
-                                                      : const Color(0xff667085),
+                                                      : const Color(0xffF04438),
                                                   decoration: isCancelled
                                                       ? TextDecoration.lineThrough
                                                       : TextDecoration.none,
@@ -3137,35 +3139,35 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                           // ==================================================
                                           // NOTE
                                           // ==================================================
-                                          if (note.trim().isNotEmpty)
-                                            Padding(
-                                              padding:
-                                              const EdgeInsets.only(
-                                                top: 2,
-                                              ),
-
-                                              child: Text(
-                                                'Note: $note',
-
-                                                maxLines: 2,
-                                                overflow:
-                                                TextOverflow.ellipsis,
-
-                                                style:
-                                                GoogleFonts.montserrat(
-                                                  fontSize: 10,
-                                                  height: 1.2,
-                                                  fontWeight:
-                                                  FontWeight.w600,
-                                                  color: isCancelled
-                                                      ? const Color(0xff98A2B3)
-                                                      : const Color(0xffF04438),
-                                                  decoration: isCancelled
-                                                      ? TextDecoration.lineThrough
-                                                      : TextDecoration.none,
-                                                ),
-                                              ),
-                                            ),
+                                          // if (note.trim().isNotEmpty)
+                                          //   Padding(
+                                          //     padding:
+                                          //     const EdgeInsets.only(
+                                          //       top: 2,
+                                          //     ),
+                                          //
+                                          //     child: Text(
+                                          //       'Note: $note',
+                                          //
+                                          //       maxLines: 2,
+                                          //       overflow:
+                                          //       TextOverflow.ellipsis,
+                                          //
+                                          //       style:
+                                          //       GoogleFonts.montserrat(
+                                          //         fontSize: 10,
+                                          //         height: 1.2,
+                                          //         fontWeight:
+                                          //         FontWeight.w600,
+                                          //         color: isCancelled
+                                          //             ? const Color(0xff98A2B3)
+                                          //             : const Color(0xffF04438),
+                                          //         decoration: isCancelled
+                                          //             ? TextDecoration.lineThrough
+                                          //             : TextDecoration.none,
+                                          //       ),
+                                          //     ),
+                                          //   ),
                                         ],
                                       ),
                                     ),
@@ -3203,6 +3205,9 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                           onChanged: isCancelled
                                               ? (_) {}
                                               : (value) async {
+                                            // ==========================================================
+                                            // 1. UPDATE LOCAL TOGGLE
+                                            // ==========================================================
                                             setState(() {
                                               final values = _getKotSwitchValues(
                                                 switchKey,
@@ -3218,93 +3223,183 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                               selectedItemsMap[switchKey] = values;
                                             });
 
+                                            // If toggle is turned OFF, don't call backend
                                             if (!value) {
                                               return;
                                             }
-                                          final item = items[index];
 
-                                          final dynamic rawItemId =
-                                              item['id'] ??
-                                                  item['lineItemId'] ??
-                                                  item['line_item_id'];
+                                            // ==========================================================
+                                            // 2. GET CURRENT ITEM
+                                            // ==========================================================
+                                            final item = items[index];
 
-                                          final itemId =
-                                          int.tryParse(
-                                            rawItemId?.toString() ?? '',
-                                          );
+                                            final dynamic rawItemId =
+                                                item['id'] ??
+                                                    item['lineItemId'] ??
+                                                    item['line_item_id'];
 
-                                          if (itemId == null) {
-                                            debugPrint(
-                                              '❌ Item ID not found: $item',
+                                            final itemId = int.tryParse(
+                                              rawItemId?.toString() ?? '',
                                             );
-                                            return;
-                                          }
 
-                                          final parentId =
-                                          int.tryParse(
-                                            (order['parentOrderId'] ??
-                                                order['parent_order_id'])
-                                                .toString(),
-                                          );
+                                            if (itemId == null) {
+                                              debugPrint(
+                                                '❌ Item ID not found: $item',
+                                              );
+                                              return;
+                                            }
 
-                                          final orderId =
-                                          int.tryParse(
-                                            (order['orderId'] ??
-                                                order['order_id'] ??
-                                                order['id'])
-                                                .toString(),
-                                          );
-
-                                          final zoneId =
-                                          int.tryParse(
-                                            (order['zoneId'] ??
-                                                order['zone_id'])
-                                                .toString(),
-                                          );
-
-                                          final restaurantId =
-                                          int.tryParse(
-                                            widget.restaurantId
-                                                .toString(),
-                                          );
-
-                                          if (parentId == null ||
-                                              orderId == null ||
-                                              zoneId == null ||
-                                              restaurantId == null) {
-                                            debugPrint(
-                                              '❌ Missing order information',
+                                            // ==========================================================
+                                            // 3. GET ORDER INFORMATION
+                                            // ==========================================================
+                                            final parentId = int.tryParse(
+                                              (order['parentOrderId'] ??
+                                                  order['parent_order_id'])
+                                                  .toString(),
                                             );
-                                            return;
-                                          }
-                                          final success =
-                                          await context
-                                              .read<OrderProvider>()
-                                              .updateKotItemStatus(
-                                            token: widget.token,
-                                            parentId: parentId,
-                                            orderId: orderId,
-                                            restaurantId: restaurantId,
-                                            zoneId: zoneId,
-                                            items: [itemId],
-                                          );
-                                          if (!success && mounted) {
-                                            setState(() {
-                                              final values =
-                                              _getKotSwitchValues(
-                                                switchKey,
-                                                items,
+
+                                            final orderId = int.tryParse(
+                                              (order['orderId'] ??
+                                                  order['order_id'] ??
+                                                  order['id'])
+                                                  .toString(),
+                                            );
+
+                                            final zoneId = int.tryParse(
+                                              (order['zoneId'] ??
+                                                  order['zone_id'])
+                                                  .toString(),
+                                            );
+
+                                            final restaurantId = int.tryParse(
+                                              widget.restaurantId.toString(),
+                                            );
+
+                                            if (parentId == null ||
+                                                orderId == null ||
+                                                zoneId == null ||
+                                                restaurantId == null) {
+                                              debugPrint(
+                                                '❌ Missing order information',
+                                              );
+                                              return;
+                                            }
+
+                                            // ==========================================================
+                                            // 4. UPDATE INDIVIDUAL ITEM IN BACKEND
+                                            // ==========================================================
+                                            final success =
+                                            await context
+                                                .read<OrderProvider>()
+                                                .updateKotItemStatus(
+                                              token: widget.token,
+                                              parentId: parentId,
+                                              orderId: orderId,
+                                              restaurantId: restaurantId,
+                                              zoneId: zoneId,
+                                              items: [itemId],
+                                            );
+
+                                            // ==========================================================
+                                            // 5. IF ITEM UPDATE FAILED -> ROLLBACK TOGGLE
+                                            // ==========================================================
+                                            if (!success) {
+                                              if (!mounted) return;
+
+                                              setState(() {
+                                                final values = _getKotSwitchValues(
+                                                  switchKey,
+                                                  items,
+                                                );
+
+                                                if (index < values.length) {
+                                                  values[index] = false;
+                                                }
+
+                                                selectedItemsMap[switchKey] = values;
+                                              });
+
+                                              return;
+                                            }
+
+                                            // ==========================================================
+                                            // 6. CHECK WHETHER ALL ITEMS ARE NOW COMPLETED
+                                            // ==========================================================
+                                            final values = _getKotSwitchValues(
+                                              switchKey,
+                                              items,
+                                            );
+
+                                            final allItemsReady =
+                                                items.isNotEmpty &&
+                                                    values.length >= items.length &&
+                                                    values
+                                                        .take(items.length)
+                                                        .every((value) => value == true);
+
+                                            debugPrint(
+                                              '========== ITEM STATUS CHECK ==========',
+                                            );
+                                            debugPrint(
+                                              'KOT: ${order['kot_number'] ?? order['id']}',
+                                            );
+                                            debugPrint(
+                                              'Clicked Item ID: $itemId',
+                                            );
+                                            debugPrint(
+                                              'Switch Values: $values',
+                                            );
+                                            debugPrint(
+                                              'Total Items: ${items.length}',
+                                            );
+                                            debugPrint(
+                                              'All Items Ready: $allItemsReady',
+                                            );
+                                            debugPrint(
+                                              '=======================================',
+                                            );
+
+                                            // ==========================================================
+                                            // 7. LAST ITEM COMPLETED
+                                            // ==========================================================
+                                            if (allItemsReady) {
+                                              debugPrint(
+                                                '✅ LAST ITEM COMPLETED',
                                               );
 
-                                              if (index < values.length) {
-                                                values[index] = false;
-                                              }
+                                              debugPrint(
+                                                '✅ ALL ITEMS ARE READY',
+                                              );
 
-                                              selectedItemsMap[
-                                              switchKey] = values;
-                                            });
-                                          }
-                                        },
+                                              debugPrint(
+                                                '➡️ KOT SHOULD NOW BE SERVED',
+                                              );
+
+                                              // --------------------------------------------------------
+                                              // IMPORTANT:
+                                              // Call your existing KOT STATUS API/MQTT method here.
+                                              // --------------------------------------------------------
+
+                                              // Example:
+                                              //
+                                              // await context.read<OrderProvider>().updateKotStatus(
+                                              //   token: widget.token,
+                                              //   kotId: orderId,
+                                              //   parentOrderId: parentId,
+                                              //   status: 'served',
+                                              // );
+
+                                            }
+                                            else {
+                                              debugPrint(
+                                                '⏳ Some items are still preparing',
+                                              );
+
+                                              debugPrint(
+                                                '➡️ KOT remains PREPARING',
+                                              );
+                                            }
+                                          },
                                       ),
                                     ),
                                   ],

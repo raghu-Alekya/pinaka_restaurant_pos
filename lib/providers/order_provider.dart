@@ -33,6 +33,7 @@ class OrderProvider extends ChangeNotifier {
   Future<void> initialize() async {
     await _init();
   }
+  final Set<String> _completedTakeawayOrderIds = {};
 
   final KdsMqttService _mqttService;
   final OrderApiService _apiService;
@@ -141,7 +142,7 @@ class OrderProvider extends ChangeNotifier {
   //   }
   // }
 
-  void _handleMessage(Map<String, dynamic> message) {
+  Future<void> _handleMessage(Map<String, dynamic> message) async {
     final event = message['event']?.toString();
 
     debugPrint('========== MQTT EVENT ==========');
@@ -154,18 +155,170 @@ class OrderProvider extends ChangeNotifier {
     // ==========================================================
     if (event == 'kot_created') {
       try {
+        // --------------------------------------------------------
+        // Enrich MQTT message with category information
+        // --------------------------------------------------------
         final enrichedMessage =
         _enrichMqttMessageWithCategories(message);
 
+        // --------------------------------------------------------
+        // Convert MQTT payload to KitchenOrder
+        // --------------------------------------------------------
         final order =
         KitchenOrder.fromMqttPayload(enrichedMessage);
 
-        // ======================================================
-        // NORMALIZE NEW MQTT KOT STATUS
-        // ======================================================
+        debugPrint(
+          '========== KOT CREATED DEBUG ==========',
+        );
+
+        debugPrint(
+          'KOT ID       : ${order.kotId}',
+        );
+
+        debugPrint(
+          'KOT NUMBER   : ${order.kotNo}',
+        );
+
+        debugPrint(
+          'ORDER ID     : ${order.id}',
+        );
+
+        debugPrint(
+          'PARENT ID    : ${order.parentOrderId}',
+        );
+
+        debugPrint(
+          'TYPE         : ${order.type}',
+        );
+
+        debugPrint(
+          'STATUS       : ${order.status}',
+        );
+
+        debugPrint(
+          'ITEMS        : ${order.items.length}',
+        );
+
+        debugPrint(
+          '========================================',
+        );
+
+        // ========================================================
+        // GET ORDER TYPE
+        // ========================================================
+
+        final orderType =
+        order.type
+            .toString()
+            .trim()
+            .toLowerCase();
+
+        final normalizedOrderType =
+        orderType
+            .replaceAll('_', '')
+            .replaceAll('-', '')
+            .replaceAll(' ', '');
+
+        final isTakeaway =
+            normalizedOrderType == 'takeaway' ||
+                normalizedOrderType == 'takeaways';
+
+        final parentOrderId =
+        order.parentOrderId.toString();
+
+        // ========================================================
+        // TAKEAWAY CHECK
+        // ========================================================
+
+        debugPrint(
+          '========== TAKEAWAY CHECK ==========',
+        );
+
+        debugPrint(
+          'Parent ID       : $parentOrderId',
+        );
+
+        debugPrint(
+          'Original Type   : ${order.type}',
+        );
+
+        debugPrint(
+          'Normalized Type : $normalizedOrderType',
+        );
+
+        debugPrint(
+          'Is Takeaway     : $isTakeaway',
+        );
+
+        debugPrint(
+          'Completed IDs   : $_completedTakeawayOrderIds',
+        );
+
+        debugPrint(
+          '====================================',
+        );
+
+        // ========================================================
+        // IMPORTANT:
+        //
+        // TAKEAWAY KOT MUST NOT BE DISPLAYED WHEN CHECKOUT
+        // BUTTON IS PRESSED.
+        //
+        // POS creates the KOT before payment.
+        //
+        // Therefore:
+        //
+        // kot_created
+        //       ↓
+        // takeaway
+        //       ↓
+        // DO NOT ADD TO KDS
+        //
+        // After payment:
+        //
+        // takeaway_completed
+        //       ↓
+        // _handleTakeawayCompleted()
+        //       ↓
+        // ADD TO KDS
+        // ========================================================
+
+        if (isTakeaway) {
+          debugPrint(
+            '🚫 TAKEAWAY KOT CREATED',
+          );
+
+          debugPrint(
+            '🚫 NOT ADDING TAKEAWAY KOT TO KDS YET',
+          );
+
+          debugPrint(
+            'Waiting for takeaway_completed event...',
+          );
+
+          debugPrint(
+            'KOT ID       : ${order.kotId}',
+          );
+
+          debugPrint(
+            'KOT NUMBER   : ${order.kotNo}',
+          );
+
+          debugPrint(
+            'PARENT ID    : ${order.parentOrderId}',
+          );
+
+          return;
+        }
+
+        // ========================================================
+        // DINE-IN / OTHER KOT STATUS NORMALIZATION
+        // ========================================================
 
         final mqttStatus =
-        order.status.trim().toLowerCase();
+        order.status
+            .trim()
+            .toLowerCase();
 
         if (mqttStatus == 'created' ||
             mqttStatus == 'new' ||
@@ -175,42 +328,54 @@ class OrderProvider extends ChangeNotifier {
           order.status = 'Pending';
         }
 
+        // ========================================================
+        // ADD DINE-IN / OTHER KOT TO PROVIDER
+        // ========================================================
+
         debugPrint(
-            '========== MQTT KOT CREATED =========='
+          '========== MQTT KOT CREATED ==========',
         );
 
         debugPrint(
-          'KOT ID: ${order.id}',
+          'KOT ID          : ${order.kotId}',
         );
 
         debugPrint(
-          'KOT TYPE: ${order.type}',
+          'KOT NUMBER      : ${order.kotNo}',
         );
 
         debugPrint(
-          'ORIGINAL STATUS: $mqttStatus',
+          'PARENT ORDER ID : ${order.parentOrderId}',
         );
 
         debugPrint(
-          'FINAL STATUS: ${order.status}',
+          'KOT TYPE        : ${order.type}',
         );
 
         debugPrint(
-          'KOT STATUS: ${order.kotStatus}',
+          'ORIGINAL STATUS : $mqttStatus',
         );
 
         debugPrint(
-          'KOT ITEMS: ${order.items.length}',
+          'FINAL STATUS    : ${order.status}',
         );
 
-        // ======================================================
-        // ADD IMMEDIATELY TO PROVIDER
-        // ======================================================
+        debugPrint(
+          'KOT STATUS      : ${order.kotStatus}',
+        );
+
+        debugPrint(
+          'KOT ITEMS       : ${order.items.length}',
+        );
+
+        // --------------------------------------------------------
+        // Add normal KOT immediately
+        // --------------------------------------------------------
 
         _addOrder(order);
 
         debugPrint(
-          'KOT ADDED TO PROVIDER IMMEDIATELY',
+          '✅ KOT ADDED TO PROVIDER',
         );
 
         debugPrint(
@@ -224,11 +389,9 @@ class OrderProvider extends ChangeNotifier {
         debugPrint(
           '======================================',
         );
-
-        // DO NOT call loadExistingOrders() here.
       } catch (e, stack) {
         KdsDebugLog.error(
-          'Failed to parse created KOT: $e\n$stack',
+          '❌ Failed to parse created KOT: $e\n$stack',
         );
       }
 
@@ -238,14 +401,286 @@ class OrderProvider extends ChangeNotifier {
     // ==========================================================
     // KOT STATUS UPDATED
     // ==========================================================
-
     if (event == 'kot_status_updated') {
+      debugPrint(
+        '========== KOT STATUS UPDATED ==========',
+      );
+
+      debugPrint(
+        'Parent Order ID: ${message['parent_order_id']}',
+      );
+
+      debugPrint(
+        'KOT ID: ${message['kot_id']}',
+      );
+
+      debugPrint(
+        'KOT Number: ${message['kot_number']}',
+      );
+
+      debugPrint(
+        'Status: ${message['status']}',
+      );
+
       _handleKotStatusUpdate(message);
+
       return;
     }
 
+    // ==========================================================
+    // TAKEAWAY PAYMENT COMPLETED
+    // ==========================================================
+    if (event == 'takeaway_completed') {
+      debugPrint(
+        '========== TAKEAWAY PAYMENT COMPLETED ==========',
+      );
+
+      debugPrint(
+        'Parent Order ID: ${message['parent_order_id']}',
+      );
+
+      debugPrint(
+        'KOT ID: ${message['kot_id']}',
+      );
+
+      debugPrint(
+        'KOT Number: ${message['kot_number']}',
+      );
+
+      debugPrint(
+        'Status: ${message['status']}',
+      );
+
+      // --------------------------------------------------------
+      // IMPORTANT:
+      //
+      // _handleTakeawayCompleted() will:
+      //
+      // 1. Call KDS orders API
+      // 2. Find the matching takeaway KOT
+      // 3. Convert it to KitchenOrder
+      // 4. Set status = Pending
+      // 5. Add it to _orders
+      //
+      // So takeaway appears ONLY after payment.
+      // --------------------------------------------------------
+
+      await _handleTakeawayCompleted(message);
+
+      debugPrint(
+        '==============================================',
+      );
+
+      return;
+    }
+
+    // ==========================================================
+    // UNKNOWN EVENT
+    // ==========================================================
+
     debugPrint(
       'Ignoring MQTT event: $event',
+    );
+  }
+  Future<void> _handleTakeawayCompleted(
+      Map<String, dynamic> message,
+      ) async {
+    final parentOrderId =
+        message['parent_order_id']?.toString() ?? '';
+
+    final kotId =
+        message['kot_id']?.toString() ?? '';
+
+    final kotNumber =
+        message['kot_number']?.toString() ?? '';
+
+    debugPrint(
+      '========== HANDLE TAKEAWAY COMPLETED ==========',
+    );
+
+    debugPrint('Parent Order ID: $parentOrderId');
+    debugPrint('KOT ID: $kotId');
+    debugPrint('KOT Number: $kotNumber');
+
+    if (parentOrderId.isEmpty &&
+        kotId.isEmpty &&
+        kotNumber.isEmpty) {
+      debugPrint('❌ No identifier received');
+      return;
+    }
+
+    // ----------------------------------------------------------
+    // IMPORTANT:
+    // Do NOT add this order to completed set here.
+    //
+    // This event means PAYMENT COMPLETED.
+    // We need to SHOW the takeaway KOT in KDS.
+    // ----------------------------------------------------------
+
+    try {
+      debugPrint(
+        '🔄 Fetching KDS orders after takeaway payment...',
+      );
+
+      final rawApiOrders =
+      await _apiService.getKitchenDisplayOrders();
+
+      final List<Map<String, dynamic>> apiOrders =
+      rawApiOrders
+          .whereType<Map>()
+          .map(
+            (order) =>
+        Map<String, dynamic>.from(order),
+      )
+          .toList();
+
+      debugPrint(
+        'KDS API ORDERS COUNT: ${apiOrders.length}',
+      );
+
+      Map<String, dynamic>? matchingOrder;
+
+      // ----------------------------------------------------------
+      // FIND TAKEAWAY KOT
+      // ----------------------------------------------------------
+
+      for (final json in apiOrders) {
+        final apiKotId =
+            json['kot_id']?.toString() ??
+                json['id']?.toString() ??
+                '';
+
+        final apiKotNumber =
+            json['kot_number']?.toString() ?? '';
+
+        final apiParentOrderId =
+            json['parent_order_id']?.toString() ??
+                json['order_id']?.toString() ??
+                '';
+
+        final apiOrderType =
+            json['order_type']?.toString().trim().toLowerCase() ?? '';
+
+        final isTakeaway =
+            apiOrderType == 'takeaway' ||
+                apiOrderType.contains('takeaway');
+
+        debugPrint(
+          'Checking API KOT: '
+              'kotId=$apiKotId '
+              'kotNumber=$apiKotNumber '
+              'parentOrderId=$apiParentOrderId '
+              'orderType=$apiOrderType '
+              'isTakeaway=$isTakeaway',
+        );
+
+        if (!isTakeaway) {
+          continue;
+        }
+
+        final matchesKotId =
+            kotId.isNotEmpty && apiKotId == kotId;
+
+        final matchesKotNumber =
+            kotNumber.isNotEmpty && apiKotNumber == kotNumber;
+
+        final matchesParentOrder =
+            parentOrderId.isNotEmpty &&
+                apiParentOrderId == parentOrderId;
+
+        if (matchesKotId ||
+            matchesKotNumber ||
+            matchesParentOrder) {
+          matchingOrder = json;
+
+          debugPrint(
+            '✅ MATCHED TAKEAWAY KOT '
+                'KOT=$apiKotNumber '
+                'KOT_ID=$apiKotId '
+                'PARENT=$apiParentOrderId',
+          );
+
+          break;
+        }
+      }
+
+      // ----------------------------------------------------------
+      // KOT NOT FOUND
+      // ----------------------------------------------------------
+
+      if (matchingOrder == null) {
+        debugPrint(
+          '❌ Takeaway KOT NOT FOUND in KDS API',
+        );
+
+        debugPrint(
+          'kotId=$kotId '
+              'kotNumber=$kotNumber '
+              'parentOrderId=$parentOrderId',
+        );
+
+        return;
+      }
+
+      debugPrint(
+        '✅ TAKEAWAY KOT FOUND IN API',
+      );
+
+      debugPrint(
+        'TAKEAWAY KOT JSON: $matchingOrder',
+      );
+
+      // ----------------------------------------------------------
+      // CONVERT API RESPONSE
+      // ----------------------------------------------------------
+
+      final order = KitchenOrder.fromJson(
+        matchingOrder,
+      );
+
+      // ----------------------------------------------------------
+      // TAKEAWAY SHOULD ENTER KDS AS PENDING
+      // ----------------------------------------------------------
+
+      order.status = 'Pending';
+
+      debugPrint(
+        '========== TAKEAWAY KOT ADDING TO KDS ==========',
+      );
+
+      debugPrint('KOT ID       : ${order.kotId}');
+      debugPrint('KOT NUMBER   : ${order.kotNo}');
+      debugPrint('PARENT ID    : ${order.parentOrderId}');
+      debugPrint('TYPE         : ${order.type}');
+      debugPrint('STATUS       : ${order.status}');
+      debugPrint('ITEM COUNT   : ${order.items.length}');
+
+      // ----------------------------------------------------------
+      // ADD TO KDS
+      // ----------------------------------------------------------
+
+      _addOrder(order);
+
+      debugPrint(
+        '✅ TAKEAWAY KOT ADDED TO KDS',
+      );
+
+      debugPrint(
+        'TOTAL ORDERS: ${_orders.length}',
+      );
+
+      debugPrint(
+        'PENDING ORDERS: ${pendingOrders.length}',
+      );
+    } catch (e, stack) {
+      KdsDebugLog.error(
+        '❌ Failed to load takeaway KOT: $e\n$stack',
+      );
+      debugPrint(stack.toString());
+    }
+
+    debugPrint(
+      '==============================================',
     );
   }
   void _handleKotStatusUpdate(Map<String, dynamic> message) {
@@ -576,16 +1011,48 @@ class OrderProvider extends ChangeNotifier {
   }
 
   void _addOrder(KitchenOrder order) {
-    final index = _orders.indexWhere((item) => item.id == order.id);
+    debugPrint('========== ADD ORDER ==========');
+    debugPrint('ID           : ${order.id}');
+    debugPrint('KOT ID       : ${order.kotId}');
+    debugPrint('KOT NO       : ${order.kotNo}');
+    debugPrint('PARENT ID    : ${order.parentOrderId}');
+    debugPrint('TYPE         : ${order.type}');
+    debugPrint('STATUS       : ${order.status}');
+    debugPrint('KOT STATUS   : ${order.kotStatus}');
+    debugPrint('ITEM COUNT   : ${order.items.length}');
+    debugPrint('===============================');
+
+    final index = _orders.indexWhere(
+          (item) =>
+      item.id == order.id ||
+          (order.kotId != null &&
+              item.kotId == order.kotId),
+    );
+
     if (index >= 0) {
       _orders[index] = order;
+
+      debugPrint(
+        'UPDATED EXISTING KOT at index=$index',
+      );
     } else {
       _orders.insert(0, order);
-    }
-    _persist();
-    notifyListeners();
-  }
 
+      debugPrint(
+        'INSERTED NEW KOT',
+      );
+    }
+
+    _persist();
+
+    notifyListeners();
+
+    debugPrint(
+      'TOTAL ORDERS AFTER ADD: ${_orders.length}',
+    );
+
+    debugPrint('================================');
+  }
   KitchenOrder? _findOrder(String orderId) {
     for (final order in _orders) {
       if (order.id == orderId) return order;
@@ -803,17 +1270,22 @@ class OrderProvider extends ChangeNotifier {
 
       _updateAndSave(() {
         for (final item in order.items) {
-          debugPrint(
-            "Item: ${item.name}, "
-                "lineItemId: ${item.lineItemId}, "
-                "status: ${item.status}",
-          );
-          final isCancelled = selectedItems.any(
-                (selected) => selected['name'] == item.name,
+          final itemId = int.tryParse(
+            item.lineItemId?.toString() ?? '',
           );
 
-          if (isCancelled) {
+          debugPrint(
+            'Item: ${item.name}, '
+                'lineItemId: ${item.lineItemId}, '
+                'status before: ${item.status}',
+          );
+
+          if (itemId != null && selectedItemIds.contains(itemId)) {
             item.status = 'cancelled';
+
+            debugPrint(
+              'Item ${item.name} marked as CANCELLED',
+            );
           }
         }
       });
@@ -933,11 +1405,9 @@ class OrderProvider extends ChangeNotifier {
 
   Future<void> loadExistingOrders() async {
     try {
-      // API returns List<dynamic>
       final rawApiOrders =
       await _apiService.getKitchenDisplayOrders();
 
-      // Convert List<dynamic> -> List<Map<String, dynamic>>
       final List<Map<String, dynamic>> apiOrders =
       rawApiOrders
           .whereType<Map>()
@@ -950,17 +1420,23 @@ class OrderProvider extends ChangeNotifier {
         'KDS API ORDERS COUNT: ${apiOrders.length}',
       );
 
-      // Build category maps from API response.
+      // ----------------------------------------------------------
+      // BUILD CATEGORY MAPS
+      // ----------------------------------------------------------
+
       _buildCategoryMapsFromApiOrders(apiOrders);
 
-      // Keep locally served orders so they don't disappear prematurely.
-      final servedLocal = _orders
-          .where(
-            (o) => o.status.toLowerCase() == 'served',
-      )
-          .toList();
+      // ----------------------------------------------------------
+      // KEEP CURRENT LOCAL ORDERS
+      // ----------------------------------------------------------
+
+      final localOrders = List<KitchenOrder>.from(_orders);
 
       final List<KitchenOrder> loadedOrders = [];
+
+      // ----------------------------------------------------------
+      // PARSE API ORDERS
+      // ----------------------------------------------------------
 
       for (final json in apiOrders) {
         try {
@@ -977,25 +1453,102 @@ class OrderProvider extends ChangeNotifier {
       }
 
       // ----------------------------------------------------------
-      // MERGE API ORDERS WITH LOCAL SERVED ORDERS
+      // MERGE API + LOCAL ITEM STATUS
       // ----------------------------------------------------------
 
       final Map<String, KitchenOrder> mergedOrders = {};
 
-      for (final order in loadedOrders) {
-        mergedOrders[order.id] = order;
+      for (final apiOrder in loadedOrders) {
+        // Find same KOT locally
+        final localOrderIndex = localOrders.indexWhere(
+              (localOrder) =>
+          localOrder.id == apiOrder.id ||
+              (localOrder.kotId != null &&
+                  apiOrder.kotId != null &&
+                  localOrder.kotId == apiOrder.kotId),
+        );
+
+        if (localOrderIndex != -1) {
+          final localOrder = localOrders[localOrderIndex];
+
+          // ------------------------------------------------------
+          // PRESERVE CANCELLED ITEM STATUS
+          // ------------------------------------------------------
+
+          for (final apiItem in apiOrder.items) {
+            final localItemIndex = localOrder.items.indexWhere(
+                  (localItem) =>
+              localItem.lineItemId != null &&
+                  apiItem.lineItemId != null &&
+                  localItem.lineItemId ==
+                      apiItem.lineItemId,
+            );
+
+            if (localItemIndex != -1) {
+              final localItem =
+              localOrder.items[localItemIndex];
+
+              final localStatus =
+              localItem.status
+                  .toString()
+                  .trim()
+                  .toLowerCase();
+
+              if (localStatus == 'cancelled') {
+                apiItem.status = 'cancelled';
+
+                debugPrint(
+                  '🔴 PRESERVED CANCELLED ITEM: '
+                      '${apiItem.name} '
+                      'lineItemId=${apiItem.lineItemId}',
+                );
+              }
+            }
+          }
+        }
+
+        // Add API order after merging local item status
+        mergedOrders[apiOrder.id] = apiOrder;
       }
 
-      for (final served in servedLocal) {
-        mergedOrders.putIfAbsent(
-          served.id,
-              () => served,
-        );
+      // ----------------------------------------------------------
+      // PRESERVE LOCAL ORDERS NOT RETURNED BY API
+      // ----------------------------------------------------------
+
+      for (final localOrder in localOrders) {
+        final status =
+        localOrder.status.trim().toLowerCase();
+
+        final shouldKeep =
+            status == 'served' ||
+                status == 'pending' ||
+                status == 'preparing' ||
+                status == 'ready';
+
+        if (shouldKeep &&
+            !mergedOrders.containsKey(localOrder.id)) {
+          mergedOrders[localOrder.id] = localOrder;
+
+          debugPrint(
+            'Preserving local KOT: '
+                'id=${localOrder.id}, '
+                'type=${localOrder.type}, '
+                'status=${localOrder.status}',
+          );
+        }
       }
+
+      // ----------------------------------------------------------
+      // UPDATE MASTER LIST
+      // ----------------------------------------------------------
 
       _orders
         ..clear()
         ..addAll(mergedOrders.values);
+
+      // ----------------------------------------------------------
+      // SAVE
+      // ----------------------------------------------------------
 
       await _persist();
 
@@ -1004,6 +1557,24 @@ class OrderProvider extends ChangeNotifier {
       debugPrint(
         'KDS ORDERS LOADED: ${_orders.length}',
       );
+
+      // Debug cancelled items
+      for (final order in _orders) {
+        for (final item in order.items) {
+          if (item.status
+              .toString()
+              .trim()
+              .toLowerCase() ==
+              'cancelled') {
+            debugPrint(
+              '🔴 CANCELLED ITEM STILL PRESENT: '
+                  'KOT=${order.id}, '
+                  'ITEM=${item.name}, '
+                  'ID=${item.lineItemId}',
+            );
+          }
+        }
+      }
     } catch (e, stack) {
       KdsDebugLog.error(
         'loadExistingOrders failed: $e\n$stack',
@@ -1103,18 +1674,16 @@ class OrderProvider extends ChangeNotifier {
       );
 
       debugPrint(
-        'UPDATE ITEM STATUS RESPONSE: '
-            '${response.statusCode}',
+        'UPDATE ITEM STATUS RESPONSE: ${response.statusCode}',
       );
 
       debugPrint(
-        'UPDATE ITEM STATUS BODY: '
-            '${response.body}',
+        'UPDATE ITEM STATUS BODY: ${response.body}',
       );
 
-      // ======================================================
+      // ==========================================================
       // API FAILED
-      // ======================================================
+      // ==========================================================
 
       if (response.statusCode < 200 ||
           response.statusCode >= 300) {
@@ -1125,15 +1694,14 @@ class OrderProvider extends ChangeNotifier {
         return false;
       }
 
-      // ======================================================
-      // API SUCCESS
-      // ======================================================
-
       debugPrint(
         '✅ Update item status API success',
       );
 
-      // Find the KOT in local list.
+      // ==========================================================
+      // FIND KOT
+      // ==========================================================
+
       final orderIndex = _orders.indexWhere(
             (order) =>
         order.parentOrderId == parentId &&
@@ -1146,15 +1714,31 @@ class OrderProvider extends ChangeNotifier {
               'parentId=$parentId orderId=$orderId',
         );
 
-        // API succeeded, so still return true.
         return true;
       }
 
       final order = _orders[orderIndex];
 
-      // ======================================================
-      // MARK SELECTED ITEMS AS COMPLETED
-      // ======================================================
+      // ==========================================================
+      // SAVE COMPLETED ITEMS BEFORE REMOVING THEM
+      // ==========================================================
+
+      final completedItems = order.items
+          .where(
+            (item) =>
+        item.lineItemId != null &&
+            items.contains(item.lineItemId),
+      )
+          .map((item) => item.toJson())
+          .toList();
+
+      debugPrint(
+        'Completed items: $completedItems',
+      );
+
+      // ==========================================================
+      // MARK SELECTED ITEMS COMPLETED
+      // ==========================================================
 
       for (final item in order.items) {
         final lineItemId = item.lineItemId;
@@ -1164,16 +1748,16 @@ class OrderProvider extends ChangeNotifier {
           item.status = 'completed';
 
           debugPrint(
-            'Item completed → '
+            '✅ Item completed → '
                 '${item.name} '
                 'lineItemId=$lineItemId',
           );
         }
       }
 
-      // ======================================================
-      // REMOVE COMPLETED ITEMS FROM LOCAL KOT
-      // ======================================================
+      // ==========================================================
+      // REMOVE COMPLETED ITEMS
+      // ==========================================================
 
       order.items.removeWhere(
             (item) =>
@@ -1182,29 +1766,163 @@ class OrderProvider extends ChangeNotifier {
       );
 
       debugPrint(
-        'Remaining items in KOT: '
-            '${order.items.length}',
+        'Remaining items in KOT: ${order.items.length}',
       );
 
-      // ======================================================
-      // IF NO ITEMS LEFT, REMOVE WHOLE KOT
-      // ======================================================
+      // ==========================================================
+      // LAST ITEM COMPLETED
+      // ==========================================================
 
       if (order.items.isEmpty) {
+        debugPrint(
+          '============================================',
+        );
+
+        debugPrint(
+          '✅ ALL ITEMS COMPLETED',
+        );
+
+        debugPrint(
+          '➡️ Updating KOT status → SERVED',
+        );
+
+        // --------------------------------------------------------
+        // LOCAL STATUS
+        // --------------------------------------------------------
+
+        order.status = 'Served';
+        order.servedAt = DateTime.now();
+
+        _optimisticStatuses[order.id] =
+            _OptimisticStatus(
+              'Served',
+              DateTime.now(),
+            );
+
+        // --------------------------------------------------------
+        // BACKEND STATUS UPDATE
+        // --------------------------------------------------------
+
+        try {
+          await _apiService.updateOrderStatus(
+            order,
+            'served',
+          );
+
+          debugPrint(
+            '✅ BACKEND KOT STATUS = SERVED',
+          );
+        } catch (e, stack) {
+          debugPrint(
+            '❌ Failed to update KOT status to SERVED: $e',
+          );
+
+          debugPrintStack(
+            stackTrace: stack,
+          );
+
+          return false;
+        }
+
+        // --------------------------------------------------------
+        // POS UPDATE
+        // --------------------------------------------------------
+
+        _notifyPos(
+          order,
+          'Served',
+        );
+
+        debugPrint(
+          '✅ POS SHOULD NOW SHOW SERVED',
+        );
+
+        // --------------------------------------------------------
+        // REMOVE FROM ACTIVE KDS
+        // --------------------------------------------------------
+
         _orders.removeAt(orderIndex);
 
         debugPrint(
-          'All items completed → KOT removed',
+          '✅ KOT removed from active KDS',
         );
+
+        await _persist();
+
+        notifyListeners();
+
+        debugPrint(
+          '============================================',
+        );
+
+        return true;
       }
 
-      // Save + immediately rebuild KDS
+      // ==========================================================
+      // SOME ITEMS STILL REMAIN
+      // ==========================================================
+
+      debugPrint(
+        '⏳ Some items are still preparing',
+      );
+
+      debugPrint(
+        '➡️ KOT remains PREPARING',
+      );
+
+      order.status = 'Preparing';
+      order.servedAt = null;
+
+      _optimisticStatuses[order.id] =
+          _OptimisticStatus(
+            'Preparing',
+            DateTime.now(),
+          );
+
+      // ----------------------------------------------------------
+      // UPDATE BACKEND
+      // ----------------------------------------------------------
+
+      try {
+        await _apiService.updateOrderStatus(
+          order,
+          'preparing',
+        );
+
+        debugPrint(
+          '✅ BACKEND KOT STATUS = PREPARING',
+        );
+      } catch (e, stack) {
+        debugPrint(
+          '❌ Failed to update KOT status to PREPARING: $e',
+        );
+
+        debugPrintStack(
+          stackTrace: stack,
+        );
+
+        return false;
+      }
+
+      // ----------------------------------------------------------
+      // NOTIFY POS
+      // ----------------------------------------------------------
+
+      _notifyPos(
+        order,
+        'Preparing',
+      );
+
+      debugPrint(
+        '✅ POS SHOULD REMAIN PREPARING',
+      );
+
       await _persist();
 
       notifyListeners();
 
       debugPrint(
-        '✅ Item removed from Item Queue immediately',
+        '✅ Item status update completed',
       );
 
       debugPrint(
@@ -1224,7 +1942,6 @@ class OrderProvider extends ChangeNotifier {
       return false;
     }
   }
-
 Future<bool> updateOrderStatus(String orderId, String status) async {
     final order = _findOrder(orderId);
     if (order == null) return false;

@@ -40,6 +40,11 @@ class _StockScreenState extends State<StockScreen> {
   // ==========================================================
 
   String _selectedCategory = '';
+  // String _selectedCategory = '';
+
+  String? _previousCategory;
+  StockItem? _previousItem;
+  String _previousSearch = '';
 
   // ==========================================================
   // STOCK DATA
@@ -69,6 +74,24 @@ class _StockScreenState extends State<StockScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+  void _saveCurrentState() {
+    _previousCategory = _selectedCategory;
+    _previousItem = _selectedItems as StockItem?;
+    _previousSearch = _searchController.text;
+  }
+  void _resetSelection() {
+    setState(() {
+      for (final category in _stockCategories) {
+        for (final item in category.items) {
+          // Restore the original/current backend state
+          item.selected = item.isEnabled;
+        }
+      }
+
+      // Also clear the search
+      _searchController.clear();
+    });
   }
 
   // ==========================================================
@@ -562,20 +585,20 @@ class _StockScreenState extends State<StockScreen> {
   // RESET
   // ==========================================================
 
-  void _resetSelection() {
-    setState(() {
-      for (final category
-      in _stockCategories) {
-        for (final item in category.items) {
-          if (item.isEnabled) {
-            item.selected = false;
-          } else {
-            item.selected = false;
-          }
-        }
-      }
-    });
-  }
+  // void _resetSelection() {
+  //   setState(() {
+  //     for (final category
+  //     in _stockCategories) {
+  //       for (final item in category.items) {
+  //         if (item.isEnabled) {
+  //           item.selected = false;
+  //         } else {
+  //           item.selected = false;
+  //         }
+  //       }
+  //     }
+  //   });
+  // }
 
   // ==========================================================
   // SAVE & UPDATE
@@ -1175,151 +1198,84 @@ class _StockScreenState extends State<StockScreen> {
 
         Row(
           children: [
-            Expanded(
-              child: SizedBox(
-                height: 36,
+            // SEARCH
+            SizedBox(
+              width: 400, // 👈 change this value
+              height: 36,
+              child: TextField(
+                controller: _searchController,
 
-                child: TextField(
-                  controller:
-                  _searchController,
+                onChanged: (_) {
+                  setState(() {});
+                },
 
-                  onChanged: (_) {
-                    setState(() {});
-                  },
+                decoration: InputDecoration(
+                  hintText: 'Search by category or item name',
 
-                  decoration:
-                  InputDecoration(
-                    hintText:
-                    'Search by category or item name',
+                  hintStyle: GoogleFonts.montserrat(
+                    fontSize: 14,
+                    color: const Color(0xff98A2B3),
+                  ),
 
-                    hintStyle:
-                    GoogleFonts.montserrat(
-                      fontSize: 14,
-                      color:
-                      const Color(
-                        0xff98A2B3,
-                      ),
+                  prefixIcon: const Icon(
+                    Icons.search,
+                    size: 17,
+                    color: Color(0xff98A2B3),
+                  ),
+
+                  filled: true,
+                  fillColor: Colors.white,
+
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                  ),
+
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(5),
+                    borderSide: const BorderSide(
+                      color: Color(0xffD0D5DD),
                     ),
+                  ),
 
-                    prefixIcon:
-                    const Icon(
-                      Icons.search,
-                      size: 17,
-                      color:
-                      Color(
-                        0xff98A2B3,
-                      ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(5),
+                    borderSide: const BorderSide(
+                      color: Color(0xffD0D5DD),
                     ),
+                  ),
 
-                    filled: true,
-
-                    fillColor:
-                    Colors.white,
-
-                    contentPadding:
-                    const EdgeInsets
-                        .symmetric(
-                      horizontal: 10,
-                    ),
-
-                    border:
-                    OutlineInputBorder(
-                      borderRadius:
-                      BorderRadius
-                          .circular(
-                        5,
-                      ),
-
-                      borderSide:
-                      const BorderSide(
-                        color:
-                        Color(
-                          0xffD0D5DD,
-                        ),
-                      ),
-                    ),
-
-                    enabledBorder:
-                    OutlineInputBorder(
-                      borderRadius:
-                      BorderRadius
-                          .circular(
-                        5,
-                      ),
-
-                      borderSide:
-                      const BorderSide(
-                        color:
-                        Color(
-                          0xffD0D5DD,
-                        ),
-                      ),
-                    ),
-
-                    focusedBorder:
-                    OutlineInputBorder(
-                      borderRadius:
-                      BorderRadius
-                          .circular(
-                        5,
-                      ),
-
-                      borderSide:
-                      const BorderSide(
-                        color:
-                        Color(
-                          0xff526887,
-                        ),
-                      ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(5),
+                    borderSide: const BorderSide(
+                      color: Color(0xff526887),
                     ),
                   ),
                 ),
               ),
             ),
 
-            const SizedBox(
-              width: 10,
-            ),
+            const Spacer(),
 
+            // RESET
             SizedBox(
               width: 118,
               height: 36,
-
               child: OutlinedButton(
-                onPressed:
-                _resetSelection,
-
-                style:
-                OutlinedButton.styleFrom(
-                  side:
-                  const BorderSide(
-                    color:
-                    Color(
-                      0xff98A2B3,
-                    ),
+                onPressed: _resetSelection,
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(
+                    color: Color(0xff98A2B3),
                   ),
-
-                  shape:
-                  RoundedRectangleBorder(
-                    borderRadius:
-                    BorderRadius.circular(
-                      5,
-                    ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(5),
                   ),
                 ),
-
                 child: Text(
                   'Reset',
-
-                  style:
-                  GoogleFonts.montserrat(
+                  style: GoogleFonts.montserrat(
                     fontSize: 14,
-                    fontWeight:
-                    FontWeight.w600,
-                    color:
-                    const Color(
-                      0xff667085,
-                    ),
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xff667085),
                   ),
                 ),
               ),
