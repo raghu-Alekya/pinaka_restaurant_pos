@@ -8,9 +8,9 @@ class KdsMqttPublisher {
   static MqttServerClient? _client;
   static bool _connected = false;
   static StreamSubscription<List<MqttReceivedMessage<MqttMessage>>>?
-      _statusSubscription;
+  _statusSubscription;
   static final _statusController =
-      StreamController<Map<String, dynamic>>.broadcast();
+  StreamController<Map<String, dynamic>>.broadcast();
 
   /// Stream of KDS → POS status updates (`kot_status_updated`).
   static Stream<Map<String, dynamic>> get statusUpdates =>
@@ -132,6 +132,63 @@ class KdsMqttPublisher {
       );
     } catch (e) {
       print('MQTT publish failed: $e');
+    }
+  }
+  static Future<void> notifyTakeawayCompleted({
+    required String restaurantId,
+    required int parentOrderId,
+    int? kotId,
+    String? kotNumber,
+    int? zoneId,
+    String? zoneName,
+  }) async {
+    try {
+      await _ensureConnected();
+
+      if (!_connected || _client == null) {
+        print('MQTT not connected - cannot send takeaway completed');
+        return;
+      }
+
+      final payload = {
+        'event': 'takeaway_completed',
+        'restaurant_id': restaurantId,
+        'parent_order_id': parentOrderId,
+        'kot_id': kotId,
+        'kot_number': kotNumber,
+        'zone_id': zoneId,
+        'zone_name': zoneName,
+        'order_type': 'takeaway',
+        'status': 'completed',
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+
+      print(
+          '========== PUBLISH TAKEAWAY COMPLETED =========='
+      );
+      print(
+        'Topic: ${_topic(restaurantId)}',
+      );
+      print(
+        'Payload: ${jsonEncode(payload)}',
+      );
+      print(
+          '================================================'
+      );
+
+      final builder = MqttClientPayloadBuilder()
+        ..addString(jsonEncode(payload));
+
+      _client!.publishMessage(
+        _topic(restaurantId),
+        MqttQos.atLeastOnce,
+        builder.payload!,
+      );
+
+      print('Takeaway completed event published successfully');
+    } catch (e, stack) {
+      print('Takeaway MQTT publish failed: $e');
+      print(stack);
     }
   }
   static Future<void> publishKotStatus({
