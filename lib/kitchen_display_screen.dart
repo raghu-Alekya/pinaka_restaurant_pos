@@ -4320,14 +4320,14 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
         padding: const EdgeInsets.all(2),
         decoration: BoxDecoration(
           color: value
-              ? activeColor.withOpacity(.18)
-              : const Color(0xffE4E7EC),
+              ? const Color(0xff3B923F)
+              : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: value
-                ? activeColor
+                ? const Color(0xff3B923F)
                 : const Color(0xffD0D5DD),
-            width: 1,
+            width: 1.5,
           ),
         ),
         child: AnimatedAlign(
@@ -4340,8 +4340,8 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
             height: 18,
             decoration: BoxDecoration(
               color: value
-                  ? activeColor
-                  : const Color(0xffC8D0DB),
+                  ? Colors.white
+                  : const Color(0xff98A2B3),
               shape: BoxShape.circle,
             ),
           ),
@@ -4349,6 +4349,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
       ),
     );
   }
+
 
   Widget vegNonVegIcon(bool isVeg) {
     final color = isVeg

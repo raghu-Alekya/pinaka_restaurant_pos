@@ -600,6 +600,7 @@ class KitchenOrder {
   final int? zoneId;
   final String? zoneName;
   final String type;
+  final int? restaurantId;
 
   String status;
   bool isCancelled;
@@ -620,6 +621,7 @@ class KitchenOrder {
     this.zoneId,
     this.zoneName,
     required this.type,
+    this.restaurantId,
     this.status = 'Pending',
     this.isCancelled = false,
     this.tableName,
@@ -630,6 +632,7 @@ class KitchenOrder {
     this.kotOrderBy = '',
     this.servedAt,
   });
+
 
   // ================================================================
   // HEADER COLOR
@@ -1016,7 +1019,13 @@ class KitchenOrder {
           ?.toString() ??
           'Dine-In',
 
+      restaurantId: (payload['restaurant_id'] as num?)?.toInt() ??
+          (kot['restaurant_id'] as num?)?.toInt() ??
+          (payload['restaurantId'] as num?)?.toInt() ??
+          (kot['restaurantId'] as num?)?.toInt(),
+
       status: 'Pending',
+
 
       tableName:
       payload['table_name']
@@ -1134,6 +1143,9 @@ class KitchenOrder {
         );
       }).toList(),
 
+      restaurantId: (json['restaurant_id'] as num?)?.toInt() ??
+          (json['restaurantId'] as num?)?.toInt(),
+
       servedAt:
       json['servedAt'] != null
           ? DateTime.tryParse(
@@ -1154,6 +1166,7 @@ class KitchenOrder {
     'zoneId': zoneId,
     'zoneName': zoneName,
     'type': type,
+    'restaurantId': restaurantId,
     'status': status,
     'isCancelled': isCancelled,
     'tableName': tableName,
@@ -1184,6 +1197,9 @@ class KitchenOrder {
     'kotId': kotId,
     'parentOrderId': parentOrderId,
     'zoneId': zoneId,
+    'restaurantId': restaurantId,
+    'restaurant_id': restaurantId,
+
     'zoneName': zoneName,
     'type': type,
 

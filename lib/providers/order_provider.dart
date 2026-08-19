@@ -71,6 +71,13 @@ class OrderProvider extends ChangeNotifier {
 
   List<Map<String, dynamic>> get pendingOrders => _orders
       .where((o) {
+        final currentRestId = _apiService.restaurantId.toString().trim();
+        if (o.restaurantId != null && o.restaurantId! > 0 && currentRestId.isNotEmpty) {
+          if (o.restaurantId.toString().trim() != currentRestId) {
+            return false;
+          }
+        }
+
         final st = o.status.trim().toLowerCase();
         final isPendingStatus = st == 'pending' ||
             st == 'new' ||
@@ -84,6 +91,7 @@ class OrderProvider extends ChangeNotifier {
       })
       .map((o) => o.toUiMap())
       .toList();
+
 
 
   List<Map<String, dynamic>> get preparingOrders => _orders
@@ -160,10 +168,28 @@ class OrderProvider extends ChangeNotifier {
   Future<void> _handleMessage(Map<String, dynamic> message) async {
     final event = message['event']?.toString();
 
+    // ==========================================================
+    // RESTAURANT ISOLATION CHECK
+    // ==========================================================
+    final dynamic msgRestIdRaw = message['restaurant_id'] ??
+        message['restaurantId'] ??
+        (message['kot'] is Map ? (message['kot']['restaurant_id'] ?? message['kot']['restaurantId']) : null);
+
+    if (msgRestIdRaw != null) {
+      final String msgRestId = msgRestIdRaw.toString().trim();
+      final String currentRestId = _apiService.restaurantId.toString().trim();
+
+      if (msgRestId.isNotEmpty && currentRestId.isNotEmpty && msgRestId != currentRestId) {
+        debugPrint('🚫 RESTAURANT MISMATCH: IGNORING MQTT MESSAGE (msg: $msgRestId vs current: $currentRestId)');
+        return;
+      }
+    }
+
     debugPrint('========== MQTT EVENT ==========');
     debugPrint('EVENT: $event');
     debugPrint('MESSAGE: $message');
     debugPrint('================================');
+
 
     // ==========================================================
     // NEW KOT CREATED
@@ -298,33 +324,8 @@ class OrderProvider extends ChangeNotifier {
         // ADD TO KDS
         // ========================================================
 
-        if (isTakeaway) {
-          debugPrint(
-            '🚫 TAKEAWAY KOT CREATED',
-          );
+        // Process all order types (dine-in, takeaway, online) immediately upon kot_created
 
-          debugPrint(
-            '🚫 NOT ADDING TAKEAWAY KOT TO KDS YET',
-          );
-
-          debugPrint(
-            'Waiting for takeaway_completed event...',
-          );
-
-          debugPrint(
-            'KOT ID       : ${order.kotId}',
-          );
-
-          debugPrint(
-            'KOT NUMBER   : ${order.kotNo}',
-          );
-
-          debugPrint(
-            'PARENT ID    : ${order.parentOrderId}',
-          );
-
-          return;
-        }
 
         // ========================================================
         // DINE-IN / OTHER KOT STATUS NORMALIZATION
@@ -1066,9 +1067,22 @@ class OrderProvider extends ChangeNotifier {
   }
 
   void _addOrder(KitchenOrder order) {
+    final String currentRestId = _apiService.restaurantId.toString().trim();
+    if (order.restaurantId != null && order.restaurantId! > 0 && currentRestId.isNotEmpty) {
+      if (order.restaurantId.toString().trim() != currentRestId) {
+        debugPrint(
+          '🚫 REJECTING ORDER ADDITION FOR DIFFERENT RESTAURANT '
+          '(order: ${order.restaurantId} vs current: $currentRestId)',
+        );
+        return;
+      }
+    }
+
     debugPrint('========== ADD ORDER ==========');
     debugPrint('ID           : ${order.id}');
+    debugPrint('RESTAURANT ID: ${order.restaurantId}');
     debugPrint('KOT ID       : ${order.kotId}');
+
     debugPrint('KOT NO       : ${order.kotNo}');
     debugPrint('PARENT ID    : ${order.parentOrderId}');
     debugPrint('TYPE         : ${order.type}');
@@ -1514,9 +1528,31 @@ class OrderProvider extends ChangeNotifier {
 
       for (final json in apiOrders) {
         try {
+          final dynamic jsonRestIdRaw = json['restaurant_id'] ??
+              json['restaurantId'] ??
+              json['store_id'] ??
+              json['storeId'];
+
+          final String currentRestId = _apiService.restaurantId.toString().trim();
+
+          if (jsonRestIdRaw != null) {
+            final String jsonRestId = jsonRestIdRaw.toString().trim();
+            if (jsonRestId.isNotEmpty && currentRestId.isNotEmpty && jsonRestId != currentRestId) {
+              debugPrint('🚫 IGNORING API ORDER FOR DIFFERENT RESTAURANT ($jsonRestId vs $currentRestId)');
+              continue;
+            }
+          }
+
           final order = KitchenOrder.fromJson(
             Map<String, dynamic>.from(json),
           );
+
+          if (order.restaurantId != null && order.restaurantId! > 0) {
+            if (order.restaurantId.toString().trim() != currentRestId) {
+              debugPrint('🚫 IGNORING PARSED ORDER FOR DIFFERENT RESTAURANT (${order.restaurantId} vs $currentRestId)');
+              continue;
+            }
+          }
 
           loadedOrders.add(order);
         } catch (e, stack) {
@@ -1525,6 +1561,7 @@ class OrderProvider extends ChangeNotifier {
           );
         }
       }
+
 
       // ----------------------------------------------------------
       // MERGE API + LOCAL ITEM STATUS
